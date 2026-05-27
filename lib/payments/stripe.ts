@@ -1,9 +1,16 @@
 import Stripe from 'stripe';
+import { randomUUID } from 'crypto';
 import { redirect } from 'next/navigation';
 import { eq } from 'drizzle-orm';
 import { POSTHOG_EVENTS, captureServerEvent } from '@/lib/analytics/posthog';
 import { db } from '@/lib/db/drizzle';
 import { grantPurchasedCredits } from '@/lib/credits';
+import {
+  getMockCreditPackageByPriceId,
+  getMockStripePrices,
+  getMockStripeProducts,
+  isPaymentMockEnabled,
+} from '@/lib/payments/mock';
 import { teamMembers, type Team } from '@/lib/db/schema';
 import {
   getTeamByStripeCustomerId,
@@ -11,9 +18,12 @@ import {
   updateTeamSubscription
 } from '@/lib/db/queries';
 
-export const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!, {
-  apiVersion: '2025-04-30.basil'
-});
+export const stripe = new Stripe(
+  process.env.STRIPE_SECRET_KEY || 'sk_test_placeholder',
+  {
+    apiVersion: '2025-04-30.basil'
+  }
+);
 
 type ProductRef = string | Stripe.Product | Stripe.DeletedProduct | null | undefined;
 
@@ -240,6 +250,10 @@ export async function createCheckoutSession({
   team: Team | null;
   priceId: string;
 }) {
+  if (isPaymentMockEnabled()) {
+    return createMockCheckoutSession({ team, priceId });
+  }
+
   const user = await getUser();
 
   if (!team || !user) {
@@ -290,7 +304,71 @@ export async function createCheckoutSession({
   redirect(session.url!);
 }
 
+async function createMockCheckoutSession({
+  team,
+  priceId
+}: {
+  team: Team | null;
+  priceId: string;
+}) {
+  const user = await getUser();
+
+  if (!team || !user) {
+    redirect(`/sign-up?redirect=checkout&priceId=${priceId}`);
+  }
+
+  const creditPackage = getMockCreditPackageByPriceId(priceId);
+
+  if (!creditPackage) {
+    throw new Error(`Unknown mock payment price id: ${priceId}`);
+  }
+
+  await captureServerEvent({
+    distinctId: String(user.id),
+    event: POSTHOG_EVENTS.CHECKOUT_STARTED,
+    properties: {
+      userId: user.id,
+      priceId,
+      source: 'mock_checkout'
+    }
+  });
+
+  const stripeEventId = `mock_checkout:${user.id}:${priceId}:${randomUUID()}`;
+  const result = await grantPurchasedCredits({
+    userId: user.id,
+    credits: creditPackage.credits,
+    stripeEventId,
+    metadata: {
+      source: 'mock_checkout',
+      packageKey: creditPackage.key,
+      packageName: creditPackage.name,
+      priceId,
+      amountTotal: creditPackage.unitAmount,
+      currency: creditPackage.currency
+    }
+  });
+
+  await captureServerEvent({
+    distinctId: String(user.id),
+    event: POSTHOG_EVENTS.CHECKOUT_COMPLETED,
+    properties: {
+      userId: user.id,
+      stripeCheckoutSessionId: stripeEventId,
+      stripeEventId,
+      credits: creditPackage.credits,
+      balance: result.balance,
+      source: 'mock_checkout'
+    }
+  });
+
+  redirect('/dashboard?checkout=mock_success');
+}
+
 export async function createCustomerPortalSession(team: Team) {
+  if (isPaymentMockEnabled()) {
+    return { url: '/pricing?billing=mock' };
+  }
+
   if (!team.stripeCustomerId || !team.stripeProductId) {
     redirect('/pricing');
   }
@@ -519,12 +597,16 @@ export async function handleInvoicePaymentSucceeded(
 }
 
 export async function getStripePrices() {
+  if (isPaymentMockEnabled()) {
+    return getMockStripePrices();
+  }
+
   if (isPlaceholderStripeKey()) {
     return [];
   }
 
   let prices: Stripe.ApiList<Stripe.Price>;
- try {
+  try {
     prices = await stripe.prices.list({
       expand: ['data.product'],
       active: true
@@ -550,6 +632,10 @@ export async function getStripePrices() {
 }
 
 export async function getStripeProducts() {
+  if (isPaymentMockEnabled()) {
+    return getMockStripeProducts();
+  }
+
   if (isPlaceholderStripeKey()) {
     return [];
   }

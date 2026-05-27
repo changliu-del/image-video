@@ -57,7 +57,7 @@ export type GenerationFailedProperties = AnalyticsProperties & {
 export type CheckoutStartedProperties = AnalyticsProperties & {
   userId: string | number;
   priceId: string;
-  source: 'stripe_checkout';
+  source: 'stripe_checkout' | 'mock_checkout';
 };
 
 export type CheckoutCompletedProperties = AnalyticsProperties & {
@@ -66,7 +66,7 @@ export type CheckoutCompletedProperties = AnalyticsProperties & {
   stripeEventId: string;
   credits: number;
   balance: number;
-  source: 'stripe_webhook';
+  source: 'stripe_webhook' | 'mock_checkout';
 };
 
 export type AnalyticsEventProperties = {

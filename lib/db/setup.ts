@@ -77,6 +77,16 @@ async function checkStripeCLI() {
   }
 }
 
+function isPaymentMockEnabled() {
+  const explicitValue = process.env.PAYMENTS_MOCK?.trim().toLowerCase();
+
+  if (explicitValue) {
+    return ['1', 'true', 'yes', 'on'].includes(explicitValue);
+  }
+
+  return process.env.NODE_ENV !== 'production';
+}
+
 async function getPostgresURL(): Promise<string> {
   console.log('Step 2: Setting up Postgres');
   const dbChoice = await question(
@@ -155,6 +165,14 @@ async function getStripeSecretKey(): Promise<string> {
   return await question('Enter your Stripe Secret Key: ');
 }
 
+async function getStripePublishableKey(): Promise<string> {
+  console.log('Getting Stripe Publishable Key');
+  console.log(
+    'You can find your Stripe Publishable Key at: https://dashboard.stripe.com/test/apikeys'
+  );
+  return await question('Enter your Stripe Publishable Key: ');
+}
+
 async function createStripeWebhook(): Promise<string> {
   console.log('Step 4: Creating Stripe webhook...');
   try {
@@ -194,18 +212,33 @@ async function writeEnvFile(envVars: Record<string, string>) {
 }
 
 async function main() {
-  await checkStripeCLI();
+  const paymentsMock = isPaymentMockEnabled();
+
+  if (paymentsMock) {
+    console.log('Step 1: Payments are mocked; skipping Stripe setup.');
+  } else {
+    await checkStripeCLI();
+  }
 
   const POSTGRES_URL = await getPostgresURL();
-  const STRIPE_SECRET_KEY = await getStripeSecretKey();
-  const STRIPE_WEBHOOK_SECRET = await createStripeWebhook();
+  const STRIPE_SECRET_KEY = paymentsMock
+    ? 'sk_test_placeholder'
+    : await getStripeSecretKey();
+  const STRIPE_WEBHOOK_SECRET = paymentsMock
+    ? 'whsec_placeholder'
+    : await createStripeWebhook();
+  const NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY = paymentsMock
+    ? 'pk_test_placeholder'
+    : await getStripePublishableKey();
   const BASE_URL = 'http://localhost:3000';
   const AUTH_SECRET = generateAuthSecret();
 
   await writeEnvFile({
+    PAYMENTS_MOCK: paymentsMock ? 'true' : 'false',
     POSTGRES_URL,
     STRIPE_SECRET_KEY,
     STRIPE_WEBHOOK_SECRET,
+    NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY,
     BASE_URL,
     AUTH_SECRET,
   });

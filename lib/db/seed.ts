@@ -2,8 +2,14 @@ import { stripe } from '../payments/stripe';
 import { db } from './drizzle';
 import { users, teams, teamMembers } from './schema';
 import { hashPassword } from '@/lib/auth/session';
+import { isPaymentMockEnabled } from '@/lib/payments/mock';
 
 async function createStripeProducts() {
+  if (isPaymentMockEnabled()) {
+    console.log('Skipping Stripe credit packages because payments are mocked.');
+    return;
+  }
+
   console.log('Creating Stripe credit packages...');
 
   const packages = [
