@@ -9,6 +9,7 @@ import {
   type ImageToVideoResult,
   VideoProviderError
 } from './types';
+import { buildFalImageToVideoInput } from './fal-input';
 
 const DEFAULT_MODEL = 'fal-ai/wan/v2.7/image-to-video';
 const DEFAULT_WAIT_TIMEOUT_MS = 15 * 60 * 1000;
@@ -244,15 +245,7 @@ export class FalVideoProvider implements ImageToVideoProvider {
   }
 
   private buildFalInput(input: ImageToVideoCreateJobInput) {
-    return {
-      image_url: input.imageUrl,
-      prompt: input.prompt,
-      negative_prompt: input.negativePrompt,
-      duration: input.durationSeconds,
-      duration_seconds: input.durationSeconds,
-      aspect_ratio: input.aspectRatio,
-      ...input.metadata
-    };
+    return buildFalImageToVideoInput(this.model, input);
   }
 
   private async submitJob(

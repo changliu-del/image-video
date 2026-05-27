@@ -3,6 +3,7 @@ import { describe, expect, it } from 'vitest';
 import {
   ALLOWED_UPLOAD_MIME_TYPES,
   GENERATION_DURATIONS_SECONDS,
+  MAX_SELLING_POINT_LENGTH,
   MAX_UPLOAD_SIZE_BYTES,
   generationRequestSchema,
   getCreditCostForDuration,
@@ -94,6 +95,25 @@ describe('generationRequestSchema', () => {
     });
 
     expect(result.success).toBe(false);
+  });
+
+  it('accepts long commercial prompts as the core selling point', () => {
+    const sellingPoint = [
+      'Use the uploaded product as the only hero object.',
+      'Keep the product shape, logo, material, color, and proportions unchanged.',
+      'Create cinematic lighting, smooth camera motion, premium ecommerce styling, sharp details, and realistic product rendering.',
+      'Avoid extra products, readable text, deformation, blur, low resolution, cartoon styling, and cluttered backgrounds.',
+    ].join(' ');
+
+    expect(sellingPoint.length).toBeGreaterThan(280);
+    expect(sellingPoint.length).toBeLessThan(MAX_SELLING_POINT_LENGTH);
+
+    const parsed = generationRequestSchema.parse({
+      ...validGenerationRequest,
+      sellingPoint,
+    });
+
+    expect(parsed.sellingPoint).toBe(sellingPoint);
   });
 
   it('requires an input asset id and supports the legacy inputAsset alias', () => {

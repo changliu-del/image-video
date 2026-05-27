@@ -6,6 +6,9 @@ import { basename, join } from 'node:path';
 import { Readable } from 'node:stream';
 import { pipeline } from 'node:stream/promises';
 
+import { GetObjectCommand, PutObjectCommand, S3Client } from '@aws-sdk/client-s3';
+import { getSignedUrl } from '@aws-sdk/s3-request-presigner';
+
 import { POSTHOG_EVENTS, captureServerEvent } from '@/lib/analytics/posthog';
 import {
   captureReservedCredits,
@@ -82,6 +85,10 @@ export interface StorageUploadResult {
 
 export interface StorageAdapter {
   uploadFile(input: StorageUploadInput): Promise<StorageUploadResult>;
+  createReadUrl?(
+    storageKey: string,
+    options?: { expiresInSeconds?: number }
+  ): Promise<string>;
 }
 
 export interface GenerationRunnerDeps {
@@ -133,7 +140,7 @@ export async function runGenerationJob(
 
     tmpDir = await mkdtemp(join(deps.tmpRoot ?? tmpdir(), 'generate-video-'));
     const inputAsset = await getAsset(job.inputAssetId);
-    const inputImageUrl = resolveAssetUrl(inputAsset);
+    const inputImageUrl = await resolveAssetUrl(inputAsset, storage);
     const template = buildEcommerceVideoPrompt({
       productName: job.productName,
       headline: job.headline,
@@ -161,7 +168,7 @@ export async function runGenerationJob(
     providerCallId = await recordProviderCallStarted({
       job,
       provider,
-      request: providerRequest
+      request: sanitizeProviderRequest(providerRequest)
     });
 
     const created = await provider.createJob(providerRequest);
@@ -789,7 +796,13 @@ async function downloadToFile(url: string, filePath: string) {
   );
 }
 
-function resolveAssetUrl(asset: AssetRecord) {
+async function resolveAssetUrl(asset: AssetRecord, storage: StorageAdapter) {
+  if (storage.createReadUrl) {
+    return storage.createReadUrl(asset.storageKey, {
+      expiresInSeconds: 60 * 60
+    });
+  }
+
   if (asset.publicUrl) {
     return asset.publicUrl;
   }
@@ -804,6 +817,32 @@ function publicUrlForStorageKey(storageKey: string) {
   }
 
   return `${baseUrl.replace(/\/$/, '')}/${storageKey.replace(/^\//, '')}`;
+}
+
+function sanitizeProviderRequest(
+  request: Record<string, unknown>
+): Record<string, unknown> {
+  const imageUrl = request.imageUrl;
+  if (typeof imageUrl !== 'string') {
+    return request;
+  }
+
+  try {
+    const url = new URL(imageUrl);
+    if (
+      url.searchParams.has('X-Amz-Signature') ||
+      url.searchParams.has('X-Amz-Credential')
+    ) {
+      return {
+        ...request,
+        imageUrl: `${url.origin}${url.pathname}?signed=redacted`
+      };
+    }
+  } catch {
+    return request;
+  }
+
+  return request;
 }
 
 function buildStorageKey(input: {
@@ -828,29 +867,30 @@ function buildStorageKey(input: {
 }
 
 class R2StorageAdapter implements StorageAdapter {
+  async createReadUrl(
+    storageKey: string,
+    options: { expiresInSeconds?: number } = {}
+  ) {
+    const client = createR2Client();
+
+    return getSignedUrl(
+      client,
+      new GetObjectCommand({
+        Bucket: requiredEnv('R2_BUCKET'),
+        Key: storageKey
+      }),
+      { expiresIn: options.expiresInSeconds ?? 60 * 60 }
+    );
+  }
+
   async uploadFile(input: StorageUploadInput): Promise<StorageUploadResult> {
     const bucket = requiredEnv('R2_BUCKET');
     const publicBaseUrl = requiredEnv('R2_PUBLIC_BASE_URL');
-    const moduleName: string = '@aws-sdk/client-s3';
-    const aws = (await import(moduleName)) as {
-      S3Client: new (config: Record<string, unknown>) => {
-        send(command: unknown): Promise<unknown>;
-      };
-      PutObjectCommand: new (input: Record<string, unknown>) => unknown;
-    };
-    const client = new aws.S3Client({
-      region: 'auto',
-      endpoint: `https://${requiredEnv('R2_ACCOUNT_ID')}.r2.cloudflarestorage.com`,
-      credentials: {
-        accessKeyId: requiredEnv('R2_ACCESS_KEY_ID'),
-        secretAccessKey: requiredEnv('R2_SECRET_ACCESS_KEY')
-      },
-      forcePathStyle: true
-    });
+    const client = createR2Client();
     const fileStat = await stat(input.filePath);
 
     await client.send(
-      new aws.PutObjectCommand({
+      new PutObjectCommand({
         Bucket: bucket,
         Key: input.key,
         Body: createReadStream(input.filePath),
@@ -864,6 +904,18 @@ class R2StorageAdapter implements StorageAdapter {
       publicUrl: `${publicBaseUrl.replace(/\/$/, '')}/${input.key}`
     };
   }
+}
+
+function createR2Client() {
+  return new S3Client({
+    region: 'auto',
+    endpoint: `https://${requiredEnv('R2_ACCOUNT_ID')}.r2.cloudflarestorage.com`,
+    credentials: {
+      accessKeyId: requiredEnv('R2_ACCESS_KEY_ID'),
+      secretAccessKey: requiredEnv('R2_SECRET_ACCESS_KEY')
+    },
+    forcePathStyle: true
+  });
 }
 
 function parseAspectRatio(value: unknown): VideoAspectRatio {

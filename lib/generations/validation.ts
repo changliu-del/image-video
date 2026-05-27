@@ -1,6 +1,21 @@
 import { z } from 'zod';
+import {
+  MAX_CTA_TEXT_LENGTH,
+  MAX_HEADLINE_LENGTH,
+  MAX_PRICE_TEXT_LENGTH,
+  MAX_PRODUCT_NAME_LENGTH,
+  MAX_SELLING_POINT_LENGTH,
+  MAX_UPLOAD_SIZE_BYTES,
+} from './constants';
 
-export const MAX_UPLOAD_SIZE_BYTES = 10 * 1024 * 1024;
+export {
+  MAX_CTA_TEXT_LENGTH,
+  MAX_HEADLINE_LENGTH,
+  MAX_PRICE_TEXT_LENGTH,
+  MAX_PRODUCT_NAME_LENGTH,
+  MAX_SELLING_POINT_LENGTH,
+  MAX_UPLOAD_SIZE_BYTES,
+} from './constants';
 
 export const ALLOWED_UPLOAD_MIME_TYPES = [
   'image/png',
@@ -40,8 +55,12 @@ export const idStringSchema = z.preprocess(
     .regex(/^[A-Za-z0-9_-]+$/)
 );
 
-const cleanTextField = (maxLength: number) =>
-  z.string().trim().min(1).max(maxLength);
+const cleanTextField = (maxLength: number, label: string) =>
+  z
+    .string()
+    .trim()
+    .min(1, `${label} is required`)
+    .max(maxLength, `${label} must be ${maxLength} characters or fewer`);
 
 const durationSecondsSchema = z.preprocess(
   (value) => {
@@ -78,11 +97,14 @@ export const generationRequestSchema = z
   .object({
     inputAssetId: idStringSchema.optional(),
     inputAsset: idStringSchema.optional(),
-    productName: cleanTextField(120),
-    headline: cleanTextField(100),
-    sellingPoint: cleanTextField(280),
-    priceText: cleanTextField(64),
-    ctaText: cleanTextField(40),
+    productName: cleanTextField(MAX_PRODUCT_NAME_LENGTH, 'Product name'),
+    headline: cleanTextField(MAX_HEADLINE_LENGTH, 'Headline'),
+    sellingPoint: cleanTextField(
+      MAX_SELLING_POINT_LENGTH,
+      'Core selling point'
+    ),
+    priceText: cleanTextField(MAX_PRICE_TEXT_LENGTH, 'Price'),
+    ctaText: cleanTextField(MAX_CTA_TEXT_LENGTH, 'CTA'),
     aspectRatio: z.enum(VIDEO_ASPECT_RATIOS),
     durationSeconds: durationSecondsSchema,
     templateSlug: z.enum(TEMPLATE_SLUGS),

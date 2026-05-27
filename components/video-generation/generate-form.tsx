@@ -20,6 +20,12 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { cn } from '@/lib/utils';
 import { POSTHOG_EVENTS, captureClientEvent } from '@/lib/analytics/posthog';
+import {
+  MAX_CTA_TEXT_LENGTH,
+  MAX_PRICE_TEXT_LENGTH,
+  MAX_PRODUCT_NAME_LENGTH,
+  MAX_SELLING_POINT_LENGTH
+} from '@/lib/generations/constants';
 
 type AspectRatio = '9:16' | '1:1' | '16:9';
 type DurationSeconds = 5 | 8 | 10;
@@ -79,7 +85,25 @@ async function readResponseError(response: Response, fallback: string) {
     const data = (await response.json()) as {
       error?: unknown;
       message?: unknown;
+      details?: {
+        fieldErrors?: Record<string, string[] | undefined>;
+        formErrors?: string[];
+      };
     };
+
+    const fieldError = Object.values(data.details?.fieldErrors ?? {})
+      .flat()
+      .find((message): message is string => Boolean(message));
+
+    if (fieldError) {
+      return fieldError;
+    }
+
+    const formError = data.details?.formErrors?.find(Boolean);
+
+    if (formError) {
+      return formError;
+    }
 
     if (typeof data.error === 'string') {
       return data.error;
@@ -190,6 +214,28 @@ export function GenerateForm() {
 
     if (!trimmedProductName || !trimmedSellingPoint || !trimmedPriceText) {
       setError('Complete the required fields.');
+      return;
+    }
+
+    if (trimmedProductName.length > MAX_PRODUCT_NAME_LENGTH) {
+      setError(`Product name must be ${MAX_PRODUCT_NAME_LENGTH} characters or fewer.`);
+      return;
+    }
+
+    if (trimmedSellingPoint.length > MAX_SELLING_POINT_LENGTH) {
+      setError(
+        `Core selling point must be ${MAX_SELLING_POINT_LENGTH} characters or fewer.`
+      );
+      return;
+    }
+
+    if (trimmedPriceText.length > MAX_PRICE_TEXT_LENGTH) {
+      setError(`Price must be ${MAX_PRICE_TEXT_LENGTH} characters or fewer.`);
+      return;
+    }
+
+    if (trimmedCtaText.length > MAX_CTA_TEXT_LENGTH) {
+      setError(`CTA must be ${MAX_CTA_TEXT_LENGTH} characters or fewer.`);
       return;
     }
 
@@ -328,6 +374,7 @@ export function GenerateForm() {
                   id="product-name"
                   value={productName}
                   onChange={(event) => setProductName(event.target.value)}
+                  maxLength={MAX_PRODUCT_NAME_LENGTH}
                   disabled={isSubmitting}
                   required
                 />
@@ -341,6 +388,7 @@ export function GenerateForm() {
                   id="selling-point"
                   value={sellingPoint}
                   onChange={(event) => setSellingPoint(event.target.value)}
+                  maxLength={MAX_SELLING_POINT_LENGTH}
                   disabled={isSubmitting}
                   required
                   rows={4}
@@ -356,6 +404,7 @@ export function GenerateForm() {
                   id="price-text"
                   value={priceText}
                   onChange={(event) => setPriceText(event.target.value)}
+                  maxLength={MAX_PRICE_TEXT_LENGTH}
                   disabled={isSubmitting}
                   required
                 />
@@ -369,6 +418,7 @@ export function GenerateForm() {
                   id="cta-text"
                   value={ctaText}
                   onChange={(event) => setCtaText(event.target.value)}
+                  maxLength={MAX_CTA_TEXT_LENGTH}
                   disabled={isSubmitting}
                 />
               </div>
