@@ -6,15 +6,33 @@ import {
 } from '../lib/generations/limits';
 
 describe('generation limits', () => {
-  it('uses conservative defaults that allow one active generation', () => {
+  it('defaults to no active concurrency cap', () => {
     expect(getGenerationLimitConfig({})).toEqual({
       dailyLimit: 100,
-      activeConcurrencyLimit: 1,
+      activeConcurrencyLimit: null,
       freeQuotaLimit: 3,
     });
   });
 
-  it('blocks active concurrency before reserving more credits', () => {
+  it('allows multiple active generations when no active cap is configured', () => {
+    expect(
+      getGenerationLimitViolation(
+        {
+          activeCount: 10,
+          dailyCount: 10,
+          totalCount: 10,
+          hasPurchasedCredits: true,
+        },
+        {
+          dailyLimit: 100,
+          activeConcurrencyLimit: null,
+          freeQuotaLimit: 3,
+        }
+      )
+    ).toBeNull();
+  });
+
+  it('blocks active concurrency before reserving more credits when configured', () => {
     const violation = getGenerationLimitViolation(
       {
         activeCount: 1,

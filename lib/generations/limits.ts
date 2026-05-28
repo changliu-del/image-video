@@ -1,6 +1,6 @@
 export type GenerationLimitConfig = {
   dailyLimit: number;
-  activeConcurrencyLimit: number;
+  activeConcurrencyLimit: number | null;
   freeQuotaLimit: number;
 };
 
@@ -23,7 +23,7 @@ export type GenerationLimitViolation = {
 type EnvMap = Record<string, string | undefined>;
 
 const DEFAULT_DAILY_GENERATION_LIMIT = 100;
-const DEFAULT_ACTIVE_CONCURRENCY_LIMIT = 1;
+const DEFAULT_ACTIVE_CONCURRENCY_LIMIT = null;
 const DEFAULT_FREE_GENERATION_QUOTA = 3;
 
 function readPositiveIntegerEnv(
@@ -41,6 +41,25 @@ function readPositiveIntegerEnv(
   return Number.isInteger(parsed) && parsed > 0 ? parsed : fallback;
 }
 
+function readOptionalPositiveIntegerEnv(
+  env: EnvMap,
+  name: string,
+  fallback: number | null
+) {
+  const value = env[name];
+
+  if (value == null || value === '') {
+    return fallback;
+  }
+
+  const parsed = Number(value);
+  if (parsed === 0) {
+    return null;
+  }
+
+  return Number.isInteger(parsed) && parsed > 0 ? parsed : fallback;
+}
+
 export function getGenerationLimitConfig(
   env: EnvMap = process.env
 ): GenerationLimitConfig {
@@ -50,7 +69,7 @@ export function getGenerationLimitConfig(
       'GENERATION_DAILY_LIMIT',
       DEFAULT_DAILY_GENERATION_LIMIT
     ),
-    activeConcurrencyLimit: readPositiveIntegerEnv(
+    activeConcurrencyLimit: readOptionalPositiveIntegerEnv(
       env,
       'GENERATION_ACTIVE_CONCURRENCY_LIMIT',
       DEFAULT_ACTIVE_CONCURRENCY_LIMIT
@@ -67,7 +86,10 @@ export function getGenerationLimitViolation(
   counts: GenerationLimitCounts,
   config: GenerationLimitConfig = getGenerationLimitConfig()
 ): GenerationLimitViolation | null {
-  if (counts.activeCount >= config.activeConcurrencyLimit) {
+  if (
+    config.activeConcurrencyLimit != null &&
+    counts.activeCount >= config.activeConcurrencyLimit
+  ) {
     return {
       status: 429,
       code: 'active_generation_limit_exceeded',
