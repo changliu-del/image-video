@@ -3,7 +3,7 @@
 import Link from 'next/link';
 import { useEffect, useState, Suspense } from 'react';
 import { Button } from '@/components/ui/button';
-import { CircleIcon, Home, LogOut } from 'lucide-react';
+import { CircleIcon, Home, LogOut, ShieldCheck } from 'lucide-react';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -43,14 +43,11 @@ function UserMenu() {
   if (!user) {
     return (
       <>
-        <Link
-          href="/pricing"
-          className="text-sm font-medium text-gray-700 hover:text-gray-900"
-        >
-          Pricing
+        <Link href="/sign-in" className="text-sm font-medium text-gray-700 hover:text-gray-900">
+          Sign in
         </Link>
-        <Button asChild className="rounded-full">
-          <Link href="/sign-up">Sign Up</Link>
+        <Button asChild>
+          <Link href="/sign-up">Start free</Link>
         </Button>
       </>
     );
@@ -76,6 +73,14 @@ function UserMenu() {
             <span>Dashboard</span>
           </Link>
         </DropdownMenuItem>
+        {user.isAdmin ? (
+          <DropdownMenuItem className="cursor-pointer">
+            <Link href="/admin" className="flex w-full items-center">
+              <ShieldCheck className="mr-2 h-4 w-4" />
+              <span>Admin</span>
+            </Link>
+          </DropdownMenuItem>
+        ) : null}
         <form action={handleSignOut} className="w-full">
           <button type="submit" className="flex w-full">
             <DropdownMenuItem className="w-full flex-1 cursor-pointer">
@@ -90,13 +95,33 @@ function UserMenu() {
 }
 
 function Header() {
+  const { data: user } = useSWR<User>('/api/user', fetcher);
+
   return (
     <header className="border-b border-gray-200">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4 flex justify-between items-center">
         <Link href="/" className="flex items-center">
           <CircleIcon className="h-6 w-6 text-orange-500" />
-          <span className="ml-2 text-xl font-semibold text-gray-900">ACME</span>
+          <span className="ml-2 text-xl font-semibold text-gray-900">Image Video</span>
         </Link>
+        {user ? (
+          <nav className="hidden items-center gap-5 md:flex">
+            <Link href="/generate" className="text-sm font-medium text-gray-700 hover:text-gray-950">
+              Generate
+            </Link>
+            <Link href="/pricing" className="text-sm font-medium text-gray-700 hover:text-gray-950">
+              Pricing
+            </Link>
+            <Link href="/dashboard" className="text-sm font-medium text-gray-700 hover:text-gray-950">
+              Dashboard
+            </Link>
+            {user.isAdmin ? (
+              <Link href="/admin" className="text-sm font-medium text-gray-700 hover:text-gray-950">
+                Admin
+              </Link>
+            ) : null}
+          </nav>
+        ) : null}
         <div className="flex items-center space-x-4">
           <Suspense fallback={<div className="h-9" />}>
             <UserMenu />

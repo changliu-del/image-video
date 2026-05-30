@@ -6,6 +6,7 @@ import { db } from '@/lib/db/drizzle';
 import {
   creditLedger,
   generationJobs,
+  users,
   type CreditLedgerEntry,
 } from '@/lib/db/schema';
 import { getSignupFreeCreditsAmount } from '@/lib/generations/free-credits';
@@ -53,6 +54,13 @@ export type GrantSignupFreeCreditsInput = {
   metadata?: CreditLedgerMetadata;
 };
 
+export type AdjustUserCreditsInput = {
+  userId: number;
+  amount: number;
+  adminUserId: number;
+  metadata?: CreditLedgerMetadata;
+};
+
 export type CreditLedgerOperationResult = {
   entry: CreditLedgerEntry;
   balance: number;
@@ -75,6 +83,12 @@ export class InsufficientCreditsError extends Error {
 function assertPositiveInteger(value: number, label: string) {
   if (!Number.isInteger(value) || value <= 0) {
     throw new Error(`${label} must be a positive integer`);
+  }
+}
+
+function assertNonZeroInteger(value: number, label: string) {
+  if (!Number.isInteger(value) || value === 0) {
+    throw new Error(`${label} must be a non-zero integer`);
   }
 }
 
@@ -123,10 +137,11 @@ export function estimateCreditsForGeneration(
 export async function getCreditBalance(userId: number) {
   const rows = await db
     .select({
-      balance: sql<number>`coalesce(sum(${creditLedger.delta}), 0)::int`,
+      balance: users.creditBalance,
     })
-    .from(creditLedger)
-    .where(eq(creditLedger.userId, userId));
+    .from(users)
+    .where(eq(users.id, userId))
+    .limit(1);
 
   return Number(rows[0]?.balance ?? 0);
 }
@@ -162,10 +177,11 @@ export async function reserveCreditsForJob(
 
     const balanceRows = await tx
       .select({
-        balance: sql<number>`coalesce(sum(${creditLedger.delta}), 0)::int`,
+        balance: users.creditBalance,
       })
-      .from(creditLedger)
-      .where(eq(creditLedger.userId, input.userId));
+      .from(users)
+      .where(eq(users.id, input.userId))
+      .limit(1);
     const balance = Number(balanceRows[0]?.balance ?? 0);
 
     if (balance < amount) {
@@ -173,6 +189,14 @@ export async function reserveCreditsForJob(
     }
 
     const balanceAfter = balance - amount;
+    await tx
+      .update(users)
+      .set({
+        creditBalance: balanceAfter,
+        updatedAt: new Date(),
+      })
+      .where(eq(users.id, input.userId));
+
     const insertedRows = await tx
       .insert(creditLedger)
       .values({
@@ -240,10 +264,11 @@ export async function captureReservedCredits(
 
     const balanceRows = await tx
       .select({
-        balance: sql<number>`coalesce(sum(${creditLedger.delta}), 0)::int`,
+        balance: users.creditBalance,
       })
-      .from(creditLedger)
-      .where(eq(creditLedger.userId, input.userId));
+      .from(users)
+      .where(eq(users.id, input.userId))
+      .limit(1);
     const balance = Number(balanceRows[0]?.balance ?? 0);
     const reservedCredits = Math.abs(reserve.delta);
 
@@ -330,13 +355,22 @@ export async function refundReservedCredits(
 
     const balanceRows = await tx
       .select({
-        balance: sql<number>`coalesce(sum(${creditLedger.delta}), 0)::int`,
+        balance: users.creditBalance,
       })
-      .from(creditLedger)
-      .where(eq(creditLedger.userId, input.userId));
+      .from(users)
+      .where(eq(users.id, input.userId))
+      .limit(1);
     const balance = Number(balanceRows[0]?.balance ?? 0);
     const refundCredits = Math.abs(reserve.delta);
     const balanceAfter = balance + refundCredits;
+
+    await tx
+      .update(users)
+      .set({
+        creditBalance: balanceAfter,
+        updatedAt: new Date(),
+      })
+      .where(eq(users.id, input.userId));
 
     const insertedRows = await tx
       .insert(creditLedger)
@@ -385,12 +419,21 @@ export async function grantPurchasedCredits(
 
     const balanceRows = await tx
       .select({
-        balance: sql<number>`coalesce(sum(${creditLedger.delta}), 0)::int`,
+        balance: users.creditBalance,
       })
-      .from(creditLedger)
-      .where(eq(creditLedger.userId, input.userId));
+      .from(users)
+      .where(eq(users.id, input.userId))
+      .limit(1);
     const balance = Number(balanceRows[0]?.balance ?? 0);
     const balanceAfter = balance + input.credits;
+
+    await tx
+      .update(users)
+      .set({
+        creditBalance: balanceAfter,
+        updatedAt: new Date(),
+      })
+      .where(eq(users.id, input.userId));
 
     const insertedRows = await tx
       .insert(creditLedger)
@@ -444,12 +487,21 @@ export async function grantSignupFreeCredits(
 
     const balanceRows = await tx
       .select({
-        balance: sql<number>`coalesce(sum(${creditLedger.delta}), 0)::int`,
+        balance: users.creditBalance,
       })
-      .from(creditLedger)
-      .where(eq(creditLedger.userId, input.userId));
+      .from(users)
+      .where(eq(users.id, input.userId))
+      .limit(1);
     const balance = Number(balanceRows[0]?.balance ?? 0);
     const balanceAfter = balance + credits;
+
+    await tx
+      .update(users)
+      .set({
+        creditBalance: balanceAfter,
+        updatedAt: new Date(),
+      })
+      .where(eq(users.id, input.userId));
 
     const insertedRows = await tx
       .insert(creditLedger)
@@ -462,6 +514,67 @@ export async function grantSignupFreeCredits(
           ...normalizeMetadata(input.metadata),
           source: 'signup_free_credits',
           credits,
+        },
+      })
+      .returning();
+
+    return {
+      entry: insertedRows[0],
+      balance: balanceAfter,
+      alreadyProcessed: false,
+    };
+  });
+}
+
+export async function adjustUserCredits(
+  input: AdjustUserCreditsInput
+): Promise<CreditLedgerOperationResult> {
+  assertNonZeroInteger(input.amount, 'credit adjustment');
+
+  return db.transaction(async (tx) => {
+    await tx.execute(sql`select pg_advisory_xact_lock(${input.userId})`);
+
+    const balanceRows = await tx
+      .select({
+        balance: users.creditBalance,
+      })
+      .from(users)
+      .where(eq(users.id, input.userId))
+      .limit(1);
+
+    if (!balanceRows[0]) {
+      throw new Error(`User ${input.userId} not found`);
+    }
+
+    const balance = Number(balanceRows[0].balance ?? 0);
+    const balanceAfter = balance + input.amount;
+
+    if (balanceAfter < 0) {
+      throw new InsufficientCreditsError(
+        input.userId,
+        Math.abs(input.amount),
+        balance
+      );
+    }
+
+    await tx
+      .update(users)
+      .set({
+        creditBalance: balanceAfter,
+        updatedAt: new Date(),
+      })
+      .where(eq(users.id, input.userId));
+
+    const insertedRows = await tx
+      .insert(creditLedger)
+      .values({
+        userId: input.userId,
+        delta: input.amount,
+        reason: 'admin_adjust',
+        balanceAfter,
+        metadataJson: {
+          ...normalizeMetadata(input.metadata),
+          adminUserId: input.adminUserId,
         },
       })
       .returning();

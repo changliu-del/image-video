@@ -2,7 +2,6 @@ import {
   check,
   index,
   jsonb,
-  numeric,
   pgTable,
   serial,
   uniqueIndex,
@@ -11,6 +10,7 @@ import {
   text,
   timestamp,
   integer,
+  boolean,
 } from 'drizzle-orm/pg-core';
 import { relations, sql } from 'drizzle-orm';
 
@@ -54,72 +54,29 @@ export const CREDIT_LEDGER_REASONS = [
 ] as const;
 export type CreditLedgerReason = (typeof CREDIT_LEDGER_REASONS)[number];
 
-export const PROVIDER_CALL_STATUSES = [
-  'started',
-  'succeeded',
-  'failed',
-] as const;
-export type ProviderCallStatus = (typeof PROVIDER_CALL_STATUSES)[number];
-
-export const users = pgTable('users', {
-  id: serial('id').primaryKey(),
-  name: varchar('name', { length: 100 }),
-  email: varchar('email', { length: 255 }).notNull().unique(),
-  passwordHash: text('password_hash').notNull(),
-  role: varchar('role', { length: 20 }).notNull().default('member'),
-  createdAt: timestamp('created_at').notNull().defaultNow(),
-  updatedAt: timestamp('updated_at').notNull().defaultNow(),
-  deletedAt: timestamp('deleted_at'),
-});
-
-export const teams = pgTable('teams', {
-  id: serial('id').primaryKey(),
-  name: varchar('name', { length: 100 }).notNull(),
-  createdAt: timestamp('created_at').notNull().defaultNow(),
-  updatedAt: timestamp('updated_at').notNull().defaultNow(),
-  stripeCustomerId: text('stripe_customer_id').unique(),
-  stripeSubscriptionId: text('stripe_subscription_id').unique(),
-  stripeProductId: text('stripe_product_id'),
-  planName: varchar('plan_name', { length: 50 }),
-  subscriptionStatus: varchar('subscription_status', { length: 20 }),
-});
-
-export const teamMembers = pgTable('team_members', {
-  id: serial('id').primaryKey(),
-  userId: integer('user_id')
-    .notNull()
-    .references(() => users.id),
-  teamId: integer('team_id')
-    .notNull()
-    .references(() => teams.id),
-  role: varchar('role', { length: 50 }).notNull(),
-  joinedAt: timestamp('joined_at').notNull().defaultNow(),
-});
-
-export const activityLogs = pgTable('activity_logs', {
-  id: serial('id').primaryKey(),
-  teamId: integer('team_id')
-    .notNull()
-    .references(() => teams.id),
-  userId: integer('user_id').references(() => users.id),
-  action: text('action').notNull(),
-  timestamp: timestamp('timestamp').notNull().defaultNow(),
-  ipAddress: varchar('ip_address', { length: 45 }),
-});
-
-export const invitations = pgTable('invitations', {
-  id: serial('id').primaryKey(),
-  teamId: integer('team_id')
-    .notNull()
-    .references(() => teams.id),
-  email: varchar('email', { length: 255 }).notNull(),
-  role: varchar('role', { length: 50 }).notNull(),
-  invitedBy: integer('invited_by')
-    .notNull()
-    .references(() => users.id),
-  invitedAt: timestamp('invited_at').notNull().defaultNow(),
-  status: varchar('status', { length: 20 }).notNull().default('pending'),
-});
+export const users = pgTable(
+  'users',
+  {
+    id: serial('id').primaryKey(),
+    name: varchar('name', { length: 100 }),
+    email: varchar('email', { length: 255 }).notNull().unique(),
+    passwordHash: text('password_hash').notNull(),
+    role: varchar('role', { length: 20 }).notNull().default('member'),
+    isAdmin: boolean('is_admin').notNull().default(false),
+    creditBalance: integer('credit_balance').notNull().default(0),
+    stripeCustomerId: text('stripe_customer_id').unique(),
+    stripeSubscriptionId: text('stripe_subscription_id').unique(),
+    stripeProductId: text('stripe_product_id'),
+    planName: varchar('plan_name', { length: 50 }),
+    subscriptionStatus: varchar('subscription_status', { length: 20 }),
+    createdAt: timestamp('created_at').notNull().defaultNow(),
+    updatedAt: timestamp('updated_at').notNull().defaultNow(),
+    deletedAt: timestamp('deleted_at'),
+  },
+  (table) => [
+    check('users_credit_balance_check', sql`${table.creditBalance} >= 0`),
+  ]
+);
 
 export const assets = pgTable(
   'assets',
@@ -297,136 +254,10 @@ export const creditLedger = pgTable(
   ]
 );
 
-export const providerCalls = pgTable(
-  'provider_calls',
-  {
-    id: uuid('id').defaultRandom().primaryKey(),
-    jobId: uuid('job_id')
-      .notNull()
-      .references(() => generationJobs.id),
-    provider: text('provider').notNull(),
-    model: text('model').notNull(),
-    requestJson: jsonb('request_json').$type<unknown>(),
-    responseJson: jsonb('response_json').$type<unknown>(),
-    status: text('status')
-      .$type<ProviderCallStatus>()
-      .notNull()
-      .default('started'),
-    costUsd: numeric('cost_usd', { precision: 10, scale: 4 }),
-    latencyMs: integer('latency_ms'),
-    errorMessage: text('error_message'),
-    createdAt: timestamp('created_at').notNull().defaultNow(),
-  },
-  (table) => [
-    index('provider_calls_job_id_idx').on(table.jobId),
-    index('provider_calls_provider_status_idx').on(
-      table.provider,
-      table.status
-    ),
-    check(
-      'provider_calls_status_check',
-      sql`${table.status} in ('started', 'succeeded', 'failed')`
-    ),
-    check(
-      'provider_calls_cost_usd_check',
-      sql`${table.costUsd} is null or ${table.costUsd} >= 0`
-    ),
-    check(
-      'provider_calls_latency_ms_check',
-      sql`${table.latencyMs} is null or ${table.latencyMs} >= 0`
-    ),
-  ]
-);
-
-export const renderOutputs = pgTable(
-  'render_outputs',
-  {
-    id: uuid('id').defaultRandom().primaryKey(),
-    jobId: uuid('job_id')
-      .notNull()
-      .references(() => generationJobs.id),
-    aspectRatio: text('aspect_ratio').$type<VideoAspectRatio>().notNull(),
-    templateSlug: varchar('template_slug', { length: 60 })
-      .$type<TemplateSlug>()
-      .notNull(),
-    storageKey: text('storage_key').notNull(),
-    publicUrl: text('public_url').notNull(),
-    durationSeconds: integer('duration_seconds'),
-    width: integer('width'),
-    height: integer('height'),
-    createdAt: timestamp('created_at').notNull().defaultNow(),
-  },
-  (table) => [
-    uniqueIndex('render_outputs_storage_key_unique').on(table.storageKey),
-    index('render_outputs_job_id_idx').on(table.jobId),
-    check(
-      'render_outputs_aspect_ratio_check',
-      sql`${table.aspectRatio} in ('9:16', '1:1', '16:9')`
-    ),
-    check(
-      'render_outputs_template_slug_check',
-      sql`${table.templateSlug} in ('flash_sale', 'new_arrival', 'best_seller')`
-    ),
-    check(
-      'render_outputs_duration_seconds_check',
-      sql`${table.durationSeconds} is null or ${table.durationSeconds} >= 0`
-    ),
-    check(
-      'render_outputs_width_check',
-      sql`${table.width} is null or ${table.width} > 0`
-    ),
-    check(
-      'render_outputs_height_check',
-      sql`${table.height} is null or ${table.height} > 0`
-    ),
-  ]
-);
-
-export const teamsRelations = relations(teams, ({ many }) => ({
-  teamMembers: many(teamMembers),
-  activityLogs: many(activityLogs),
-  invitations: many(invitations),
-}));
-
 export const usersRelations = relations(users, ({ many }) => ({
-  teamMembers: many(teamMembers),
-  invitationsSent: many(invitations),
   assets: many(assets),
   generationJobs: many(generationJobs),
   creditLedgerEntries: many(creditLedger),
-}));
-
-export const invitationsRelations = relations(invitations, ({ one }) => ({
-  team: one(teams, {
-    fields: [invitations.teamId],
-    references: [teams.id],
-  }),
-  invitedBy: one(users, {
-    fields: [invitations.invitedBy],
-    references: [users.id],
-  }),
-}));
-
-export const teamMembersRelations = relations(teamMembers, ({ one }) => ({
-  user: one(users, {
-    fields: [teamMembers.userId],
-    references: [users.id],
-  }),
-  team: one(teams, {
-    fields: [teamMembers.teamId],
-    references: [teams.id],
-  }),
-}));
-
-export const activityLogsRelations = relations(activityLogs, ({ one }) => ({
-  team: one(teams, {
-    fields: [activityLogs.teamId],
-    references: [teams.id],
-  }),
-  user: one(users, {
-    fields: [activityLogs.userId],
-    references: [users.id],
-  }),
 }));
 
 export const assetsRelations = relations(assets, ({ one, many }) => ({
@@ -442,7 +273,7 @@ export const assetsRelations = relations(assets, ({ one, many }) => ({
 
 export const generationJobsRelations = relations(
   generationJobs,
-  ({ one, many }) => ({
+  ({ one }) => ({
     user: one(users, {
       fields: [generationJobs.userId],
       references: [users.id],
@@ -467,8 +298,6 @@ export const generationJobsRelations = relations(
       references: [assets.id],
       relationName: 'thumbnailAsset',
     }),
-    providerCalls: many(providerCalls),
-    renderOutputs: many(renderOutputs),
   })
 );
 
@@ -483,55 +312,11 @@ export const creditLedgerRelations = relations(creditLedger, ({ one }) => ({
   }),
 }));
 
-export const providerCallsRelations = relations(providerCalls, ({ one }) => ({
-  job: one(generationJobs, {
-    fields: [providerCalls.jobId],
-    references: [generationJobs.id],
-  }),
-}));
-
-export const renderOutputsRelations = relations(renderOutputs, ({ one }) => ({
-  job: one(generationJobs, {
-    fields: [renderOutputs.jobId],
-    references: [generationJobs.id],
-  }),
-}));
-
 export type User = typeof users.$inferSelect;
 export type NewUser = typeof users.$inferInsert;
-export type Team = typeof teams.$inferSelect;
-export type NewTeam = typeof teams.$inferInsert;
-export type TeamMember = typeof teamMembers.$inferSelect;
-export type NewTeamMember = typeof teamMembers.$inferInsert;
-export type ActivityLog = typeof activityLogs.$inferSelect;
-export type NewActivityLog = typeof activityLogs.$inferInsert;
-export type Invitation = typeof invitations.$inferSelect;
-export type NewInvitation = typeof invitations.$inferInsert;
 export type Asset = typeof assets.$inferSelect;
 export type NewAsset = typeof assets.$inferInsert;
 export type GenerationJob = typeof generationJobs.$inferSelect;
 export type NewGenerationJob = typeof generationJobs.$inferInsert;
 export type CreditLedgerEntry = typeof creditLedger.$inferSelect;
 export type NewCreditLedgerEntry = typeof creditLedger.$inferInsert;
-export type ProviderCall = typeof providerCalls.$inferSelect;
-export type NewProviderCall = typeof providerCalls.$inferInsert;
-export type RenderOutput = typeof renderOutputs.$inferSelect;
-export type NewRenderOutput = typeof renderOutputs.$inferInsert;
-export type TeamDataWithMembers = Team & {
-  teamMembers: (TeamMember & {
-    user: Pick<User, 'id' | 'name' | 'email'>;
-  })[];
-};
-
-export enum ActivityType {
-  SIGN_UP = 'SIGN_UP',
-  SIGN_IN = 'SIGN_IN',
-  SIGN_OUT = 'SIGN_OUT',
-  UPDATE_PASSWORD = 'UPDATE_PASSWORD',
-  DELETE_ACCOUNT = 'DELETE_ACCOUNT',
-  UPDATE_ACCOUNT = 'UPDATE_ACCOUNT',
-  CREATE_TEAM = 'CREATE_TEAM',
-  REMOVE_TEAM_MEMBER = 'REMOVE_TEAM_MEMBER',
-  INVITE_TEAM_MEMBER = 'INVITE_TEAM_MEMBER',
-  ACCEPT_INVITATION = 'ACCEPT_INVITATION',
-}

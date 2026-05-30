@@ -1,10 +1,13 @@
-import { Suspense } from 'react';
-import { Login } from '../login';
+import { redirect } from 'next/navigation';
+import {
+  getLegacyLoginHref,
+  type LegacyLoginSearchParams,
+} from '../legacy-login-url';
 
-export default function SignUpPage() {
-  return (
-    <Suspense>
-      <Login mode="signup" />
-    </Suspense>
-  );
+type SignUpPageProps = {
+  searchParams: Promise<LegacyLoginSearchParams>;
+};
+
+export default async function SignUpPage({ searchParams }: SignUpPageProps) {
+  redirect(getLegacyLoginHref('signup', await searchParams));
 }

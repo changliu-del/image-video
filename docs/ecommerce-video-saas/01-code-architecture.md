@@ -312,7 +312,7 @@ MVP 可以不做。若要做，只允许重试 `failed` 任务，并且重新冻
 
 ## 6. 数据库设计
 
-表名使用复数，ID 使用 `uuid` 或 starter 里已有 ID 风格。以下字段是决策基线，工程实现时按 Drizzle 语法落地。
+表名使用复数，ID 使用 `uuid` 或 starter 里已有 ID 风格。当前保留核心表：`users`、`assets`、`generation_jobs`、`credit_ledger`；供应商调用和渲染输出不再单独建表，分别归入 `generation_jobs` 状态字段和最终 `assets` 记录。
 
 ### `assets`
 
@@ -393,41 +393,6 @@ refund: 任务失败时返还，delta 为正
 admin_adjust: 后台人工调整
 ```
 
-### `provider_calls`
-
-记录模型供应商调用，后续用于成本、失败率和质量分析。
-
-```text
-id
-job_id
-provider
-model
-request_json
-response_json
-status: started | succeeded | failed
-cost_usd
-latency_ms
-error_message
-created_at
-```
-
-### `render_outputs`
-
-记录 FFmpeg 输出。
-
-```text
-id
-job_id
-aspect_ratio
-template_slug
-storage_key
-public_url
-duration_seconds
-width
-height
-created_at
-```
-
 ## 7. Provider 抽象
 
 文件：`lib/providers/video/types.ts`
@@ -493,8 +458,7 @@ FAL_DEFAULT_MODEL=fal-ai/wan/v2.7/image-to-video
 
 ```text
 不要在前端暴露 FAL_KEY
-记录 provider_calls
-捕获 fal 原始响应
+在 generation_jobs 记录 provider 和 provider_job_id
 请求失败时抛出标准错误
 等待结果时设置最大超时，例如 15 分钟
 ```
@@ -544,7 +508,6 @@ payload：
 任何步骤失败:
   - 更新 generation_jobs.status = failed
   - 写 error_message
-  - 写 provider_calls 或 render_outputs 错误记录
   - 返还 reserve credits
   - 上报 Sentry
 ```
@@ -646,4 +609,3 @@ Stripe test payment 后 credits 增加
 Sentry 能收到测试错误
 PostHog 能看到生成漏斗
 ```
-

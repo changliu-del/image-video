@@ -1,11 +1,11 @@
 import './globals.css';
 import type { Metadata, Viewport } from 'next';
-import { getUser, getTeamForUser } from '@/lib/db/queries';
+import { getUser } from '@/lib/db/queries';
 import { SWRConfig } from 'swr';
 
 export const metadata: Metadata = {
-  title: 'Next.js SaaS Starter',
-  description: 'Get started quickly with Next.js, Postgres, and Stripe.'
+  title: 'Image Video',
+  description: 'Crie videos de produto com IA a partir de uma imagem.'
 };
 
 export const viewport: Viewport = {
@@ -19,7 +19,7 @@ export default function RootLayout({
 }) {
   return (
     <html
-      lang="en"
+      lang="pt"
       className="bg-white text-black antialiased dark:bg-gray-950 dark:text-white"
     >
       <body className="min-h-[100dvh] bg-gray-50">
@@ -28,8 +28,7 @@ export default function RootLayout({
             fallback: {
               // We do NOT await here
               // Only components that read this data will suspend
-              '/api/user': getUser(),
-              '/api/team': getTeamForUser()
+              '/api/user': getUser()
             }
           }}
         >

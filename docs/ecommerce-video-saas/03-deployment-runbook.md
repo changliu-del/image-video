@@ -117,8 +117,6 @@ pnpm db:migrate
 assets
 generation_jobs
 credit_ledger
-provider_calls
-render_outputs
 ```
 
 ## 4. 部署 Vercel
@@ -678,4 +676,3 @@ R2：
 不要批量删除 final-videos
 如需清理，先按 created_at 和 job 状态导出清单
 ```
-

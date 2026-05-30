@@ -3,7 +3,7 @@ import {
   createGenerationForUser,
   GenerationApiError,
 } from '@/lib/generations/jobs';
-import { generationRequestSchema } from '@/lib/generations/validation';
+import { generationApiRequestSchema } from '@/lib/generations/validation';
 import { captureException } from '@/lib/observability/sentry';
 import { type NextRequest, NextResponse } from 'next/server';
 
@@ -24,12 +24,22 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: 'Invalid JSON body' }, { status: 400 });
   }
 
-  const parsed = generationRequestSchema.safeParse(body);
+  const parsed = generationApiRequestSchema.safeParse(body);
 
   if (!parsed.success) {
     return NextResponse.json(
       { error: 'Invalid generation request', details: parsed.error.flatten() },
       { status: 400 }
+    );
+  }
+
+  if (parsed.data.generationType === 'text-to-image') {
+    return NextResponse.json(
+      {
+        error: 'Text-to-image generation is not available yet',
+        code: 'generation_type_not_supported',
+      },
+      { status: 501 }
     );
   }
 

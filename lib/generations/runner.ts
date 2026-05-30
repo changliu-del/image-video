@@ -26,7 +26,6 @@ import {
   isVideoAspectRatio
 } from '@/lib/providers/video/types';
 import {
-  VIDEO_OUTPUT_SPECS,
   generateThumbnail,
   renderEcommerceVideo
 } from '@/lib/render/ffmpeg';
@@ -105,7 +104,6 @@ export async function runGenerationJob(
   deps: GenerationRunnerDeps = {}
 ) {
   let job: GenerationJob | null = null;
-  let providerCallId: string | null = null;
   let tmpDir: string | null = null;
   const provider = deps.provider ?? new FalVideoProvider();
   const storage = deps.storage ?? new R2StorageAdapter();
@@ -165,22 +163,10 @@ export async function runGenerationJob(
       durationSeconds: job.durationSeconds,
       aspectRatio: job.aspectRatio
     };
-    providerCallId = await recordProviderCallStarted({
-      job,
-      provider,
-      request: sanitizeProviderRequest(providerRequest)
-    });
-
     const created = await provider.createJob(providerRequest);
     await markProviderJobId(job.id, created.providerJobId);
 
     const providerResult = await provider.waitForResult(created.providerJobId);
-    await recordProviderCallSucceeded({
-      providerCallId,
-      response: providerResult.rawResponse,
-      costUsd: providerResult.costUsd ?? created.costUsd
-    });
-    providerCallId = null;
 
     const rawPath = join(tmpDir, 'raw.mp4');
     await downloadToFile(providerResult.videoUrl, rawPath);
@@ -228,12 +214,6 @@ export async function runGenerationJob(
       contentType: 'image/jpeg'
     });
 
-    await recordRenderOutput({
-      job,
-      finalAsset,
-      storageKey: finalAsset.storageKey,
-      publicUrl: finalAsset.publicUrl
-    });
     await captureCredits(job);
     await markJobSucceeded({
       jobId: job.id,
@@ -275,16 +255,6 @@ export async function runGenerationJob(
     };
   } catch (error) {
     const errorMessage = toErrorMessage(error);
-    const failedProviderCallId = providerCallId;
-    if (failedProviderCallId) {
-      await bestEffort(() =>
-        recordProviderCallFailed({
-          providerCallId: failedProviderCallId,
-          errorMessage
-        })
-      );
-    }
-
     const failedJob = job;
     if (failedJob) {
       if (attemptNumber < maxAttempts) {
@@ -600,67 +570,6 @@ async function markJobQueuedForRetry(input: {
   `;
 }
 
-async function recordProviderCallStarted(input: {
-  job: GenerationJob;
-  provider: ImageToVideoProvider;
-  request: Record<string, unknown>;
-}) {
-  const rows = await client`
-    insert into provider_calls (
-      job_id,
-      provider,
-      model,
-      request_json,
-      status,
-      created_at
-    )
-    values (
-      ${input.job.id},
-      ${input.provider.name},
-      ${input.provider instanceof FalVideoProvider ? input.provider.model : input.provider.name},
-      ${safeJson(input.request)}::jsonb,
-      'started',
-      now()
-    )
-    returning id::text as "id"
-  `;
-  return requiredString(
-    (rows[0] as Record<string, unknown> | undefined)?.id,
-    'provider_calls.id'
-  );
-}
-
-async function recordProviderCallSucceeded(input: {
-  providerCallId: string;
-  response: unknown;
-  costUsd?: number;
-}) {
-  await client`
-    update provider_calls
-    set
-      response_json = ${safeJson(input.response)}::jsonb,
-      status = 'succeeded',
-      cost_usd = ${input.costUsd ?? null},
-      latency_ms = round(extract(epoch from (now() - created_at)) * 1000)::integer,
-      error_message = null
-    where id::text = ${input.providerCallId}
-  `;
-}
-
-async function recordProviderCallFailed(input: {
-  providerCallId: string;
-  errorMessage: string;
-}) {
-  await client`
-    update provider_calls
-    set
-      status = 'failed',
-      error_message = ${input.errorMessage.slice(0, 2000)},
-      latency_ms = round(extract(epoch from (now() - created_at)) * 1000)::integer
-    where id::text = ${input.providerCallId}
-  `;
-}
-
 async function uploadAndCreateAsset(input: {
   job: GenerationJob;
   storage: StorageAdapter;
@@ -721,39 +630,6 @@ async function uploadAndCreateAsset(input: {
     publicUrl: requiredString(row?.publicUrl, 'assets.public_url'),
     mimeType: optionalString(row?.mimeType)
   };
-}
-
-async function recordRenderOutput(input: {
-  job: GenerationJob;
-  finalAsset: AssetRecord;
-  storageKey: string;
-  publicUrl: string;
-}) {
-  const spec = VIDEO_OUTPUT_SPECS[input.job.aspectRatio];
-  await client`
-    insert into render_outputs (
-      job_id,
-      aspect_ratio,
-      template_slug,
-      storage_key,
-      public_url,
-      duration_seconds,
-      width,
-      height,
-      created_at
-    )
-    values (
-      ${input.job.id},
-      ${input.job.aspectRatio},
-      ${input.job.templateSlug},
-      ${input.storageKey},
-      ${input.publicUrl},
-      ${input.job.durationSeconds},
-      ${spec.width},
-      ${spec.height},
-      now()
-    )
-  `;
 }
 
 async function captureCredits(job: GenerationJob) {
@@ -817,32 +693,6 @@ function publicUrlForStorageKey(storageKey: string) {
   }
 
   return `${baseUrl.replace(/\/$/, '')}/${storageKey.replace(/^\//, '')}`;
-}
-
-function sanitizeProviderRequest(
-  request: Record<string, unknown>
-): Record<string, unknown> {
-  const imageUrl = request.imageUrl;
-  if (typeof imageUrl !== 'string') {
-    return request;
-  }
-
-  try {
-    const url = new URL(imageUrl);
-    if (
-      url.searchParams.has('X-Amz-Signature') ||
-      url.searchParams.has('X-Amz-Credential')
-    ) {
-      return {
-        ...request,
-        imageUrl: `${url.origin}${url.pathname}?signed=redacted`
-      };
-    }
-  } catch {
-    return request;
-  }
-
-  return request;
 }
 
 function buildStorageKey(input: {
@@ -976,14 +826,6 @@ function formatRetryReclaimMessage(input: {
   maxAttempts: number;
 }) {
   return `Retry attempt ${input.attemptNumber}/${input.maxAttempts} reclaimed an unfinished worker run.`;
-}
-
-function safeJson(value: unknown) {
-  try {
-    return JSON.stringify(value ?? null);
-  } catch {
-    return JSON.stringify({ unserializable: true });
-  }
 }
 
 function safePathPart(value: string) {

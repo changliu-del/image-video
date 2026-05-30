@@ -4,7 +4,9 @@ import {
   ALLOWED_UPLOAD_MIME_TYPES,
   GENERATION_DURATIONS_SECONDS,
   MAX_SELLING_POINT_LENGTH,
+  MAX_TEXT_TO_IMAGE_PROMPT_LENGTH,
   MAX_UPLOAD_SIZE_BYTES,
+  generationApiRequestSchema,
   generationRequestSchema,
   getCreditCostForDuration,
   presignAssetRequestSchema,
@@ -129,5 +131,69 @@ describe('generationRequestSchema', () => {
 
     expect(missingAsset.success).toBe(false);
     expect(aliasAsset.inputAssetId).toBe('asset_from_alias');
+  });
+
+  it('accepts explicit image-to-video generation type and mode aliases', () => {
+    const withGenerationType = generationRequestSchema.parse({
+      ...validGenerationRequest,
+      generationType: 'image-to-video',
+    });
+    const withMode = generationRequestSchema.parse({
+      ...validGenerationRequest,
+      mode: 'image-to-video',
+    });
+
+    expect(withGenerationType.generationType).toBe('image-to-video');
+    expect(withMode.generationType).toBe('image-to-video');
+  });
+
+  it('rejects mismatched generation type and mode aliases', () => {
+    const result = generationRequestSchema.safeParse({
+      ...validGenerationRequest,
+      generationType: 'image-to-video',
+      mode: 'text-to-image',
+    });
+
+    expect(result.success).toBe(false);
+  });
+});
+
+describe('generationApiRequestSchema', () => {
+  it('accepts text-to-image requests when generation type is explicit', () => {
+    const prompt =
+      'A clean ecommerce hero image of a stainless steel bottle on a blue studio background';
+    const parsed = generationApiRequestSchema.parse({
+      generationType: 'text-to-image',
+      prompt,
+      aspectRatio: '1:1',
+    });
+
+    expect(parsed.generationType).toBe('text-to-image');
+    if (parsed.generationType !== 'text-to-image') {
+      throw new Error('Expected text-to-image request');
+    }
+    expect(parsed.prompt).toBe(prompt);
+  });
+
+  it('accepts mode as the text-to-image discriminator', () => {
+    const parsed = generationApiRequestSchema.parse({
+      mode: 'text-to-image',
+      prompt: 'Minimal product render on a neutral background',
+    });
+
+    expect(parsed.generationType).toBe('text-to-image');
+    if (parsed.generationType !== 'text-to-image') {
+      throw new Error('Expected text-to-image request');
+    }
+    expect(parsed.aspectRatio).toBe('1:1');
+  });
+
+  it('enforces the text-to-image prompt length limit', () => {
+    const result = generationApiRequestSchema.safeParse({
+      generationType: 'text-to-image',
+      prompt: 'x'.repeat(MAX_TEXT_TO_IMAGE_PROMPT_LENGTH + 1),
+    });
+
+    expect(result.success).toBe(false);
   });
 });

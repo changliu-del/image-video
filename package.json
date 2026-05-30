@@ -2,12 +2,13 @@
   "private": true,
   "scripts": {
     "dev": "next dev --turbopack",
+    "prebuild": "rm -rf .next/cache",
     "build": "next build --webpack",
     "test": "vitest run",
     "typecheck": "tsc --noEmit",
     "start": "next start",
-    "db:setup": "npx tsx lib/db/setup.ts",
-    "db:seed": "npx tsx lib/db/seed.ts",
+    "db:setup": "pnpm dlx tsx lib/db/setup.ts",
+    "db:seed": "pnpm dlx tsx lib/db/seed.ts",
     "db:generate": "drizzle-kit generate",
     "db:migrate": "drizzle-kit migrate",
     "db:studio": "drizzle-kit studio"

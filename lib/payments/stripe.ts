@@ -1,9 +1,7 @@
 import Stripe from 'stripe';
 import { randomUUID } from 'crypto';
 import { redirect } from 'next/navigation';
-import { eq } from 'drizzle-orm';
 import { POSTHOG_EVENTS, captureServerEvent } from '@/lib/analytics/posthog';
-import { db } from '@/lib/db/drizzle';
 import { grantPurchasedCredits } from '@/lib/credits';
 import {
   getMockCreditPackageByPriceId,
@@ -11,11 +9,11 @@ import {
   getMockStripeProducts,
   isPaymentMockEnabled,
 } from '@/lib/payments/mock';
-import { teamMembers, type Team } from '@/lib/db/schema';
+import { type User } from '@/lib/db/schema';
 import {
-  getTeamByStripeCustomerId,
+  getUserByStripeCustomerId,
   getUser,
-  updateTeamSubscription
+  updateUserSubscription
 } from '@/lib/db/queries';
 
 export const stripe = new Stripe(
@@ -198,18 +196,8 @@ async function resolveCheckoutUserId(session: Stripe.Checkout.Session) {
     return null;
   }
 
-  const team = await getTeamByStripeCustomerId(customerId);
-  if (!team) {
-    return null;
-  }
-
-  const members = await db
-    .select({ userId: teamMembers.userId })
-    .from(teamMembers)
-    .where(eq(teamMembers.teamId, team.id))
-    .limit(1);
-
-  return members[0]?.userId ?? null;
+  const user = await getUserByStripeCustomerId(customerId);
+  return user?.id ?? null;
 }
 
 function getCheckoutLineItemMetadata(lineItems: Stripe.LineItem[]) {
@@ -244,19 +232,17 @@ async function getProductDetails(productRef: ProductRef) {
 }
 
 export async function createCheckoutSession({
-  team,
   priceId
 }: {
-  team: Team | null;
   priceId: string;
 }) {
   if (isPaymentMockEnabled()) {
-    return createMockCheckoutSession({ team, priceId });
+    return createMockCheckoutSession({ priceId });
   }
 
   const user = await getUser();
 
-  if (!team || !user) {
+  if (!user) {
     redirect(`/sign-up?redirect=checkout&priceId=${priceId}`);
   }
 
@@ -273,7 +259,7 @@ export async function createCheckoutSession({
     mode: isSubscription ? 'subscription' : 'payment',
     success_url: `${process.env.BASE_URL}/api/stripe/checkout?session_id={CHECKOUT_SESSION_ID}`,
     cancel_url: `${process.env.BASE_URL}/pricing`,
-    customer: team.stripeCustomerId || undefined,
+    customer: user.stripeCustomerId || undefined,
     client_reference_id: user.id.toString(),
     allow_promotion_codes: true,
     metadata: {
@@ -305,15 +291,13 @@ export async function createCheckoutSession({
 }
 
 async function createMockCheckoutSession({
-  team,
   priceId
 }: {
-  team: Team | null;
   priceId: string;
 }) {
   const user = await getUser();
 
-  if (!team || !user) {
+  if (!user) {
     redirect(`/sign-up?redirect=checkout&priceId=${priceId}`);
   }
 
@@ -364,12 +348,12 @@ async function createMockCheckoutSession({
   redirect('/dashboard?checkout=mock_success');
 }
 
-export async function createCustomerPortalSession(team: Team) {
+export async function createCustomerPortalSession(user: User) {
   if (isPaymentMockEnabled()) {
     return { url: '/pricing?billing=mock' };
   }
 
-  if (!team.stripeCustomerId || !team.stripeProductId) {
+  if (!user.stripeCustomerId || !user.stripeProductId) {
     redirect('/pricing');
   }
 
@@ -379,9 +363,9 @@ export async function createCustomerPortalSession(team: Team) {
   if (configurations.data.length > 0) {
     configuration = configurations.data[0];
   } else {
-    const product = await stripe.products.retrieve(team.stripeProductId);
+    const product = await stripe.products.retrieve(user.stripeProductId);
     if (!product.active) {
-      throw new Error("Team's product is not active in Stripe");
+      throw new Error("User's product is not active in Stripe");
     }
 
     const prices = await stripe.prices.list({
@@ -389,7 +373,7 @@ export async function createCustomerPortalSession(team: Team) {
       active: true
     });
     if (prices.data.length === 0) {
-      throw new Error("No active prices found for the team's product");
+      throw new Error("No active prices found for the user's product");
     }
 
     configuration = await stripe.billingPortal.configurations.create({
@@ -430,7 +414,7 @@ export async function createCustomerPortalSession(team: Team) {
   }
 
   return stripe.billingPortal.sessions.create({
-    customer: team.stripeCustomerId,
+    customer: user.stripeCustomerId,
     return_url: `${process.env.BASE_URL}/dashboard`,
     configuration: configuration.id
   });
@@ -448,10 +432,10 @@ export async function handleSubscriptionChange(
     return;
   }
 
-  const team = await getTeamByStripeCustomerId(customerId);
+  const user = await getUserByStripeCustomerId(customerId);
 
-  if (!team) {
-    console.error('Team not found for Stripe customer:', customerId);
+  if (!user) {
+    console.error('User not found for Stripe customer:', customerId);
     return;
   }
 
@@ -460,14 +444,14 @@ export async function handleSubscriptionChange(
     const productRef = item?.price?.product ?? item?.plan?.product;
     const product = await getProductDetails(productRef);
 
-    await updateTeamSubscription(team.id, {
+    await updateUserSubscription(user.id, {
       stripeSubscriptionId: subscriptionId,
       stripeProductId: product.id,
       planName: product.name,
       subscriptionStatus: status
     });
   } else if (status === 'canceled' || status === 'unpaid') {
-    await updateTeamSubscription(team.id, {
+    await updateUserSubscription(user.id, {
       stripeSubscriptionId: null,
       stripeProductId: null,
       planName: null,

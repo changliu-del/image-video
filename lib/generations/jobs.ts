@@ -335,9 +335,10 @@ async function createQueuedGenerationJobWithCreditReservation(input: {
     }
 
     const balanceRows = await sql`
-      select coalesce(sum(delta), 0)::integer as balance
-      from credit_ledger
-      where user_id = ${input.userId}
+      select credit_balance::integer as balance
+      from users
+      where id = ${input.userId}
+      limit 1
     `;
     const currentBalance = Number(
       (balanceRows[0] as Record<string, unknown> | undefined)?.balance ?? 0
@@ -393,6 +394,15 @@ async function createQueuedGenerationJobWithCreditReservation(input: {
       returning id, status
     `;
     const createdJob = mapJobRow(jobRows[0] as Record<string, unknown>);
+    const balanceAfter = currentBalance - input.creditReserved;
+
+    await sql`
+      update users
+      set
+        credit_balance = ${balanceAfter},
+        updated_at = now()
+      where id = ${input.userId}
+    `;
 
     await sql`
       insert into credit_ledger (
@@ -409,7 +419,7 @@ async function createQueuedGenerationJobWithCreditReservation(input: {
         ${input.jobId},
         ${-input.creditReserved},
         'reserve',
-        ${currentBalance - input.creditReserved},
+        ${balanceAfter},
         ${JSON.stringify({
           inputAssetId: input.generation.inputAssetId,
           durationSeconds: input.generation.durationSeconds,

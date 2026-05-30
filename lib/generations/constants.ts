@@ -2,5 +2,6 @@ export const MAX_UPLOAD_SIZE_BYTES = 10 * 1024 * 1024;
 export const MAX_PRODUCT_NAME_LENGTH = 120;
 export const MAX_HEADLINE_LENGTH = 100;
 export const MAX_SELLING_POINT_LENGTH = 1200;
+export const MAX_TEXT_TO_IMAGE_PROMPT_LENGTH = 1200;
 export const MAX_PRICE_TEXT_LENGTH = 64;
 export const MAX_CTA_TEXT_LENGTH = 40;

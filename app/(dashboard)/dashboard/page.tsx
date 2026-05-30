@@ -1,296 +1,227 @@
-'use client';
-
 import Link from 'next/link';
+import { redirect } from 'next/navigation';
+import { desc, eq } from 'drizzle-orm';
+import { Coins, Film, ReceiptText, WandSparkles } from 'lucide-react';
+
 import { Button } from '@/components/ui/button';
-import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import {
   Card,
   CardContent,
+  CardDescription,
   CardHeader,
   CardTitle,
-  CardFooter
 } from '@/components/ui/card';
+import { db } from '@/lib/db/drizzle';
+import { creditLedger, generationJobs } from '@/lib/db/schema';
+import { getUser } from '@/lib/db/queries';
 import { customerPortalAction } from '@/lib/payments/actions';
-import { useActionState } from 'react';
-import { TeamDataWithMembers, User } from '@/lib/db/schema';
-import { removeTeamMember, inviteTeamMember } from '@/app/(login)/actions';
-import useSWR from 'swr';
-import { Suspense } from 'react';
-import { Input } from '@/components/ui/input';
-import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
-import { Label } from '@/components/ui/label';
-import { Loader2, PlusCircle, WandSparkles } from 'lucide-react';
 
-type ActionState = {
-  error?: string;
-  success?: string;
-};
+export const dynamic = 'force-dynamic';
 
-const fetcher = (url: string) => fetch(url).then((res) => res.json());
-
-function SubscriptionSkeleton() {
-  return (
-    <Card className="mb-8 h-[140px]">
-      <CardHeader>
-        <CardTitle>Team Subscription</CardTitle>
-      </CardHeader>
-    </Card>
-  );
-}
-
-function ManageSubscription() {
-  const { data: teamData } = useSWR<TeamDataWithMembers>('/api/team', fetcher);
-
-  return (
-    <Card className="mb-8">
-      <CardHeader>
-        <CardTitle>Team Subscription</CardTitle>
-      </CardHeader>
-      <CardContent>
-        <div className="space-y-4">
-          <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center">
-            <div className="mb-4 sm:mb-0">
-              <p className="font-medium">
-                Current Plan: {teamData?.planName || 'Free'}
-              </p>
-              <p className="text-sm text-muted-foreground">
-                {teamData?.subscriptionStatus === 'active'
-                  ? 'Billed monthly'
-                  : teamData?.subscriptionStatus === 'trialing'
-                  ? 'Trial period'
-                  : 'No active subscription'}
-              </p>
-            </div>
-            <form action={customerPortalAction}>
-              <Button type="submit" variant="outline">
-                Manage Subscription
-              </Button>
-            </form>
-          </div>
-        </div>
-      </CardContent>
-    </Card>
-  );
-}
-
-function TeamMembersSkeleton() {
-  return (
-    <Card className="mb-8 h-[140px]">
-      <CardHeader>
-        <CardTitle>Team Members</CardTitle>
-      </CardHeader>
-      <CardContent>
-        <div className="animate-pulse space-y-4 mt-1">
-          <div className="flex items-center space-x-4">
-            <div className="size-8 rounded-full bg-gray-200"></div>
-            <div className="space-y-2">
-              <div className="h-4 w-32 bg-gray-200 rounded"></div>
-              <div className="h-3 w-14 bg-gray-200 rounded"></div>
-            </div>
-          </div>
-        </div>
-      </CardContent>
-    </Card>
-  );
-}
-
-function TeamMembers() {
-  const { data: teamData } = useSWR<TeamDataWithMembers>('/api/team', fetcher);
-  const [removeState, removeAction, isRemovePending] = useActionState<
-    ActionState,
-    FormData
-  >(removeTeamMember, {});
-
-  const getUserDisplayName = (user: Pick<User, 'id' | 'name' | 'email'>) => {
-    return user.name || user.email || 'Unknown User';
-  };
-
-  if (!teamData?.teamMembers?.length) {
-    return (
-      <Card className="mb-8">
-        <CardHeader>
-          <CardTitle>Team Members</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <p className="text-muted-foreground">No team members yet.</p>
-        </CardContent>
-      </Card>
-    );
+function formatDate(value: Date | string | null | undefined) {
+  if (!value) {
+    return '-';
   }
 
-  return (
-    <Card className="mb-8">
-      <CardHeader>
-        <CardTitle>Team Members</CardTitle>
-      </CardHeader>
-      <CardContent>
-        <ul className="space-y-4">
-          {teamData.teamMembers.map((member, index) => (
-            <li key={member.id} className="flex items-center justify-between">
-              <div className="flex items-center space-x-4">
-                <Avatar>
-                  {/* 
-                    This app doesn't save profile images, but here
-                    is how you'd show them:
+  return new Intl.DateTimeFormat('en', {
+    dateStyle: 'medium',
+    timeStyle: 'short',
+  }).format(new Date(value));
+}
 
-                    <AvatarImage
-                      src={member.user.image || ''}
-                      alt={getUserDisplayName(member.user)}
-                    />
-                  */}
-                  <AvatarFallback>
-                    {getUserDisplayName(member.user)
-                      .split(' ')
-                      .map((n) => n[0])
-                      .join('')}
-                  </AvatarFallback>
-                </Avatar>
-                <div>
-                  <p className="font-medium">
-                    {getUserDisplayName(member.user)}
-                  </p>
-                  <p className="text-sm text-muted-foreground capitalize">
-                    {member.role}
-                  </p>
-                </div>
+export default async function DashboardPage() {
+  const user = await getUser();
+  if (!user) {
+    redirect('/sign-in');
+  }
+
+  const [jobs, ledger] = await Promise.all([
+    db
+      .select()
+      .from(generationJobs)
+      .where(eq(generationJobs.userId, user.id))
+      .orderBy(desc(generationJobs.createdAt))
+      .limit(8),
+    db
+      .select()
+      .from(creditLedger)
+      .where(eq(creditLedger.userId, user.id))
+      .orderBy(desc(creditLedger.createdAt))
+      .limit(8),
+  ]);
+
+  const completedJobs = jobs.filter((job) => job.status === 'succeeded').length;
+
+  return (
+    <main className="flex-1 p-4 lg:p-8">
+      <div className="mx-auto max-w-6xl space-y-8">
+        <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+          <div>
+            <p className="text-sm font-medium text-orange-600">
+              Personal dashboard
+            </p>
+            <h1 className="text-2xl font-semibold text-gray-950">
+              {user.name || user.email}
+            </h1>
+          </div>
+          <Button asChild className="w-full sm:w-auto">
+            <Link href="/generate">
+              <WandSparkles className="h-4 w-4" />
+              Generate Video
+            </Link>
+          </Button>
+        </div>
+
+        <div className="grid gap-4 md:grid-cols-3">
+          <Card className="rounded-lg">
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2 text-base">
+                <Coins className="h-5 w-5 text-orange-600" />
+                Credits
+              </CardTitle>
+              <CardDescription>Stored on users.credit_balance</CardDescription>
+            </CardHeader>
+            <CardContent>
+              <div className="text-4xl font-semibold text-gray-950">
+                {user.creditBalance}
               </div>
-              {index > 1 ? (
-                <form action={removeAction}>
-                  <input type="hidden" name="memberId" value={member.id} />
-                  <Button
-                    type="submit"
-                    variant="outline"
-                    size="sm"
-                    disabled={isRemovePending}
-                  >
-                    {isRemovePending ? 'Removing...' : 'Remove'}
+            </CardContent>
+          </Card>
+
+          <Card className="rounded-lg">
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2 text-base">
+                <Film className="h-5 w-5 text-orange-600" />
+                Recent jobs
+              </CardTitle>
+              <CardDescription>Latest records for this account</CardDescription>
+            </CardHeader>
+            <CardContent>
+              <div className="text-4xl font-semibold text-gray-950">
+                {jobs.length}
+              </div>
+              <p className="mt-1 text-sm text-gray-500">
+                {completedJobs} completed in the latest {jobs.length}
+              </p>
+            </CardContent>
+          </Card>
+
+          <Card className="rounded-lg">
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2 text-base">
+                <ReceiptText className="h-5 w-5 text-orange-600" />
+                Billing
+              </CardTitle>
+              <CardDescription>Credit packages and subscription</CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-3">
+              <div>
+                <p className="font-medium text-gray-950">
+                  {user.planName || 'Credit plan'}
+                </p>
+                <p className="text-sm text-gray-500">
+                  {user.subscriptionStatus || 'No active subscription'}
+                </p>
+              </div>
+              {user.stripeCustomerId ? (
+                <form action={customerPortalAction}>
+                  <Button type="submit" variant="outline" size="sm">
+                    Manage billing
                   </Button>
                 </form>
-              ) : null}
-            </li>
-          ))}
-        </ul>
-        {removeState?.error && (
-          <p className="text-red-500 mt-4">{removeState.error}</p>
-        )}
-      </CardContent>
-    </Card>
-  );
-}
+              ) : (
+                <Button asChild variant="outline" size="sm">
+                  <Link href="/pricing">Buy credits</Link>
+                </Button>
+              )}
+            </CardContent>
+          </Card>
+        </div>
 
-function InviteTeamMemberSkeleton() {
-  return (
-    <Card className="h-[260px]">
-      <CardHeader>
-        <CardTitle>Invite Team Member</CardTitle>
-      </CardHeader>
-    </Card>
-  );
-}
+        <Card className="rounded-lg">
+          <CardHeader>
+            <CardTitle>Recent generation jobs</CardTitle>
+            <CardDescription>
+              Personal generation overview without team membership.
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="overflow-x-auto">
+            <table className="w-full min-w-[720px] text-left text-sm">
+              <thead className="border-b text-xs uppercase text-gray-500">
+                <tr>
+                  <th className="py-2 pr-4">Job</th>
+                  <th className="py-2 pr-4">Product</th>
+                  <th className="py-2 pr-4">Status</th>
+                  <th className="py-2 pr-4">Credits</th>
+                  <th className="py-2">Created</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y">
+                {jobs.length === 0 ? (
+                  <tr>
+                    <td colSpan={5} className="py-4 text-gray-500">
+                      No video jobs yet.
+                    </td>
+                  </tr>
+                ) : (
+                  jobs.map((job) => (
+                    <tr key={job.id}>
+                      <td className="py-3 pr-4 font-mono text-xs">
+                        <Link href={`/jobs/${job.id}`} className="hover:underline">
+                          {job.id.slice(0, 8)}
+                        </Link>
+                      </td>
+                      <td className="py-3 pr-4">{job.productName}</td>
+                      <td className="py-3 pr-4">{job.status}</td>
+                      <td className="py-3 pr-4">
+                        {job.creditSpent || job.creditReserved}
+                      </td>
+                      <td className="py-3">{formatDate(job.createdAt)}</td>
+                    </tr>
+                  ))
+                )}
+              </tbody>
+            </table>
+          </CardContent>
+        </Card>
 
-function InviteTeamMember() {
-  const { data: user } = useSWR<User>('/api/user', fetcher);
-  const isOwner = user?.role === 'owner';
-  const [inviteState, inviteAction, isInvitePending] = useActionState<
-    ActionState,
-    FormData
-  >(inviteTeamMember, {});
-
-  return (
-    <Card>
-      <CardHeader>
-        <CardTitle>Invite Team Member</CardTitle>
-      </CardHeader>
-      <CardContent>
-        <form action={inviteAction} className="space-y-4">
-          <div>
-            <Label htmlFor="email" className="mb-2">
-              Email
-            </Label>
-            <Input
-              id="email"
-              name="email"
-              type="email"
-              placeholder="Enter email"
-              required
-              disabled={!isOwner}
-            />
-          </div>
-          <div>
-            <Label>Role</Label>
-            <RadioGroup
-              defaultValue="member"
-              name="role"
-              className="flex space-x-4"
-              disabled={!isOwner}
-            >
-              <div className="flex items-center space-x-2 mt-2">
-                <RadioGroupItem value="member" id="member" />
-                <Label htmlFor="member">Member</Label>
-              </div>
-              <div className="flex items-center space-x-2 mt-2">
-                <RadioGroupItem value="owner" id="owner" />
-                <Label htmlFor="owner">Owner</Label>
-              </div>
-            </RadioGroup>
-          </div>
-          {inviteState?.error && (
-            <p className="text-red-500">{inviteState.error}</p>
-          )}
-          {inviteState?.success && (
-            <p className="text-green-500">{inviteState.success}</p>
-          )}
-          <Button
-            type="submit"
-            className="bg-orange-500 hover:bg-orange-600 text-white"
-            disabled={isInvitePending || !isOwner}
-          >
-            {isInvitePending ? (
-              <>
-                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                Inviting...
-              </>
-            ) : (
-              <>
-                <PlusCircle className="mr-2 h-4 w-4" />
-                Invite Member
-              </>
-            )}
-          </Button>
-        </form>
-      </CardContent>
-      {!isOwner && (
-        <CardFooter>
-          <p className="text-sm text-muted-foreground">
-            You must be a team owner to invite new members.
-          </p>
-        </CardFooter>
-      )}
-    </Card>
-  );
-}
-
-export default function SettingsPage() {
-  return (
-    <section className="flex-1 p-4 lg:p-8">
-      <div className="mb-6 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-        <h1 className="text-lg font-medium lg:text-2xl">Team Settings</h1>
-        <Button asChild className="w-full bg-orange-500 text-white hover:bg-orange-600 sm:w-auto">
-          <Link href="/generate">
-            <WandSparkles className="size-4" />
-            Generate Video
-          </Link>
-        </Button>
+        <Card className="rounded-lg">
+          <CardHeader>
+            <CardTitle>Credit ledger</CardTitle>
+            <CardDescription>Read-only account credit activity.</CardDescription>
+          </CardHeader>
+          <CardContent className="overflow-x-auto">
+            <table className="w-full min-w-[640px] text-left text-sm">
+              <thead className="border-b text-xs uppercase text-gray-500">
+                <tr>
+                  <th className="py-2 pr-4">Reason</th>
+                  <th className="py-2 pr-4">Delta</th>
+                  <th className="py-2 pr-4">Balance after</th>
+                  <th className="py-2">Created</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y">
+                {ledger.length === 0 ? (
+                  <tr>
+                    <td colSpan={4} className="py-4 text-gray-500">
+                      No credit activity yet.
+                    </td>
+                  </tr>
+                ) : (
+                  ledger.map((entry) => (
+                    <tr key={entry.id}>
+                      <td className="py-3 pr-4">{entry.reason}</td>
+                      <td className="py-3 pr-4">{entry.delta}</td>
+                      <td className="py-3 pr-4">{entry.balanceAfter}</td>
+                      <td className="py-3">{formatDate(entry.createdAt)}</td>
+                    </tr>
+                  ))
+                )}
+              </tbody>
+            </table>
+          </CardContent>
+        </Card>
       </div>
-      <Suspense fallback={<SubscriptionSkeleton />}>
-        <ManageSubscription />
-      </Suspense>
-      <Suspense fallback={<TeamMembersSkeleton />}>
-        <TeamMembers />
-      </Suspense>
-      <Suspense fallback={<InviteTeamMemberSkeleton />}>
-        <InviteTeamMember />
-      </Suspense>
-    </section>
+    </main>
   );
 }
