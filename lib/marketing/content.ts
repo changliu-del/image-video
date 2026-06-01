@@ -25,6 +25,16 @@ type ExampleItem = {
   asset?: string;
 };
 
+type TemplateItem = {
+  title: string;
+  category: string;
+  hook: string;
+  useCase: string;
+  cost: string;
+  mediaType: 'video' | 'image';
+  asset: string;
+};
+
 type ProcessItem = {
   stat: string;
   label: string;
@@ -95,15 +105,12 @@ type MarketingContent = {
       eyebrow: string;
       title: string;
       description: string;
-      uploadTitle: string;
-      uploadHint: string;
-      promptLabel: string;
-      promptPlaceholder: string;
-      settingsTitle: string;
-      settingsMeta: string;
-      settingsAction: string;
-      generate: string;
-      credit: string;
+      primaryAction: string;
+      secondaryAction: string;
+      previewTitle: string;
+      previewText: string;
+      previewItems: string[];
+      stats: ProcessItem[];
     };
     examples: {
       eyebrow: string;
@@ -113,6 +120,19 @@ type MarketingContent = {
       imageLabel: string;
       promptLabel: string;
       items: ExampleItem[];
+    };
+    templates: {
+      eyebrow: string;
+      title: string;
+      description: string;
+      actionLabel: string;
+      items: TemplateItem[];
+    };
+    workflow: {
+      eyebrow: string;
+      title: string;
+      description: string;
+      steps: FeatureItem[];
     };
     system: {
       eyebrow: string;
@@ -511,6 +531,189 @@ const zhImageExamples: ExampleItem[] = [
   },
 ];
 
+const ptTemplateItems: TemplateItem[] = [
+  {
+    title: 'Promoção Pix',
+    category: 'Promoção',
+    hook: 'Só hoje com desconto no Pix',
+    useCase:
+      'Preço em destaque, CTA direto e ritmo rápido para ofertas relâmpago.',
+    cost: 'Imagem 1 crédito',
+    mediaType: 'image',
+    asset: '/resources/example4.png',
+  },
+  {
+    title: 'Produto em Uso',
+    category: 'Demonstração',
+    hook: 'Veja como fica na rotina',
+    useCase:
+      'Transforma uma foto limpa em uma cena de uso para moda, casa e beleza.',
+    cost: 'Video quando fizer sentido',
+    mediaType: 'video',
+    asset: '/resources/example2.mp4',
+  },
+  {
+    title: 'Antes e Depois',
+    category: 'Confiança',
+    hook: 'O detalhe que muda o resultado',
+    useCase:
+      'Mostra problema, solução e benefício visual sem precisar editar do zero.',
+    cost: 'Imagem 1 crédito',
+    mediaType: 'image',
+    asset: '/resources/example3.png',
+  },
+  {
+    title: 'Review de Cliente',
+    category: 'Prova social',
+    hook: 'Quem comprou recomenda',
+    useCase:
+      'Cria um criativo com tom de indicação para WhatsApp, Reels e loja.',
+    cost: 'Vídeo 15 créditos',
+    mediaType: 'video',
+    asset: '/resources/example1.mp4',
+  },
+  {
+    title: 'Detalhe PDP',
+    category: 'Marketplace',
+    hook: 'Detalhes que vendem mais',
+    useCase:
+      'Destaca material, embalagem, textura e benefícios para página de produto.',
+    cost: 'Imagem 1 crédito',
+    mediaType: 'image',
+    asset: '/resources/example1.png',
+  },
+  {
+    title: 'Banner Promocional',
+    category: 'Campanha',
+    hook: 'Oferta pronta para anunciar',
+    useCase:
+      'Gera base visual para campanha, lançamento, cupom ou frete grátis.',
+    cost: 'Imagem 1 crédito',
+    mediaType: 'image',
+    asset: '/resources/example5.png',
+  },
+];
+
+const enTemplateItems: TemplateItem[] = [
+  {
+    title: 'Pix Promotion',
+    category: 'Promotion',
+    hook: 'Today only with Pix discount',
+    useCase:
+      'Highlighted price, direct CTA, and fast pacing for limited-time offers.',
+    cost: 'Image 1 credit',
+    mediaType: 'image',
+    asset: '/resources/example4.png',
+  },
+  {
+    title: 'Product in Use',
+    category: 'Demo',
+    hook: 'See how it fits the routine',
+    useCase:
+      'Turns a clean product photo into a usage scene for fashion, home, and beauty.',
+    cost: 'Video when useful',
+    mediaType: 'video',
+    asset: '/resources/example2.mp4',
+  },
+  {
+    title: 'Before and After',
+    category: 'Trust',
+    hook: 'The detail that changes the result',
+    useCase:
+      'Shows problem, solution, and visual benefit without editing from scratch.',
+    cost: 'Image 1 credit',
+    mediaType: 'image',
+    asset: '/resources/example3.png',
+  },
+  {
+    title: 'Customer Review',
+    category: 'Social proof',
+    hook: 'Recommended by real buyers',
+    useCase:
+      'Creates a recommendation-style creative for WhatsApp, Reels, and stores.',
+    cost: 'Video 15 credits',
+    mediaType: 'video',
+    asset: '/resources/example1.mp4',
+  },
+  {
+    title: 'PDP Detail',
+    category: 'Marketplace',
+    hook: 'Details that sell more',
+    useCase:
+      'Highlights material, packaging, texture, and benefits for product pages.',
+    cost: 'Image 1 credit',
+    mediaType: 'image',
+    asset: '/resources/example1.png',
+  },
+  {
+    title: 'Promo Banner',
+    category: 'Campaign',
+    hook: 'An offer ready to launch',
+    useCase:
+      'Generates a visual base for campaigns, launches, coupons, or free shipping.',
+    cost: 'Image 1 credit',
+    mediaType: 'image',
+    asset: '/resources/example5.png',
+  },
+];
+
+const zhTemplateItems: TemplateItem[] = [
+  {
+    title: 'Pix 促销',
+    category: '促销',
+    hook: '今天使用 Pix 享折扣',
+    useCase: '突出价格、折扣和直接 CTA，适合限时促销。',
+    cost: '图片 1 积分',
+    mediaType: 'image',
+    asset: '/resources/example4.png',
+  },
+  {
+    title: '商品使用场景',
+    category: '演示',
+    hook: '看看它如何融入日常',
+    useCase: '把干净商品图转成适合服饰、家居、美妆的使用场景。',
+    cost: '需要时转视频',
+    mediaType: 'video',
+    asset: '/resources/example2.mp4',
+  },
+  {
+    title: '前后对比',
+    category: '信任',
+    hook: '一个细节改变效果',
+    useCase: '展示问题、解决方案和视觉收益，不需要从零剪辑。',
+    cost: '图片 1 积分',
+    mediaType: 'image',
+    asset: '/resources/example3.png',
+  },
+  {
+    title: '客户评价',
+    category: '社会证明',
+    hook: '买过的人都推荐',
+    useCase: '生成适合 WhatsApp、Reels 和店铺的推荐口吻素材。',
+    cost: '视频 15 积分',
+    mediaType: 'video',
+    asset: '/resources/example1.mp4',
+  },
+  {
+    title: 'PDP 细节',
+    category: 'Marketplace',
+    hook: '更会卖货的细节',
+    useCase: '突出材质、包装、纹理和利益点，服务商品详情页。',
+    cost: '图片 1 积分',
+    mediaType: 'image',
+    asset: '/resources/example1.png',
+  },
+  {
+    title: '促销横幅',
+    category: '活动',
+    hook: '一张图启动活动',
+    useCase: '为活动、上新、优惠券或免运费生成视觉基础。',
+    cost: '图片 1 积分',
+    mediaType: 'image',
+    asset: '/resources/example5.png',
+  },
+];
+
 const pt: MarketingContent = {
   locale: 'pt',
   localeLabel: 'Português',
@@ -525,7 +728,7 @@ const pt: MarketingContent = {
   },
   navItems: [
     { label: 'Início', href: '' },
-    { label: 'Texto para Imagem', href: '/text-to-image' },
+    { label: 'Templates', href: '/templates' },
     { label: 'Preços', href: '/pricing' },
   ],
   footer: {
@@ -585,20 +788,25 @@ const pt: MarketingContent = {
         'Gere vídeos de produto, imagens comerciais e materiais de marketing para e-commerce com IA.',
     },
     hero: {
-      eyebrow: 'Estúdio de Vídeo de Produto com IA',
-      title: 'Envie uma imagem de produto e gere um vídeo vertical de venda.',
+      eyebrow: 'Templates de commerce para o Brasil',
+      title: 'Escolha um modelo. Troque pelo seu produto. Gere criativos que vendem.',
       description:
-        'Crie assets para PDPs, anúncios curtos, lançamentos e social commerce a partir de uma imagem limpa do produto.',
-      uploadTitle: 'Clique para enviar uma imagem de produto',
-      uploadHint: 'Use uma imagem principal limpa do produto',
-      promptLabel: 'Prompt',
-      promptPlaceholder:
-        'Descreva o estilo do vídeo, por exemplo: fundo branco, destaque dos detalhes, rotação sutil.',
-      settingsTitle: 'Configurações de geração',
-      settingsMeta: 'Kling · 15 créditos',
-      settingsAction: 'Abrir configurações',
-      generate: 'Gerar vídeo',
-      credit: '15 créditos',
+        'Comece com modelos em PT-BR para Pix, WhatsApp, marketplace e anúncios. Gere imagens baratas primeiro e transforme em vídeo quando fizer sentido para o seu produto.',
+      primaryAction: 'Explorar templates',
+      secondaryAction: 'Ver templates de imagem',
+      previewTitle: 'Prompt editável',
+      previewText:
+        'Cada modelo abre com hook, CTA e estrutura prontos para o mercado brasileiro.',
+      previewItems: [
+        'Hooks em português brasileiro para ofertas, prova social e lançamento.',
+        'CTA para Pix, WhatsApp, marketplace e loja própria.',
+        'Templates livres para editar antes de gastar créditos em vídeo.',
+      ],
+      stats: [
+        { stat: '6', label: 'templates iniciais' },
+        { stat: '1', label: 'crédito para imagem' },
+        { stat: 'PT-BR', label: 'hooks locais' },
+      ],
     },
     examples: {
       eyebrow: 'Biblioteca Criativa de Commerce AI',
@@ -609,6 +817,34 @@ const pt: MarketingContent = {
       imageLabel: 'Imagem',
       promptLabel: 'Prompt',
       items: ptVideoExamples,
+    },
+    templates: {
+      eyebrow: 'Biblioteca de templates',
+      title: 'Comece pelo tipo de vídeo que vende o produto',
+      description:
+        'Cada modelo traz hook, CTA e direção visual. O vendedor escolhe, troca pelo próprio produto e edita o prompt sem ficar preso a regras rígidas.',
+      actionLabel: 'Usar modelo',
+      items: ptTemplateItems,
+    },
+    workflow: {
+      eyebrow: 'Caminho de baixo custo',
+      title: 'Imagem primeiro, vídeo depois',
+      description:
+        'A experiência respeita o hábito de quem vende online: testar uma imagem barata, ajustar a mensagem e só então subir para vídeo.',
+      steps: [
+        {
+          title: 'Comece com imagem',
+          text: 'Use modelos de banner, PDP e promoção para criar uma base visual com baixo custo.',
+        },
+        {
+          title: 'Edite o prompt livremente',
+          text: 'O template sugere hook, CTA e estrutura, mas o usuário pode reescrever tudo.',
+        },
+        {
+          title: 'Transforme em vídeo',
+          text: 'Quando a imagem aprovar a ideia, use image-to-video para movimento e variações.',
+        },
+      ],
     },
     system: {
       eyebrow: 'Sistema Criativo de Commerce',
@@ -703,32 +939,32 @@ const pt: MarketingContent = {
       title: 'Perguntas frequentes',
       items: [
         {
-          question: 'Como gero meu primeiro vídeo de produto?',
+          question: 'Os templates limitam o prompt?',
           answer:
-            'Envie uma imagem de produto ou escreva um prompt. Quanto mais clara a entrada, melhor a direção visual.',
+            'Não. O template só preenche uma boa base com hook, CTA e direção visual. O usuário pode editar o prompt inteiro.',
         },
         {
-          question: 'Posso controlar o estilo visual?',
+          question: 'Preciso gerar vídeo logo no primeiro passo?',
           answer:
-            'Sim. Descreva cena, luz, fundo, câmera e objetivo comercial no prompt.',
+            'Não. A ideia é começar com imagem de baixo custo e transformar em vídeo quando o criativo fizer sentido.',
         },
         {
-          question: 'O que está incluso no teste grátis?',
+          question: 'Os hooks são pensados para o Brasil?',
           answer:
-            'Você recebe créditos para explorar estilos diferentes. Cada criação consome créditos conforme o modelo.',
+            'Sim. Os exemplos priorizam PT-BR, Pix, WhatsApp, marketplace e linguagem direta de social commerce.',
         },
         {
-          question: 'Quais planos estão disponíveis?',
+          question: 'O que acontece ao clicar em um modelo?',
           answer:
-            'Há planos mensais, anuais e pacotes avulsos para diferentes ritmos de criação.',
+            'Nesta primeira versão, o usuário entra ou cria conta para continuar com o modelo escolhido.',
         },
       ],
     },
     cta: {
-      title: 'Faça cada produto se destacar',
+      title: 'Comece com um template e adapte para o seu produto',
       description:
-        'Produza imagens e vídeos de marketing em escala sem montar uma equipe de edição.',
-      action: 'Começar grátis',
+        'Transforme ideias de promoção, prova social e demonstração em criativos prontos para testar.',
+      action: 'Entrar e usar templates',
     },
   },
   textToImage: {
@@ -963,7 +1199,7 @@ const en: MarketingContent = {
   },
   navItems: [
     { label: 'Home', href: '' },
-    { label: 'Text to Image', href: '/text-to-image' },
+    { label: 'Templates', href: '/templates' },
     { label: 'Pricing', href: '/pricing' },
   ],
   footer: {
@@ -1022,19 +1258,25 @@ const en: MarketingContent = {
     },
     hero: {
       ...pt.home.hero,
-      eyebrow: 'AI Product Video Studio',
-      title: 'Upload a product image and create a vertical sales video.',
+      eyebrow: 'Commerce templates for Brazil',
+      title: 'Choose a template. Replace it with your product. Generate creatives that sell.',
       description:
-        'Create PDP assets, short ads, launches, and social commerce content from a clean product image.',
-      uploadTitle: 'Click to upload a product image',
-      uploadHint: 'Use a clean main product photo',
-      promptLabel: 'Prompt',
-      promptPlaceholder:
-        'Describe the video style: clean background, product details, subtle rotation.',
-      settingsTitle: 'Generation settings',
-      settingsAction: 'Open settings',
-      generate: 'Generate video',
-      credit: '15 credits',
+        'Start with PT-BR templates for Pix, WhatsApp, marketplaces, and ads. Create low-cost images first, then turn them into video when it makes sense for the product.',
+      primaryAction: 'Explore templates',
+      secondaryAction: 'Explore image templates',
+      previewTitle: 'Editable prompt',
+      previewText:
+        'Every template starts with a hook, CTA, and structure for the Brazilian market.',
+      previewItems: [
+        'Brazilian Portuguese hooks for offers, social proof, and launches.',
+        'CTA ideas for Pix, WhatsApp, marketplaces, and DTC stores.',
+        'Templates stay editable before you spend credits on video.',
+      ],
+      stats: [
+        { stat: '6', label: 'starter templates' },
+        { stat: '1', label: 'image credit' },
+        { stat: 'PT-BR', label: 'local hooks' },
+      ],
     },
     examples: {
       ...pt.home.examples,
@@ -1046,6 +1288,67 @@ const en: MarketingContent = {
       imageLabel: 'Image',
       promptLabel: 'Prompt',
       items: enVideoExamples,
+    },
+    templates: {
+      ...pt.home.templates,
+      eyebrow: 'Template library',
+      title: 'Start with the kind of video that sells the product',
+      description:
+        'Each model includes a hook, CTA, and visual direction. Sellers choose one, swap in their product, and freely edit the prompt.',
+      actionLabel: 'Use template',
+      items: enTemplateItems,
+    },
+    workflow: {
+      ...pt.home.workflow,
+      eyebrow: 'Low-cost path',
+      title: 'Image first, video after',
+      description:
+        'The experience matches how sellers already work: test a cheap image, tune the message, then upgrade to video.',
+      steps: [
+        {
+          title: 'Start with image',
+          text: 'Use banner, PDP, and promotion templates to create a low-cost visual base.',
+        },
+        {
+          title: 'Edit the prompt freely',
+          text: 'The template suggests a hook, CTA, and structure, but the user can rewrite everything.',
+        },
+        {
+          title: 'Turn it into video',
+          text: 'Once the image validates the idea, use image-to-video for motion and variants.',
+        },
+      ],
+    },
+    faq: {
+      title: 'Frequently asked questions',
+      items: [
+        {
+          question: 'Do templates limit the prompt?',
+          answer:
+            'No. A template only fills a strong starting point with hook, CTA, and visual direction. Users can edit the entire prompt.',
+        },
+        {
+          question: 'Do I need to generate video first?',
+          answer:
+            'No. The path starts with a low-cost image and upgrades to video when the creative direction makes sense.',
+        },
+        {
+          question: 'Are the hooks designed for Brazil?',
+          answer:
+            'Yes. The examples prioritize PT-BR, Pix, WhatsApp, marketplaces, and direct social-commerce language.',
+        },
+        {
+          question: 'What happens when I click a template?',
+          answer:
+            'In this first version, the user signs in or creates an account to continue with the selected model.',
+        },
+      ],
+    },
+    cta: {
+      title: 'Start with a template and adapt it to your product',
+      description:
+        'Turn promotion, social proof, and demo ideas into creatives ready to test.',
+      action: 'Sign in and use templates',
     },
   },
   textToImage: {
@@ -1130,7 +1433,7 @@ const zh: MarketingContent = {
   },
   navItems: [
     { label: '首页', href: '' },
-    { label: '文生图', href: '/text-to-image' },
+    { label: '模板', href: '/templates' },
     { label: '价格', href: '/pricing' },
   ],
   footer: {
@@ -1183,18 +1486,24 @@ const zh: MarketingContent = {
     },
     hero: {
       ...pt.home.hero,
-      eyebrow: 'AI 商品视频工作室',
-      title: '上传商品图，生成竖版带货视频。',
+      eyebrow: '面向巴西电商的模板',
+      title: '选择模板，换成你的商品，生成能卖货的素材。',
       description:
-        '从一张清晰商品图开始，快速生成 PDP、短广告、上新和社媒电商素材。',
-      uploadTitle: '点击上传商品图片',
-      uploadHint: '建议使用干净的主图',
-      promptLabel: '提示词',
-      promptPlaceholder: '描述视频风格，例如白底、突出细节、轻微旋转。',
-      settingsTitle: '生成设置',
-      settingsAction: '打开设置',
-      generate: '生成视频',
-      credit: '15 积分',
+        '从 PT-BR 模板开始，覆盖 Pix、WhatsApp、marketplace 和广告。先低成本生成图片，合适时再升级为视频。',
+      primaryAction: '浏览模板',
+      secondaryAction: '查看图片模板',
+      previewTitle: '可编辑 prompt',
+      previewText: '每个模板都预置适合巴西市场的 hook、CTA 和创意结构。',
+      previewItems: [
+        '面向促销、社会证明和上新的巴西葡语 hook。',
+        '适合 Pix、WhatsApp、marketplace 和独立站的 CTA。',
+        '在消耗视频积分前，模板和 prompt 都可以自由修改。',
+      ],
+      stats: [
+        { stat: '6', label: '初始模板' },
+        { stat: '1', label: '图片积分' },
+        { stat: 'PT-BR', label: '本地话术' },
+      ],
     },
     examples: {
       ...pt.home.examples,
@@ -1206,6 +1515,65 @@ const zh: MarketingContent = {
       imageLabel: '图片',
       promptLabel: '提示词',
       items: zhVideoExamples,
+    },
+    templates: {
+      ...pt.home.templates,
+      eyebrow: '模板库',
+      title: '先选择最适合卖这个商品的视频类型',
+      description:
+        '每个模板都包含 hook、CTA 和视觉方向。卖家选择模板、换成自己的商品，并且可以自由编辑 prompt。',
+      actionLabel: '使用模板',
+      items: zhTemplateItems,
+    },
+    workflow: {
+      ...pt.home.workflow,
+      eyebrow: '低成本路径',
+      title: '先图片，后视频',
+      description:
+        '这条体验贴合电商卖家的真实习惯：先用便宜图片测试创意，调好文案，再升级成视频。',
+      steps: [
+        {
+          title: '从图片开始',
+          text: '使用横幅、PDP 和促销模板，低成本生成视觉基础。',
+        },
+        {
+          title: '自由编辑 prompt',
+          text: '模板提供 hook、CTA 和结构，但用户可以重写全部内容。',
+        },
+        {
+          title: '升级成视频',
+          text: '当图片验证方向后，再用 image-to-video 加入运动和变体。',
+        },
+      ],
+    },
+    faq: {
+      title: '常见问题',
+      items: [
+        {
+          question: '模板会限制 prompt 吗？',
+          answer:
+            '不会。模板只是预填一个好的起点，包括 hook、CTA 和视觉方向，用户可以编辑完整 prompt。',
+        },
+        {
+          question: '必须一开始就生成视频吗？',
+          answer:
+            '不需要。产品路径是先低成本生成图片，确认创意方向后再升级成视频。',
+        },
+        {
+          question: '这些 hook 是面向巴西的吗？',
+          answer:
+            '是的。示例优先考虑 PT-BR、Pix、WhatsApp、marketplace 和直接的社媒电商表达。',
+        },
+        {
+          question: '点击模板后会发生什么？',
+          answer: '第一版中，用户会登录或注册，然后继续使用所选模板。',
+        },
+      ],
+    },
+    cta: {
+      title: '从模板开始，再适配你的商品',
+      description: '把促销、评价和演示创意变成可以马上测试的素材。',
+      action: '登录并使用模板',
     },
   },
   textToImage: {

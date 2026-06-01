@@ -45,7 +45,7 @@ export const TEMPLATE_SLUGS = [
   'new_arrival',
   'best_seller',
 ] as const;
-export type TemplateSlug = (typeof TEMPLATE_SLUGS)[number];
+export type TemplateSlug = string;
 
 export const GENERATION_TYPES = ['image-to-video', 'text-to-image'] as const;
 export type GenerationType = (typeof GENERATION_TYPES)[number];
@@ -77,6 +77,13 @@ const durationSecondsSchema = z.preprocess(
   },
   z.union([z.literal(5), z.literal(8), z.literal(10)])
 );
+
+const templateSlugSchema = z
+  .string()
+  .trim()
+  .min(1)
+  .max(120)
+  .regex(/^[a-zA-Z0-9][a-zA-Z0-9_-]*$/);
 
 const generationTypeSchema = z.enum(GENERATION_TYPES);
 
@@ -140,7 +147,7 @@ export const generationRequestSchema = z
     ctaText: cleanTextField(MAX_CTA_TEXT_LENGTH, 'CTA'),
     aspectRatio: z.enum(VIDEO_ASPECT_RATIOS),
     durationSeconds: durationSecondsSchema,
-    templateSlug: z.enum(TEMPLATE_SLUGS),
+    templateSlug: templateSlugSchema,
   })
   .strict()
   .superRefine((value, context) => {

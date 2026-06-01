@@ -1,221 +1,338 @@
 'use client';
 
-import { useState, useEffect, useCallback } from 'react';
+import { useState } from 'react';
 import {
-  RotateCcw, Trash2,
-  Users, Film, ReceiptText, Image,
   ChevronLeft,
+  Film,
+  Image,
+  LayoutTemplate,
+  ReceiptText,
+  Users,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { TemplatesPanel } from '@/components/admin/templates-panel';
+import {
+  ManagementPanel,
+  type AdminTableConfig,
+} from '@/components/admin/management-panel';
 
 const TABLES = [
-  { key: 'users', label: 'Users', icon: Users },
-  { key: 'assets', label: 'Assets', icon: Image },
-  { key: 'generation-jobs', label: 'Generation Jobs', icon: Film },
-  { key: 'credit-ledger', label: 'Credit Ledger', icon: ReceiptText },
+  {
+    key: 'templates',
+    label: 'Templates',
+    icon: LayoutTemplate,
+    adminOnly: false,
+  },
+  { key: 'users', label: 'Users', icon: Users, adminOnly: true },
+  { key: 'assets', label: 'Assets', icon: Image, adminOnly: false },
+  {
+    key: 'generation-jobs',
+    label: 'Generation Jobs',
+    icon: Film,
+    adminOnly: false,
+  },
+  {
+    key: 'credit-ledger',
+    label: 'Credit Ledger',
+    icon: ReceiptText,
+    adminOnly: true,
+  },
 ] as const;
 
-type TableKey = typeof TABLES[number]['key'];
+type TableKey = (typeof TABLES)[number]['key'];
 
-function formatDate(v: string | null | undefined) {
-  if (!v) return '-';
-  return new Date(v).toLocaleString('en', { dateStyle: 'medium', timeStyle: 'short' });
-}
+const MANAGEMENT_CONFIGS: Record<
+  Exclude<TableKey, 'templates'>,
+  AdminTableConfig
+> = {
+  users: {
+    key: 'users',
+    title: 'Users',
+    description: 'Account state, credits, subscription, and role controls.',
+    searchPlaceholder: 'Search email or name...',
+    idField: 'id',
+    icon: Users,
+    deleteEnabled: true,
+    columns: [
+      'id',
+      'email',
+      'name',
+      'role',
+      'isAdmin',
+      'creditBalance',
+      'subscriptionStatus',
+      'createdAt',
+      'deletedAt',
+    ],
+    columnLabels: {
+      isAdmin: 'Admin Flag',
+      creditBalance: 'Credit Balance',
+      subscriptionStatus: 'Subscription',
+      createdAt: 'Created At',
+      deletedAt: 'Deleted At',
+    },
+    columnWidths: {
+      id: 88,
+      email: 260,
+      name: 180,
+      role: 112,
+      isAdmin: 112,
+      creditBalance: 136,
+      subscriptionStatus: 150,
+      createdAt: 178,
+      deletedAt: 178,
+    },
+    tableMinWidth: 1300,
+    editableFields: [
+      { key: 'email', label: 'Email' },
+      { key: 'name', label: 'Name' },
+      {
+        key: 'role',
+        label: 'Role',
+        type: 'select',
+        options: ['member', 'ops', 'admin'],
+      },
+      {
+        key: 'creditBalance',
+        label: 'Credit balance',
+        type: 'number',
+        readOnly: true,
+      },
+      {
+        key: 'subscriptionStatus',
+        label: 'Subscription status',
+        readOnly: true,
+      },
+    ],
+  },
+  assets: {
+    key: 'assets',
+    title: 'Assets',
+    description: 'Uploaded media, template assets, generated files, and metadata.',
+    searchPlaceholder: 'Search id, storage key, type, status...',
+    idField: 'id',
+    icon: Image,
+    deleteEnabled: true,
+    columns: [
+      'id',
+      'userId',
+      'type',
+      'status',
+      'storageKey',
+      'mimeType',
+      'sizeBytes',
+      'createdAt',
+    ],
+    columnLabels: {
+      userId: 'User ID',
+      storageKey: 'Storage Key',
+      mimeType: 'MIME Type',
+      sizeBytes: 'Size Bytes',
+      createdAt: 'Created At',
+    },
+    columnWidths: {
+      id: 240,
+      userId: 96,
+      type: 140,
+      status: 120,
+      storageKey: 300,
+      mimeType: 150,
+      sizeBytes: 120,
+      createdAt: 178,
+    },
+    tableMinWidth: 1360,
+    editableFields: [
+      {
+        key: 'status',
+        label: 'Status',
+        type: 'select',
+        options: ['pending', 'uploaded', 'failed'],
+      },
+      { key: 'publicUrl', label: 'Public URL', type: 'textarea' },
+      { key: 'mimeType', label: 'MIME type' },
+      { key: 'width', label: 'Width', type: 'number' },
+      { key: 'height', label: 'Height', type: 'number' },
+      { key: 'durationSeconds', label: 'Duration seconds', type: 'number' },
+    ],
+  },
+  'generation-jobs': {
+    key: 'generation-jobs',
+    title: 'Generation Jobs',
+    description: 'Generation status, prompt inputs, credits, and recovery fields.',
+    searchPlaceholder: 'Search job id, product, status, template...',
+    idField: 'id',
+    icon: Film,
+    deleteEnabled: true,
+    columns: [
+      'id',
+      'userId',
+      'status',
+      'productName',
+      'templateSlug',
+      'durationSeconds',
+      'creditReserved',
+      'createdAt',
+    ],
+    columnLabels: {
+      userId: 'User ID',
+      productName: 'Product Name',
+      templateSlug: 'Template',
+      durationSeconds: 'Duration',
+      creditReserved: 'Reserved Credits',
+      createdAt: 'Created At',
+    },
+    columnWidths: {
+      id: 240,
+      userId: 96,
+      status: 128,
+      productName: 220,
+      templateSlug: 220,
+      durationSeconds: 112,
+      creditReserved: 136,
+      createdAt: 178,
+    },
+    tableMinWidth: 1360,
+    editableFields: [
+      {
+        key: 'status',
+        label: 'Status',
+        type: 'select',
+        options: ['queued', 'running', 'rendering', 'succeeded', 'failed'],
+      },
+      { key: 'productName', label: 'Product name' },
+      { key: 'headline', label: 'Headline' },
+      { key: 'sellingPoint', label: 'Selling point', type: 'textarea' },
+      { key: 'priceText', label: 'Price text' },
+      { key: 'ctaText', label: 'CTA text' },
+      { key: 'errorMessage', label: 'Error message', type: 'textarea' },
+    ],
+  },
+  'credit-ledger': {
+    key: 'credit-ledger',
+    title: 'Credit Ledger',
+    description: 'Credit movements and admin metadata notes.',
+    idField: 'id',
+    icon: ReceiptText,
+    deleteEnabled: false,
+    columns: [
+      'id',
+      'userId',
+      'jobId',
+      'delta',
+      'reason',
+      'balanceAfter',
+      'stripeEventId',
+      'createdAt',
+    ],
+    columnLabels: {
+      userId: 'User ID',
+      jobId: 'Job ID',
+      balanceAfter: 'Balance After',
+      stripeEventId: 'Stripe Event ID',
+      createdAt: 'Created At',
+    },
+    columnWidths: {
+      id: 240,
+      userId: 96,
+      jobId: 240,
+      delta: 92,
+      reason: 220,
+      balanceAfter: 140,
+      stripeEventId: 240,
+      createdAt: 178,
+    },
+    filterFields: [
+      {
+        key: 'userId',
+        label: 'User ID',
+        placeholder: 'Filter user_id',
+      },
+      {
+        key: 'jobId',
+        label: 'Job ID',
+        placeholder: 'Filter job_id',
+      },
+    ],
+    tableMinWidth: 1460,
+    editableFields: [
+      { key: 'delta', label: 'Delta', type: 'number', readOnly: true },
+      { key: 'reason', label: 'Reason', readOnly: true },
+      {
+        key: 'balanceAfter',
+        label: 'Balance after',
+        type: 'number',
+        readOnly: true,
+      },
+      { key: 'metadataJson', label: 'Metadata JSON', type: 'json' },
+    ],
+  },
+};
 
-function short(v: unknown, max = 32) {
-  if (v == null || v === '') return '-';
-  const t = typeof v === 'string' ? v : JSON.stringify(v);
-  return t.length > max ? t.slice(0, max) + '...' : t;
-}
-
-
-interface PaginatedResp {
-  list: Record<string, unknown>[];
-  total: number;
-  page: number;
-  pageSize: number;
-}
-
-function useAdminData(tableKey: TableKey) {
-  const [data, setData] = useState<PaginatedResp>({ list: [], total: 0, page: 1, pageSize: 20 });
-  const [search, setSearch] = useState('');
-  const [loading, setLoading] = useState(false);
-
-  const fetcher = useCallback(async (page = 1, searchTerm = '') => {
-    setLoading(true);
-    try {
-      const params = new URLSearchParams({ page: String(page), pageSize: '20' });
-      if (searchTerm) params.set('search', searchTerm);
-      const res = await fetch('/api/admin/' + tableKey + '?' + params);
-      const json = await res.json();
-      if (json.list) setData(json);
-    } finally {
-      setLoading(false);
-    }
-  }, [tableKey]);
-
-  useEffect(() => { fetcher(1, search); }, [fetcher, search]);
-
-  const handleDelete = async (id: string | number) => {
-    await fetch('/api/admin/' + tableKey, {
-      method: 'DELETE',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ id }),
-    });
-    fetcher(data.page, search);
-  };
-
-  const handleAction = async (action: string, body: Record<string, unknown>) => {
-    await fetch('/api/admin/' + tableKey, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ action, ...body }),
-    });
-    fetcher(data.page, search);
-  };
-
-  return { data, search, setSearch, loading, fetcher, handleDelete, handleAction, setData };
-}
-
-
-function DataTable({ rows, columns, onDelete, renderActions }: {
-  rows: Record<string, unknown>[];
-  columns: string[];
-  onDelete?: (row: Record<string, unknown>) => void;
-  renderActions?: (row: Record<string, unknown>) => React.ReactNode;
-}) {
-  if (!rows.length) return <div className="py-6 text-center text-gray-500">No data.</div>;
-  return (
-    <div className="overflow-x-auto">
-      <table className="w-full min-w-[720px] text-left text-sm">
-        <thead className="border-b text-xs uppercase text-gray-500">
-          <tr>
-            {columns.map((col) => <th key={col} className="py-2 pr-4">{col}</th>)}
-            {(onDelete || renderActions) && <th className="py-2">Actions</th>}
-          </tr>
-        </thead>
-        <tbody className="divide-y">
-          {rows.map((row, i) => (
-            <tr key={String(row.id ?? i)} className="align-top">
-              {columns.map((col) => (
-                <td key={col} className="py-2 pr-4 max-w-[240px]">
-                  <span className="break-words text-gray-700 text-xs">
-                    {col.endsWith('_at') || col === 'createdAt' || col === 'updatedAt'
-                      ? formatDate(String(row[col]))
-                      : short(row[col])}
-                  </span>
-                </td>
-              ))}
-              {(onDelete || renderActions) && (
-                <td className="py-2">
-                  <div className="flex gap-1">
-                    {renderActions?.(row)}
-                    {onDelete && (
-                      <Button size="sm" variant="destructive" onClick={() => onDelete(row)}>
-                        <Trash2 className="h-3 w-3" />
-                      </Button>
-                    )}
-                  </div>
-                </td>
-              )}
-            </tr>
-          ))}
-        </tbody>
-      </table>
-    </div>
+export function AdminShell({ canManageUsers }: { canManageUsers: boolean }) {
+  const visibleTables = TABLES.filter(
+    (table) => canManageUsers || !table.adminOnly
   );
-}
-
-function UsersPanel() {
-  const { data, search, setSearch, loading, handleDelete, handleAction } = useAdminData('users');
-  const columns = ['id', 'email', 'name', 'isAdmin', 'creditBalance', 'role', 'subscriptionStatus', 'createdAt', 'deletedAt'];
-
-  const renderActions = (row: Record<string, unknown>) => (
-    <>
-      {row.deletedAt ? (
-        <Button size="sm" variant="outline" onClick={() => handleAction('restore', { id: row.id })}>
-          <RotateCcw className="h-3 w-3" /> Restore
-        </Button>
-      ) : (
-        <Button size="sm" variant="destructive" onClick={() => handleDelete(row.id as number)}>
-          <Trash2 className="h-3 w-3" />
-        </Button>
-      )}
-    </>
-  );
-
-  return (
-    <Card className="rounded-lg">
-      <CardHeader>
-        <CardTitle className="flex items-center gap-2"><Users className="h-5 w-5 text-orange-600" />Users</CardTitle>
-      </CardHeader>
-      <CardContent>
-        <div className="flex gap-2 mb-4">
-          <Input placeholder="Search users..." value={search} onChange={(e) => setSearch(e.target.value)} className="max-w-sm" />
-        </div>
-        {loading ? <div className="py-6 text-center text-gray-500">Loading...</div> : <DataTable rows={data.list} columns={columns} renderActions={renderActions} />}
-        <div className="mt-2 text-xs text-gray-500">Total: {data.total}</div>
-      </CardContent>
-    </Card>
-  );
-}
-
-function GenericPanel({ tableKey, icon: Icon, title }: { tableKey: TableKey; icon: React.ComponentType<{ className?: string }>; title: string }) {
-  const { data, search, setSearch, loading, handleDelete } = useAdminData(tableKey);
-  const columns = data.list[0] ? Object.keys(data.list[0]).filter(k => k !== 'metadataJson' && k !== 'requestJson' && k !== 'responseJson' && k !== 'passwordHash') : [];
-
-  return (
-    <Card className="rounded-lg">
-      <CardHeader>
-        <CardTitle className="flex items-center gap-2"><Icon className="h-5 w-5 text-orange-600" />{title}</CardTitle>
-      </CardHeader>
-      <CardContent>
-        <div className="flex gap-2 mb-4">
-          <Input placeholder="Search..." value={search} onChange={(e) => setSearch(e.target.value)} className="max-w-sm" />
-        </div>
-        {loading ? <div className="py-6 text-center text-gray-500">Loading...</div> : <DataTable rows={data.list} columns={columns} onDelete={(row) => handleDelete(row.id as string)} />}
-        <div className="mt-2 text-xs text-gray-500">Total: {data.total}</div>
-      </CardContent>
-    </Card>
-  );
-}
-
-export function AdminShell() {
-  const [activeTab, setActiveTab] = useState<TableKey>('users');
+  const [activeTab, setActiveTab] = useState<TableKey>('templates');
   const [sidebarOpen, setSidebarOpen] = useState(true);
 
   return (
     <div className="flex h-[calc(100vh-64px)]">
-      {/* Sidebar */}
-      <aside className={`${sidebarOpen ? 'w-56' : 'w-12'} border-r border-gray-200 bg-gray-50 transition-all flex flex-col`}>
-        <div className="flex items-center justify-between px-3 py-3 border-b border-gray-200">
-          {sidebarOpen && <span className="text-xs font-semibold uppercase text-gray-500">Admin</span>}
-          <Button variant="ghost" size="sm" onClick={() => setSidebarOpen(!sidebarOpen)}>
-            <ChevronLeft className={`h-4 w-4 transition-transform ${sidebarOpen ? '' : 'rotate-180'}`} />
+      <aside
+        className={`flex flex-col border-r border-gray-200 bg-gray-50 transition-all ${
+          sidebarOpen ? 'w-56' : 'w-12'
+        }`}
+      >
+        <div className="flex items-center justify-between border-b border-gray-200 px-3 py-3">
+          {sidebarOpen ? (
+            <span className="text-xs font-semibold uppercase text-gray-500">
+              Admin
+            </span>
+          ) : null}
+          <Button
+            type="button"
+            variant="ghost"
+            size="sm"
+            onClick={() => setSidebarOpen(!sidebarOpen)}
+            aria-label={sidebarOpen ? 'Collapse sidebar' : 'Expand sidebar'}
+          >
+            <ChevronLeft
+              className={`size-4 transition-transform ${
+                sidebarOpen ? '' : 'rotate-180'
+              }`}
+            />
           </Button>
         </div>
         <nav className="flex-1 overflow-y-auto py-2">
-          {TABLES.map((t) => (
+          {visibleTables.map((table) => (
             <button
-              key={t.key}
-              onClick={() => setActiveTab(t.key)}
-              className={`w-full flex items-center gap-2 px-3 py-2 text-sm transition-colors ${activeTab === t.key ? 'bg-white text-orange-700 font-medium shadow-sm' : 'text-gray-600 hover:bg-gray-100'}`}
+              key={table.key}
+              type="button"
+              onClick={() => setActiveTab(table.key)}
+              className={`flex w-full items-center gap-2 px-3 py-2 text-sm transition-colors ${
+                activeTab === table.key
+                  ? 'bg-white font-medium text-orange-700 shadow-sm'
+                  : 'text-gray-600 hover:bg-gray-100'
+              }`}
+              title={table.label}
             >
-              <t.icon className="h-4 w-4 flex-shrink-0" />
-              {sidebarOpen && <span>{t.label}</span>}
+              <table.icon className="size-4 flex-shrink-0" />
+              {sidebarOpen ? <span>{table.label}</span> : null}
             </button>
           ))}
         </nav>
       </aside>
 
-      {/* Main content */}
-      <main className="flex-1 overflow-y-auto p-6">
-        {activeTab === 'users' && <UsersPanel />}
-        {activeTab === 'assets' && <GenericPanel tableKey="assets" icon={Image} title="Assets" />}
-        {activeTab === 'generation-jobs' && <GenericPanel tableKey="generation-jobs" icon={Film} title="Generation Jobs" />}
-        {activeTab === 'credit-ledger' && <GenericPanel tableKey="credit-ledger" icon={ReceiptText} title="Credit Ledger" />}
+      <main className="min-w-0 flex-1 overflow-y-auto bg-white p-6">
+        {activeTab === 'templates' ? (
+          <TemplatesPanel canPublish={canManageUsers} />
+        ) : null}
+        {activeTab !== 'templates' && activeTab in MANAGEMENT_CONFIGS ? (
+          <ManagementPanel
+            config={MANAGEMENT_CONFIGS[activeTab as Exclude<TableKey, 'templates'>]}
+            canEdit={canManageUsers}
+            canDelete={canManageUsers}
+          />
+        ) : null}
       </main>
     </div>
   );

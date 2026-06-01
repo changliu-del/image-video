@@ -3,9 +3,41 @@ import type { NextRequest } from 'next/server';
 import { signToken, verifyToken } from '@/lib/auth/session';
 
 const protectedRoutes = ['/dashboard', '/generate', '/jobs'];
+const marketingLocales = ['pt', 'en', 'zh'] as const;
+
+function getTextToImageRedirect(pathname: string) {
+  const segments = pathname.split('/').filter(Boolean);
+
+  if (segments.length === 1 && segments[0] === 'text-to-image') {
+    return '/pt/templates';
+  }
+
+  if (
+    segments.length === 2 &&
+    marketingLocales.includes(
+      segments[0] as (typeof marketingLocales)[number]
+    ) &&
+    segments[1] === 'text-to-image'
+  ) {
+    return `/${segments[0]}/templates`;
+  }
+
+  return null;
+}
 
 export async function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl;
+  const textToImageRedirect = getTextToImageRedirect(pathname);
+
+  if (textToImageRedirect) {
+    const redirectUrl = request.nextUrl.clone();
+    redirectUrl.pathname = textToImageRedirect;
+    redirectUrl.search = '';
+    redirectUrl.searchParams.set('type', 'image');
+
+    return NextResponse.redirect(redirectUrl, 308);
+  }
+
   const sessionCookie = request.cookies.get('session');
   const isProtectedRoute = protectedRoutes.some((route) =>
     pathname.startsWith(route)

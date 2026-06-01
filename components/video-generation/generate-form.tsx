@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useMemo, useState } from 'react';
-import { useRouter } from 'next/navigation';
+import { useRouter, useSearchParams } from 'next/navigation';
 import {
   AlertCircle,
   ImageIcon,
@@ -29,7 +29,7 @@ import {
 
 type AspectRatio = '9:16' | '1:1' | '16:9';
 type DurationSeconds = 5 | 8 | 10;
-type TemplateSlug = 'flash_sale' | 'new_arrival' | 'best_seller';
+type TemplateSlug = string;
 
 type PresignResponse = {
   assetId: string;
@@ -139,6 +139,8 @@ async function postJson<TResponse>(
 
 export function GenerateForm() {
   const router = useRouter();
+  const searchParams = useSearchParams();
+  const requestedTemplateSlug = searchParams.get('template')?.trim() || 'flash_sale';
   const [productImage, setProductImage] = useState<File | null>(null);
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
   const [productName, setProductName] = useState('');
@@ -149,7 +151,7 @@ export function GenerateForm() {
   const [durationSeconds, setDurationSeconds] =
     useState<DurationSeconds>(5);
   const [templateSlug, setTemplateSlug] =
-    useState<TemplateSlug>('flash_sale');
+    useState<TemplateSlug>(requestedTemplateSlug);
   const [submitStep, setSubmitStep] = useState<SubmitStep>('idle');
   const [error, setError] = useState<string | null>(null);
 
@@ -165,6 +167,17 @@ export function GenerateForm() {
 
     return `${productImage.name} · ${formatFileSize(productImage.size)}`;
   }, [productImage]);
+
+  const availableTemplateOptions = useMemo(() => {
+    if (templateOptions.some((option) => option.value === templateSlug)) {
+      return templateOptions;
+    }
+
+    return [
+      { label: templateSlug.replace(/[-_]/g, ' '), value: templateSlug },
+      ...templateOptions,
+    ];
+  }, [templateSlug]);
 
   useEffect(() => {
     if (!productImage) {
@@ -488,7 +501,7 @@ export function GenerateForm() {
                   disabled={isSubmitting}
                   className="border-input focus-visible:border-ring focus-visible:ring-ring/50 flex h-9 w-full rounded-md border bg-transparent px-3 py-1 text-base shadow-xs outline-none transition-[color,box-shadow] focus-visible:ring-[3px] disabled:cursor-not-allowed disabled:opacity-50 md:text-sm"
                 >
-                  {templateOptions.map((option) => (
+                  {availableTemplateOptions.map((option) => (
                     <option key={option.value} value={option.value}>
                       {option.label}
                     </option>

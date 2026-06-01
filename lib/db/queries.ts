@@ -1,6 +1,6 @@
 import { and, eq, isNull } from 'drizzle-orm';
 import { db } from './drizzle';
-import { users } from './schema';
+import { type User, users } from './schema';
 import { cookies } from 'next/headers';
 import { verifyToken } from '@/lib/auth/session';
 
@@ -45,10 +45,27 @@ export async function requireUser() {
   return user;
 }
 
+export function hasAdminAccess(user: Pick<User, 'isAdmin' | 'role'>) {
+  return user.isAdmin || user.role === 'admin';
+}
+
+export function hasOpsAccess(user: Pick<User, 'isAdmin' | 'role'>) {
+  return hasAdminAccess(user) || user.role === 'ops';
+}
+
 export async function requireAdmin() {
   const user = await requireUser();
-  if (!user.isAdmin) {
+  if (!hasAdminAccess(user)) {
     throw new Error('Admin access required');
+  }
+
+  return user;
+}
+
+export async function requireOpsOrAdmin() {
+  const user = await requireUser();
+  if (!hasOpsAccess(user)) {
+    throw new Error('Ops access required');
   }
 
   return user;

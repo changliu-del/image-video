@@ -21,7 +21,7 @@ export async function updateAdminUserAction(formData: FormData) {
   const isAdmin = formData.get('isAdmin') === 'on';
   if (!email) throw new Error('Email is required');
   if (admin.id === userId && !isAdmin) throw new Error('You cannot revoke your own admin access');
-  await db.update(users).set({ name, email, isAdmin, updatedAt: new Date() }).where(eq(users.id, userId));
+  await db.update(users).set({ name, email, isAdmin, role: isAdmin ? 'admin' : 'member', updatedAt: new Date() }).where(eq(users.id, userId));
   revalidatePath('/admin');
 }
 

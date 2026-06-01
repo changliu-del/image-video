@@ -20,6 +20,10 @@ import {
   validatedActionWithUser
 } from '@/lib/auth/middleware';
 
+function isSafeLocalRedirect(value: string | null | undefined) {
+  return Boolean(value && value.startsWith('/') && !value.startsWith('//'));
+}
+
 const signInSchema = z.object({
   email: z.string().email().min(3).max(255),
   password: z.string().min(1).max(100)
@@ -63,6 +67,10 @@ export const signIn = validatedAction(signInSchema, async (data, formData) => {
   if (redirectTo === 'checkout') {
     const priceId = formData.get('priceId') as string;
     return createCheckoutSession({ priceId });
+  }
+
+  if (isSafeLocalRedirect(redirectTo)) {
+    redirect(redirectTo!);
   }
 
   redirect('/dashboard');
@@ -145,6 +153,10 @@ export const signUp = validatedAction(signUpSchema, async (data, formData) => {
   if (redirectTo === 'checkout') {
     const priceId = formData.get('priceId') as string;
     return createCheckoutSession({ priceId });
+  }
+
+  if (isSafeLocalRedirect(redirectTo)) {
+    redirect(redirectTo!);
   }
 
   redirect('/dashboard');

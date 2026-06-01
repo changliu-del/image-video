@@ -1,14 +1,43 @@
-import { NextRequest, NextResponse } from 'next/server';
-import { listJobs, removeJob } from '@/lib/admin/services';
+import { type NextRequest, NextResponse } from 'next/server';
+import { listJobs, removeJob, updateJob } from '@/lib/admin/services';
 import { parsePagination } from '@/lib/admin/services/shared';
+import { adminRouteError, readJsonBody } from '../_utils';
 
-export async function GET(req: NextRequest) {
-  const { page, pageSize } = parsePagination(req.nextUrl.searchParams);
-  return NextResponse.json(await listJobs({ page, pageSize }));
+export async function GET(request: NextRequest) {
+  try {
+    const { search, page, pageSize } = parsePagination(
+      request.nextUrl.searchParams
+    );
+    return NextResponse.json(await listJobs({ search, page, pageSize }));
+  } catch (error) {
+    return adminRouteError(error, 'Failed to list generation jobs');
+  }
 }
 
-export async function DELETE(req: NextRequest) {
-  const { id } = await req.json();
-  await removeJob(id);
-  return NextResponse.json({ success: true });
+export async function PUT(request: NextRequest) {
+  try {
+    const body = (await readJsonBody(request)) as Record<string, unknown>;
+    const { id, ...data } = body;
+    if (typeof id !== 'string') {
+      throw new Error('id required');
+    }
+
+    return NextResponse.json(await updateJob(id, data));
+  } catch (error) {
+    return adminRouteError(error, 'Failed to update generation job');
+  }
+}
+
+export async function DELETE(request: NextRequest) {
+  try {
+    const body = (await readJsonBody(request)) as Record<string, unknown>;
+    if (typeof body.id !== 'string') {
+      throw new Error('id required');
+    }
+
+    await removeJob(body.id);
+    return NextResponse.json({ success: true });
+  } catch (error) {
+    return adminRouteError(error, 'Failed to delete generation job');
+  }
 }

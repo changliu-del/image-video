@@ -1,3 +1,4 @@
+import { Suspense } from 'react';
 import { GenerateForm } from '@/components/video-generation/generate-form';
 
 export default function GeneratePage() {
@@ -9,7 +10,9 @@ export default function GeneratePage() {
             Generate video
           </h1>
         </div>
-        <GenerateForm />
+        <Suspense fallback={<div className="rounded-lg border bg-white p-6 text-sm text-gray-500">Loading generator...</div>}>
+          <GenerateForm />
+        </Suspense>
       </div>
     </section>
   );

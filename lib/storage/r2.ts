@@ -19,9 +19,27 @@ type R2Config = {
 
 type SignedPutUrlInput = {
   storageKey: string;
-  mimeType: UploadMimeType;
+  mimeType: string;
   sizeBytes: number;
   expiresInSeconds?: number;
+};
+
+export const TEMPLATE_ASSET_MIME_TYPES = [
+  'image/png',
+  'image/jpeg',
+  'image/webp',
+  'video/mp4',
+  'video/webm',
+] as const;
+
+export type TemplateAssetMimeType = (typeof TEMPLATE_ASSET_MIME_TYPES)[number];
+
+const TEMPLATE_ASSET_MIME_EXTENSIONS: Record<TemplateAssetMimeType, string> = {
+  'image/png': 'png',
+  'image/jpeg': 'jpg',
+  'image/webp': 'webp',
+  'video/mp4': 'mp4',
+  'video/webm': 'webm',
 };
 
 let cachedClient: S3Client | null = null;
@@ -89,6 +107,26 @@ export function buildPublicUrl(storageKey: string) {
   return `${config.publicBaseUrl}/${storageKey}`;
 }
 
+export function getTemplateAssetExtension(mimeType: TemplateAssetMimeType) {
+  return TEMPLATE_ASSET_MIME_EXTENSIONS[mimeType];
+}
+
+export function isTemplateAssetMimeType(
+  mimeType: string
+): mimeType is TemplateAssetMimeType {
+  return TEMPLATE_ASSET_MIME_TYPES.includes(
+    mimeType as TemplateAssetMimeType
+  );
+}
+
+export function buildTemplateAssetStorageKey(
+  templateId: string,
+  assetId: string,
+  mimeType: TemplateAssetMimeType
+) {
+  return `templates/${templateId}/${assetId}.${getTemplateAssetExtension(mimeType)}`;
+}
+
 export function storageKeyBelongsToUser(userId: number, storageKey: string) {
   return (
     storageKey.startsWith(`users/${userId}/uploads/`) &&
@@ -113,16 +151,70 @@ export function storageKeyMatchesUploadAsset(
   return storageKey.startsWith(prefix) && allowedExtensions.has(extension);
 }
 
+export function storageKeyMatchesTemplateAsset(
+  templateId: string,
+  assetId: string,
+  storageKey: string
+) {
+  if (
+    !storageKey.startsWith(`templates/${templateId}/`) ||
+    storageKey.includes('..') ||
+    storageKey.includes('//')
+  ) {
+    return false;
+  }
+
+  const allowedExtensions = new Set(
+    Object.values(TEMPLATE_ASSET_MIME_EXTENSIONS)
+  );
+  const prefix = `templates/${templateId}/${assetId}.`;
+  const extension = storageKey.slice(prefix.length);
+
+  return storageKey.startsWith(prefix) && allowedExtensions.has(extension);
+}
+
 export async function createSignedPutUrl({
   storageKey,
   mimeType,
   sizeBytes,
   expiresInSeconds = 300,
 }: SignedPutUrlInput) {
-  if (!ALLOWED_UPLOAD_MIME_TYPES.includes(mimeType)) {
+  if (!ALLOWED_UPLOAD_MIME_TYPES.includes(mimeType as UploadMimeType)) {
     throw new Error(`Unsupported upload MIME type: ${mimeType}`);
   }
 
+  return createSignedPutUrlForMime({
+    storageKey,
+    mimeType,
+    sizeBytes,
+    expiresInSeconds,
+  });
+}
+
+export async function createSignedTemplateAssetPutUrl({
+  storageKey,
+  mimeType,
+  sizeBytes,
+  expiresInSeconds = 300,
+}: SignedPutUrlInput) {
+  if (!isTemplateAssetMimeType(mimeType)) {
+    throw new Error(`Unsupported template asset MIME type: ${mimeType}`);
+  }
+
+  return createSignedPutUrlForMime({
+    storageKey,
+    mimeType,
+    sizeBytes,
+    expiresInSeconds,
+  });
+}
+
+async function createSignedPutUrlForMime({
+  storageKey,
+  mimeType,
+  sizeBytes,
+  expiresInSeconds,
+}: Required<SignedPutUrlInput>) {
   const config = getR2Config();
   const client = getR2Client(config);
   const command = new PutObjectCommand({

@@ -1,0 +1,590 @@
+'use client';
+
+import { useCallback, useEffect, useMemo, useState } from 'react';
+import type { ComponentType } from 'react';
+import { Edit3, Eye, Loader2, RotateCcw, Search, Trash2 } from 'lucide-react';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import {
+  AdminManagementTable,
+  AdminModal,
+  AdminRecordDetails,
+  formatAdminLabel,
+  formatAdminValue,
+  type AdminTableAction,
+  type AdminTableColumn,
+} from '@/components/admin/admin-management-table';
+
+export type AdminTableKey =
+  | 'users'
+  | 'assets'
+  | 'generation-jobs'
+  | 'credit-ledger';
+
+type FieldType = 'text' | 'number' | 'textarea' | 'select' | 'json';
+
+export type AdminField = {
+  key: string;
+  label: string;
+  type?: FieldType;
+  options?: string[];
+  readOnly?: boolean;
+};
+
+export type AdminFilterField = {
+  key: string;
+  label: string;
+  placeholder: string;
+};
+
+export type AdminTableConfig = {
+  key: AdminTableKey;
+  title: string;
+  description: string;
+  searchPlaceholder?: string;
+  idField: string;
+  columns: string[];
+  columnLabels?: Record<string, string>;
+  columnWidths?: Record<string, number>;
+  editableFields: AdminField[];
+  deleteEnabled?: boolean;
+  filterFields?: AdminFilterField[];
+  icon?: ComponentType<{ className?: string }>;
+  tableMinWidth?: number;
+};
+
+type PaginatedResp = {
+  list: Record<string, unknown>[];
+  total: number;
+  page: number;
+  pageSize: number;
+};
+
+type ModalMode = 'view' | 'edit';
+
+function normalizeInitialValue(value: unknown, field: AdminField) {
+  if (field.type === 'json') {
+    if (typeof value === 'string') {
+      try {
+        return JSON.stringify(JSON.parse(value), null, 2);
+      } catch {
+        return value;
+      }
+    }
+    return value == null ? '{}' : JSON.stringify(value, null, 2);
+  }
+  return value == null ? '' : String(value);
+}
+
+function denormalizeValue(value: string, field: AdminField) {
+  if (field.type === 'number') {
+    return value.trim() ? Number(value) : null;
+  }
+  if (field.type === 'json') {
+    return value.trim() ? JSON.parse(value) : {};
+  }
+  return value.trim();
+}
+
+async function readError(response: Response, fallback: string) {
+  try {
+    const data = (await response.json()) as { error?: string };
+    return data.error || fallback;
+  } catch {
+    return fallback;
+  }
+}
+
+function DetailField({
+  field,
+  value,
+  onChange,
+}: {
+  field: AdminField;
+  value: string;
+  onChange: (value: string) => void;
+}) {
+  const disabled = field.readOnly;
+  const baseClass =
+    'w-full rounded-md border border-gray-200 bg-white px-3 py-2 text-sm outline-none transition focus:border-gray-400 disabled:bg-gray-50 disabled:text-gray-500';
+
+  return (
+    <label className="grid gap-2">
+      <span className="text-xs font-semibold uppercase text-gray-500">
+        {field.label}
+      </span>
+      {field.type === 'textarea' || field.type === 'json' ? (
+        <textarea
+          value={value}
+          disabled={disabled}
+          onChange={(event) => onChange(event.target.value)}
+          rows={field.type === 'json' ? 8 : 4}
+          className={baseClass}
+        />
+      ) : field.type === 'select' ? (
+        <select
+          value={value}
+          disabled={disabled}
+          onChange={(event) => onChange(event.target.value)}
+          className="h-9 rounded-md border border-gray-200 bg-white px-3 text-sm disabled:bg-gray-50 disabled:text-gray-500"
+        >
+          <option value="">Select...</option>
+          {(field.options ?? []).map((option) => (
+            <option key={option} value={option}>
+              {option}
+            </option>
+          ))}
+        </select>
+      ) : (
+        <Input
+          value={value}
+          type={field.type === 'number' ? 'number' : 'text'}
+          disabled={disabled}
+          onChange={(event) => onChange(event.target.value)}
+        />
+      )}
+    </label>
+  );
+}
+
+function initialFilters(config: AdminTableConfig) {
+  return Object.fromEntries(
+    (config.filterFields ?? []).map((field) => [field.key, ''])
+  ) as Record<string, string>;
+}
+
+export function ManagementPanel({
+  canDelete,
+  canEdit,
+  config,
+}: {
+  canDelete: boolean;
+  canEdit: boolean;
+  config: AdminTableConfig;
+}) {
+  const [data, setData] = useState<PaginatedResp>({
+    list: [],
+    total: 0,
+    page: 1,
+    pageSize: 20,
+  });
+  const [search, setSearch] = useState('');
+  const [appliedSearch, setAppliedSearch] = useState('');
+  const [filters, setFilters] = useState<Record<string, string>>(() =>
+    initialFilters(config)
+  );
+  const [appliedFilters, setAppliedFilters] = useState<Record<string, string>>(
+    () => initialFilters(config)
+  );
+  const [loading, setLoading] = useState(false);
+  const [saving, setSaving] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [selectedRow, setSelectedRow] = useState<Record<string, unknown> | null>(
+    null
+  );
+  const [draft, setDraft] = useState<Record<string, string>>({});
+  const [modalMode, setModalMode] = useState<ModalMode | null>(null);
+
+  const endpoint = `/api/admin/${config.key}`;
+
+  const fetcher = useCallback(
+    async (page = 1) => {
+      setLoading(true);
+      setError(null);
+      try {
+        const params = new URLSearchParams({
+          page: String(page),
+          pageSize: String(data.pageSize),
+        });
+        if (appliedSearch) params.set('search', appliedSearch);
+        for (const [key, value] of Object.entries(appliedFilters)) {
+          if (value.trim()) params.set(key, value.trim());
+        }
+        const response = await fetch(`${endpoint}?${params}`);
+        if (!response.ok) {
+          throw new Error(await readError(response, 'Load failed'));
+        }
+        const json = (await response.json()) as PaginatedResp;
+        setData(json);
+      } catch (loadError) {
+        setError(loadError instanceof Error ? loadError.message : 'Load failed');
+      } finally {
+        setLoading(false);
+      }
+    },
+    [appliedFilters, appliedSearch, data.pageSize, endpoint]
+  );
+
+  useEffect(() => {
+    fetcher(1);
+  }, [fetcher]);
+
+  const columns = useMemo(() => {
+    const sourceColumns = config.columns.length
+      ? config.columns
+      : data.list[0]
+        ? Object.keys(data.list[0]).filter(
+            (key) =>
+              key !== 'passwordHash' &&
+              key !== 'metadataJson' &&
+              key !== 'requestJson' &&
+              key !== 'responseJson'
+          )
+        : [];
+
+    return sourceColumns.map((key): AdminTableColumn => {
+      const isPrimary = ['email', 'title', 'productName', 'storageKey'].includes(
+        key
+      );
+      const isStatus = ['status', 'role', 'subscriptionStatus'].includes(key);
+      const isTime = key.endsWith('At') || key.endsWith('_at');
+      const isNumber = [
+        'creditBalance',
+        'creditReserved',
+        'delta',
+        'balanceAfter',
+        'sizeBytes',
+        'durationSeconds',
+      ].includes(key);
+
+      return {
+        key,
+        label: config.columnLabels?.[key] ?? formatAdminLabel(key),
+        kind:
+          key === config.idField
+            ? 'id'
+            : isPrimary
+              ? 'primary'
+              : isStatus
+                ? 'status'
+                : isTime
+                  ? 'time'
+                  : isNumber
+                    ? 'number'
+                    : undefined,
+        width:
+          config.columnWidths?.[key] ??
+          (key === config.idField
+            ? 190
+            : ['storageKey', 'publicUrl'].includes(key)
+              ? 280
+              : isTime
+                ? 178
+                : undefined),
+      };
+    });
+  }, [config, data.list]);
+
+  function prepareDraft(row: Record<string, unknown>) {
+    const nextDraft: Record<string, string> = {};
+    for (const field of config.editableFields) {
+      nextDraft[field.key] = normalizeInitialValue(row[field.key], field);
+    }
+    setDraft(nextDraft);
+  }
+
+  function openView(row: Record<string, unknown>) {
+    setSelectedRow(row);
+    prepareDraft(row);
+    setModalMode('view');
+    setError(null);
+  }
+
+  function openEdit(row: Record<string, unknown>) {
+    setSelectedRow(row);
+    prepareDraft(row);
+    setModalMode('edit');
+    setError(null);
+  }
+
+  async function saveRow() {
+    if (!selectedRow) return;
+    setSaving(true);
+    setError(null);
+    try {
+      const body: Record<string, unknown> = {
+        id: selectedRow[config.idField],
+      };
+      for (const field of config.editableFields) {
+        if (field.readOnly) continue;
+        body[field.key] = denormalizeValue(draft[field.key] ?? '', field);
+      }
+      const response = await fetch(endpoint, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(body),
+      });
+      if (!response.ok) {
+        throw new Error(await readError(response, 'Save failed'));
+      }
+      const updated = (await response.json()) as Record<string, unknown>;
+      setSelectedRow(updated);
+      prepareDraft(updated);
+      setModalMode('view');
+      await fetcher(data.page);
+    } catch (saveError) {
+      setError(saveError instanceof Error ? saveError.message : 'Save failed');
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  async function deleteRow(row: Record<string, unknown>) {
+    if (
+      !window.confirm(
+        `Delete ${formatAdminValue(row[config.idField], 80)} from ${config.title}?`
+      )
+    ) {
+      return;
+    }
+
+    setSaving(true);
+    setError(null);
+    try {
+      const response = await fetch(endpoint, {
+        method: 'DELETE',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ id: row[config.idField] }),
+      });
+      if (!response.ok) {
+        throw new Error(await readError(response, 'Delete failed'));
+      }
+      if (selectedRow?.[config.idField] === row[config.idField]) {
+        setSelectedRow(null);
+        setModalMode(null);
+      }
+      await fetcher(data.page);
+    } catch (deleteError) {
+      setError(deleteError instanceof Error ? deleteError.message : 'Delete failed');
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  async function restoreUser(row: Record<string, unknown>) {
+    setSaving(true);
+    setError(null);
+    try {
+      const response = await fetch(endpoint, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ action: 'restore', id: row[config.idField] }),
+      });
+      if (!response.ok) {
+        throw new Error(await readError(response, 'Restore failed'));
+      }
+      await fetcher(data.page);
+    } catch (restoreError) {
+      setError(restoreError instanceof Error ? restoreError.message : 'Restore failed');
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  function applySearch() {
+    setAppliedSearch(search.trim());
+    setAppliedFilters(filters);
+  }
+
+  function resetSearch() {
+    const emptyFilters = initialFilters(config);
+    setSearch('');
+    setAppliedSearch('');
+    setFilters(emptyFilters);
+    setAppliedFilters(emptyFilters);
+  }
+
+  function tableActions(row: Record<string, unknown>): AdminTableAction[] {
+    const actions: AdminTableAction[] = [
+      {
+        key: 'view',
+        label: 'View details',
+        icon: Eye,
+        onClick: openView,
+      },
+    ];
+
+    if (canEdit) {
+      actions.push({
+        key: 'edit',
+        label: 'Edit',
+        icon: Edit3,
+        onClick: openEdit,
+      });
+    }
+
+    const isDeletedUser = config.key === 'users' && row.deletedAt;
+
+    if (canEdit && isDeletedUser) {
+      actions.push({
+        key: 'restore',
+        label: 'Restore',
+        icon: RotateCcw,
+        variant: 'outline',
+        onClick: restoreUser,
+      });
+    }
+
+    if (canDelete && config.deleteEnabled && !isDeletedUser) {
+      actions.push({
+        key: 'delete',
+        label: 'Delete',
+        icon: Trash2,
+        variant: 'destructive',
+        onClick: deleteRow,
+      });
+    }
+
+    return actions;
+  }
+
+  const toolbarFilters = config.filterFields?.length ? (
+    <>
+      {config.filterFields.map((field) => (
+        <label key={field.key} className="grid gap-1">
+          <span className="text-[11px] font-semibold uppercase text-gray-500">
+            {field.label}
+          </span>
+          <Input
+            value={filters[field.key] ?? ''}
+            onChange={(event) =>
+              setFilters((current) => ({
+                ...current,
+                [field.key]: event.target.value,
+              }))
+            }
+            placeholder={field.placeholder}
+            className="w-52"
+          />
+        </label>
+      ))}
+      <Button
+        type="submit"
+        className="self-end bg-orange-600 text-white hover:bg-orange-700"
+      >
+        <Search className="size-4" />
+        Search
+      </Button>
+    </>
+  ) : null;
+
+  const selectedKey =
+    selectedRow && selectedRow[config.idField] != null
+      ? String(selectedRow[config.idField])
+      : null;
+
+  return (
+    <>
+      <AdminManagementTable
+        actions={tableActions}
+        columns={columns}
+        description={config.description}
+        emptyText="No records."
+        error={error}
+        icon={config.icon}
+        loading={loading}
+        onRefresh={() => fetcher(data.page)}
+        onReset={resetSearch}
+        onRowClick={openView}
+        onSearch={applySearch}
+        onSearchValueChange={
+          config.searchPlaceholder ? setSearch : undefined
+        }
+        pagination={{
+          page: data.page,
+          pageSize: data.pageSize,
+          total: data.total,
+          onPageChange: fetcher,
+        }}
+        rowKey={(row, index) => String(row[config.idField] ?? index)}
+        rows={data.list}
+        searchPlaceholder={config.searchPlaceholder}
+        searchValue={search}
+        selectedRowKey={selectedKey}
+        tableMinWidth={config.tableMinWidth ?? 1160}
+        title={config.title}
+        toolbarFilters={toolbarFilters}
+      />
+
+      <AdminModal
+        open={Boolean(modalMode && selectedRow)}
+        title={
+          modalMode === 'edit'
+            ? `Edit ${config.title}`
+            : `${config.title} details`
+        }
+        maxWidth="max-w-4xl"
+        onClose={() => setModalMode(null)}
+        footer={
+          modalMode === 'edit' ? (
+            <>
+              <Button
+                type="button"
+                variant="outline"
+                onClick={() => setModalMode('view')}
+              >
+                Cancel
+              </Button>
+              <Button type="button" onClick={saveRow} disabled={saving}>
+                {saving ? (
+                  <Loader2 className="size-4 animate-spin" />
+                ) : (
+                  <Edit3 className="size-4" />
+                )}
+                Save changes
+              </Button>
+            </>
+          ) : (
+            <>
+              <Button
+                type="button"
+                variant="outline"
+                onClick={() => setModalMode(null)}
+              >
+                Close
+              </Button>
+              {canEdit ? (
+                <Button type="button" onClick={() => setModalMode('edit')}>
+                  <Edit3 className="size-4" />
+                  Edit
+                </Button>
+              ) : null}
+            </>
+          )
+        }
+      >
+        {selectedRow && modalMode === 'edit' ? (
+          <div className="grid gap-4">
+            <div className="rounded-lg border border-gray-200 bg-gray-50 p-3 text-xs text-gray-500">
+              <div className="font-mono">
+                {formatAdminValue(selectedRow[config.idField], 100)}
+              </div>
+            </div>
+            <div className="grid gap-4 sm:grid-cols-2">
+              {config.editableFields.map((field) => (
+                <DetailField
+                  key={field.key}
+                  field={field}
+                  value={draft[field.key] ?? ''}
+                  onChange={(value) =>
+                    setDraft((current) => ({ ...current, [field.key]: value }))
+                  }
+                />
+              ))}
+            </div>
+          </div>
+        ) : selectedRow ? (
+          <AdminRecordDetails
+            record={selectedRow}
+            columns={[
+              ...config.columns,
+              ...config.editableFields
+                .map((field) => field.key)
+                .filter((key) => !config.columns.includes(key)),
+            ]}
+          />
+        ) : null}
+      </AdminModal>
+    </>
+  );
+}

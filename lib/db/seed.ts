@@ -20,7 +20,7 @@ async function seed() {
       .set({
         name: 'Admin',
         passwordHash,
-        role: 'member',
+        role: 'admin',
         isAdmin: true,
         creditBalance: 0,
         deletedAt: null,
@@ -33,7 +33,7 @@ async function seed() {
       name: 'Admin',
       email,
       passwordHash,
-      role: 'member',
+      role: 'admin',
       isAdmin: true,
       creditBalance: 0,
     });

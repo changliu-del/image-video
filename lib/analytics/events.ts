@@ -28,7 +28,7 @@ export type GenerationStartedProperties = AnalyticsProperties & {
   inputAssetId: string;
   aspectRatio: '9:16' | '1:1' | '16:9';
   durationSeconds: 5 | 8 | 10;
-  templateSlug: 'flash_sale' | 'new_arrival' | 'best_seller';
+  templateSlug: string;
   source: 'generate_form';
 };
 

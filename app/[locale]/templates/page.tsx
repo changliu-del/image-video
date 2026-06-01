@@ -1,14 +1,14 @@
 import type { Metadata } from 'next';
 import { notFound } from 'next/navigation';
-import { MarketingTextToImagePage } from '@/components/marketing/text-to-image-page';
+import { MarketingTemplatesPage } from '@/components/marketing/templates-page';
 import {
-  getMarketingContent,
   isLocale,
   locales,
   type Locale,
 } from '@/lib/marketing/content';
+import { templatesPageContent } from '@/lib/templates/catalog';
 
-type TextToImagePageProps = {
+type TemplatesPageProps = {
   params: Promise<{
     locale: string;
   }>;
@@ -20,35 +20,35 @@ export function generateStaticParams() {
 
 export async function generateMetadata({
   params,
-}: TextToImagePageProps): Promise<Metadata> {
+}: TemplatesPageProps): Promise<Metadata> {
   const { locale } = await params;
 
   if (!isLocale(locale)) {
     return {};
   }
 
-  const content = getMarketingContent(locale).textToImage.metadata;
+  const content = templatesPageContent[locale].metadata;
 
   return {
     title: content.title,
     description: content.description,
     alternates: {
-      canonical: `/${locale}/text-to-image`,
+      canonical: `/${locale}/templates`,
       languages: {
-        pt: '/pt/text-to-image',
-        en: '/en/text-to-image',
-        zh: '/zh/text-to-image',
+        pt: '/pt/templates',
+        en: '/en/templates',
+        zh: '/zh/templates',
       },
     },
   };
 }
 
-export default async function TextToImagePage({ params }: TextToImagePageProps) {
+export default async function TemplatesPage({ params }: TemplatesPageProps) {
   const { locale } = await params;
 
   if (!isLocale(locale)) {
     notFound();
   }
 
-  return <MarketingTextToImagePage locale={locale as Locale} />;
+  return <MarketingTemplatesPage locale={locale as Locale} />;
 }
