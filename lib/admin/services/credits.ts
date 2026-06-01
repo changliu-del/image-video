@@ -19,11 +19,19 @@ export async function listCredits(params: {
   search?: string;
   userId?: string;
   jobId?: string;
+  createdAt?: string;
   page?: number;
   pageSize?: number;
 }): Promise<PaginatedResult<typeof creditLedger.$inferSelect>> {
   await requireAdmin();
-  const { search = '', userId = '', jobId = '', page = 1, pageSize = 20 } = params;
+  const {
+    search = '',
+    userId = '',
+    jobId = '',
+    createdAt = '',
+    page = 1,
+    pageSize = 20,
+  } = params;
   const conditions: SQL[] = [];
 
   if (search.trim()) {
@@ -32,7 +40,8 @@ export async function listCredits(params: {
       ilikeCol(creditLedger.userId, search),
       ilikeCol(creditLedger.jobId, search),
       ilikeCol(creditLedger.reason, search),
-      ilikeCol(creditLedger.stripeEventId, search)
+      ilikeCol(creditLedger.stripeEventId, search),
+      ilikeCol(creditLedger.createdAt, search)
     );
     if (searchCondition) conditions.push(searchCondition);
   }
@@ -43,6 +52,10 @@ export async function listCredits(params: {
 
   if (jobId.trim()) {
     conditions.push(ilikeCol(creditLedger.jobId, jobId));
+  }
+
+  if (createdAt.trim()) {
+    conditions.push(ilikeCol(creditLedger.createdAt, createdAt));
   }
 
   const where = conditions.length ? and(...conditions) : undefined;

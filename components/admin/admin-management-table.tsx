@@ -53,10 +53,11 @@ export function formatAdminDate(value: unknown) {
   if (!value) return '-';
   const parsed = new Date(String(value));
   if (Number.isNaN(parsed.getTime())) return formatAdminValue(value);
-  return parsed.toLocaleString('en', {
-    dateStyle: 'medium',
-    timeStyle: 'short',
-  });
+  const pad = (part: number) => String(part).padStart(2, '0');
+  return [
+    `${parsed.getFullYear()}-${pad(parsed.getMonth() + 1)}-${pad(parsed.getDate())}`,
+    `${pad(parsed.getHours())}:${pad(parsed.getMinutes())}`,
+  ].join(' ');
 }
 
 export function formatAdminValue(value: unknown, max = 42) {
@@ -338,35 +339,20 @@ export function AdminManagementTable<T extends AdminTableRow>({
               <p className="mt-2 text-sm text-gray-500">{description}</p>
             ) : null}
           </div>
-          <div className="flex items-center gap-2">
-            {primaryAction}
-            {onRefresh ? (
-              <Button
-                type="button"
-                variant="outline"
-                size="icon"
-                className="size-9"
-                onClick={onRefresh}
-                aria-label="Refresh"
-                title="Refresh"
-              >
-                <RefreshCw
-                  className={cn('size-4', loading && 'animate-spin')}
-                />
-              </Button>
-            ) : null}
-          </div>
         </div>
       </CardHeader>
       <CardContent className="px-6 py-4">
-        {showSearch || toolbarFilters ? (
+        {showSearch || toolbarFilters || primaryAction || onRefresh ? (
           <form
             onSubmit={submitSearch}
-            className="mb-4 flex flex-wrap items-center gap-2 border-b border-gray-200 pb-4"
+            className={cn(
+              'mb-4 flex flex-wrap items-end gap-2 border-b border-gray-200 pb-4',
+              primaryAction && 'sm:flex-nowrap'
+            )}
           >
             {showSearch ? (
               <>
-                <div className="relative w-full max-w-sm">
+                <div className="relative w-full min-w-0 sm:w-auto sm:flex-1">
                   <Search className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-gray-400" />
                   <Input
                     value={searchValue ?? ''}
@@ -388,9 +374,34 @@ export function AdminManagementTable<T extends AdminTableRow>({
             ) : null}
             {toolbarFilters}
             {onReset ? (
-              <Button type="button" variant="outline" onClick={onReset}>
+              <Button
+                type="button"
+                variant="outline"
+                className="self-end"
+                onClick={onReset}
+              >
                 Reset
               </Button>
+            ) : null}
+            {onRefresh ? (
+              <Button
+                type="button"
+                variant="outline"
+                size="icon"
+                className="size-9 self-end"
+                onClick={onRefresh}
+                aria-label="Refresh"
+                title="Refresh"
+              >
+                <RefreshCw
+                  className={cn('size-4', loading && 'animate-spin')}
+                />
+              </Button>
+            ) : null}
+            {primaryAction ? (
+              <div className="ml-auto flex items-center gap-2">
+                {primaryAction}
+              </div>
             ) : null}
           </form>
         ) : null}
@@ -403,8 +414,8 @@ export function AdminManagementTable<T extends AdminTableRow>({
 
         <div className="overflow-x-auto rounded-md border border-gray-200">
           <table
-            className="min-w-full border-separate border-spacing-0 text-left text-sm"
-            style={{ minWidth: tableMinWidth }}
+            className="w-full min-w-full border-separate border-spacing-0 text-left text-sm"
+            style={{ minWidth: tableMinWidth, width: '100%' }}
           >
             <thead>
               <tr className="bg-gray-50 text-xs text-gray-500">

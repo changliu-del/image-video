@@ -1,6 +1,8 @@
 'use client';
 
+import Link from 'next/link';
 import { useState } from 'react';
+import { useSearchParams } from 'next/navigation';
 import {
   ChevronLeft,
   Film,
@@ -15,6 +17,7 @@ import {
   ManagementPanel,
   type AdminTableConfig,
 } from '@/components/admin/management-panel';
+import { cn } from '@/lib/utils';
 
 const TABLES = [
   {
@@ -245,15 +248,19 @@ const MANAGEMENT_CONFIGS: Record<
       {
         key: 'userId',
         label: 'User ID',
-        placeholder: 'Filter user_id',
       },
       {
         key: 'jobId',
         label: 'Job ID',
-        placeholder: 'Filter job_id',
+      },
+      {
+        key: 'createdAt',
+        label: 'Created',
+        type: 'date',
       },
     ],
     tableMinWidth: 1460,
+    editEnabled: false,
     editableFields: [
       { key: 'delta', label: 'Delta', type: 'number', readOnly: true },
       { key: 'reason', label: 'Reason', readOnly: true },
@@ -272,15 +279,22 @@ export function AdminShell({ canManageUsers }: { canManageUsers: boolean }) {
   const visibleTables = TABLES.filter(
     (table) => canManageUsers || !table.adminOnly
   );
-  const [activeTab, setActiveTab] = useState<TableKey>('templates');
+  const searchParams = useSearchParams();
+  const requestedTab = searchParams.get('tab') as TableKey | null;
+  const activeTab: TableKey = requestedTab && visibleTables.some(
+    (table) => table.key === requestedTab
+  )
+    ? requestedTab
+    : 'templates';
   const [sidebarOpen, setSidebarOpen] = useState(true);
 
   return (
-    <div className="flex h-[calc(100vh-64px)]">
+    <div className="flex h-[calc(100vh-64px)] bg-gray-50">
       <aside
-        className={`flex flex-col border-r border-gray-200 bg-gray-50 transition-all ${
+        className={cn(
+          'flex flex-col border-r border-gray-200 bg-white transition-all',
           sidebarOpen ? 'w-56' : 'w-12'
-        }`}
+        )}
       >
         <div className="flex items-center justify-between border-b border-gray-200 px-3 py-3">
           {sidebarOpen ? (
@@ -296,33 +310,37 @@ export function AdminShell({ canManageUsers }: { canManageUsers: boolean }) {
             aria-label={sidebarOpen ? 'Collapse sidebar' : 'Expand sidebar'}
           >
             <ChevronLeft
-              className={`size-4 transition-transform ${
-                sidebarOpen ? '' : 'rotate-180'
-              }`}
+              className={cn(
+                'size-4 transition-transform',
+                !sidebarOpen && 'rotate-180'
+              )}
             />
           </Button>
         </div>
         <nav className="flex-1 overflow-y-auto py-2">
           {visibleTables.map((table) => (
-            <button
+            <Link
               key={table.key}
-              type="button"
-              onClick={() => setActiveTab(table.key)}
-              className={`flex w-full items-center gap-2 px-3 py-2 text-sm transition-colors ${
+              href={
+                table.key === 'templates' ? '/admin' : `/admin?tab=${table.key}`
+              }
+              className={cn(
+                'flex w-full items-center gap-2 px-3 py-2 text-sm transition-colors',
                 activeTab === table.key
-                  ? 'bg-white font-medium text-orange-700 shadow-sm'
-                  : 'text-gray-600 hover:bg-gray-100'
-              }`}
+                  ? 'bg-orange-50 font-medium text-orange-700'
+                  : 'text-gray-600 hover:bg-gray-100 hover:text-gray-950'
+              )}
+              aria-current={activeTab === table.key ? 'page' : undefined}
               title={table.label}
             >
               <table.icon className="size-4 flex-shrink-0" />
               {sidebarOpen ? <span>{table.label}</span> : null}
-            </button>
+            </Link>
           ))}
         </nav>
       </aside>
 
-      <main className="min-w-0 flex-1 overflow-y-auto bg-white p-6">
+      <main className="min-w-0 flex-1 overflow-y-auto bg-gray-50 p-4 sm:p-6">
         {activeTab === 'templates' ? (
           <TemplatesPanel canPublish={canManageUsers} />
         ) : null}

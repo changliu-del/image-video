@@ -34,7 +34,8 @@ export type AdminField = {
 export type AdminFilterField = {
   key: string;
   label: string;
-  placeholder: string;
+  placeholder?: string;
+  type?: 'text' | 'date';
 };
 
 export type AdminTableConfig = {
@@ -48,6 +49,7 @@ export type AdminTableConfig = {
   columnWidths?: Record<string, number>;
   editableFields: AdminField[];
   deleteEnabled?: boolean;
+  editEnabled?: boolean;
   filterFields?: AdminFilterField[];
   icon?: ComponentType<{ className?: string }>;
   tableMinWidth?: number;
@@ -395,6 +397,7 @@ export function ManagementPanel({
   }
 
   function tableActions(row: Record<string, unknown>): AdminTableAction[] {
+    const canEditRow = canEdit && config.editEnabled !== false;
     const actions: AdminTableAction[] = [
       {
         key: 'view',
@@ -404,7 +407,7 @@ export function ManagementPanel({
       },
     ];
 
-    if (canEdit) {
+    if (canEditRow) {
       actions.push({
         key: 'edit',
         label: 'Edit',
@@ -415,7 +418,7 @@ export function ManagementPanel({
 
     const isDeletedUser = config.key === 'users' && row.deletedAt;
 
-    if (canEdit && isDeletedUser) {
+    if (canEditRow && isDeletedUser) {
       actions.push({
         key: 'restore',
         label: 'Restore',
@@ -447,6 +450,7 @@ export function ManagementPanel({
           </span>
           <Input
             value={filters[field.key] ?? ''}
+            type={field.type ?? 'text'}
             onChange={(event) =>
               setFilters((current) => ({
                 ...current,
@@ -543,7 +547,7 @@ export function ManagementPanel({
               >
                 Close
               </Button>
-              {canEdit ? (
+              {canEdit && config.editEnabled !== false ? (
                 <Button type="button" onClick={() => setModalMode('edit')}>
                   <Edit3 className="size-4" />
                   Edit

@@ -15,6 +15,10 @@ export async function GET(request: NextRequest) {
         pageSize,
         userId: request.nextUrl.searchParams.get('userId') ?? '',
         jobId: request.nextUrl.searchParams.get('jobId') ?? '',
+        createdAt:
+          request.nextUrl.searchParams.get('createdAt') ??
+          request.nextUrl.searchParams.get('created') ??
+          '',
       })
     );
   } catch (error) {
