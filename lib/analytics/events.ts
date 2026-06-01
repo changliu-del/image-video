@@ -66,7 +66,7 @@ export type CheckoutCompletedProperties = AnalyticsProperties & {
   stripeEventId: string;
   credits: number;
   balance: number;
-  source: 'stripe_webhook' | 'mock_checkout';
+  source: 'stripe_webhook' | 'mock_checkout' | 'mock_subscription_checkout';
 };
 
 export type AnalyticsEventProperties = {

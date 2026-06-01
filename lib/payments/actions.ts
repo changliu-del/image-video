@@ -1,7 +1,11 @@
 'use server';
 
 import { redirect } from 'next/navigation';
-import { createCheckoutSession, createCustomerPortalSession } from './stripe';
+import {
+  cancelMockSubscription,
+  createCheckoutSession,
+  createCustomerPortalSession,
+} from './stripe';
 import { getUser } from '@/lib/db/queries';
 
 export async function checkoutAction(formData: FormData) {
@@ -21,4 +25,14 @@ export async function customerPortalAction() {
 
   const portalSession = await createCustomerPortalSession(user);
   redirect(portalSession.url);
+}
+
+export async function cancelMockSubscriptionAction() {
+  const user = await getUser();
+  if (!user) {
+    redirect('/sign-in');
+  }
+
+  await cancelMockSubscription(user);
+  redirect('/dashboard/billing?subscription=mock_canceled');
 }

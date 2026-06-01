@@ -1,17 +1,14 @@
 'use client';
 
 import Link from 'next/link';
-import { useState } from 'react';
 import { useSearchParams } from 'next/navigation';
 import {
-  ChevronLeft,
   Film,
   Image,
   LayoutTemplate,
   ReceiptText,
   Users,
 } from 'lucide-react';
-import { Button } from '@/components/ui/button';
 import { TemplatesPanel } from '@/components/admin/templates-panel';
 import {
   ManagementPanel,
@@ -86,6 +83,7 @@ const MANAGEMENT_CONFIGS: Record<
       deletedAt: 178,
     },
     tableMinWidth: 1300,
+    modalLayout: 'stacked',
     editableFields: [
       { key: 'email', label: 'Email' },
       { key: 'name', label: 'Name' },
@@ -286,36 +284,14 @@ export function AdminShell({ canManageUsers }: { canManageUsers: boolean }) {
   )
     ? requestedTab
     : 'templates';
-  const [sidebarOpen, setSidebarOpen] = useState(true);
 
   return (
     <div className="flex h-[calc(100vh-64px)] bg-gray-50">
-      <aside
-        className={cn(
-          'flex flex-col border-r border-gray-200 bg-white transition-all',
-          sidebarOpen ? 'w-56' : 'w-12'
-        )}
-      >
-        <div className="flex items-center justify-between border-b border-gray-200 px-3 py-3">
-          {sidebarOpen ? (
-            <span className="text-xs font-semibold uppercase text-gray-500">
-              Admin
-            </span>
-          ) : null}
-          <Button
-            type="button"
-            variant="ghost"
-            size="sm"
-            onClick={() => setSidebarOpen(!sidebarOpen)}
-            aria-label={sidebarOpen ? 'Collapse sidebar' : 'Expand sidebar'}
-          >
-            <ChevronLeft
-              className={cn(
-                'size-4 transition-transform',
-                !sidebarOpen && 'rotate-180'
-              )}
-            />
-          </Button>
+      <aside className="flex w-60 flex-col border-r border-gray-200 bg-white">
+        <div className="border-b border-gray-200 px-4 py-4">
+          <span className="text-sm font-semibold uppercase text-gray-500">
+            Admin
+          </span>
         </div>
         <nav className="flex-1 overflow-y-auto py-2">
           {visibleTables.map((table) => (
@@ -325,7 +301,7 @@ export function AdminShell({ canManageUsers }: { canManageUsers: boolean }) {
                 table.key === 'templates' ? '/admin' : `/admin?tab=${table.key}`
               }
               className={cn(
-                'flex w-full items-center gap-2 px-3 py-2 text-sm transition-colors',
+                'flex w-full items-center gap-3 px-4 py-3 text-base transition-colors',
                 activeTab === table.key
                   ? 'bg-orange-50 font-medium text-orange-700'
                   : 'text-gray-600 hover:bg-gray-100 hover:text-gray-950'
@@ -333,8 +309,8 @@ export function AdminShell({ canManageUsers }: { canManageUsers: boolean }) {
               aria-current={activeTab === table.key ? 'page' : undefined}
               title={table.label}
             >
-              <table.icon className="size-4 flex-shrink-0" />
-              {sidebarOpen ? <span>{table.label}</span> : null}
+              <table.icon className="size-5 flex-shrink-0" />
+              <span>{table.label}</span>
             </Link>
           ))}
         </nav>

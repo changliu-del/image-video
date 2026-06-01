@@ -24,6 +24,12 @@ type SignedPutUrlInput = {
   expiresInSeconds?: number;
 };
 
+type PutObjectInput = {
+  storageKey: string;
+  body: Buffer | Uint8Array;
+  mimeType: string;
+};
+
 export const TEMPLATE_ASSET_MIME_TYPES = [
   'image/png',
   'image/jpeg',
@@ -207,6 +213,26 @@ export async function createSignedTemplateAssetPutUrl({
     sizeBytes,
     expiresInSeconds,
   });
+}
+
+export async function uploadObjectToR2({
+  storageKey,
+  body,
+  mimeType,
+}: PutObjectInput) {
+  const config = getR2Config();
+  const client = getR2Client(config);
+  await client.send(
+    new PutObjectCommand({
+      Bucket: config.bucket,
+      Key: storageKey,
+      Body: body,
+      ContentType: mimeType,
+      ContentLength: body.byteLength,
+    })
+  );
+
+  return buildPublicUrl(storageKey);
 }
 
 async function createSignedPutUrlForMime({

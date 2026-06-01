@@ -330,6 +330,85 @@ export const templateAuditLogs = pgTable(
   ]
 );
 
+export const TEMPLATE_INGESTION_RUN_STATUSES = [
+  'running',
+  'succeeded',
+  'failed',
+] as const;
+export type TemplateIngestionRunStatus =
+  (typeof TEMPLATE_INGESTION_RUN_STATUSES)[number];
+
+export const templateIngestionRuns = pgTable(
+  'template_ingestion_runs',
+  {
+    id: uuid('id').defaultRandom().primaryKey(),
+    source: varchar('source', { length: 80 }).notNull(),
+    status: varchar('status', { length: 24 })
+      .$type<TemplateIngestionRunStatus>()
+      .notNull()
+      .default('running'),
+    dryRun: boolean('dry_run').notNull().default(false),
+    startedAt: timestamp('started_at').notNull().defaultNow(),
+    finishedAt: timestamp('finished_at'),
+    statsJson: jsonb('stats_json')
+      .$type<Record<string, unknown>>()
+      .notNull()
+      .default(sql`'{}'::jsonb`),
+    errorMessage: text('error_message'),
+    createdBy: integer('created_by').references(() => users.id),
+  },
+  (table) => [
+    index('template_ingestion_runs_source_started_idx').on(
+      table.source,
+      table.startedAt
+    ),
+    check(
+      'template_ingestion_runs_status_check',
+      sql`${table.status} in ('running', 'succeeded', 'failed')`
+    ),
+  ]
+);
+
+export const templateSourceRecords = pgTable(
+  'template_source_records',
+  {
+    id: uuid('id').defaultRandom().primaryKey(),
+    runId: uuid('run_id').references(() => templateIngestionRuns.id, {
+      onDelete: 'set null',
+    }),
+    templateId: uuid('template_id').references(() => templates.id, {
+      onDelete: 'set null',
+    }),
+    assetId: uuid('asset_id').references(() => assets.id, {
+      onDelete: 'set null',
+    }),
+    source: varchar('source', { length: 80 }).notNull(),
+    sourceUrl: text('source_url').notNull(),
+    sourceAssetUrl: text('source_asset_url'),
+    contentHash: varchar('content_hash', { length: 128 }).notNull(),
+    prompt: text('prompt').notNull(),
+    promptSource: varchar('prompt_source', { length: 40 }).notNull(),
+    licenseNote: text('license_note'),
+    metadataJson: jsonb('metadata_json')
+      .$type<Record<string, unknown>>()
+      .notNull()
+      .default(sql`'{}'::jsonb`),
+    createdAt: timestamp('created_at').notNull().defaultNow(),
+    updatedAt: timestamp('updated_at').notNull().defaultNow(),
+  },
+  (table) => [
+    uniqueIndex('template_source_records_source_url_unique').on(
+      table.source,
+      table.sourceUrl
+    ),
+    uniqueIndex('template_source_records_content_hash_unique').on(
+      table.contentHash
+    ),
+    index('template_source_records_template_id_idx').on(table.templateId),
+    index('template_source_records_run_id_idx').on(table.runId),
+  ]
+);
+
 export const generationJobs = pgTable(
   'generation_jobs',
   {
@@ -543,6 +622,35 @@ export const templateAuditLogsRelations = relations(
   })
 );
 
+export const templateIngestionRunsRelations = relations(
+  templateIngestionRuns,
+  ({ one, many }) => ({
+    creator: one(users, {
+      fields: [templateIngestionRuns.createdBy],
+      references: [users.id],
+    }),
+    sourceRecords: many(templateSourceRecords),
+  })
+);
+
+export const templateSourceRecordsRelations = relations(
+  templateSourceRecords,
+  ({ one }) => ({
+    run: one(templateIngestionRuns, {
+      fields: [templateSourceRecords.runId],
+      references: [templateIngestionRuns.id],
+    }),
+    template: one(templates, {
+      fields: [templateSourceRecords.templateId],
+      references: [templates.id],
+    }),
+    asset: one(assets, {
+      fields: [templateSourceRecords.assetId],
+      references: [assets.id],
+    }),
+  })
+);
+
 export const generationJobsRelations = relations(
   generationJobs,
   ({ one }) => ({
@@ -602,6 +710,10 @@ export type TemplateAsset = typeof templateAssets.$inferSelect;
 export type NewTemplateAsset = typeof templateAssets.$inferInsert;
 export type TemplateAuditLog = typeof templateAuditLogs.$inferSelect;
 export type NewTemplateAuditLog = typeof templateAuditLogs.$inferInsert;
+export type TemplateIngestionRun = typeof templateIngestionRuns.$inferSelect;
+export type NewTemplateIngestionRun = typeof templateIngestionRuns.$inferInsert;
+export type TemplateSourceRecord = typeof templateSourceRecords.$inferSelect;
+export type NewTemplateSourceRecord = typeof templateSourceRecords.$inferInsert;
 export type GenerationJob = typeof generationJobs.$inferSelect;
 export type NewGenerationJob = typeof generationJobs.$inferInsert;
 export type CreditLedgerEntry = typeof creditLedger.$inferSelect;

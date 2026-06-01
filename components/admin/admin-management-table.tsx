@@ -185,9 +185,11 @@ export function AdminModal({
 
 export function AdminRecordDetails({
   columns,
+  layout = 'grid',
   record,
 }: {
   columns?: string[];
+  layout?: 'grid' | 'stacked';
   record: AdminTableRow;
 }) {
   const keys = columns?.length
@@ -195,7 +197,12 @@ export function AdminRecordDetails({
     : Object.keys(record);
 
   return (
-    <dl className="grid gap-3 sm:grid-cols-2">
+    <dl
+      className={cn(
+        'grid gap-3',
+        layout === 'grid' ? 'sm:grid-cols-2' : 'grid-cols-1'
+      )}
+    >
       {keys.map((key) => {
         const value = record[key];
         const isObject = value != null && typeof value === 'object';

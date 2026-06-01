@@ -131,7 +131,7 @@ export default async function DashboardPage() {
                 </form>
               ) : (
                 <Button asChild variant="outline" size="sm">
-                  <Link href="/pricing">Buy credits</Link>
+                  <Link href="/dashboard/credits">Buy credits</Link>
                 </Button>
               )}
             </CardContent>

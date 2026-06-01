@@ -1,11 +1,12 @@
 import 'server-only';
 
-import { asc, desc, eq } from 'drizzle-orm';
+import { asc, desc, eq, ilike, or, sql } from 'drizzle-orm';
 import { db } from '@/lib/db/drizzle';
 import {
   type Asset,
   type Template,
   type TemplateTag,
+  templateTags,
   templates,
 } from '@/lib/db/schema';
 import type { Locale } from '@/lib/marketing/content';
@@ -18,6 +19,26 @@ type TemplateRecord = Template & {
   previewAsset: Asset | null;
   thumbnailAsset: Asset | null;
   tagRelations: Array<{ tag: TemplateTag }>;
+};
+
+export type PublishedTemplateSort = 'featured' | 'newest' | 'lowCost';
+
+export type ListPublishedTemplatesInput = {
+  locale: Locale;
+  page?: number;
+  pageSize?: number;
+  search?: string;
+  type?: TemplateType;
+  tags?: string[];
+  sort?: PublishedTemplateSort;
+};
+
+export type PublishedTemplatesResult = {
+  list: TemplateCatalogItem[];
+  total: number;
+  page: number;
+  pageSize: number;
+  hasMore: boolean;
 };
 
 const fallbackAssetByType: Record<TemplateType, string> = {
@@ -87,7 +108,139 @@ export function mapTemplateRecordToCatalogItem(
   };
 }
 
-export async function listPublishedTemplates(locale: Locale) {
+function normalizePage(value: number | undefined) {
+  if (!Number.isInteger(value) || !value || value < 1) {
+    return 1;
+  }
+
+  return value;
+}
+
+function normalizePageSize(value: number | undefined) {
+  if (!Number.isInteger(value) || !value) {
+    return 12;
+  }
+
+  return Math.min(48, Math.max(1, value));
+}
+
+function normalizeTags(tags: string[] | undefined) {
+  return Array.from(
+    new Set(
+      (tags ?? [])
+        .map((tag) => tag.trim().toLowerCase())
+        .filter((tag) => /^[a-z0-9][a-z0-9_-]*$/.test(tag))
+    )
+  ).slice(0, 12);
+}
+
+function buildWhere(input: Required<Pick<ListPublishedTemplatesInput, 'locale'>> & {
+  search: string;
+  tags: string[];
+  type?: TemplateType;
+}) {
+  const conditions = [
+    eq(templates.locale, input.locale),
+    eq(templates.status, 'published' as const),
+  ];
+
+  if (input.type) {
+    conditions.push(eq(templates.type, input.type));
+  }
+
+  if (input.search) {
+    const search = `%${input.search}%`;
+    conditions.push(
+      or(
+        ilike(templates.title, search),
+        ilike(templates.description, search),
+        ilike(templates.hook, search),
+        ilike(templates.prompt, search),
+        ilike(templates.slug, search)
+      )!
+    );
+  }
+
+  for (const tag of input.tags) {
+    conditions.push(sql`exists (
+      select 1
+      from template_tag_relations ttr
+      inner join ${templateTags} tt on tt.id = ttr.tag_id
+      where ttr.template_id = ${templates.id}
+        and tt.slug = ${tag}
+    )`);
+  }
+
+  return sql.join(conditions, sql` and `);
+}
+
+function getOrderBy(sort: PublishedTemplateSort) {
+  if (sort === 'newest') {
+    return [desc(templates.publishedAt), desc(templates.updatedAt), asc(templates.title)];
+  }
+
+  if (sort === 'lowCost') {
+    return [asc(templates.costCredits), desc(templates.sortWeight), asc(templates.title)];
+  }
+
+  return [desc(templates.sortWeight), desc(templates.updatedAt), asc(templates.title)];
+}
+
+export async function listPublishedTemplates(
+  input: Locale | ListPublishedTemplatesInput
+): Promise<PublishedTemplatesResult> {
+  const params =
+    typeof input === 'string'
+      ? { locale: input }
+      : input;
+  const page = normalizePage(params.page);
+  const pageSize = normalizePageSize(params.pageSize);
+  const search = params.search?.trim() ?? '';
+  const tags = normalizeTags(params.tags);
+  const sort = params.sort ?? 'featured';
+  const where = buildWhere({
+    locale: params.locale,
+    type: params.type,
+    search,
+    tags,
+  });
+
+  const [rows, totalRows] = await Promise.all([
+    db.query.templates.findMany({
+      where,
+      with: {
+        previewAsset: true,
+        thumbnailAsset: true,
+        tagRelations: {
+          with: {
+            tag: true,
+          },
+        },
+      },
+      orderBy: getOrderBy(sort),
+      limit: pageSize,
+      offset: (page - 1) * pageSize,
+    }),
+    db
+      .select({ count: sql<number>`count(*)::int` })
+      .from(templates)
+      .where(where),
+  ]);
+
+  const total = Number(totalRows[0]?.count ?? 0);
+
+  return {
+    list: rows.map((row) =>
+      mapTemplateRecordToCatalogItem(row as TemplateRecord)
+    ),
+    total,
+    page,
+    pageSize,
+    hasMore: page * pageSize < total,
+  };
+}
+
+export async function listAllPublishedTemplates(locale: Locale) {
   const rows = await db.query.templates.findMany({
     where: (table, { and }) =>
       and(eq(table.locale, locale), eq(table.status, 'published')),

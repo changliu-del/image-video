@@ -1,4 +1,7 @@
+'use client';
+
 import Link from 'next/link';
+import { useEffect, useState } from 'react';
 import {
   ArrowRight,
   BadgeCheck,
@@ -15,11 +18,30 @@ import {
   getMarketingContent,
   type Locale,
 } from '@/lib/marketing/content';
+import type { TemplateCatalogItem } from '@/lib/templates/catalog';
 import { cn } from '@/lib/utils';
 
 type MarketingContent = ReturnType<typeof getMarketingContent>;
 type HomeContent = MarketingContent['home'];
-type TemplateItem = HomeContent['templates']['items'][number];
+type StaticTemplateItem = HomeContent['templates']['items'][number];
+type TemplateItem = {
+  slug: string;
+  title: string;
+  asset: string;
+  mediaType: 'image' | 'video';
+  category: string;
+  cost: string;
+  hook: string;
+  useCase: string;
+};
+
+type TemplatesApiResponse = {
+  list?: TemplateCatalogItem[];
+  total?: number;
+  page?: number;
+  pageSize?: number;
+  hasMore?: boolean;
+};
 
 function Eyebrow({
   children,
@@ -213,6 +235,64 @@ function TemplateGallery({
   content: HomeContent['templates'];
   locale: Locale;
 }) {
+  const [items, setItems] = useState<TemplateItem[]>(
+    content.items.map(mapStaticTemplateItem)
+  );
+  const [page, setPage] = useState(1);
+  const [hasMore, setHasMore] = useState(false);
+  const [isLoading, setIsLoading] = useState(true);
+
+  useEffect(() => {
+    let ignore = false;
+
+    async function loadTemplates() {
+      setIsLoading(true);
+      try {
+        const params = new URLSearchParams({
+          locale,
+          page: String(page),
+          pageSize: '6',
+          sort: 'featured',
+        });
+        const response = await fetch(`/api/templates?${params.toString()}`);
+        if (!response.ok) {
+          return;
+        }
+
+        const data = (await response.json()) as TemplatesApiResponse;
+        const remoteItems = (data.list ?? []).map(mapCatalogTemplateItem);
+
+        if (!ignore) {
+          setItems((current) => {
+            if (page === 1) {
+              return remoteItems.length > 0
+                ? remoteItems
+                : content.items.map(mapStaticTemplateItem);
+            }
+
+            return uniqueHomeItems([...current, ...remoteItems]);
+          });
+          setHasMore(Boolean(data.hasMore));
+        }
+      } catch {
+        if (!ignore && page === 1) {
+          setItems(content.items.map(mapStaticTemplateItem));
+          setHasMore(false);
+        }
+      } finally {
+        if (!ignore) {
+          setIsLoading(false);
+        }
+      }
+    }
+
+    loadTemplates();
+
+    return () => {
+      ignore = true;
+    };
+  }, [content.items, locale, page]);
+
   return (
     <section id="templates" className="scroll-mt-24 bg-slate-50 py-20 md:py-28">
       <div className="mx-auto max-w-7xl px-4 md:px-8">
@@ -231,18 +311,73 @@ function TemplateGallery({
         </div>
 
         <div className="grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-3">
-          {content.items.map((item) => (
+          {items.map((item) => (
             <TemplateCard
-              key={item.title}
+              key={item.slug}
               item={item}
               actionLabel={content.actionLabel}
               locale={locale}
             />
           ))}
         </div>
+        {hasMore ? (
+          <div className="mt-8 flex justify-center">
+            <button
+              type="button"
+              onClick={() => setPage((value) => value + 1)}
+              disabled={isLoading}
+              className="inline-flex h-11 items-center justify-center rounded-md border border-gray-300 bg-white px-5 text-sm font-semibold text-gray-900 transition hover:bg-gray-50 disabled:cursor-not-allowed disabled:opacity-60"
+            >
+              {isLoading
+                ? locale === 'zh'
+                  ? '加载中...'
+                  : 'Loading...'
+                : locale === 'zh'
+                  ? '加载更多'
+                  : 'Load more'}
+            </button>
+          </div>
+        ) : null}
       </div>
     </section>
   );
+}
+
+function mapStaticTemplateItem(item: StaticTemplateItem): TemplateItem {
+  return {
+    slug: item.title,
+    title: item.title,
+    asset: item.asset,
+    mediaType: item.mediaType,
+    category: item.category,
+    cost: item.cost,
+    hook: item.hook,
+    useCase: item.useCase,
+  };
+}
+
+function mapCatalogTemplateItem(template: TemplateCatalogItem): TemplateItem {
+  return {
+    slug: template.slug,
+    title: template.title,
+    asset: template.asset,
+    mediaType: template.mediaType,
+    category: template.type === 'image_to_video' ? 'Image to video' : template.type,
+    cost: `${template.costCredits} ${template.costCredits === 1 ? 'credit' : 'credits'}`,
+    hook: template.hook,
+    useCase: template.description,
+  };
+}
+
+function uniqueHomeItems(items: TemplateItem[]) {
+  const seen = new Set<string>();
+  return items.filter((item) => {
+    if (seen.has(item.slug)) {
+      return false;
+    }
+    seen.add(item.slug);
+    return true;
+  });
 }
 
 function WorkflowSection({ content }: { content: HomeContent['workflow'] }) {

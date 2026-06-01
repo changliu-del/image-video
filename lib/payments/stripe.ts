@@ -5,16 +5,19 @@ import { POSTHOG_EVENTS, captureServerEvent } from '@/lib/analytics/posthog';
 import { grantPurchasedCredits } from '@/lib/credits';
 import {
   getMockCreditPackageByPriceId,
+  getMockMonthlyPlanByPriceId,
   getMockStripePrices,
   getMockStripeProducts,
   isPaymentMockEnabled,
 } from '@/lib/payments/mock';
-import { type User } from '@/lib/db/schema';
+import { db } from '@/lib/db/drizzle';
+import { type User, users } from '@/lib/db/schema';
 import {
   getUserByStripeCustomerId,
   getUser,
   updateUserSubscription
 } from '@/lib/db/queries';
+import { eq } from 'drizzle-orm';
 
 export const stripe = new Stripe(
   process.env.STRIPE_SECRET_KEY || 'sk_test_placeholder',
@@ -302,9 +305,59 @@ async function createMockCheckoutSession({
   }
 
   const creditPackage = getMockCreditPackageByPriceId(priceId);
+  const monthlyPlan = getMockMonthlyPlanByPriceId(priceId);
 
-  if (!creditPackage) {
+  if (!creditPackage && !monthlyPlan) {
     throw new Error(`Unknown mock payment price id: ${priceId}`);
+  }
+
+  if (monthlyPlan) {
+    const stripeEventId = `mock_subscription:${user.id}:${priceId}:${randomUUID()}`;
+    const subscriptionId = `mock_sub_${user.id}_${monthlyPlan.key}`;
+    const result = await grantPurchasedCredits({
+      userId: user.id,
+      credits: monthlyPlan.credits,
+      stripeEventId,
+      metadata: {
+        source: 'mock_subscription_checkout',
+        packageKey: monthlyPlan.key,
+        packageName: monthlyPlan.name,
+        priceId,
+        amountTotal: monthlyPlan.unitAmount,
+        currency: monthlyPlan.currency,
+        interval: monthlyPlan.interval,
+      },
+    });
+
+    await updateUserSubscription(user.id, {
+      stripeSubscriptionId: subscriptionId,
+      stripeProductId: monthlyPlan.productId,
+      planName: monthlyPlan.name,
+      subscriptionStatus: 'active',
+    });
+
+    await db
+      .update(users)
+      .set({
+        stripeCustomerId: user.stripeCustomerId ?? `mock_cus_${user.id}`,
+        updatedAt: new Date(),
+      })
+      .where(eq(users.id, user.id));
+
+    await captureServerEvent({
+      distinctId: String(user.id),
+      event: POSTHOG_EVENTS.CHECKOUT_COMPLETED,
+      properties: {
+        userId: user.id,
+        stripeCheckoutSessionId: stripeEventId,
+        stripeEventId,
+        credits: monthlyPlan.credits,
+        balance: result.balance,
+        source: 'mock_subscription_checkout',
+      },
+    });
+
+    redirect('/dashboard/billing?checkout=mock_subscription_success');
   }
 
   await captureServerEvent({
@@ -320,15 +373,15 @@ async function createMockCheckoutSession({
   const stripeEventId = `mock_checkout:${user.id}:${priceId}:${randomUUID()}`;
   const result = await grantPurchasedCredits({
     userId: user.id,
-    credits: creditPackage.credits,
+    credits: creditPackage!.credits,
     stripeEventId,
     metadata: {
       source: 'mock_checkout',
-      packageKey: creditPackage.key,
-      packageName: creditPackage.name,
+      packageKey: creditPackage!.key,
+      packageName: creditPackage!.name,
       priceId,
-      amountTotal: creditPackage.unitAmount,
-      currency: creditPackage.currency
+      amountTotal: creditPackage!.unitAmount,
+      currency: creditPackage!.currency
     }
   });
 
@@ -339,13 +392,26 @@ async function createMockCheckoutSession({
       userId: user.id,
       stripeCheckoutSessionId: stripeEventId,
       stripeEventId,
-      credits: creditPackage.credits,
+      credits: creditPackage!.credits,
       balance: result.balance,
       source: 'mock_checkout'
     }
   });
 
-  redirect('/dashboard?checkout=mock_success');
+  redirect('/dashboard/credits?checkout=mock_success');
+}
+
+export async function cancelMockSubscription(user: User) {
+  if (!isPaymentMockEnabled()) {
+    throw new Error('Mock subscription cancellation is only available in mock payment mode');
+  }
+
+  await updateUserSubscription(user.id, {
+    stripeSubscriptionId: null,
+    stripeProductId: null,
+    planName: null,
+    subscriptionStatus: 'canceled',
+  });
 }
 
 export async function createCustomerPortalSession(user: User) {

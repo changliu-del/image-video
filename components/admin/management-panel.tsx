@@ -52,6 +52,7 @@ export type AdminTableConfig = {
   editEnabled?: boolean;
   filterFields?: AdminFilterField[];
   icon?: ComponentType<{ className?: string }>;
+  modalLayout?: 'grid' | 'stacked';
   tableMinWidth?: number;
 };
 
@@ -564,7 +565,13 @@ export function ManagementPanel({
                 {formatAdminValue(selectedRow[config.idField], 100)}
               </div>
             </div>
-            <div className="grid gap-4 sm:grid-cols-2">
+            <div
+              className={
+                config.modalLayout === 'stacked'
+                  ? 'grid gap-4'
+                  : 'grid gap-4 sm:grid-cols-2'
+              }
+            >
               {config.editableFields.map((field) => (
                 <DetailField
                   key={field.key}
@@ -580,6 +587,7 @@ export function ManagementPanel({
         ) : selectedRow ? (
           <AdminRecordDetails
             record={selectedRow}
+            layout={config.modalLayout ?? 'grid'}
             columns={[
               ...config.columns,
               ...config.editableFields

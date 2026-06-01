@@ -32,14 +32,11 @@ type SortKey = 'featured' | 'newest' | 'lowCost';
 
 type TemplatesApiResponse = {
   list?: TemplateCatalogItem[];
+  total?: number;
+  page?: number;
+  pageSize?: number;
+  hasMore?: boolean;
 };
-
-function normalizeText(value: string) {
-  return value
-    .normalize('NFD')
-    .replace(/[\u0300-\u036f]/g, '')
-    .toLowerCase();
-}
 
 function uniqueBySlug(items: TemplateCatalogItem[]) {
   const seen = new Set<string>();
@@ -229,11 +226,18 @@ function FilterGroup({
 export function MarketingTemplatesPage({ locale }: { locale: Locale }) {
   const content = templatesPageContent[locale];
   const starterTemplates = useMemo(() => getStarterTemplates(locale), [locale]);
-  const [templates, setTemplates] =
-    useState<TemplateCatalogItem[]>(starterTemplates);
+  const [templates, setTemplates] = useState<TemplateCatalogItem[]>([]);
   const [activeTags, setActiveTags] = useState<Set<string>>(new Set());
   const [search, setSearch] = useState('');
   const [sort, setSort] = useState<SortKey>('featured');
+  const [page, setPage] = useState(1);
+  const [total, setTotal] = useState(0);
+  const [hasMore, setHasMore] = useState(false);
+  const [isLoading, setIsLoading] = useState(true);
+  const activeTagKey = useMemo(
+    () => Array.from(activeTags).sort().join(','),
+    [activeTags]
+  );
 
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
@@ -256,8 +260,23 @@ export function MarketingTemplatesPage({ locale }: { locale: Locale }) {
     let ignore = false;
 
     async function loadTemplates() {
+      setIsLoading(true);
       try {
-        const response = await fetch(`/api/templates?locale=${locale}`);
+        const params = new URLSearchParams({
+          locale,
+          page: String(page),
+          pageSize: '12',
+          sort,
+        });
+        const query = search.trim();
+        if (query) {
+          params.set('search', query);
+        }
+        for (const tag of activeTagKey.split(',').filter(Boolean)) {
+          params.append('tag', tag);
+        }
+
+        const response = await fetch(`/api/templates?${params.toString()}`);
         if (!response.ok) {
           return;
         }
@@ -265,19 +284,40 @@ export function MarketingTemplatesPage({ locale }: { locale: Locale }) {
         const data = (await response.json()) as TemplatesApiResponse;
         const remoteTemplates = data.list ?? [];
 
-        if (!ignore && remoteTemplates.length > 0) {
-          setTemplates(
-            uniqueBySlug([
-              ...remoteTemplates.map((template) => ({
-                ...template,
-                source: 'admin' as const,
-              })),
-              ...starterTemplates,
-            ])
+        if (!ignore) {
+          const normalizedRemoteTemplates = remoteTemplates.map((template) => ({
+            ...template,
+            source: 'admin' as const,
+          }));
+          const shouldUseStarterFallback =
+            page === 1 &&
+            normalizedRemoteTemplates.length === 0 &&
+            !query &&
+            !activeTagKey;
+
+          setTemplates((current) =>
+            page === 1
+              ? uniqueBySlug(
+                  shouldUseStarterFallback
+                    ? starterTemplates
+                    : normalizedRemoteTemplates
+                )
+              : uniqueBySlug([...current, ...normalizedRemoteTemplates])
           );
+          setTotal(data.total ?? normalizedRemoteTemplates.length);
+          setHasMore(Boolean(data.hasMore));
         }
       } catch {
         // The static starter gallery should still work when the DB/API is absent.
+        if (!ignore && page === 1) {
+          setTemplates(starterTemplates);
+          setTotal(starterTemplates.length);
+          setHasMore(false);
+        }
+      } finally {
+        if (!ignore) {
+          setIsLoading(false);
+        }
       }
     }
 
@@ -286,7 +326,7 @@ export function MarketingTemplatesPage({ locale }: { locale: Locale }) {
     return () => {
       ignore = true;
     };
-  }, [locale, starterTemplates]);
+  }, [activeTagKey, locale, page, search, sort, starterTemplates]);
 
   const tagCounts = useMemo(() => {
     const counts = new Map<string, number>();
@@ -300,45 +340,6 @@ export function MarketingTemplatesPage({ locale }: { locale: Locale }) {
     return counts;
   }, [templates]);
 
-  const filteredTemplates = useMemo(() => {
-    const query = normalizeText(search.trim());
-    const selectedTags = Array.from(activeTags);
-
-    const result = templates.filter((template) => {
-      const matchesSearch =
-        !query ||
-        normalizeText(
-          [
-            template.title,
-            template.description,
-            template.hook,
-            template.prompt,
-            template.tags
-              .map((tag) => getTemplateTagLabel(tag, locale))
-              .join(' '),
-          ].join(' ')
-        ).includes(query);
-
-      const matchesTags =
-        selectedTags.length === 0 ||
-        selectedTags.every((tag) => template.tags.includes(tag));
-
-      return matchesSearch && matchesTags;
-    });
-
-    return result.sort((a, b) => {
-      if (sort === 'lowCost') {
-        return a.costCredits - b.costCredits;
-      }
-
-      if (sort === 'newest') {
-        return a.source === b.source ? 0 : a.source === 'admin' ? -1 : 1;
-      }
-
-      return b.tags.length - a.tags.length;
-    });
-  }, [activeTags, locale, search, sort, templates]);
-
   function toggleTag(tag: string) {
     setActiveTags((current) => {
       const next = new Set(current);
@@ -349,12 +350,14 @@ export function MarketingTemplatesPage({ locale }: { locale: Locale }) {
       }
       return next;
     });
+    setPage(1);
   }
 
   function clearFilters() {
     setActiveTags(new Set());
     setSearch('');
     setSort('featured');
+    setPage(1);
   }
 
   return (
@@ -427,14 +430,20 @@ export function MarketingTemplatesPage({ locale }: { locale: Locale }) {
               <Search className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-gray-400" />
               <input
                 value={search}
-                onChange={(event) => setSearch(event.target.value)}
+                onChange={(event) => {
+                  setSearch(event.target.value);
+                  setPage(1);
+                }}
                 placeholder={content.searchPlaceholder}
                 className="h-11 w-full rounded-lg border border-gray-200 bg-white pl-10 pr-10 text-sm text-gray-950 outline-none transition placeholder:text-gray-400 focus:border-gray-400"
               />
               {search ? (
                 <button
                   type="button"
-                  onClick={() => setSearch('')}
+                  onClick={() => {
+                    setSearch('');
+                    setPage(1);
+                  }}
                   className="absolute right-3 top-1/2 grid size-6 -translate-y-1/2 place-items-center rounded-md text-gray-400 hover:bg-gray-100 hover:text-gray-950"
                 >
                   <X className="size-4" />
@@ -447,7 +456,10 @@ export function MarketingTemplatesPage({ locale }: { locale: Locale }) {
               </span>
               <select
                 value={sort}
-                onChange={(event) => setSort(event.target.value as SortKey)}
+                onChange={(event) => {
+                  setSort(event.target.value as SortKey);
+                  setPage(1);
+                }}
                 className="h-full min-w-36 bg-transparent text-sm font-medium text-gray-950 outline-none"
               >
                 {Object.entries(content.sortOptions).map(([key, label]) => (
@@ -461,7 +473,7 @@ export function MarketingTemplatesPage({ locale }: { locale: Locale }) {
 
           <div className="mb-5 flex flex-wrap items-center gap-2 text-sm text-gray-600">
             <span className="font-medium text-gray-950">
-              {filteredTemplates.length}
+              {total || templates.length}
             </span>
             <span>{content.results}</span>
             {Array.from(activeTags).map((tag) => (
@@ -477,9 +489,9 @@ export function MarketingTemplatesPage({ locale }: { locale: Locale }) {
             ))}
           </div>
 
-          {filteredTemplates.length > 0 ? (
+          {templates.length > 0 ? (
             <div className="grid gap-5 sm:grid-cols-2 xl:grid-cols-3">
-              {filteredTemplates.map((template) => (
+              {templates.map((template) => (
                 <TemplateCard
                   key={`${template.source}-${template.slug}`}
                   content={content}
@@ -507,6 +519,24 @@ export function MarketingTemplatesPage({ locale }: { locale: Locale }) {
               </div>
             </div>
           )}
+          {hasMore ? (
+            <div className="mt-8 flex justify-center">
+              <button
+                type="button"
+                onClick={() => setPage((value) => value + 1)}
+                disabled={isLoading}
+                className="inline-flex h-11 items-center justify-center rounded-md border border-gray-300 bg-white px-5 text-sm font-semibold text-gray-900 transition hover:bg-gray-50 disabled:cursor-not-allowed disabled:opacity-60"
+              >
+                {isLoading
+                  ? locale === 'zh'
+                    ? '加载中...'
+                    : 'Loading...'
+                  : locale === 'zh'
+                    ? '加载更多'
+                    : 'Load more'}
+              </button>
+            </div>
+          ) : null}
         </div>
       </section>
     </main>

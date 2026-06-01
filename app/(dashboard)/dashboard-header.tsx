@@ -126,7 +126,14 @@ export function DashboardHeader({
 
   return (
     <header className="border-b border-gray-200">
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4 flex justify-between items-center">
+      <div
+        className={cn(
+          'mx-auto flex items-center justify-between py-4',
+          isAdminPage
+            ? 'w-full max-w-none px-5 sm:px-6'
+            : 'max-w-7xl px-4 sm:px-6 lg:px-8'
+        )}
+      >
         <Link
           href={isAdminPage ? '/' : user ? '/dashboard' : '/'}
           className="flex items-center"
