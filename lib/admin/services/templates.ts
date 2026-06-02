@@ -526,7 +526,7 @@ export async function createTemplateAssetPresign(input: unknown) {
   await db.insert(assets).values({
     id: assetId,
     userId: user.id,
-    type: 'template_asset',
+    type: 'upload',
     status: 'pending',
     storageKey,
     publicUrl,
@@ -560,7 +560,7 @@ export async function completeTemplateAsset(input: unknown) {
     .where(
       and(
         eq(assets.id, payload.assetId),
-        eq(assets.type, 'template_asset'),
+        eq(assets.type, 'upload'),
         eq(assets.storageKey, payload.storageKey)
       )
     )

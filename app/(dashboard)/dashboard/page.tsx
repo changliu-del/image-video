@@ -65,9 +65,9 @@ export default async function DashboardPage() {
             </h1>
           </div>
           <Button asChild className="w-full sm:w-auto">
-            <Link href="/generate">
+            <Link href="/create">
               <WandSparkles className="h-4 w-4" />
-              Generate Video
+              Create
             </Link>
           </Button>
         </div>
@@ -149,8 +149,8 @@ export default async function DashboardPage() {
             <table className="w-full min-w-[720px] text-left text-sm">
               <thead className="border-b text-xs uppercase text-gray-500">
                 <tr>
-                  <th className="py-2 pr-4">Job</th>
-                  <th className="py-2 pr-4">Product</th>
+                  <th className="py-2 pr-4">Generation</th>
+                  <th className="py-2 pr-4">Type</th>
                   <th className="py-2 pr-4">Status</th>
                   <th className="py-2 pr-4">Credits</th>
                   <th className="py-2">Created</th>
@@ -167,11 +167,9 @@ export default async function DashboardPage() {
                   jobs.map((job) => (
                     <tr key={job.id}>
                       <td className="py-3 pr-4 font-mono text-xs">
-                        <Link href={`/jobs/${job.id}`} className="hover:underline">
-                          {job.id.slice(0, 8)}
-                        </Link>
+                        {job.id.slice(0, 8)}
                       </td>
-                      <td className="py-3 pr-4">{job.productName}</td>
+                      <td className="py-3 pr-4">{job.generationType}</td>
                       <td className="py-3 pr-4">{job.status}</td>
                       <td className="py-3 pr-4">
                         {job.creditSpent || job.creditReserved}

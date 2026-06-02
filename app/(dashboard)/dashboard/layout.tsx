@@ -6,7 +6,6 @@ import { usePathname } from 'next/navigation';
 import { Button } from '@/components/ui/button';
 import {
   CreditCard,
-  LayoutDashboard,
   Menu,
   ReceiptText,
   Shield,
@@ -22,7 +21,7 @@ export default function DashboardLayout({
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
 
   const navItems = [
-    { href: '/dashboard', icon: LayoutDashboard, label: 'Overview' },
+    { href: '/dashboard', icon: UserRound, label: 'Account overview' },
     { href: '/dashboard/profile', icon: UserRound, label: 'Personal info' },
     { href: '/dashboard/credits', icon: CreditCard, label: 'Credit recharge' },
     { href: '/dashboard/billing', icon: ReceiptText, label: 'Monthly plan' },
@@ -34,7 +33,7 @@ export default function DashboardLayout({
       {/* Mobile header */}
       <div className="lg:hidden flex items-center justify-between bg-white border-b border-gray-200 p-4">
         <div className="flex items-center">
-          <span className="font-medium">Settings</span>
+          <span className="font-medium">Account</span>
         </div>
         <Button
           className="-mr-3"

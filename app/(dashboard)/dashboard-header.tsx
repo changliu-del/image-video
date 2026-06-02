@@ -12,7 +12,12 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 import { signOut } from '@/app/(login)/actions';
-import { Home, LogOut, ShieldCheck, CircleIcon } from 'lucide-react';
+import {
+  CircleIcon,
+  ExternalLink,
+  LogOut,
+  Settings,
+} from 'lucide-react';
 import { identifyClientUser } from '@/lib/analytics/posthog';
 import { cn } from '@/lib/utils';
 
@@ -28,7 +33,13 @@ function canAccessAdmin(user: DashboardHeaderUser) {
   return user.isAdmin || user.role === 'admin' || user.role === 'ops';
 }
 
-function UserMenu({ user }: { user: DashboardHeaderUser | null }) {
+function UserMenu({
+  user,
+  templateAdminUrl,
+}: {
+  user: DashboardHeaderUser | null;
+  templateAdminUrl?: string | null;
+}) {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const router = useRouter();
 
@@ -84,16 +95,21 @@ function UserMenu({ user }: { user: DashboardHeaderUser | null }) {
       <DropdownMenuContent align="end" className="flex flex-col gap-1">
         <DropdownMenuItem className="cursor-pointer">
           <Link href="/dashboard" className="flex w-full items-center">
-            <Home className="mr-2 h-4 w-4" />
-            <span>Dashboard</span>
+            <Settings className="mr-2 h-4 w-4" />
+            <span>Account</span>
           </Link>
         </DropdownMenuItem>
-        {canAccessAdmin(user) ? (
-          <DropdownMenuItem className="cursor-pointer">
-            <Link href="/admin" className="flex w-full items-center">
-              <ShieldCheck className="mr-2 h-4 w-4" />
-              <span>Admin</span>
-            </Link>
+        {user && canAccessAdmin(user) && templateAdminUrl ? (
+          <DropdownMenuItem className="cursor-pointer md:hidden">
+            <a
+              href={templateAdminUrl}
+              target="_blank"
+              rel="noreferrer"
+              className="flex w-full items-center"
+            >
+              <ExternalLink className="mr-2 h-4 w-4" />
+              <span>Template Admin</span>
+            </a>
           </DropdownMenuItem>
         ) : null}
         <form action={handleSignOut} className="w-full">
@@ -111,18 +127,20 @@ function UserMenu({ user }: { user: DashboardHeaderUser | null }) {
 
 export function DashboardHeader({
   user,
+  templateAdminUrl,
 }: {
   user: DashboardHeaderUser | null;
+  templateAdminUrl?: string | null;
 }) {
   const pathname = usePathname();
   const isAdminPage = pathname === '/admin' || pathname.startsWith('/admin/');
   const navItems = [
-    { href: '/generate', label: 'Generate' },
-    { href: '/pricing', label: 'Pricing' },
-    ...(user && canAccessAdmin(user)
-      ? [{ href: '/admin', label: 'Admin' }]
-      : []),
+    { href: '/create', label: 'Create' },
+    { href: '/dashboard', label: 'Account' },
   ];
+  const showTemplateAdmin = Boolean(
+    user && canAccessAdmin(user) && templateAdminUrl
+  );
 
   return (
     <header className="border-b border-gray-200">
@@ -164,10 +182,21 @@ export function DashboardHeader({
                 </Link>
               );
             })}
+            {showTemplateAdmin ? (
+              <a
+                href={templateAdminUrl ?? undefined}
+                target="_blank"
+                rel="noreferrer"
+                className="relative inline-flex h-9 items-center gap-1 px-3 text-sm font-medium text-gray-700 transition-colors hover:text-gray-950"
+              >
+                Template Admin
+                <ExternalLink className="size-3.5" />
+              </a>
+            ) : null}
           </nav>
         ) : null}
         <div className="flex items-center space-x-4">
-          <UserMenu user={user} />
+          <UserMenu user={user} templateAdminUrl={templateAdminUrl} />
         </div>
       </div>
     </header>

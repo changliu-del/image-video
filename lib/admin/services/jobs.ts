@@ -15,11 +15,6 @@ const jobIdSchema = z.string().uuid();
 const updateJobSchema = z
   .object({
     status: z.enum(GENERATION_JOB_STATUSES).optional(),
-    productName: z.string().trim().min(1).max(120).optional(),
-    headline: z.string().trim().min(1).max(100).optional(),
-    sellingPoint: z.string().trim().min(1).max(5000).optional(),
-    priceText: z.string().trim().min(1).max(64).optional(),
-    ctaText: z.string().trim().min(1).max(40).optional(),
     errorMessage: z.string().trim().max(2000).nullable().optional(),
   })
   .strict();
@@ -36,11 +31,10 @@ export async function listJobs(params: {
         ilikeCol(generationJobs.id, search),
         ilikeCol(generationJobs.userId, search),
         ilikeCol(generationJobs.status, search),
-        ilikeCol(generationJobs.productName, search),
-        ilikeCol(generationJobs.templateSlug, search),
-        ilikeCol(generationJobs.templateId, search),
+        ilikeCol(generationJobs.generationType, search),
+        ilikeCol(generationJobs.tryOnMode, search),
         ilikeCol(generationJobs.provider, search),
-        ilikeCol(generationJobs.providerJobId, search)
+        ilikeCol(generationJobs.providerTaskId, search)
       )
     : undefined;
   const [rows, countResult] = await Promise.all([
@@ -73,26 +67,6 @@ export async function updateJob(id: string, data: unknown) {
 
   if (parsed.status !== undefined) {
     update.status = parsed.status;
-  }
-
-  if (parsed.productName !== undefined) {
-    update.productName = parsed.productName;
-  }
-
-  if (parsed.headline !== undefined) {
-    update.headline = parsed.headline;
-  }
-
-  if (parsed.sellingPoint !== undefined) {
-    update.sellingPoint = parsed.sellingPoint;
-  }
-
-  if (parsed.priceText !== undefined) {
-    update.priceText = parsed.priceText;
-  }
-
-  if (parsed.ctaText !== undefined) {
-    update.ctaText = parsed.ctaText;
   }
 
   if (parsed.errorMessage !== undefined) {

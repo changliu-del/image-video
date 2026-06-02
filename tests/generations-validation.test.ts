@@ -3,25 +3,23 @@ import { describe, expect, it } from 'vitest';
 import {
   ALLOWED_UPLOAD_MIME_TYPES,
   GENERATION_DURATIONS_SECONDS,
-  MAX_SELLING_POINT_LENGTH,
   MAX_TEXT_TO_IMAGE_PROMPT_LENGTH,
   MAX_UPLOAD_SIZE_BYTES,
+  apparelImageGenerationRequestSchema,
   generationApiRequestSchema,
-  generationRequestSchema,
   getCreditCostForDuration,
+  getCreditCostForGeneration,
+  imageToVideoGenerationRequestSchema,
   presignAssetRequestSchema,
+  tryOnGenerationRequestSchema,
 } from '../lib/generations/validation';
 
-const validGenerationRequest = {
+const validImageToVideoRequest = {
+  generationType: 'image_to_video',
   inputAssetId: 'asset_123',
-  productName: 'Velvet Matte Lipstick',
-  headline: 'New Arrival',
-  sellingPoint: 'Long-lasting color with a soft matte finish',
-  priceText: '$19.99',
-  ctaText: 'Shop Now',
+  prompt: 'Create a polished product video from the uploaded image.',
   aspectRatio: '9:16',
   durationSeconds: 5,
-  templateSlug: 'flash_sale',
 } as const;
 
 describe('presignAssetRequestSchema', () => {
@@ -59,7 +57,7 @@ describe('presignAssetRequestSchema', () => {
   });
 });
 
-describe('generationRequestSchema', () => {
+describe('imageToVideoGenerationRequestSchema', () => {
   it('accepts supported generation durations and maps them to credit costs', () => {
     const expectedCosts = new Map([
       [5, 10],
@@ -68,8 +66,8 @@ describe('generationRequestSchema', () => {
     ] as const);
 
     for (const durationSeconds of GENERATION_DURATIONS_SECONDS) {
-      const parsed = generationRequestSchema.parse({
-        ...validGenerationRequest,
+      const parsed = imageToVideoGenerationRequestSchema.parse({
+        ...validImageToVideoRequest,
         durationSeconds,
       });
 
@@ -77,54 +75,38 @@ describe('generationRequestSchema', () => {
       expect(getCreditCostForDuration(durationSeconds)).toBe(
         expectedCosts.get(durationSeconds)
       );
+      expect(getCreditCostForGeneration(parsed)).toBe(
+        expectedCosts.get(durationSeconds)
+      );
     }
   });
 
   it('coerces string durations from form payloads', () => {
-    const parsed = generationRequestSchema.parse({
-      ...validGenerationRequest,
+    const parsed = imageToVideoGenerationRequestSchema.parse({
+      ...validImageToVideoRequest,
       durationSeconds: '8',
     });
 
     expect(parsed.durationSeconds).toBe(8);
-    expect(getCreditCostForDuration(parsed.durationSeconds)).toBe(18);
+    expect(getCreditCostForGeneration(parsed)).toBe(18);
   });
 
-  it('rejects unsupported generation durations', () => {
-    const result = generationRequestSchema.safeParse({
-      ...validGenerationRequest,
-      durationSeconds: 12,
+  it('supports the legacy image-to-video alias but normalizes to image_to_video', () => {
+    const parsed = imageToVideoGenerationRequestSchema.parse({
+      ...validImageToVideoRequest,
+      generationType: 'image-to-video',
     });
 
-    expect(result.success).toBe(false);
+    expect(parsed.generationType).toBe('image_to_video');
   });
 
-  it('accepts long commercial prompts as the core selling point', () => {
-    const sellingPoint = [
-      'Use the uploaded product as the only hero object.',
-      'Keep the product shape, logo, material, color, and proportions unchanged.',
-      'Create cinematic lighting, smooth camera motion, premium ecommerce styling, sharp details, and realistic product rendering.',
-      'Avoid extra products, readable text, deformation, blur, low resolution, cartoon styling, and cluttered backgrounds.',
-    ].join(' ');
-
-    expect(sellingPoint.length).toBeGreaterThan(280);
-    expect(sellingPoint.length).toBeLessThan(MAX_SELLING_POINT_LENGTH);
-
-    const parsed = generationRequestSchema.parse({
-      ...validGenerationRequest,
-      sellingPoint,
-    });
-
-    expect(parsed.sellingPoint).toBe(sellingPoint);
-  });
-
-  it('requires an input asset id and supports the legacy inputAsset alias', () => {
-    const missingAsset = generationRequestSchema.safeParse({
-      ...validGenerationRequest,
+  it('requires an input asset id and supports the inputAsset alias', () => {
+    const missingAsset = imageToVideoGenerationRequestSchema.safeParse({
+      ...validImageToVideoRequest,
       inputAssetId: undefined,
     });
-    const aliasAsset = generationRequestSchema.parse({
-      ...validGenerationRequest,
+    const aliasAsset = imageToVideoGenerationRequestSchema.parse({
+      ...validImageToVideoRequest,
       inputAssetId: undefined,
       inputAsset: 'asset_from_alias',
     });
@@ -133,25 +115,75 @@ describe('generationRequestSchema', () => {
     expect(aliasAsset.inputAssetId).toBe('asset_from_alias');
   });
 
-  it('accepts explicit image-to-video generation type and mode aliases', () => {
-    const withGenerationType = generationRequestSchema.parse({
-      ...validGenerationRequest,
-      generationType: 'image-to-video',
-    });
-    const withMode = generationRequestSchema.parse({
-      ...validGenerationRequest,
-      mode: 'image-to-video',
+  it('rejects mismatched generation type and mode aliases', () => {
+    const result = imageToVideoGenerationRequestSchema.safeParse({
+      ...validImageToVideoRequest,
+      generationType: 'image_to_video',
+      mode: 'apparel_image',
     });
 
-    expect(withGenerationType.generationType).toBe('image-to-video');
-    expect(withMode.generationType).toBe('image-to-video');
+    expect(result.success).toBe(false);
+  });
+});
+
+describe('apparelImageGenerationRequestSchema', () => {
+  it('accepts apparel image requests', () => {
+    const parsed = apparelImageGenerationRequestSchema.parse({
+      generationType: 'apparel_image',
+      inputAssetId: 'asset_123',
+      prompt: 'Generate a clean studio apparel image.',
+      aspectRatio: '1:1',
+    });
+
+    expect(parsed.generationType).toBe('apparel_image');
+    expect(getCreditCostForGeneration(parsed)).toBe(5);
   });
 
-  it('rejects mismatched generation type and mode aliases', () => {
-    const result = generationRequestSchema.safeParse({
-      ...validGenerationRequest,
-      generationType: 'image-to-video',
-      mode: 'text-to-image',
+  it('requires the apparel_image discriminator', () => {
+    const result = apparelImageGenerationRequestSchema.safeParse({
+      inputAssetId: 'asset_123',
+      prompt: 'Generate a clean studio apparel image.',
+    });
+
+    expect(result.success).toBe(false);
+  });
+});
+
+describe('tryOnGenerationRequestSchema', () => {
+  it('accepts single try-on requests', () => {
+    const parsed = tryOnGenerationRequestSchema.parse({
+      generationType: 'try_on',
+      tryOnMode: 'single',
+      modelAssetId: 'model_asset',
+      garmentAssetId: 'garment_asset',
+    });
+
+    expect(parsed.generationType).toBe('try_on');
+    expect(parsed.tryOnMode).toBe('single');
+    expect(parsed.inputAssetId).toBe('model_asset');
+    expect(parsed.garmentAssetIds).toEqual(['garment_asset']);
+    expect(getCreditCostForGeneration(parsed)).toBe(5);
+  });
+
+  it('accepts mode as the try-on mode alias', () => {
+    const parsed = tryOnGenerationRequestSchema.parse({
+      generationType: 'try_on',
+      mode: 'multi',
+      inputAssetId: 'model_asset',
+      garmentAssetIds: ['top_asset', 'bottom_asset'],
+    });
+
+    expect(parsed.tryOnMode).toBe('multi');
+    expect(parsed.modelAssetId).toBe('model_asset');
+    expect(getCreditCostForGeneration(parsed)).toBe(10);
+  });
+
+  it('requires at least two garments for multi try-on', () => {
+    const result = tryOnGenerationRequestSchema.safeParse({
+      generationType: 'try_on',
+      tryOnMode: 'multi',
+      modelAssetId: 'model_asset',
+      garmentAssetIds: ['top_asset'],
     });
 
     expect(result.success).toBe(false);
@@ -159,38 +191,38 @@ describe('generationRequestSchema', () => {
 });
 
 describe('generationApiRequestSchema', () => {
-  it('accepts text-to-image requests when generation type is explicit', () => {
-    const prompt =
-      'A clean ecommerce hero image of a stainless steel bottle on a blue studio background';
-    const parsed = generationApiRequestSchema.parse({
-      generationType: 'text-to-image',
-      prompt,
-      aspectRatio: '1:1',
-    });
-
-    expect(parsed.generationType).toBe('text-to-image');
-    if (parsed.generationType !== 'text-to-image') {
-      throw new Error('Expected text-to-image request');
-    }
-    expect(parsed.prompt).toBe(prompt);
+  it('accepts all supported generation types', () => {
+    expect(
+      generationApiRequestSchema.parse(validImageToVideoRequest).generationType
+    ).toBe('image_to_video');
+    expect(
+      generationApiRequestSchema.parse({
+        generationType: 'apparel_image',
+        inputAssetId: 'asset_123',
+      }).generationType
+    ).toBe('apparel_image');
+    expect(
+      generationApiRequestSchema.parse({
+        generationType: 'try_on',
+        modelAssetId: 'model_asset',
+        garmentAssetId: 'garment_asset',
+      }).generationType
+    ).toBe('try_on');
   });
 
-  it('accepts mode as the text-to-image discriminator', () => {
-    const parsed = generationApiRequestSchema.parse({
-      mode: 'text-to-image',
+  it('rejects removed text-to-image requests', () => {
+    const result = generationApiRequestSchema.safeParse({
+      generationType: 'text-to-image',
       prompt: 'Minimal product render on a neutral background',
     });
 
-    expect(parsed.generationType).toBe('text-to-image');
-    if (parsed.generationType !== 'text-to-image') {
-      throw new Error('Expected text-to-image request');
-    }
-    expect(parsed.aspectRatio).toBe('1:1');
+    expect(result.success).toBe(false);
   });
 
-  it('enforces the text-to-image prompt length limit', () => {
+  it('enforces prompt length where prompts are accepted', () => {
     const result = generationApiRequestSchema.safeParse({
-      generationType: 'text-to-image',
+      generationType: 'apparel_image',
+      inputAssetId: 'asset_123',
       prompt: 'x'.repeat(MAX_TEXT_TO_IMAGE_PROMPT_LENGTH + 1),
     });
 

@@ -310,7 +310,7 @@ async function upsertCandidate(input: {
     await tx.insert(assets).values({
       id: assetId,
       userId: input.actorUserId,
-      type: 'template_asset',
+      type: 'upload',
       status: 'uploaded',
       storageKey,
       publicUrl,

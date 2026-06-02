@@ -43,6 +43,13 @@
       "when": 1780000003000,
       "tag": "0005_template_ingestion",
       "breakpoints": true
+    },
+    {
+      "idx": 6,
+      "version": "7",
+      "when": 1780000004000,
+      "tag": "0006_generation_jobs_wanxiang",
+      "breakpoints": true
     }
   ]
 }

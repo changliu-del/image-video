@@ -2,14 +2,33 @@ import 'server-only';
 
 import { randomUUID } from 'crypto';
 
+import {
+  captureReservedCredits,
+  refundReservedCredits,
+} from '@/lib/credits';
 import { client } from '@/lib/db/drizzle';
-import { refundReservedCredits } from '@/lib/credits';
 import { getGenerationLimitViolation } from '@/lib/generations/limits';
 import {
-  getCreditCostForDuration,
-  generationRequestSchema,
+  getCreditCostForGeneration,
   type GenerationRequest,
+  type GenerationType,
+  type TryOnMode,
 } from '@/lib/generations/validation';
+import {
+  queryCloth,
+  submitCloth,
+} from '@/lib/providers/wanxiang/cloth';
+import {
+  queryImageToVideo,
+  submitImageToVideo,
+} from '@/lib/providers/wanxiang/img-to-video';
+import {
+  queryTryOn,
+  submitTryOnMulti,
+  submitTryOnSingle,
+} from '@/lib/providers/wanxiang/starlink';
+
+const DEFAULT_PROVIDER = 'wanxiang';
 
 type AssetRecord = {
   id: string;
@@ -25,16 +44,66 @@ type AssetRecord = {
 type JobRecord = {
   id: string;
   status: string;
-  reused?: boolean;
+};
+
+type GenerationJobRecord = {
+  id: string;
+  userId: number;
+  generationType: GenerationType;
+  tryOnMode: TryOnMode | null;
+  status: 'running' | 'succeeded' | 'failed';
+  provider: string;
+  providerTaskId: string;
+  inputJson: Record<string, unknown>;
+  outputJson: Record<string, unknown> | null;
+  inputAssetId: string;
+  finalImageAssetId: string | null;
+  finalVideoAssetId: string | null;
+  errorMessage: string | null;
+  creditReserved: number;
 };
 
 type JobStatusRecord = {
   id: string;
+  generationId: string;
+  generationType: GenerationType;
+  tryOnMode: TryOnMode | null;
   status: string;
   progressLabel: string;
+  finalImageUrl: string | null;
   finalVideoUrl: string | null;
   thumbnailUrl: string | null;
+  outputJson: Record<string, unknown> | null;
   errorMessage: string | null;
+};
+
+type WanxiangSubmitInput = {
+  generationType: GenerationType;
+  tryOnMode?: TryOnMode;
+  inputAssetUrls: Record<string, string | string[]>;
+  inputJson: Record<string, unknown>;
+  metadata?: Record<string, unknown>;
+};
+
+type WanxiangSubmitResult = {
+  provider?: string;
+  providerTaskId: string;
+  rawResponse?: unknown;
+};
+
+type WanxiangQueryInput = {
+  generationType: GenerationType;
+  tryOnMode?: TryOnMode | null;
+  providerTaskId: string;
+};
+
+type WanxiangQueryResult = {
+  status: 'running' | 'succeeded' | 'failed';
+  imageUrl?: string | null;
+  videoUrl?: string | null;
+  outputJson?: Record<string, unknown> | null;
+  errorMessage?: string | null;
+  rawResponse?: unknown;
 };
 
 export class GenerationApiError extends Error {
@@ -76,6 +145,14 @@ function toBooleanValue(value: unknown) {
   return Boolean(value);
 }
 
+function toJsonObject(value: unknown): Record<string, unknown> {
+  if (value && typeof value === 'object' && !Array.isArray(value)) {
+    return value as Record<string, unknown>;
+  }
+
+  return {};
+}
+
 function mapAssetRow(row: Record<string, unknown>): AssetRecord {
   return {
     id: toStringValue(row.id),
@@ -93,6 +170,25 @@ function mapJobRow(row: Record<string, unknown>): JobRecord {
   return {
     id: toStringValue(row.id),
     status: toStringValue(row.status),
+  };
+}
+
+function mapGenerationJobRow(row: Record<string, unknown>): GenerationJobRecord {
+  return {
+    id: toStringValue(row.id),
+    userId: Number(row.user_id),
+    generationType: toStringValue(row.generation_type) as GenerationType,
+    tryOnMode: toNullableString(row.try_on_mode) as TryOnMode | null,
+    status: toStringValue(row.status) as GenerationJobRecord['status'],
+    provider: toStringValue(row.provider),
+    providerTaskId: toStringValue(row.provider_task_id),
+    inputJson: toJsonObject(row.input_json),
+    outputJson: row.output_json == null ? null : toJsonObject(row.output_json),
+    inputAssetId: toStringValue(row.input_asset_id),
+    finalImageAssetId: toNullableString(row.final_image_asset_id),
+    finalVideoAssetId: toNullableString(row.final_video_asset_id),
+    errorMessage: toNullableString(row.error_message),
+    creditReserved: Number(row.credit_reserved ?? 0),
   };
 }
 
@@ -192,114 +288,86 @@ export async function markAssetUploaded(input: {
   return row ? mapAssetRow(row) : null;
 }
 
-export function buildGenerationPrompt(input: GenerationRequest) {
-  return [
-    'Create a polished ecommerce product video from the uploaded product image.',
-    `Product name: ${input.productName}.`,
-    `Campaign headline: ${input.headline}.`,
-    `Core selling point: ${input.sellingPoint}.`,
-    'Use clean lighting, premium product motion, and a commercial social-ad style.',
-    'Do not render readable price, CTA, discounts, or typography in the generated video; those overlays are added later.',
-  ].join(' ');
-}
+function getInputAssetIds(generation: GenerationRequest) {
+  const ids = new Set<string>();
+  ids.add(generation.inputAssetId);
 
-export async function createQueuedGenerationJob(input: {
-  jobId: string;
-  userId: number;
-  generation: GenerationRequest;
-  prompt: string;
-  creditReserved: number;
-}) {
-  const rows = await client`
-    insert into generation_jobs (
-      id,
-      user_id,
-      status,
-      input_asset_id,
-      provider,
-      prompt,
-      product_name,
-      headline,
-      selling_point,
-      price_text,
-      cta_text,
-      aspect_ratio,
-      duration_seconds,
-      template_slug,
-      credit_reserved,
-      created_at,
-      updated_at
-    )
-    values (
-      ${input.jobId},
-      ${input.userId},
-      'queued',
-      ${input.generation.inputAssetId},
-      'fal',
-      ${input.prompt},
-      ${input.generation.productName},
-      ${input.generation.headline},
-      ${input.generation.sellingPoint},
-      ${input.generation.priceText},
-      ${input.generation.ctaText},
-      ${input.generation.aspectRatio},
-      ${input.generation.durationSeconds},
-      ${input.generation.templateSlug},
-      ${input.creditReserved},
-      now(),
-      now()
-    )
-    returning id, status
-  `;
-
-  return mapJobRow(rows[0] as Record<string, unknown>);
-}
-
-async function createQueuedGenerationJobWithCreditReservation(input: {
-  jobId: string;
-  userId: number;
-  generation: GenerationRequest;
-  prompt: string;
-  creditReserved: number;
-  retryOfJobId?: string;
-  metadata?: Record<string, unknown>;
-}) {
-  return client.begin(async (sql) => {
-    await sql`select pg_advisory_xact_lock(${input.userId})`;
-
-    if (input.retryOfJobId) {
-      const activeRetryRows = await sql`
-        select
-          generation_jobs.id,
-          generation_jobs.status
-        from generation_jobs
-        inner join credit_ledger
-          on credit_ledger.job_id = generation_jobs.id
-        where generation_jobs.user_id = ${input.userId}
-          and generation_jobs.status in ('queued', 'running', 'rendering')
-          and credit_ledger.reason = 'reserve'
-          and credit_ledger.metadata_json ->> 'retryOfJobId' = ${input.retryOfJobId}
-        order by generation_jobs.created_at desc
-        limit 1
-      `;
-
-      const activeRetryRow = activeRetryRows[0] as
-        | Record<string, unknown>
-        | undefined;
-
-      if (activeRetryRow) {
-        return {
-          ...mapJobRow(activeRetryRow),
-          reused: true,
-        };
-      }
+  if (generation.generationType === 'try_on') {
+    ids.add(generation.modelAssetId);
+    for (const garmentAssetId of generation.garmentAssetIds) {
+      ids.add(garmentAssetId);
     }
+  }
+
+  return [...ids];
+}
+
+function buildProviderInputAssets(
+  generation: GenerationRequest,
+  assetsById: Map<string, AssetRecord>
+): Record<string, string | string[]> {
+  switch (generation.generationType) {
+    case 'image_to_video':
+    case 'apparel_image':
+      return {
+        inputImageUrl: assetsById.get(generation.inputAssetId)!.publicUrl,
+      };
+    case 'try_on':
+      return {
+        modelImageUrl: assetsById.get(generation.modelAssetId)!.publicUrl,
+        garmentImageUrls: generation.garmentAssetIds.map(
+          (assetId) => assetsById.get(assetId)!.publicUrl
+        ),
+      };
+  }
+}
+
+function buildInputJson(generation: GenerationRequest) {
+  return JSON.parse(JSON.stringify(generation)) as Record<string, unknown>;
+}
+
+async function assertInputAssetsForUser(
+  generation: GenerationRequest,
+  userId: number
+) {
+  const assets = new Map<string, AssetRecord>();
+
+  for (const assetId of getInputAssetIds(generation)) {
+    const asset = await getAssetForUser(assetId, userId);
+
+    if (!asset) {
+      throw new GenerationApiError(
+        404,
+        'input_asset_not_found',
+        'Input asset was not found'
+      );
+    }
+
+    if (asset.status !== 'uploaded') {
+      throw new GenerationApiError(
+        400,
+        'input_asset_not_uploaded',
+        'Input asset must be uploaded before generation'
+      );
+    }
+
+    assets.set(assetId, asset);
+  }
+
+  return assets;
+}
+
+async function assertUserCanCreateGeneration(input: {
+  userId: number;
+  generation: GenerationRequest;
+  creditReserved: number;
+}) {
+  await client.begin(async (sql) => {
+    await sql`select pg_advisory_xact_lock(${input.userId})`;
 
     const limitRows = await sql`
       select
-        count(*) filter (
-          where status in ('queued', 'running', 'rendering')
-        )::integer as active_count,
+        count(*) filter (where status = 'running')::integer as active_count,
         count(*) filter (
           where created_at >= now() - interval '24 hours'
         )::integer as daily_count,
@@ -340,6 +408,135 @@ async function createQueuedGenerationJobWithCreditReservation(input: {
       where id = ${input.userId}
       limit 1
     `;
+    const balanceRow = balanceRows[0] as Record<string, unknown> | undefined;
+
+    if (!balanceRow) {
+      throw new GenerationApiError(404, 'user_not_found', 'User not found');
+    }
+
+    const currentBalance = Number(balanceRow.balance ?? 0);
+    if (currentBalance < input.creditReserved) {
+      throw new GenerationApiError(
+        402,
+        'insufficient_credits',
+        'Not enough credits to create this generation'
+      );
+    }
+  });
+}
+
+function buildWanxiangPayload(input: WanxiangSubmitInput) {
+  return {
+    ...input.inputJson,
+    ...input.inputAssetUrls,
+    metadata: input.metadata,
+  };
+}
+
+async function submitWanxiangGeneration(input: WanxiangSubmitInput) {
+  const payload = buildWanxiangPayload(input);
+
+  if (input.generationType === 'image_to_video') {
+    const result = await submitImageToVideo(payload);
+    return normalizeWanxiangSubmitResult(result);
+  }
+
+  if (input.generationType === 'apparel_image') {
+    const result = await submitCloth(payload);
+    return normalizeWanxiangSubmitResult(result);
+  }
+
+  const result =
+    input.tryOnMode === 'multi'
+      ? await submitTryOnMulti(payload)
+      : await submitTryOnSingle(payload);
+
+  return normalizeWanxiangSubmitResult(result);
+}
+
+async function queryWanxiangGeneration(input: WanxiangQueryInput) {
+  if (input.generationType === 'image_to_video') {
+    const result = await queryImageToVideo(input.providerTaskId);
+    return normalizeWanxiangQueryResult(result);
+  }
+
+  if (input.generationType === 'apparel_image') {
+    const result = await queryCloth(input.providerTaskId);
+    return normalizeWanxiangQueryResult(result);
+  }
+
+  const result = await queryTryOn(input.providerTaskId);
+  return normalizeWanxiangQueryResult(result);
+}
+
+function normalizeWanxiangSubmitResult(
+  result: { providerTaskId?: string; rawResponse?: unknown } | undefined
+): WanxiangSubmitResult {
+  if (!result?.providerTaskId) {
+    throw new GenerationApiError(
+      503,
+      'provider_submit_unavailable',
+      'Generation provider submit is not configured'
+    );
+  }
+
+  return {
+    provider: DEFAULT_PROVIDER,
+    providerTaskId: result.providerTaskId,
+    rawResponse: result.rawResponse,
+  };
+}
+
+function normalizeWanxiangQueryResult(
+  result:
+    | {
+        status: WanxiangQueryResult['status'];
+        finalImageUrl?: string;
+        finalVideoUrl?: string;
+        rawResponse?: unknown;
+        errorMessage?: string;
+      }
+    | undefined
+): WanxiangQueryResult {
+  if (!result) {
+    throw new GenerationApiError(
+      503,
+      'provider_query_unavailable',
+      'Generation provider query is not configured'
+    );
+  }
+
+  return {
+    status: result.status,
+    imageUrl: result.finalImageUrl,
+    videoUrl: result.finalVideoUrl,
+    outputJson: {
+      finalImageUrl: result.finalImageUrl,
+      finalVideoUrl: result.finalVideoUrl,
+    },
+    rawResponse: result.rawResponse,
+    errorMessage: result.errorMessage,
+  };
+}
+
+async function createRunningGenerationJobWithCreditReservation(input: {
+  jobId: string;
+  userId: number;
+  generation: GenerationRequest;
+  provider: string;
+  providerTaskId: string;
+  inputJson: Record<string, unknown>;
+  creditReserved: number;
+}) {
+  return client.begin(async (sql) => {
+    await sql`select pg_advisory_xact_lock(${input.userId})`;
+
+    const balanceRows = await sql`
+      select credit_balance::integer as balance
+      from users
+      where id = ${input.userId}
+      limit 1
+    `;
     const currentBalance = Number(
       (balanceRows[0] as Record<string, unknown> | undefined)?.balance ?? 0
     );
@@ -356,18 +553,13 @@ async function createQueuedGenerationJobWithCreditReservation(input: {
       insert into generation_jobs (
         id,
         user_id,
+        generation_type,
+        try_on_mode,
         status,
-        input_asset_id,
         provider,
-        prompt,
-        product_name,
-        headline,
-        selling_point,
-        price_text,
-        cta_text,
-        aspect_ratio,
-        duration_seconds,
-        template_slug,
+        provider_task_id,
+        input_json,
+        input_asset_id,
         credit_reserved,
         created_at,
         updated_at
@@ -375,18 +567,17 @@ async function createQueuedGenerationJobWithCreditReservation(input: {
       values (
         ${input.jobId},
         ${input.userId},
-        'queued',
+        ${input.generation.generationType},
+        ${
+          input.generation.generationType === 'try_on'
+            ? input.generation.tryOnMode
+            : null
+        },
+        'running',
+        ${input.provider},
+        ${input.providerTaskId},
+        ${JSON.stringify(input.inputJson)}::jsonb,
         ${input.generation.inputAssetId},
-        'fal',
-        ${input.prompt},
-        ${input.generation.productName},
-        ${input.generation.headline},
-        ${input.generation.sellingPoint},
-        ${input.generation.priceText},
-        ${input.generation.ctaText},
-        ${input.generation.aspectRatio},
-        ${input.generation.durationSeconds},
-        ${input.generation.templateSlug},
         ${input.creditReserved},
         now(),
         now()
@@ -421,11 +612,15 @@ async function createQueuedGenerationJobWithCreditReservation(input: {
         'reserve',
         ${balanceAfter},
         ${JSON.stringify({
+          generationType: input.generation.generationType,
+          tryOnMode:
+            input.generation.generationType === 'try_on'
+              ? input.generation.tryOnMode
+              : undefined,
           inputAssetId: input.generation.inputAssetId,
-          durationSeconds: input.generation.durationSeconds,
-          aspectRatio: input.generation.aspectRatio,
-          templateSlug: input.generation.templateSlug,
-          ...input.metadata,
+          provider: input.provider,
+          providerTaskId: input.providerTaskId,
+          source: 'generation_create',
         })}::jsonb,
         now()
       )
@@ -435,252 +630,72 @@ async function createQueuedGenerationJobWithCreditReservation(input: {
   });
 }
 
-async function getRetrySourceJobForUser(jobId: string, userId: number) {
-  const rows = await client`
-    select
-      id::text as id,
-      status,
-      input_asset_id::text as input_asset_id,
-      product_name,
-      headline,
-      selling_point,
-      price_text,
-      cta_text,
-      aspect_ratio,
-      duration_seconds,
-      template_slug
-    from generation_jobs
-    where id::text = ${jobId}
-      and user_id = ${userId}
-    limit 1
-  `;
-
-  const row = rows[0] as Record<string, unknown> | undefined;
-
-  if (!row) {
-    return null;
-  }
-
-  return {
-    id: toStringValue(row.id),
-    status: toStringValue(row.status),
-    generation: generationRequestSchema.parse({
-      inputAssetId: toStringValue(row.input_asset_id),
-      productName: toStringValue(row.product_name),
-      headline: toStringValue(row.headline),
-      sellingPoint: toStringValue(row.selling_point),
-      priceText: toStringValue(row.price_text),
-      ctaText: toStringValue(row.cta_text),
-      aspectRatio: toStringValue(row.aspect_ratio),
-      durationSeconds: Number(row.duration_seconds),
-      templateSlug: toStringValue(row.template_slug),
-    }),
-  };
-}
-
-export async function triggerGenerateVideoJob(jobId: string) {
-  if (!process.env.TRIGGER_SECRET_KEY && !process.env.TRIGGER_API_KEY) {
-    console.info(
-      `Trigger.dev credentials are not configured; generation job ${jobId} remains queued`
-    );
-    return { triggered: false, reason: 'missing_trigger_credentials' };
-  }
-
-  try {
-    const triggerSdk = await import(`@trigger.dev/sdk${'/v3'}`).catch(() =>
-      import(`@trigger.dev/${'sdk'}`)
-    );
-    const tasks = (triggerSdk as { tasks?: unknown }).tasks as
-      | { trigger?: (taskId: string, payload: unknown) => Promise<unknown> }
-      | undefined;
-
-    if (!tasks?.trigger) {
-      console.info(
-        `Trigger.dev SDK did not expose tasks.trigger; generation job ${jobId} remains queued`
-      );
-      return { triggered: false, reason: 'trigger_client_unavailable' };
-    }
-
-    await tasks.trigger('generate-video', { jobId });
-    return { triggered: true };
-  } catch (error) {
-    console.warn('Failed to trigger generate-video task', error);
-    return { triggered: false, reason: 'trigger_failed' };
-  }
-}
-
-async function failQueuedJobAndRefund(input: {
-  jobId: string;
-  userId: number;
-  reason: string;
-}) {
-  await client`
-    update generation_jobs
-    set
-      status = 'failed',
-      error_message = ${input.reason},
-      completed_at = now(),
-      updated_at = now()
-    where id = ${input.jobId}
-      and user_id = ${input.userId}
-      and status = 'queued'
-  `;
-
-  await refundReservedCredits({
-    userId: input.userId,
-    jobId: input.jobId,
-    metadata: {
-      reason: input.reason,
-      source: 'trigger_enqueue_compensation',
-    },
-  });
-}
-
-function getTriggerFailureMessage(code?: string) {
-  return code === 'missing_trigger_credentials'
-    ? 'Video queue is not configured'
-    : 'Video queue could not be reached';
-}
-
 export async function createGenerationForUser(
   userId: number,
   generation: GenerationRequest
 ) {
-  const inputAsset = await getAssetForUser(generation.inputAssetId, userId);
+  const creditReserved = getCreditCostForGeneration(generation);
+  const assetsById = await assertInputAssetsForUser(generation, userId);
 
-  if (!inputAsset) {
-    throw new GenerationApiError(
-      404,
-      'input_asset_not_found',
-      'Input asset was not found'
-    );
-  }
-
-  if (inputAsset.status !== 'uploaded') {
-    throw new GenerationApiError(
-      400,
-      'input_asset_not_uploaded',
-      'Input asset must be uploaded before generation'
-    );
-  }
-
-  const creditReserved = getCreditCostForDuration(generation.durationSeconds);
-  const jobId = randomUUID();
-  const prompt = buildGenerationPrompt(generation);
-
-  const job = await createQueuedGenerationJobWithCreditReservation({
-    jobId,
+  await assertUserCanCreateGeneration({
     userId,
     generation,
-    prompt,
     creditReserved,
+  });
+
+  const jobId = randomUUID();
+  const inputJson = buildInputJson(generation);
+  const submitResult = await submitWanxiangGeneration({
+    generationType: generation.generationType,
+    tryOnMode:
+      generation.generationType === 'try_on' ? generation.tryOnMode : undefined,
+    inputAssetUrls: buildProviderInputAssets(generation, assetsById),
+    inputJson,
     metadata: {
-      source: 'generation_create',
+      jobId,
+      userId,
     },
   });
 
-  const triggerResult = await triggerGenerateVideoJob(job.id);
-
-  if (!triggerResult.triggered) {
-    const code = triggerResult.reason ?? 'trigger_failed';
-    const reason = getTriggerFailureMessage(code);
-    await failQueuedJobAndRefund({
-      jobId: job.id,
-      userId,
-      reason,
-    });
-    throw new GenerationApiError(503, code, reason);
+  if (!submitResult.providerTaskId) {
+    throw new GenerationApiError(
+      502,
+      'provider_task_id_missing',
+      'Generation provider did not return a task id'
+    );
   }
+
+  const job = await createRunningGenerationJobWithCreditReservation({
+    jobId,
+    userId,
+    generation,
+    provider: submitResult.provider ?? DEFAULT_PROVIDER,
+    providerTaskId: submitResult.providerTaskId,
+    inputJson: {
+      ...inputJson,
+      providerSubmitRawResponse: submitResult.rawResponse,
+    },
+    creditReserved,
+  });
 
   return job;
 }
 
 export async function retryGenerationJobForUser(
-  jobId: string,
-  userId: number
-) {
-  const sourceJob = await getRetrySourceJobForUser(jobId, userId);
-
-  if (!sourceJob) {
-    throw new GenerationApiError(404, 'job_not_found', 'Job not found');
-  }
-
-  if (sourceJob.status !== 'failed') {
-    throw new GenerationApiError(
-      409,
-      'job_not_failed',
-      'Only failed jobs can be retried'
-    );
-  }
-
-  const inputAsset = await getAssetForUser(
-    sourceJob.generation.inputAssetId,
-    userId
+  _jobId?: string,
+  _userId?: number
+): Promise<JobRecord & { reused?: boolean }> {
+  throw new GenerationApiError(
+    410,
+    'retry_not_supported',
+    'Retry is not supported for Wanxiang generation jobs'
   );
-
-  if (!inputAsset) {
-    throw new GenerationApiError(
-      404,
-      'input_asset_not_found',
-      'Input asset was not found'
-    );
-  }
-
-  if (inputAsset.status !== 'uploaded') {
-    throw new GenerationApiError(
-      400,
-      'input_asset_not_uploaded',
-      'Input asset must be uploaded before generation'
-    );
-  }
-
-  const newJobId = randomUUID();
-  const creditReserved = getCreditCostForDuration(
-    sourceJob.generation.durationSeconds
-  );
-  const prompt = buildGenerationPrompt(sourceJob.generation);
-
-  const job = await createQueuedGenerationJobWithCreditReservation({
-    jobId: newJobId,
-    userId,
-    generation: sourceJob.generation,
-    prompt,
-    creditReserved,
-    retryOfJobId: sourceJob.id,
-    metadata: {
-      source: 'job_retry',
-      retryOfJobId: sourceJob.id,
-    },
-  });
-
-  if (job.reused) {
-    return job;
-  }
-
-  const triggerResult = await triggerGenerateVideoJob(job.id);
-
-  if (!triggerResult.triggered) {
-    const code = triggerResult.reason ?? 'trigger_failed';
-    const reason = getTriggerFailureMessage(code);
-    await failQueuedJobAndRefund({
-      jobId: job.id,
-      userId,
-      reason,
-    });
-    throw new GenerationApiError(503, code, reason);
-  }
-
-  return job;
 }
 
 export function getProgressLabel(status: string) {
   switch (status) {
-    case 'queued':
-      return 'Queued';
     case 'running':
-      return 'Generating video';
-    case 'rendering':
-      return 'Adding product overlays';
+      return 'Generating';
     case 'succeeded':
       return 'Ready';
     case 'failed':
@@ -690,38 +705,214 @@ export function getProgressLabel(status: string) {
   }
 }
 
-export async function getGenerationJobForUser(jobId: string, userId: number) {
+async function getGenerationJobRecordForUser(jobId: string, userId: number) {
   const rows = await client`
     select
-      generation_jobs.id,
-      generation_jobs.status,
-      generation_jobs.error_message,
-      final_asset.public_url as final_video_url,
-      thumbnail_asset.public_url as thumbnail_url
+      id,
+      user_id,
+      generation_type,
+      try_on_mode,
+      status,
+      provider,
+      provider_task_id,
+      input_json,
+      output_json,
+      input_asset_id,
+      final_image_asset_id,
+      final_video_asset_id,
+      error_message,
+      credit_reserved
     from generation_jobs
-    left join assets final_asset
-      on final_asset.id = generation_jobs.final_video_asset_id
-    left join assets thumbnail_asset
-      on thumbnail_asset.id = generation_jobs.thumbnail_asset_id
-    where generation_jobs.id = ${jobId}
-      and generation_jobs.user_id = ${userId}
+    where id = ${jobId}
+      and user_id = ${userId}
     limit 1
   `;
 
   const row = rows[0] as Record<string, unknown> | undefined;
+  return row ? mapGenerationJobRow(row) : null;
+}
 
-  if (!row) {
+async function createProviderResultAsset(input: {
+  userId: number;
+  jobId: string;
+  assetType: 'final_image' | 'final_video';
+  publicUrl: string;
+}) {
+  const assetId = randomUUID();
+  const extension = input.assetType === 'final_image' ? 'image' : 'video';
+  const storageKey = `provider-results/${input.userId}/${input.jobId}/${assetId}-${extension}`;
+
+  const rows = await client`
+    insert into assets (
+      id,
+      user_id,
+      type,
+      status,
+      storage_key,
+      public_url,
+      created_at,
+      updated_at
+    )
+    values (
+      ${assetId},
+      ${input.userId},
+      ${input.assetType},
+      'uploaded',
+      ${storageKey},
+      ${input.publicUrl},
+      now(),
+      now()
+    )
+    returning id
+  `;
+
+  return toStringValue((rows[0] as Record<string, unknown>).id);
+}
+
+async function mapJobStatus(job: GenerationJobRecord): Promise<JobStatusRecord> {
+  const rows = await client`
+    select
+      final_image.public_url as final_image_url,
+      final_video.public_url as final_video_url
+    from generation_jobs
+    left join assets final_image
+      on final_image.id = generation_jobs.final_image_asset_id
+    left join assets final_video
+      on final_video.id = generation_jobs.final_video_asset_id
+    where generation_jobs.id = ${job.id}
+    limit 1
+  `;
+  const row = rows[0] as Record<string, unknown> | undefined;
+
+  return {
+    id: job.id,
+    generationId: job.id,
+    generationType: job.generationType,
+    tryOnMode: job.tryOnMode,
+    status: job.status,
+    progressLabel: getProgressLabel(job.status),
+    finalImageUrl: toNullableString(row?.final_image_url),
+    finalVideoUrl: toNullableString(row?.final_video_url),
+    thumbnailUrl: null,
+    outputJson: job.outputJson,
+    errorMessage: job.errorMessage,
+  };
+}
+
+async function markJobSucceeded(input: {
+  job: GenerationJobRecord;
+  queryResult: WanxiangQueryResult;
+}) {
+  const outputJson = {
+    ...(input.queryResult.outputJson ?? {}),
+    rawResponse: input.queryResult.rawResponse,
+  };
+  const finalImageAssetId = input.queryResult.imageUrl
+    ? await createProviderResultAsset({
+        userId: input.job.userId,
+        jobId: input.job.id,
+        assetType: 'final_image',
+        publicUrl: input.queryResult.imageUrl,
+      })
+    : null;
+  const finalVideoAssetId = input.queryResult.videoUrl
+    ? await createProviderResultAsset({
+        userId: input.job.userId,
+        jobId: input.job.id,
+        assetType: 'final_video',
+        publicUrl: input.queryResult.videoUrl,
+      })
+    : null;
+
+  await client`
+    update generation_jobs
+    set
+      status = 'succeeded',
+      output_json = ${JSON.stringify(outputJson)}::jsonb,
+      final_image_asset_id = ${finalImageAssetId},
+      final_video_asset_id = ${finalVideoAssetId},
+      error_message = null,
+      completed_at = now(),
+      updated_at = now()
+    where id = ${input.job.id}
+      and user_id = ${input.job.userId}
+      and status = 'running'
+  `;
+
+  await captureReservedCredits({
+    userId: input.job.userId,
+    jobId: input.job.id,
+    metadata: {
+      provider: input.job.provider,
+      providerTaskId: input.job.providerTaskId,
+      source: 'generation_status_succeeded',
+    },
+  });
+}
+
+async function markJobFailed(input: {
+  job: GenerationJobRecord;
+  errorMessage: string;
+  rawResponse?: unknown;
+}) {
+  await client`
+    update generation_jobs
+    set
+      status = 'failed',
+      output_json = ${JSON.stringify({
+        rawResponse: input.rawResponse,
+      })}::jsonb,
+      error_message = ${input.errorMessage},
+      completed_at = now(),
+      updated_at = now()
+    where id = ${input.job.id}
+      and user_id = ${input.job.userId}
+      and status = 'running'
+  `;
+
+  await refundReservedCredits({
+    userId: input.job.userId,
+    jobId: input.job.id,
+    metadata: {
+      provider: input.job.provider,
+      providerTaskId: input.job.providerTaskId,
+      reason: input.errorMessage,
+      source: 'generation_status_failed',
+    },
+  });
+}
+
+export async function getGenerationJobForUser(jobId: string, userId: number) {
+  const job = await getGenerationJobRecordForUser(jobId, userId);
+
+  if (!job) {
     return null;
   }
 
-  const status = toStringValue(row.status);
+  if (job.status !== 'running') {
+    return mapJobStatus(job);
+  }
 
-  return {
-    id: toStringValue(row.id),
-    status,
-    progressLabel: getProgressLabel(status),
-    finalVideoUrl: toNullableString(row.final_video_url),
-    thumbnailUrl: toNullableString(row.thumbnail_url),
-    errorMessage: toNullableString(row.error_message),
-  } satisfies JobStatusRecord;
+  const queryResult = await queryWanxiangGeneration({
+    generationType: job.generationType,
+    tryOnMode: job.tryOnMode,
+    providerTaskId: job.providerTaskId,
+  });
+
+  if (queryResult.status === 'running') {
+    return mapJobStatus(job);
+  }
+
+  if (queryResult.status === 'succeeded') {
+    await markJobSucceeded({ job, queryResult });
+  } else {
+    await markJobFailed({
+      job,
+      errorMessage: queryResult.errorMessage ?? 'Generation failed',
+      rawResponse: queryResult.rawResponse,
+    });
+  }
+
+  const updatedJob = await getGenerationJobRecordForUser(jobId, userId);
+  return updatedJob ? mapJobStatus(updatedJob) : null;
 }

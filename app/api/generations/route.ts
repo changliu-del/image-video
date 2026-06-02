@@ -33,21 +33,12 @@ export async function POST(request: NextRequest) {
     );
   }
 
-  if (parsed.data.generationType === 'text-to-image') {
-    return NextResponse.json(
-      {
-        error: 'Text-to-image generation is not available yet',
-        code: 'generation_type_not_supported',
-      },
-      { status: 501 }
-    );
-  }
-
   try {
     const job = await createGenerationForUser(user.id, parsed.data);
 
     return NextResponse.json(
       {
+        generationId: job.id,
         jobId: job.id,
         status: job.status,
       },

@@ -17,10 +17,8 @@ import { relations, sql } from 'drizzle-orm';
 
 export const ASSET_TYPES = [
   'upload',
-  'raw_video',
+  'final_image',
   'final_video',
-  'thumbnail',
-  'template_asset',
 ] as const;
 export type AssetType = (typeof ASSET_TYPES)[number];
 
@@ -28,13 +26,21 @@ export const ASSET_STATUSES = ['pending', 'uploaded', 'failed'] as const;
 export type AssetStatus = (typeof ASSET_STATUSES)[number];
 
 export const GENERATION_JOB_STATUSES = [
-  'queued',
   'running',
-  'rendering',
   'succeeded',
   'failed',
 ] as const;
 export type GenerationJobStatus = (typeof GENERATION_JOB_STATUSES)[number];
+
+export const GENERATION_TYPES = [
+  'image_to_video',
+  'apparel_image',
+  'try_on',
+] as const;
+export type GenerationType = (typeof GENERATION_TYPES)[number];
+
+export const TRY_ON_MODES = ['single', 'multi'] as const;
+export type TryOnMode = (typeof TRY_ON_MODES)[number];
 
 export const VIDEO_ASPECT_RATIOS = ['9:16', '1:1', '16:9'] as const;
 export type VideoAspectRatio = (typeof VIDEO_ASPECT_RATIOS)[number];
@@ -145,7 +151,7 @@ export const assets = pgTable(
     ),
     check(
       'assets_type_check',
-      sql`${table.type} in ('upload', 'raw_video', 'final_video', 'thumbnail', 'template_asset')`
+      sql`${table.type} in ('upload', 'final_image', 'final_video')`
     ),
     check(
       'assets_status_check',
@@ -419,54 +425,58 @@ export const generationJobs = pgTable(
     status: text('status')
       .$type<GenerationJobStatus>()
       .notNull()
-      .default('queued'),
+      .default('running'),
+    generationType: text('generation_type')
+      .$type<GenerationType>()
+      .notNull(),
+    tryOnMode: text('try_on_mode').$type<TryOnMode>(),
     inputAssetId: uuid('input_asset_id')
       .notNull()
       .references(() => assets.id),
-    rawVideoAssetId: uuid('raw_video_asset_id').references(() => assets.id),
+    finalImageAssetId: uuid('final_image_asset_id').references(() => assets.id),
     finalVideoAssetId: uuid('final_video_asset_id').references(() => assets.id),
-    thumbnailAssetId: uuid('thumbnail_asset_id').references(() => assets.id),
-    provider: text('provider').notNull().default('fal'),
-    providerJobId: text('provider_job_id'),
-    prompt: text('prompt').notNull(),
-    negativePrompt: text('negative_prompt'),
-    productName: varchar('product_name', { length: 120 }).notNull(),
-    headline: varchar('headline', { length: 100 }).notNull(),
-    sellingPoint: text('selling_point').notNull(),
-    priceText: varchar('price_text', { length: 64 }).notNull(),
-    ctaText: varchar('cta_text', { length: 40 }).notNull(),
-    aspectRatio: text('aspect_ratio').$type<VideoAspectRatio>().notNull(),
-    durationSeconds: integer('duration_seconds').notNull(),
-    templateSlug: varchar('template_slug', { length: 120 }).notNull(),
-    templateId: uuid('template_id').references(() => templates.id),
+    provider: text('provider').notNull().default('wanxiang'),
+    providerTaskId: text('provider_task_id').notNull(),
+    inputJson: jsonb('input_json')
+      .$type<Record<string, unknown>>()
+      .notNull()
+      .default(sql`'{}'::jsonb`),
+    outputJson: jsonb('output_json').$type<Record<string, unknown>>(),
     errorMessage: text('error_message'),
     creditReserved: integer('credit_reserved').notNull().default(0),
     creditSpent: integer('credit_spent').notNull().default(0),
     createdAt: timestamp('created_at').notNull().defaultNow(),
     updatedAt: timestamp('updated_at').notNull().defaultNow(),
-    startedAt: timestamp('started_at'),
     completedAt: timestamp('completed_at'),
   },
   (table) => [
     index('generation_jobs_user_id_idx').on(table.userId),
     index('generation_jobs_user_status_idx').on(table.userId, table.status),
+    index('generation_jobs_type_status_idx').on(
+      table.generationType,
+      table.status
+    ),
     index('generation_jobs_input_asset_id_idx').on(table.inputAssetId),
-    uniqueIndex('generation_jobs_provider_job_id_unique')
-      .on(table.provider, table.providerJobId)
-      .where(sql`${table.providerJobId} is not null`),
+    uniqueIndex('generation_jobs_provider_task_id_unique').on(
+      table.provider,
+      table.providerTaskId
+    ),
     check(
       'generation_jobs_status_check',
-      sql`${table.status} in ('queued', 'running', 'rendering', 'succeeded', 'failed')`
+      sql`${table.status} in ('running', 'succeeded', 'failed')`
     ),
     check(
-      'generation_jobs_aspect_ratio_check',
-      sql`${table.aspectRatio} in ('9:16', '1:1', '16:9')`
+      'generation_jobs_type_check',
+      sql`${table.generationType} in ('image_to_video', 'apparel_image', 'try_on')`
     ),
     check(
-      'generation_jobs_duration_seconds_check',
-      sql`${table.durationSeconds} in (5, 8, 10)`
+      'generation_jobs_try_on_mode_check',
+      sql`${table.tryOnMode} is null or ${table.tryOnMode} in ('single', 'multi')`
     ),
-    check('generation_jobs_template_slug_check', sql`length(trim(${table.templateSlug})) > 0`),
+    check(
+      'generation_jobs_try_on_mode_type_check',
+      sql`(${table.generationType} = 'try_on' and ${table.tryOnMode} is not null) or (${table.generationType} <> 'try_on' and ${table.tryOnMode} is null)`
+    ),
     check(
       'generation_jobs_credit_reserved_check',
       sql`${table.creditReserved} >= 0`
@@ -540,9 +550,8 @@ export const assetsRelations = relations(assets, ({ one, many }) => ({
     references: [users.id],
   }),
   inputForJobs: many(generationJobs, { relationName: 'inputAsset' }),
-  rawVideoForJobs: many(generationJobs, { relationName: 'rawVideoAsset' }),
+  finalImageForJobs: many(generationJobs, { relationName: 'finalImageAsset' }),
   finalVideoForJobs: many(generationJobs, { relationName: 'finalVideoAsset' }),
-  thumbnailForJobs: many(generationJobs, { relationName: 'thumbnailAsset' }),
   previewForTemplates: many(templates, { relationName: 'templatePreviewAsset' }),
   thumbnailForTemplates: many(templates, { relationName: 'templateThumbnailAsset' }),
   templateAssets: many(templateAssets),
@@ -663,24 +672,15 @@ export const generationJobsRelations = relations(
       references: [assets.id],
       relationName: 'inputAsset',
     }),
-    rawVideoAsset: one(assets, {
-      fields: [generationJobs.rawVideoAssetId],
+    finalImageAsset: one(assets, {
+      fields: [generationJobs.finalImageAssetId],
       references: [assets.id],
-      relationName: 'rawVideoAsset',
+      relationName: 'finalImageAsset',
     }),
     finalVideoAsset: one(assets, {
       fields: [generationJobs.finalVideoAssetId],
       references: [assets.id],
       relationName: 'finalVideoAsset',
-    }),
-    thumbnailAsset: one(assets, {
-      fields: [generationJobs.thumbnailAssetId],
-      references: [assets.id],
-      relationName: 'thumbnailAsset',
-    }),
-    template: one(templates, {
-      fields: [generationJobs.templateId],
-      references: [templates.id],
     }),
   })
 );

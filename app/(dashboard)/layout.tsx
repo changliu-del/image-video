@@ -26,7 +26,10 @@ export default async function Layout({
 
   return (
     <section className="flex flex-col min-h-screen">
-      <DashboardHeader user={toHeaderUser(user)} />
+      <DashboardHeader
+        user={toHeaderUser(user)}
+        templateAdminUrl={process.env.TEMPLATE_ADMIN_URL ?? null}
+      />
       {children}
     </section>
   );
