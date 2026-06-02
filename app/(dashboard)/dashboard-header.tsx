@@ -13,7 +13,6 @@ import {
 } from '@/components/ui/dropdown-menu';
 import { signOut } from '@/app/(login)/actions';
 import {
-  CircleIcon,
   ExternalLink,
   LogOut,
   Settings,
@@ -23,10 +22,10 @@ import { cn } from '@/lib/utils';
 
 export type DashboardHeaderUser = {
   id: number;
-  email: string;
-  name: string | null;
-  isAdmin: boolean;
-  role: string;
+  email?: string | null;
+  name?: string | null;
+  isAdmin?: boolean;
+  role?: string | null;
 };
 
 function canAccessAdmin(user: DashboardHeaderUser) {
@@ -62,11 +61,11 @@ function UserMenu({
       <>
         <Link
           href="/sign-in"
-          className="text-sm font-medium text-gray-700 hover:text-gray-900"
+          className="text-sm font-medium text-white/70 hover:text-white"
         >
           Sign in
         </Link>
-        <Button asChild>
+        <Button asChild className="rounded-full bg-white text-gray-950 hover:bg-white/90">
           <Link href="/sign-up">Start free</Link>
         </Button>
       </>
@@ -74,16 +73,16 @@ function UserMenu({
   }
 
   const initials = user.email
-    .split(' ')
+    ?.split(' ')
     .map((part) => part[0])
-    .join('');
+    .join('') || 'U';
 
   return (
     <DropdownMenu open={isMenuOpen} onOpenChange={setIsMenuOpen}>
       <DropdownMenuTrigger asChild>
         <button
           type="button"
-          className="rounded-full outline-none focus-visible:ring-2 focus-visible:ring-orange-500 focus-visible:ring-offset-2"
+          className="rounded-full outline-none focus-visible:ring-2 focus-visible:ring-white/60 focus-visible:ring-offset-2 focus-visible:ring-offset-gray-950"
           aria-label="Open user menu"
         >
           <Avatar className="cursor-pointer size-9">
@@ -135,46 +134,78 @@ export function DashboardHeader({
   const pathname = usePathname();
   const isAdminPage = pathname === '/admin' || pathname.startsWith('/admin/');
   const navItems = [
-    { href: '/create', label: 'Create' },
-    { href: '/dashboard', label: 'Account' },
+    { href: '/', label: 'Início', exact: true },
+    { href: '/pt/templates', label: 'Templates' },
+    { href: '/create', label: 'Estúdio' },
+    { href: '/pt/pricing', label: 'Preços' },
   ];
-  const showTemplateAdmin = Boolean(
-    user && canAccessAdmin(user) && templateAdminUrl
-  );
 
   return (
-    <header className="border-b border-gray-200">
+    <header
+      className={cn(
+        'sticky top-0 z-40 border-b backdrop-blur',
+        isAdminPage
+          ? 'border-gray-200 bg-white'
+          : 'border-white/10 bg-gray-950/90 text-white'
+      )}
+    >
       <div
         className={cn(
-          'mx-auto flex items-center justify-between py-4',
+          'mx-auto flex h-[60px] items-center justify-between md:h-[72px]',
           isAdminPage
             ? 'w-full max-w-none px-5 sm:px-6'
-            : 'max-w-7xl px-4 sm:px-6 lg:px-8'
+            : 'max-w-7xl px-4 md:px-8'
         )}
       >
         <Link
-          href={isAdminPage ? '/' : user ? '/dashboard' : '/'}
-          className="flex items-center"
+          href="/"
+          className="flex items-center gap-2"
         >
-          <CircleIcon className="h-6 w-6 text-orange-500" />
-          <span className="ml-2 text-xl font-semibold text-gray-900">
-            Image Video
+          <span
+            className={cn(
+              'flex size-9 items-center justify-center rounded-lg text-lg font-black',
+              isAdminPage
+                ? 'bg-gray-950 text-white'
+                : 'bg-white text-gray-950'
+            )}
+          >
+            g
+          </span>
+          <span className="hidden flex-col leading-none sm:flex">
+            <span
+              className={cn(
+                'text-base font-bold tracking-tight',
+                isAdminPage ? 'text-gray-950' : 'text-white'
+              )}
+            >
+              gptimage
+            </span>
+            <span
+              className={cn(
+                'text-[10px] font-medium uppercase tracking-[0.22em]',
+                isAdminPage ? 'text-gray-400' : 'text-white/40'
+              )}
+            >
+              AI Commerce Studio
+            </span>
           </span>
         </Link>
-        {user && !isAdminPage ? (
-          <nav className="hidden h-9 items-center gap-1 md:flex">
+        {!isAdminPage ? (
+          <nav className="hidden items-center gap-2 md:flex">
             {navItems.map((item) => {
-              const active =
-                pathname === item.href || pathname.startsWith(`${item.href}/`);
+              const active = item.exact
+                ? pathname === item.href
+                : pathname === item.href || pathname.startsWith(`${item.href}/`);
 
               return (
                 <Link
                   key={item.href}
                   href={item.href}
                   className={cn(
-                    'relative inline-flex h-9 items-center px-3 text-sm font-medium text-gray-700 transition-colors hover:text-gray-950',
-                    active &&
-                      'text-orange-600 after:absolute after:inset-x-3 after:bottom-0 after:h-0.5 after:rounded-full after:bg-orange-600'
+                    'rounded-md px-3 py-2 text-sm font-medium transition-colors',
+                    active
+                      ? 'text-white'
+                      : 'text-white/50 hover:bg-white/[0.06] hover:text-white'
                   )}
                   aria-current={active ? 'page' : undefined}
                 >
@@ -182,17 +213,6 @@ export function DashboardHeader({
                 </Link>
               );
             })}
-            {showTemplateAdmin ? (
-              <a
-                href={templateAdminUrl ?? undefined}
-                target="_blank"
-                rel="noreferrer"
-                className="relative inline-flex h-9 items-center gap-1 px-3 text-sm font-medium text-gray-700 transition-colors hover:text-gray-950"
-              >
-                Template Admin
-                <ExternalLink className="size-3.5" />
-              </a>
-            ) : null}
           </nav>
         ) : null}
         <div className="flex items-center space-x-4">

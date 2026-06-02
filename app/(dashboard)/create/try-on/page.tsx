@@ -1,5 +1,5 @@
-import { CreateWorkbench } from '@/components/create/create-workbench';
+import { TryOnWorkbench } from '@/components/create/try-on-workbench';
 
 export default function CreateTryOnPage() {
-  return <CreateWorkbench kind="try_on" />;
+  return <TryOnWorkbench />;
 }

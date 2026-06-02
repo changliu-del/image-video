@@ -1,5 +1,5 @@
-import { CreateWorkbench } from '@/components/create/create-workbench';
+import { ImageVideoWorkbench } from '@/components/create/image-video-workbench';
 
 export default function CreateVideoPage() {
-  return <CreateWorkbench kind="image_to_video" />;
+  return <ImageVideoWorkbench />;
 }

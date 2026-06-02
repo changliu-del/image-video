@@ -18,6 +18,7 @@ type MarketingShellProps = {
 };
 
 type MarketingContent = ReturnType<typeof getMarketingContent>;
+type MarketingNavItem = MarketingContent['navItems'][number];
 
 const localeNames: Record<Locale, string> = {
   pt: 'Português',
@@ -50,6 +51,10 @@ function localizedPath(pathname: string, nextLocale: Locale) {
     : segments;
 
   return `/${[nextLocale, ...rest].join('/')}`;
+}
+
+function getNavHref(locale: Locale, item: MarketingNavItem) {
+  return item.localized === false ? item.href : getLocalizedHref(locale, item.href);
 }
 
 function LanguageMenu({
@@ -109,8 +114,10 @@ function DesktopNav({
   return (
     <nav className="hidden items-center gap-2 md:flex">
       {content.navItems.map((item) => {
-        const href = getLocalizedHref(locale, item.href);
-        const active = pathname === href;
+        const href = getNavHref(locale, item);
+        const active =
+          pathname === href ||
+          (item.localized === false && pathname.startsWith(`${href}/`));
 
         return (
           <Link
@@ -153,7 +160,7 @@ function MobileMenu({
         {content.navItems.map((item) => (
           <Link
             key={item.href || 'home'}
-            href={getLocalizedHref(locale, item.href)}
+            href={getNavHref(locale, item)}
             onClick={onClose}
             className="rounded-md px-3 py-3 text-sm font-medium text-white/75 hover:bg-white/[0.06] hover:text-white"
           >

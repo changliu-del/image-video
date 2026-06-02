@@ -2,7 +2,7 @@ import { NextResponse } from 'next/server';
 import type { NextRequest } from 'next/server';
 import { signToken, verifyToken } from '@/lib/auth/session';
 
-const protectedRoutes = ['/dashboard', '/generate', '/jobs'];
+const protectedRoutes = ['/create', '/dashboard', '/generate', '/jobs'];
 const marketingLocales = ['pt', 'en', 'zh'] as const;
 
 function getTextToImageRedirect(pathname: string) {
@@ -49,7 +49,10 @@ export async function middleware(request: NextRequest) {
 
   let res = NextResponse.next();
 
-  if (sessionCookie && request.method === 'GET') {
+  const shouldRefreshSession =
+    sessionCookie && request.method === 'GET' && !pathname.startsWith('/create');
+
+  if (shouldRefreshSession) {
     try {
       const parsed = await verifyToken(sessionCookie.value);
       const expiresInOneDay = new Date(Date.now() + 24 * 60 * 60 * 1000);

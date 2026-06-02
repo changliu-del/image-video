@@ -5,6 +5,7 @@ export type Locale = (typeof locales)[number];
 type NavItem = {
   label: string;
   href: string;
+  localized?: boolean;
 };
 
 type FaqItem = {
@@ -729,6 +730,7 @@ const pt: MarketingContent = {
   navItems: [
     { label: 'Início', href: '' },
     { label: 'Templates', href: '/templates' },
+    { label: 'Estúdio', href: '/create', localized: false },
     { label: 'Preços', href: '/pricing' },
   ],
   footer: {
@@ -1200,6 +1202,7 @@ const en: MarketingContent = {
   navItems: [
     { label: 'Home', href: '' },
     { label: 'Templates', href: '/templates' },
+    { label: 'Workbench', href: '/create', localized: false },
     { label: 'Pricing', href: '/pricing' },
   ],
   footer: {
@@ -1434,6 +1437,7 @@ const zh: MarketingContent = {
   navItems: [
     { label: '首页', href: '' },
     { label: '模板', href: '/templates' },
+    { label: '工作台', href: '/create', localized: false },
     { label: '价格', href: '/pricing' },
   ],
   footer: {

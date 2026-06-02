@@ -1,5 +1,5 @@
-import { CreateWorkbench } from '@/components/create/create-workbench';
+import { ApparelWorkbench } from '@/components/create/apparel-workbench';
 
 export default function CreateApparelPage() {
-  return <CreateWorkbench kind="apparel_image" />;
+  return <ApparelWorkbench />;
 }
