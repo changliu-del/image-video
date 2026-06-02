@@ -3,65 +3,74 @@
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import type { ComponentType, ReactNode } from 'react';
-import {
-  CreditCard,
-  ExternalLink,
-  LayoutGrid,
-  ReceiptText,
-  Settings,
-  Shirt,
-  Sparkles,
-  UserRound,
-  Video,
-} from 'lucide-react';
+import { ChevronDown, Home, ImageIcon, Shirt, UserRound, Video } from 'lucide-react';
 
-import { Button } from '@/components/ui/button';
+import { getDashboardContent } from '@/lib/dashboard/content';
+import { useDashboardLocale, withDashboardLocale } from '@/lib/dashboard/use-dashboard-locale';
 import { cn } from '@/lib/utils';
 import type { DashboardHeaderUser } from './dashboard-header';
 
-const createItems = [
-  { href: '/create', icon: LayoutGrid, label: 'Create home' },
-  { href: '/create/video', icon: Video, label: 'Image to video' },
-  { href: '/create/apparel', icon: Shirt, label: 'Apparel image' },
-  { href: '/create/try-on', icon: Sparkles, label: 'Try-on' },
-];
-
-const accountItems = [
-  { href: '/dashboard', icon: UserRound, label: 'Account overview' },
-  { href: '/dashboard/credits', icon: CreditCard, label: 'Credits' },
-  { href: '/dashboard/billing', icon: ReceiptText, label: 'Billing' },
-  { href: '/dashboard/profile', icon: Settings, label: 'Profile' },
-];
-
-function canAccessTemplateAdmin(user: DashboardHeaderUser | null) {
-  return Boolean(user && (user.isAdmin || user.role === 'admin' || user.role === 'ops'));
-}
+type ShellItem = {
+  href: string;
+  icon: ComponentType<{ className?: string }>;
+  label: string;
+  badge?: string;
+  match?: 'prefix' | 'exact' | 'never';
+};
 
 function SidebarLink({
   href,
   icon: Icon,
   label,
+  badge,
+  match = 'prefix',
 }: {
   href: string;
   icon: ComponentType<{ className?: string }>;
   label: string;
+  badge?: string;
+  match?: 'prefix' | 'exact' | 'never';
 }) {
   const pathname = usePathname();
-  const active = pathname === href || pathname.startsWith(`${href}/`);
+  const locale = useDashboardLocale();
+  const active =
+    match === 'never'
+      ? false
+      : match === 'exact' || href === '/'
+        ? pathname === href
+        : pathname === href || pathname.startsWith(`${href}/`);
 
   return (
-    <Link href={href}>
-      <Button
-        variant={active ? 'secondary' : 'ghost'}
+    <Link href={withDashboardLocale(href, locale)}>
+      <span
         className={cn(
-          'my-0.5 h-9 w-full justify-start gap-2 text-white/65 shadow-none hover:bg-white/10 hover:text-white',
-          active && 'bg-white text-gray-950 hover:bg-white hover:text-gray-950'
+          'my-0.5 flex h-9 w-full items-center gap-2 rounded-lg px-3 text-sm font-semibold text-gray-600 transition hover:bg-gray-50 hover:text-gray-950',
+          active && 'border border-indigo-100 bg-indigo-50 text-indigo-600 shadow-sm'
         )}
       >
-        <Icon className="size-4" />
+        <Icon className="size-4 shrink-0" />
         <span className="truncate">{label}</span>
-      </Button>
+        {badge ? (
+          <span className="ml-auto rounded-full bg-red-500 px-1.5 py-0.5 text-[10px] font-bold leading-none text-white">
+            {badge}
+          </span>
+        ) : null}
+      </span>
     </Link>
+  );
+}
+
+function SidebarSection({ title, items }: { title: string; items: ShellItem[] }) {
+  return (
+    <section className="mt-4 first:mt-0">
+      <div className="mb-1 flex items-center gap-1 px-3 text-sm font-bold text-gray-800">
+        <ChevronDown className="size-3.5 text-gray-500" />
+        {title}
+      </div>
+      {items.map((item, index) => (
+        <SidebarLink key={`${item.href}-${item.label}-${index}`} {...item} />
+      ))}
+    </section>
   );
 }
 
@@ -75,49 +84,39 @@ export function AppShell({
   user: DashboardHeaderUser | null;
 }) {
   const pathname = usePathname();
+  const locale = useDashboardLocale();
+  const content = getDashboardContent(locale);
+  const toolItems: ShellItem[] = [
+    { href: '/create/video', icon: Video, label: content.nav.imageVideo },
+    { href: '/create/apparel', icon: ImageIcon, label: content.nav.apparel },
+    { href: '/create/try-on', icon: Shirt, label: content.nav.tryOn },
+  ];
 
   if (pathname === '/admin' || pathname.startsWith('/admin/')) {
     return <>{children}</>;
   }
 
   return (
-    <div className="flex min-h-[calc(100dvh-60px)] bg-gray-950 text-white md:min-h-[calc(100dvh-72px)]">
-      <aside className="hidden w-64 shrink-0 border-r border-white/10 bg-gray-950/95 lg:block">
-        <nav className="sticky top-[60px] flex h-[calc(100dvh-60px)] flex-col overflow-y-auto p-4 md:top-[72px] md:h-[calc(100dvh-72px)]">
-          <div>
-            <p className="px-3 pb-2 text-xs font-semibold uppercase text-white/35">
-              Create
-            </p>
-            {createItems.map((item) => (
-              <SidebarLink key={item.href} {...item} />
-            ))}
+    <div className="flex min-h-[calc(100dvh-58px)] bg-[#f4f6fa] text-gray-950">
+      <aside className="hidden w-[156px] shrink-0 border-r border-gray-200 bg-white lg:block">
+        <nav className="sticky top-[58px] flex h-[calc(100dvh-58px)] flex-col overflow-y-auto px-2 py-4">
+          <SidebarLink href="/" icon={Home} label={content.nav.home} match="exact" />
+          <SidebarSection title={content.nav.tools} items={toolItems} />
+          <div className="mt-auto border-t border-gray-100 pt-3">
+            <SidebarLink
+              href="/dashboard/profile"
+              icon={UserRound}
+              label={content.nav.profileCenter}
+            />
+            {user ? (
+              <p className="mt-1 truncate px-3 text-[11px] font-medium text-gray-400">
+                {user.name || user.email}
+              </p>
+            ) : null}
           </div>
-
-          <div className="mt-6">
-            <p className="px-3 pb-2 text-xs font-semibold uppercase text-white/35">
-              Account
-            </p>
-            {accountItems.map((item) => (
-              <SidebarLink key={item.href} {...item} />
-            ))}
-          </div>
-
-          {canAccessTemplateAdmin(user) && templateAdminUrl ? (
-            <div className="mt-auto border-t border-white/10 pt-4">
-              <a
-                href={templateAdminUrl}
-                target="_blank"
-                rel="noreferrer"
-                className="flex h-9 items-center gap-2 rounded-md px-3 text-sm font-medium text-white/65 transition hover:bg-white/10 hover:text-white"
-              >
-                <ExternalLink className="size-4" />
-                <span className="truncate">Template Admin</span>
-              </a>
-            </div>
-          ) : null}
         </nav>
       </aside>
-      <main className="min-w-0 flex-1 bg-[radial-gradient(circle_at_top_left,rgba(251,146,60,0.12),transparent_34%),linear-gradient(180deg,#111827_0%,#030712_55%,#030712_100%)]">
+      <main className="min-w-0 flex-1 bg-[#f4f6fa]">
         {children}
       </main>
     </div>

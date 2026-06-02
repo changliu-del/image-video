@@ -15,6 +15,10 @@ import {
   type TryOnMode,
 } from '@/lib/generations/validation';
 import {
+  getModelCatalogAsset,
+  type ModelCatalogAssetItem,
+} from '@/lib/model-assets/catalog';
+import {
   queryCloth,
   submitCloth,
 } from '@/lib/providers/wanxiang/cloth';
@@ -293,7 +297,10 @@ function getInputAssetIds(generation: GenerationRequest) {
   ids.add(generation.inputAssetId);
 
   if (generation.generationType === 'try_on') {
-    ids.add(generation.modelAssetId);
+    if (generation.modelAssetId) {
+      ids.add(generation.modelAssetId);
+    }
+
     for (const garmentAssetId of generation.garmentAssetIds) {
       ids.add(garmentAssetId);
     }
@@ -304,7 +311,8 @@ function getInputAssetIds(generation: GenerationRequest) {
 
 function buildProviderInputAssets(
   generation: GenerationRequest,
-  assetsById: Map<string, AssetRecord>
+  assetsById: Map<string, AssetRecord>,
+  modelCatalogAsset?: ModelCatalogAssetItem | null
 ): Record<string, string | string[]> {
   switch (generation.generationType) {
     case 'image_to_video':
@@ -313,8 +321,25 @@ function buildProviderInputAssets(
         inputImageUrl: assetsById.get(generation.inputAssetId)!.publicUrl,
       };
     case 'try_on':
+      const modelMediaUrl =
+        modelCatalogAsset?.imageUrl ??
+        modelCatalogAsset?.thumbnailUrl ??
+        modelCatalogAsset?.videoUrl ??
+        (generation.modelAssetId
+          ? assetsById.get(generation.modelAssetId)?.publicUrl
+          : null);
+
+      if (!modelMediaUrl) {
+        throw new GenerationApiError(
+          404,
+          'model_asset_not_found',
+          'Model asset was not found'
+        );
+      }
+
       return {
-        modelImageUrl: assetsById.get(generation.modelAssetId)!.publicUrl,
+        modelImageUrl: modelMediaUrl,
+        ...(modelCatalogAsset?.videoUrl ? { modelVideoUrl: modelCatalogAsset.videoUrl } : {}),
         garmentImageUrls: generation.garmentAssetIds.map(
           (assetId) => assetsById.get(assetId)!.publicUrl
         ),
@@ -636,6 +661,22 @@ export async function createGenerationForUser(
 ) {
   const creditReserved = getCreditCostForGeneration(generation);
   const assetsById = await assertInputAssetsForUser(generation, userId);
+  const modelCatalogAsset =
+    generation.generationType === 'try_on' && generation.modelCatalogAssetId
+      ? await getModelCatalogAsset({ id: generation.modelCatalogAssetId })
+      : null;
+
+  if (
+    generation.generationType === 'try_on' &&
+    generation.modelCatalogAssetId &&
+    !modelCatalogAsset
+  ) {
+    throw new GenerationApiError(
+      404,
+      'model_catalog_asset_not_found',
+      'Model catalog asset was not found'
+    );
+  }
 
   await assertUserCanCreateGeneration({
     userId,
@@ -649,7 +690,11 @@ export async function createGenerationForUser(
     generationType: generation.generationType,
     tryOnMode:
       generation.generationType === 'try_on' ? generation.tryOnMode : undefined,
-    inputAssetUrls: buildProviderInputAssets(generation, assetsById),
+    inputAssetUrls: buildProviderInputAssets(
+      generation,
+      assetsById,
+      modelCatalogAsset
+    ),
     inputJson,
     metadata: {
       jobId,

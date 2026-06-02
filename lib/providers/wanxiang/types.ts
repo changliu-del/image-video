@@ -2,6 +2,7 @@ export type WanxiangTaskStatus = 'running' | 'succeeded' | 'failed';
 
 export type WanxiangErrorCode =
   | 'MISSING_CREDENTIALS'
+  | 'MISSING_MODEL_CATALOG_URL'
   | 'REQUEST_FAILED'
   | 'HTTP_ERROR'
   | 'API_ERROR'

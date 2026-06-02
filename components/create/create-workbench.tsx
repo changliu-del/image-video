@@ -77,7 +77,7 @@ const durations: DurationSeconds[] = [5, 8, 10];
 const copy = {
   image_to_video: {
     title: 'Image to video',
-    eyebrow: 'WANXIANG STYLE VIDEO',
+    eyebrow: 'PRODUCT VIDEO STUDIO',
     subtitle:
       'Turn one product image into a short commercial clip with camera motion, scene rhythm, and marketplace-ready framing.',
     inputLabel: 'Source image',
@@ -107,7 +107,7 @@ const copy = {
       'Female model, Sao Paulo street style, clean catalog pose, warm daylight, premium ecommerce lookbook.',
     resultTitle: 'Apparel canvas',
     accent: 'from-emerald-400 to-teal-200',
-    highlights: ['AI model', 'Scene control', 'Catalog ready'],
+    highlights: ['Model styling', 'Scene control', 'Catalog ready'],
   },
   try_on: {
     title: 'Try-on',

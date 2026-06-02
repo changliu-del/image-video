@@ -20,9 +20,27 @@ import {
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import {
+  BlueBanner,
+  CanvasStage,
+  ExampleProducts,
+  IconButtonCard,
+  PanelSection,
+  ResultCard,
+  SegmentedOptions,
+  StudioPanel,
+  UploadDropzone,
+} from '@/components/create/workbench-ui';
+import {
+  bannerCopy,
+  commonWorkbenchCopy,
+  tryOnWorkbenchCopy,
+} from '@/components/create/workbench-copy';
+import { useDashboardLocale } from '@/lib/dashboard/use-dashboard-locale';
 import { cn } from '@/lib/utils';
 
 type TryOnMode = 'single' | 'multi';
+type ModelSource = 'library' | 'custom';
 type PosePreset = 'auto' | 'front' | 'editorial' | 'runway';
 type BackgroundPreset = 'studio' | 'street' | 'minimal' | 'boutique';
 type FitPreset = 'natural' | 'tailored' | 'relaxed';
@@ -36,7 +54,18 @@ type LibraryItem = {
   thumbnailUrl?: string;
   previewUrl?: string;
   publicUrl?: string;
+  asset?: string;
   type?: string;
+};
+
+type ModelCatalogItem = {
+  id: string;
+  title: string;
+  description?: string | null;
+  thumbnailUrl?: string | null;
+  imageUrl?: string | null;
+  videoUrl?: string | null;
+  tags?: string[];
 };
 
 type PresignResponse = {
@@ -67,30 +96,13 @@ type JobStatusResponse = {
 
 const MAX_IMAGE_BYTES = 10 * 1024 * 1024;
 const ACCEPTED_IMAGE_TYPES = ['image/png', 'image/jpeg', 'image/webp'];
-const modeOptions: { value: TryOnMode; label: string; icon: typeof Shirt }[] = [
-  { value: 'single', label: 'Single look', icon: Shirt },
-  { value: 'multi', label: 'Multi look', icon: Layers3 },
-];
-const poseOptions: { value: PosePreset; label: string }[] = [
-  { value: 'auto', label: 'Auto pose' },
-  { value: 'front', label: 'Front view' },
-  { value: 'editorial', label: 'Editorial' },
-  { value: 'runway', label: 'Runway' },
-];
-const backgroundOptions: { value: BackgroundPreset; label: string }[] = [
-  { value: 'studio', label: 'Studio' },
-  { value: 'street', label: 'Street' },
-  { value: 'minimal', label: 'Minimal' },
-  { value: 'boutique', label: 'Boutique' },
-];
-const fitOptions: { value: FitPreset; label: string }[] = [
-  { value: 'natural', label: 'Natural fit' },
-  { value: 'tailored', label: 'Tailored' },
-  { value: 'relaxed', label: 'Relaxed' },
-];
+const modeValues: TryOnMode[] = ['single', 'multi'];
+const poseValues: PosePreset[] = ['auto', 'front', 'editorial', 'runway'];
+const backgroundValues: BackgroundPreset[] = ['studio', 'street', 'minimal', 'boutique'];
+const fitValues: FitPreset[] = ['natural', 'tailored', 'relaxed'];
 
 function getItemImage(item: LibraryItem) {
-  return item.thumbnailUrl ?? item.previewUrl ?? item.imageUrl ?? item.publicUrl ?? '';
+  return item.thumbnailUrl ?? item.previewUrl ?? item.imageUrl ?? item.publicUrl ?? item.asset ?? '';
 }
 
 function getItemLabel(item: LibraryItem) {
@@ -109,6 +121,17 @@ function normalizeItems(value: unknown): LibraryItem[] {
   return [];
 }
 
+function normalizeModelItems(value: unknown): ModelCatalogItem[] {
+  if (!value || typeof value !== 'object') return [];
+  const record = value as Record<string, unknown>;
+  return Array.isArray(record.items) ? (record.items as ModelCatalogItem[]) : [];
+}
+
+function getModelAssetImage(item: ModelCatalogItem | null) {
+  if (!item) return '';
+  return item.thumbnailUrl ?? item.imageUrl ?? item.videoUrl ?? '';
+}
+
 function terminalStatus(status?: string) {
   return status === 'succeeded' || status === 'failed';
 }
@@ -125,13 +148,16 @@ function resultUrl(status: JobStatusResponse | null) {
   );
 }
 
-function validateImage(file: File) {
+function validateImage(
+  file: File,
+  labels: { invalidImage: string; imageTooLarge: string }
+) {
   if (!ACCEPTED_IMAGE_TYPES.includes(file.type)) {
-    return 'Use a PNG, JPEG, or WEBP image.';
+    return labels.invalidImage;
   }
 
   if (file.size > MAX_IMAGE_BYTES) {
-    return 'Image must be 10 MB or smaller.';
+    return labels.imageTooLarge;
   }
 
   return null;
@@ -174,7 +200,7 @@ async function postJson<T>(url: string, body: Record<string, unknown>, fallback:
   return (await response.json()) as T;
 }
 
-async function uploadAsset(file: File) {
+async function uploadAsset(file: File, labels: typeof commonWorkbenchCopy.en) {
   const presign = await postJson<PresignResponse>(
     '/api/assets/presign',
     {
@@ -182,7 +208,7 @@ async function uploadAsset(file: File) {
       mimeType: file.type,
       sizeBytes: file.size,
     },
-    'Upload could not be prepared.'
+    labels.uploadPrepareError
   );
 
   const uploadResponse = await fetch(presign.uploadUrl, {
@@ -192,7 +218,7 @@ async function uploadAsset(file: File) {
   });
 
   if (!uploadResponse.ok) {
-    throw new Error('Image upload failed.');
+    throw new Error(labels.uploadFailed);
   }
 
   await postJson(
@@ -201,13 +227,13 @@ async function uploadAsset(file: File) {
       assetId: presign.assetId,
       storageKey: presign.storageKey,
     },
-    'Image could not be saved.'
+    labels.imageSaveError
   );
 
   return presign.assetId;
 }
 
-async function fetchJobStatus(jobId: string) {
+async function fetchJobStatus(jobId: string, labels: typeof commonWorkbenchCopy.en) {
   const generationStatus = await fetch(`/api/generations/${jobId}/status`);
 
   if (generationStatus.ok) {
@@ -216,7 +242,7 @@ async function fetchJobStatus(jobId: string) {
 
   const legacyStatus = await fetch(`/api/jobs/${jobId}`);
   if (!legacyStatus.ok) {
-    throw new Error(await readResponseError(legacyStatus, 'Status could not be loaded.'));
+    throw new Error(await readResponseError(legacyStatus, labels.statusLoadError));
   }
 
   return (await legacyStatus.json()) as JobStatusResponse;
@@ -389,10 +415,15 @@ function LibraryTile({
 }
 
 export function TryOnWorkbench() {
+  const locale = useDashboardLocale();
+  const copy = tryOnWorkbenchCopy[locale];
+  const commonCopy = commonWorkbenchCopy[locale];
+  const banner = bannerCopy[locale];
   const [modelFile, setModelFile] = useState<File | null>(null);
   const [garmentFiles, setGarmentFiles] = useState<File[]>([]);
   const [modelPreview, setModelPreview] = useState<string | null>(null);
   const [garmentPreviews, setGarmentPreviews] = useState<string[]>([]);
+  const [modelSource, setModelSource] = useState<ModelSource>('library');
   const [mode, setMode] = useState<TryOnMode>('single');
   const [pose, setPose] = useState<PosePreset>('auto');
   const [background, setBackground] = useState<BackgroundPreset>('studio');
@@ -401,8 +432,11 @@ export function TryOnWorkbench() {
   const [prompt, setPrompt] = useState('');
   const [templates, setTemplates] = useState<LibraryItem[]>([]);
   const [assets, setAssets] = useState<LibraryItem[]>([]);
+  const [modelAssets, setModelAssets] = useState<ModelCatalogItem[]>([]);
+  const [selectedModelAsset, setSelectedModelAsset] = useState<ModelCatalogItem | null>(null);
   const [selectedLibraryItem, setSelectedLibraryItem] = useState<LibraryItem | null>(null);
   const [isLoadingLibrary, setIsLoadingLibrary] = useState(true);
+  const [exampleOffset, setExampleOffset] = useState(0);
   const [submitLabel, setSubmitLabel] = useState<string | null>(null);
   const [jobId, setJobId] = useState<string | null>(null);
   const [jobStatus, setJobStatus] = useState<JobStatusResponse | null>(null);
@@ -410,11 +444,20 @@ export function TryOnWorkbench() {
 
   const isSubmitting = Boolean(submitLabel);
   const selectedResultUrl = resultUrl(jobStatus);
+  const selectedModelPreview =
+    modelSource === 'custom' ? modelPreview : getModelAssetImage(selectedModelAsset);
+  const selectedModelLabel =
+    modelSource === 'custom' ? modelFile?.name : selectedModelAsset?.title;
+  const modeOptions = modeValues.map((value) => ({
+    value,
+    label: copy.modeOptions[value],
+  }));
 
   const canSubmit = useMemo(() => {
-    if (isSubmitting || !modelFile) return false;
+    const hasModel = modelSource === 'custom' ? Boolean(modelFile) : Boolean(selectedModelAsset);
+    if (isSubmitting || !hasModel) return false;
     return mode === 'single' ? garmentFiles.length >= 1 : garmentFiles.length >= 2;
-  }, [garmentFiles.length, isSubmitting, mode, modelFile]);
+  }, [garmentFiles.length, isSubmitting, mode, modelFile, modelSource, selectedModelAsset]);
 
   useEffect(() => {
     if (!modelFile) {
@@ -439,23 +482,36 @@ export function TryOnWorkbench() {
     async function loadLibrary() {
       setIsLoadingLibrary(true);
       try {
-        const params = new URLSearchParams({ type: 'try_on' });
-        const [templateResponse, assetResponse] = await Promise.all([
-          fetch(`/api/creative-templates?${params.toString()}`),
-          fetch(`/api/library-assets?${params.toString()}`),
+        const templateParams = new URLSearchParams({
+          locale,
+          pageSize: '12',
+          type: 'image',
+        });
+        const modelParams = new URLSearchParams({
+          locale,
+          limit: '24',
+        });
+        const [templateResponse, modelResponse] = await Promise.all([
+          fetch(`/api/templates?${templateParams.toString()}`),
+          fetch(`/api/model-assets?${modelParams.toString()}`),
         ]);
 
-        const [templateBody, assetBody] = await Promise.all([
-          templateResponse.ok ? templateResponse.json() : Promise.resolve({ items: [] }),
-          assetResponse.ok ? assetResponse.json() : Promise.resolve({ items: [] }),
+        const [templateBody, modelBody] = await Promise.all([
+          templateResponse.ok ? templateResponse.json() : Promise.resolve({ list: [] }),
+          modelResponse.ok ? modelResponse.json() : Promise.resolve({ items: [] }),
         ]);
 
         if (!cancelled) {
           const nextTemplates = normalizeItems(templateBody);
-          const nextAssets = normalizeItems(assetBody);
+          const nextModelAssets = normalizeModelItems(modelBody);
           setTemplates(nextTemplates);
-          setAssets(nextAssets);
-          setSelectedLibraryItem((current) => current ?? nextTemplates[0] ?? nextAssets[0] ?? null);
+          setAssets([]);
+          setModelAssets(nextModelAssets);
+          setSelectedLibraryItem((current) => current ?? nextTemplates[0] ?? null);
+          setSelectedModelAsset((current) => current ?? nextModelAssets[0] ?? null);
+          if (nextModelAssets.length === 0) {
+            setModelSource('custom');
+          }
         }
       } finally {
         if (!cancelled) setIsLoadingLibrary(false);
@@ -466,7 +522,7 @@ export function TryOnWorkbench() {
     return () => {
       cancelled = true;
     };
-  }, []);
+  }, [locale]);
 
   useEffect(() => {
     if (!jobId || terminalStatus(jobStatus?.status)) return;
@@ -474,14 +530,14 @@ export function TryOnWorkbench() {
     let cancelled = false;
     const poll = async () => {
       try {
-        const nextStatus = await fetchJobStatus(jobId);
+        const nextStatus = await fetchJobStatus(jobId, commonCopy);
         if (!cancelled) setJobStatus(nextStatus);
       } catch (statusError) {
         if (!cancelled) {
           setError(
             statusError instanceof Error
               ? statusError.message
-              : 'Status could not be loaded.'
+              : commonCopy.statusLoadError
           );
         }
       }
@@ -503,20 +559,22 @@ export function TryOnWorkbench() {
       return;
     }
 
-    const validationError = validateImage(file);
+    const validationError = validateImage(file, commonCopy);
     if (validationError) {
       setModelFile(null);
       setError(validationError);
       return;
     }
 
+    setSelectedModelAsset(null);
+    setModelSource('custom');
     setModelFile(file);
   }
 
   function selectGarmentFiles(files: FileList | null) {
     setError(null);
     const nextFiles = Array.from(files ?? []);
-    const validationError = nextFiles.map(validateImage).find(Boolean);
+    const validationError = nextFiles.map((file) => validateImage(file, commonCopy)).find(Boolean);
 
     if (validationError) {
       setGarmentFiles([]);
@@ -530,18 +588,20 @@ export function TryOnWorkbench() {
   async function handleSubmit(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
 
-    if (!modelFile) {
-      setError('Select a model image.');
+    const useCustomModel = modelSource === 'custom';
+
+    if ((useCustomModel && !modelFile) || (!useCustomModel && !selectedModelAsset)) {
+      setError(copy.selectModelError);
       return;
     }
 
     if (mode === 'single' && garmentFiles.length === 0) {
-      setError('Select one garment image.');
+      setError(copy.selectSingleGarmentError);
       return;
     }
 
     if (mode === 'multi' && garmentFiles.length < 2) {
-      setError('Multi look needs at least two garment images.');
+      setError(copy.selectMultiGarmentError);
       return;
     }
 
@@ -550,22 +610,24 @@ export function TryOnWorkbench() {
     setJobStatus(null);
 
     try {
-      setSubmitLabel('Uploading model');
-      const modelAssetId = await uploadAsset(modelFile);
+      setSubmitLabel(useCustomModel ? copy.uploadingModel : copy.preparingModel);
+      const modelAssetId = useCustomModel && modelFile ? await uploadAsset(modelFile, commonCopy) : undefined;
       const garmentAssetIds = await Promise.all(
         garmentFiles.map(async (file, index) => {
-          setSubmitLabel(`Uploading garment ${index + 1}`);
-          return uploadAsset(file);
+          setSubmitLabel(copy.uploadingGarment(index + 1));
+          return uploadAsset(file, commonCopy);
         })
       );
 
-      setSubmitLabel('Starting try-on');
+      setSubmitLabel(copy.startingTryOn);
       const generation = await postJson<GenerationResponse>(
         '/api/generations',
         {
           generationType: 'try_on',
           tryOnMode: mode,
-          modelAssetId,
+          ...(modelAssetId
+            ? { modelAssetId }
+            : { modelCatalogAssetId: selectedModelAsset?.id }),
           garmentAssetId: garmentAssetIds[0],
           garmentAssetIds,
           prompt: buildTryOnPrompt({
@@ -576,316 +638,424 @@ export function TryOnWorkbench() {
             preserveFace,
           }),
         },
-        'Generation could not be started.'
+        commonCopy.generationStartError
       );
       const nextJobId = generation.jobId ?? generation.generationId ?? generation.id;
 
       if (!nextJobId) {
-        throw new Error('Generation response did not include a job id.');
+        throw new Error(commonCopy.missingJobError);
       }
 
       setJobId(nextJobId);
       setJobStatus({
         id: nextJobId,
         status: generation.status ?? 'queued',
-        progressLabel: 'Queued',
+        progressLabel: commonCopy.queued,
       });
     } catch (submitError) {
       setError(
         submitError instanceof Error
           ? submitError.message
-          : 'Generation could not be started.'
+          : commonCopy.generationStartError
       );
     } finally {
       setSubmitLabel(null);
     }
   }
 
+  function selectLibraryModel(model: ModelCatalogItem) {
+    setModelSource('library');
+    setModelFile(null);
+    setSelectedModelAsset(model);
+  }
+
+  function useCustomModelUpload(inputId = 'try-on-model') {
+    setModelSource('custom');
+    setSelectedModelAsset(null);
+    document.getElementById(inputId)?.click();
+  }
+
+  function applyLibraryTemplate(template: LibraryItem | null | undefined) {
+    if (!template) return;
+
+    setSelectedLibraryItem(template);
+    setPrompt((current) => {
+      const label = getItemLabel(template);
+      const trimmed = current.trim();
+      return trimmed.includes(label) ? trimmed : `${trimmed} ${label}`.trim();
+    });
+  }
+
+  function chooseFromLibrary() {
+    if (modelAssets[0]) {
+      selectLibraryModel(modelAssets[0]);
+    }
+    applyLibraryTemplate(selectedLibraryItem ?? templates[0]);
+  }
+
+  const baseLibraryImages = [...templates, ...assets].map(getItemImage).filter(Boolean);
+  const libraryStart = baseLibraryImages.length ? exampleOffset % baseLibraryImages.length : 0;
+  const libraryImages = [
+    ...baseLibraryImages.slice(libraryStart),
+    ...baseLibraryImages.slice(0, libraryStart),
+  ].slice(0, 6);
+  const statusLabel = jobStatus?.progressLabel ?? jobStatus?.status ?? (jobId ? commonCopy.generating : null);
+  const garmentLabel =
+    garmentFiles.length > 1 ? copy.garmentCount(garmentFiles.length) : garmentFiles[0]?.name;
+
   return (
-    <section className="min-h-full flex-1 overflow-hidden bg-gray-950 text-white">
-      <div className="absolute inset-0 -z-10 bg-[radial-gradient(circle_at_20%_0%,rgba(16,185,129,0.18),transparent_34%),radial-gradient(circle_at_78%_8%,rgba(251,191,36,0.14),transparent_30%),linear-gradient(135deg,#020617,#111827_48%,#030712)]" />
-
-      <form onSubmit={handleSubmit} className="mx-auto flex max-w-7xl flex-col gap-5 px-4 py-5 sm:px-6 lg:px-8">
-        <div className="grid gap-4 rounded-lg border border-white/10 bg-white/[0.055] p-4 shadow-2xl shadow-black/25 backdrop-blur xl:grid-cols-[1.05fr_0.95fr]">
-          <div>
-            <div className="inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/[0.08] px-3 py-1 text-xs font-semibold uppercase text-white/62">
-              <Sparkles className="size-3.5 text-amber-300" />
-              GPTImage smart try-on
-            </div>
-            <h1 className="mt-4 max-w-3xl text-3xl font-bold leading-tight text-white md:text-4xl">
-              AI fashion try-on for single garments and full outfit stacks.
-            </h1>
-            <p className="mt-4 max-w-2xl text-sm leading-6 text-white/62 md:text-base">
-              Upload a model, mix one or more clothing images, tune pose and scene, then preview the generated try-on without leaving the canvas.
-            </p>
+    <form
+      onSubmit={handleSubmit}
+      className="flex min-h-[calc(100dvh-58px)] flex-col bg-[#f4f6fa] text-gray-950 lg:flex-row"
+    >
+      <StudioPanel
+        footer={
+          <div className="flex items-center gap-3">
+            <button
+              type="button"
+              className="inline-flex h-11 items-center gap-2 rounded-full px-3 text-sm font-bold text-indigo-600"
+            >
+              <Images className="size-4" />
+              {commonCopy.taskFlow}
+            </button>
+            <Button
+              type="submit"
+              disabled={!canSubmit}
+              className="h-12 flex-1 rounded-full bg-[#b8b8f6] text-sm font-bold text-white shadow-none hover:bg-[#a8a8ef] disabled:bg-gray-200 disabled:text-gray-400"
+            >
+              {isSubmitting ? <Loader2 className="size-4 animate-spin" /> : <WandSparkles className="size-4" />}
+              {submitLabel ?? commonCopy.generateNow}
+              <span className="font-semibold opacity-90">{commonCopy.credits(12)}</span>
+            </Button>
           </div>
-          <div className="grid gap-3 sm:grid-cols-3">
-            {[
-              ['2 inputs', 'model plus garment'],
-              ['4 garments', 'multi-image outfit'],
-              ['5 credits', 'single try-on'],
-            ].map(([stat, label]) => (
-              <div key={stat} className="rounded-lg border border-white/10 bg-gray-950/45 p-4">
-                <div className="text-2xl font-bold text-white">{stat}</div>
-                <div className="mt-1 text-xs font-semibold uppercase text-white/45">{label}</div>
-              </div>
-            ))}
-          </div>
-        </div>
-
-        <div className="grid gap-5 xl:grid-cols-[280px_minmax(0,1fr)_360px]">
-          <aside className="rounded-lg border border-white/10 bg-white/[0.055] p-4 shadow-2xl shadow-black/25 backdrop-blur">
-            <div className="flex items-center justify-between gap-3">
-              <div>
-                <h2 className="text-sm font-semibold text-white">Material library</h2>
-                <p className="mt-1 text-xs text-white/45">
-                  {isLoadingLibrary ? 'Loading assets' : `${templates.length + assets.length} items`}
-                </p>
-              </div>
-              <Images className="size-5 text-emerald-300" />
-            </div>
-
-            <div className="mt-5 space-y-5">
-              <div>
-                <h3 className="mb-2 text-xs font-semibold uppercase text-white/45">Looks</h3>
-                <div className="grid grid-cols-2 gap-2">
-                  {templates.length === 0 ? (
-                    <p className="col-span-2 rounded-lg border border-dashed border-white/15 p-3 text-sm text-white/42">
-                      No templates
-                    </p>
-                  ) : (
-                    templates.slice(0, 6).map((template) => (
-                      <LibraryTile
-                        key={String(template.id ?? template.slug ?? getItemLabel(template))}
-                        item={template}
-                        active={selectedLibraryItem === template}
-                        onClick={() => setSelectedLibraryItem(template)}
-                      />
-                    ))
-                  )}
-                </div>
-              </div>
-
-              <div>
-                <h3 className="mb-2 text-xs font-semibold uppercase text-white/45">Uploads</h3>
-                <div className="grid grid-cols-2 gap-2">
-                  {assets.length === 0 ? (
-                    <p className="col-span-2 rounded-lg border border-dashed border-white/15 p-3 text-sm text-white/42">
-                      No saved assets
-                    </p>
-                  ) : (
-                    assets.slice(0, 8).map((asset) => (
-                      <LibraryTile
-                        key={String(asset.id ?? asset.slug ?? getItemLabel(asset))}
-                        item={asset}
-                        active={selectedLibraryItem === asset}
-                        onClick={() => setSelectedLibraryItem(asset)}
-                      />
-                    ))
-                  )}
-                </div>
-              </div>
-            </div>
-          </aside>
-
-          <div className="space-y-5">
-            <div className="grid gap-5 lg:grid-cols-2">
-              <UploadPanel
-                id="try-on-model"
-                title="Model image"
-                icon={UserRound}
-                preview={modelPreview}
-                fileName={modelFile?.name}
-                disabled={isSubmitting}
-                onChange={selectModelFile}
-              />
-
-              <UploadPanel
-                id="try-on-garments"
-                title={mode === 'single' ? 'Garment image' : 'Garment images'}
-                icon={Shirt}
-                preview={garmentPreviews[0]}
-                fileName={
-                  garmentFiles.length > 1
-                    ? `${garmentFiles.length} garments selected`
-                    : garmentFiles[0]?.name
-                }
-                multiple={mode === 'multi'}
-                disabled={isSubmitting}
-                onChange={selectGarmentFiles}
-              >
-                {garmentPreviews.length > 0 ? (
-                  <div className="mt-3 grid grid-cols-4 gap-2">
-                    {garmentPreviews.map((preview, index) => (
-                      <img
-                        key={preview}
-                        src={preview}
-                        alt=""
-                        className="aspect-square rounded-md border border-white/10 object-cover"
-                        title={garmentFiles[index]?.name}
-                      />
-                    ))}
-                  </div>
-                ) : null}
-              </UploadPanel>
-            </div>
-
-            <div className="rounded-lg border border-white/10 bg-white/[0.055] p-4 shadow-2xl shadow-black/25 backdrop-blur">
-              <div className="grid gap-5 lg:grid-cols-[240px_minmax(0,1fr)]">
-                <SegmentedControl
-                  label="Try-on mode"
-                  value={mode}
-                  options={modeOptions}
-                  disabled={isSubmitting}
-                  onChange={(nextMode) => {
-                    setMode(nextMode);
-                    setGarmentFiles((files) =>
-                      nextMode === 'single' ? files.slice(0, 1) : files
-                    );
-                  }}
-                />
-
-                <div className="grid gap-4 md:grid-cols-3">
-                  <SegmentedControl
-                    label="Pose"
-                    value={pose}
-                    options={poseOptions}
-                    disabled={isSubmitting}
-                    onChange={setPose}
-                  />
-                  <SegmentedControl
-                    label="Background"
-                    value={background}
-                    options={backgroundOptions}
-                    disabled={isSubmitting}
-                    onChange={setBackground}
-                  />
-                  <SegmentedControl
-                    label="Fit"
-                    value={fit}
-                    options={fitOptions}
-                    disabled={isSubmitting}
-                    onChange={setFit}
-                  />
-                </div>
-              </div>
-
-              <div className="mt-5 grid gap-4 lg:grid-cols-[minmax(0,1fr)_220px]">
-                <div>
-                  <Label htmlFor="try-on-prompt" className="mb-2 text-white/70">
-                    Styling direction
-                  </Label>
-                  <textarea
-                    id="try-on-prompt"
-                    value={prompt}
-                    onChange={(event) => setPrompt(event.target.value)}
-                    rows={4}
-                    disabled={isSubmitting}
-                    placeholder="e.g. premium editorial lighting, preserve garment color, realistic folds"
-                    className="min-h-28 w-full rounded-lg border border-white/10 bg-gray-950/70 px-3 py-2 text-sm text-white outline-none transition placeholder:text-white/32 focus:border-emerald-300/60 focus:ring-3 focus:ring-emerald-300/15 disabled:cursor-not-allowed disabled:opacity-60"
-                  />
-                </div>
-
-                <div className="flex flex-col gap-3">
-                  <label className="flex items-center justify-between gap-4 rounded-lg border border-white/10 bg-gray-950/70 p-3 text-sm font-semibold text-white/72">
-                    Preserve identity
-                    <input
-                      type="checkbox"
-                      checked={preserveFace}
-                      onChange={(event) => setPreserveFace(event.target.checked)}
-                      disabled={isSubmitting}
-                      className="size-4 accent-emerald-300"
+        }
+      >
+        <PanelSection title={copy.uploadGarment} required>
+          <div className="grid gap-3">
+            <UploadDropzone
+              id="try-on-model"
+              preview={selectedModelPreview}
+              fileName={selectedModelLabel}
+              emptyText={copy.modelEmpty}
+              hint={copy.modelHint}
+              disabled={isSubmitting}
+              onChange={selectModelFile}
+            />
+            <UploadDropzone
+              id="try-on-garments"
+              preview={garmentPreviews[0]}
+              fileName={garmentLabel}
+              emptyText={mode === 'single' ? copy.garmentSingleEmpty : copy.garmentMultiEmpty}
+              hint={copy.garmentHint}
+              multiple={mode === 'multi'}
+              disabled={isSubmitting}
+              onChange={selectGarmentFiles}
+            >
+              {garmentPreviews.length > 1 ? (
+                <div className="mt-3 grid grid-cols-4 gap-2">
+                  {garmentPreviews.map((preview, index) => (
+                    <img
+                      key={preview}
+                      src={preview}
+                      alt=""
+                      className="aspect-square rounded-md border border-gray-200 object-cover"
+                      title={garmentFiles[index]?.name}
                     />
-                  </label>
-                  <div className="rounded-lg border border-white/10 bg-gray-950/70 p-3">
-                    <div className="flex items-center gap-2 text-xs font-semibold uppercase text-white/45">
-                      <Palette className="size-3.5 text-amber-300" />
-                      Selected source
-                    </div>
-                    <p className="mt-2 truncate text-sm font-semibold text-white/75">
-                      {selectedLibraryItem ? getItemLabel(selectedLibraryItem) : 'None'}
-                    </p>
-                  </div>
-                </div>
-              </div>
-
-              {error ? (
-                <div
-                  className="mt-4 flex items-start gap-2 rounded-lg border border-red-400/30 bg-red-500/10 px-3 py-2 text-sm text-red-100"
-                  role="alert"
-                >
-                  <AlertCircle className="mt-0.5 size-4 shrink-0" />
-                  <span>{error}</span>
+                  ))}
                 </div>
               ) : null}
+            </UploadDropzone>
+          </div>
+        </PanelSection>
 
-              <Button
-                type="submit"
-                disabled={!canSubmit}
-                className="mt-5 h-12 w-full rounded-lg bg-white text-sm font-bold text-gray-950 shadow-xl shadow-black/25 hover:bg-white/90"
-              >
-                {isSubmitting ? (
-                  <Loader2 className="size-4 animate-spin" />
-                ) : (
-                  <WandSparkles className="size-4" />
-                )}
-                {submitLabel ?? 'Generate try-on'}
-                <ChevronRight className="size-4" />
-              </Button>
+        <PanelSection title={copy.mode} required>
+          <SegmentedOptions
+            options={modeOptions}
+            value={mode}
+            onChange={(nextMode) => {
+              setMode(nextMode);
+              setGarmentFiles((files) => (nextMode === 'single' ? files.slice(0, 1) : files));
+            }}
+            disabled={isSubmitting}
+            columns={2}
+          />
+        </PanelSection>
+
+        <PanelSection title={copy.chooseModel} required>
+          <div className="mb-3 grid grid-cols-2 rounded-lg bg-gray-100 p-1">
+            <button
+              type="button"
+              onClick={() => {
+                setModelSource('library');
+                setModelFile(null);
+                setSelectedModelAsset((current) => current ?? modelAssets[0] ?? null);
+              }}
+              disabled={modelAssets.length === 0}
+              className={cn(
+                'h-10 rounded-md text-sm font-bold transition disabled:cursor-not-allowed disabled:opacity-50',
+                modelSource === 'library'
+                  ? 'bg-white text-indigo-600 shadow-sm'
+                  : 'text-gray-600 hover:text-indigo-600'
+              )}
+            >
+              {copy.officialModel}
+            </button>
+            <button
+              type="button"
+              onClick={() => useCustomModelUpload()}
+              className={cn(
+                'h-10 rounded-md text-sm font-bold transition',
+                modelSource === 'custom'
+                  ? 'bg-white text-indigo-600 shadow-sm'
+                  : 'text-gray-600 hover:text-indigo-600'
+              )}
+            >
+              {copy.customModel}
+            </button>
+          </div>
+          <div className="grid grid-cols-4 gap-3">
+            {modelAssets.length === 0 ? (
+              <p className="col-span-4 rounded-lg border border-dashed border-gray-200 px-3 py-4 text-sm text-gray-400">
+                {copy.noOfficialModels}
+              </p>
+            ) : (
+              modelAssets.slice(0, 8).map((model) => {
+                const image = getModelAssetImage(model);
+                const active = selectedModelAsset?.id === model.id && !modelFile;
+
+                return (
+                  <button
+                    key={model.id}
+                    type="button"
+                    onClick={() => selectLibraryModel(model)}
+                    className="group text-center"
+                  >
+                    <span
+                      className={cn(
+                        'block aspect-square overflow-hidden rounded-lg border bg-gray-100 transition group-hover:border-indigo-300',
+                        active ? 'border-indigo-500 ring-2 ring-indigo-100' : 'border-gray-200'
+                      )}
+                    >
+                      {model.videoUrl && image === model.videoUrl ? (
+                        <video src={image} muted playsInline className="size-full object-cover" />
+                      ) : (
+                        <img src={image} alt="" className="size-full object-cover" />
+                      )}
+                    </span>
+                    <span className="mt-1 block truncate text-xs font-semibold text-gray-600">
+                      {model.title}
+                    </span>
+                  </button>
+                );
+              })
+            )}
+          </div>
+        </PanelSection>
+
+        <PanelSection title={copy.featureAdjust}>
+          <div className="space-y-4">
+            <div>
+              <Label className="mb-2 text-xs font-bold text-gray-500">{copy.pose}</Label>
+              <div className="grid grid-cols-2 gap-2">
+                {poseValues.map((option) => (
+                  <button
+                    key={option}
+                    type="button"
+                    disabled={isSubmitting}
+                    onClick={() => setPose(option)}
+                    className={cn(
+                      'h-10 rounded-lg border text-sm font-bold transition',
+                      pose === option
+                        ? 'border-indigo-500 bg-indigo-50 text-indigo-600'
+                        : 'border-gray-200 bg-white text-gray-600'
+                    )}
+                  >
+                    {copy.poseOptions[option]}
+                  </button>
+                ))}
+              </div>
+            </div>
+            <div>
+              <Label className="mb-2 text-xs font-bold text-gray-500">{copy.background}</Label>
+              <div className="grid grid-cols-2 gap-2">
+                {backgroundValues.map((option) => (
+                  <button
+                    key={option}
+                    type="button"
+                    disabled={isSubmitting}
+                    onClick={() => setBackground(option)}
+                    className={cn(
+                      'h-10 rounded-lg border text-sm font-bold transition',
+                      background === option
+                        ? 'border-indigo-500 bg-indigo-50 text-indigo-600'
+                        : 'border-gray-200 bg-white text-gray-600'
+                    )}
+                  >
+                    {copy.backgroundOptions[option]}
+                  </button>
+                ))}
+              </div>
+            </div>
+            <div>
+              <Label className="mb-2 text-xs font-bold text-gray-500">{copy.fit}</Label>
+              <div className="grid grid-cols-3 gap-2">
+                {fitValues.map((option) => (
+                  <button
+                    key={option}
+                    type="button"
+                    disabled={isSubmitting}
+                    onClick={() => setFit(option)}
+                    className={cn(
+                      'h-10 rounded-lg border text-sm font-bold transition',
+                      fit === option
+                        ? 'border-indigo-500 bg-indigo-50 text-indigo-600'
+                        : 'border-gray-200 bg-white text-gray-600'
+                    )}
+                  >
+                    {copy.fitOptions[option]}
+                  </button>
+                ))}
+              </div>
             </div>
           </div>
+        </PanelSection>
 
-          <section className="flex min-h-[620px] flex-col rounded-lg border border-white/10 bg-white/[0.055] p-4 shadow-2xl shadow-black/25 backdrop-blur">
-            <div className="mb-4 flex items-center justify-between gap-3">
-              <div>
-                <h2 className="text-sm font-semibold text-white">Result preview</h2>
-                <p className="mt-1 text-xs text-white/45">
-                  {jobStatus?.progressLabel ?? jobStatus?.status ?? 'Ready when inputs are set'}
-                </p>
-              </div>
-              {jobStatus?.status === 'succeeded' ? (
-                <CheckCircle2 className="size-5 text-emerald-300" />
-              ) : jobId ? (
-                <Loader2 className="size-5 animate-spin text-white/50" />
-              ) : (
-                <Sparkles className="size-5 text-amber-300" />
-              )}
-            </div>
+        <PanelSection title={copy.description}>
+          <textarea
+            id="try-on-prompt"
+            value={prompt}
+            onChange={(event) => setPrompt(event.target.value)}
+            rows={4}
+            disabled={isSubmitting}
+            placeholder={copy.promptPlaceholder}
+            className="min-h-28 w-full resize-none rounded-lg border border-gray-200 bg-gray-100 px-4 py-3 text-sm leading-6 text-gray-800 outline-none transition placeholder:text-gray-400 focus:border-indigo-300 focus:bg-white focus:ring-3 focus:ring-indigo-100 disabled:cursor-not-allowed disabled:opacity-60"
+          />
+          <label className="mt-3 flex items-center justify-between rounded-lg border border-gray-200 bg-white px-3 py-2 text-sm font-bold text-gray-700">
+            {copy.preserveIdentity}
+            <input
+              type="checkbox"
+              checked={preserveFace}
+              onChange={(event) => setPreserveFace(event.target.checked)}
+              disabled={isSubmitting}
+              className="size-4 accent-indigo-500"
+            />
+          </label>
+        </PanelSection>
 
-            <div className="flex flex-1 items-center justify-center overflow-hidden rounded-lg border border-white/10 bg-gray-950">
-              {selectedResultUrl ? (
-                selectedResultUrl.endsWith('.mp4') ? (
-                  <video
-                    src={selectedResultUrl}
-                    controls
-                    playsInline
-                    className="max-h-[720px] w-full object-contain"
-                  />
-                ) : (
-                  <img
-                    src={selectedResultUrl}
-                    alt=""
-                    className="max-h-[720px] w-full object-contain"
-                  />
-                )
-              ) : (
-                <div className="px-6 text-center text-sm text-white/42">
-                  <div className="mx-auto mb-4 flex size-16 items-center justify-center rounded-lg border border-white/10 bg-white/[0.06]">
-                    <WandSparkles className="size-7 text-white/55" />
-                  </div>
-                  Generated try-on images will appear here.
-                </div>
-              )}
-            </div>
-
-            {jobStatus?.errorMessage ? (
-              <p className="mt-3 rounded-lg border border-red-400/30 bg-red-500/10 p-3 text-sm text-red-100">
-                {jobStatus.errorMessage}
+        <PanelSection
+          title={copy.library}
+          hint={isLoadingLibrary ? commonCopy.loadingLibrary : commonCopy.templateCount(templates.length)}
+        >
+          <div className="grid grid-cols-3 gap-2">
+            {templates.length === 0 ? (
+              <p className="col-span-3 rounded-lg border border-dashed border-gray-200 px-3 py-4 text-sm text-gray-400">
+                {copy.noTemplates}
               </p>
-            ) : null}
-          </section>
+            ) : (
+              templates.slice(0, 6).map((template) => {
+                const image = getItemImage(template);
+                const active =
+                  String(selectedLibraryItem?.id ?? selectedLibraryItem?.slug) ===
+                  String(template.id ?? template.slug);
+
+                return (
+                  <button
+                    key={String(template.id ?? template.slug ?? image)}
+                    type="button"
+                    onClick={() => applyLibraryTemplate(template)}
+                    className={cn(
+                      'aspect-square overflow-hidden rounded-lg border bg-gray-100',
+                      active ? 'border-indigo-500 ring-2 ring-indigo-100' : 'border-gray-200'
+                    )}
+                    title={getItemLabel(template)}
+                  >
+                    {image ? <img src={image} alt="" className="size-full object-cover" /> : null}
+                  </button>
+                );
+              })
+            )}
+          </div>
+        </PanelSection>
+
+        {error ? (
+          <div
+            className="mb-5 flex items-start gap-2 rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700"
+            role="alert"
+          >
+            <AlertCircle className="mt-0.5 size-4 shrink-0" />
+            <span>{error}</span>
+          </div>
+        ) : null}
+      </StudioPanel>
+
+      <CanvasStage
+        title={copy.canvasTitle}
+        banner={<BlueBanner title={banner.title} label={copy.banner} images={libraryImages.length ? libraryImages.slice(0, 4) : undefined} />}
+      >
+        <div className="mx-auto w-full max-w-[900px]">
+          {selectedResultUrl ? (
+            <ResultCard
+              resultUrl={selectedResultUrl}
+              status={statusLabel}
+              title={copy.resultTitle}
+              description={copy.resultDescription}
+              minHeight="min-h-[520px]"
+              waitingLabel={commonCopy.waitingUpload}
+            />
+          ) : (
+            <div className="rounded-lg border border-gray-200 bg-white p-8 shadow-sm">
+              <div className="grid gap-4 md:grid-cols-2">
+                <UploadDropzone
+                  id="try-on-model-canvas"
+                  preview={selectedModelPreview}
+                  fileName={selectedModelLabel}
+                  emptyText={copy.modelCanvasEmpty}
+                  hint={copy.modelCanvasHint}
+                  disabled={isSubmitting}
+                  onChange={selectModelFile}
+                />
+                <UploadDropzone
+                  id="try-on-garments-canvas"
+                  preview={garmentPreviews[0]}
+                  fileName={garmentLabel}
+                  emptyText={copy.garmentCanvasEmpty}
+                  hint={copy.garmentHint}
+                  multiple={mode === 'multi'}
+                  disabled={isSubmitting}
+                  onChange={selectGarmentFiles}
+                />
+              </div>
+              <div className="mt-5 grid gap-4 md:grid-cols-2">
+                <IconButtonCard
+                  icon={Images}
+                  label={commonCopy.chooseFromLibrary}
+                  onClick={chooseFromLibrary}
+                  disabled={modelAssets.length === 0 && templates.length === 0}
+                />
+                <IconButtonCard
+                  icon={UploadCloud}
+                  label={commonCopy.uploadImage}
+                  onClick={() => useCustomModelUpload('try-on-model-canvas')}
+                  disabled={isSubmitting}
+                />
+              </div>
+            </div>
+          )}
+
+          {jobStatus?.errorMessage ? (
+            <p className="mt-4 rounded-lg border border-red-200 bg-red-50 p-3 text-sm text-red-700">
+              {jobStatus.errorMessage}
+            </p>
+          ) : null}
+
+          <ExampleProducts
+            images={libraryImages.length ? libraryImages : undefined}
+            title={commonCopy.examples}
+            refreshLabel={commonCopy.refresh}
+            onRefresh={() => setExampleOffset((offset) => offset + 1)}
+          />
         </div>
-      </form>
-    </section>
+      </CanvasStage>
+    </form>
   );
 }

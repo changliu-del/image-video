@@ -20,9 +20,32 @@ import {
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import {
+  BlueBanner,
+  CanvasStage,
+  ChoiceGrid,
+  ExampleProducts,
+  IconButtonCard,
+  PanelSection,
+  ResultCard,
+  SegmentedOptions,
+  StudioPanel,
+  UploadDropzone,
+} from '@/components/create/workbench-ui';
+import {
+  apparelWorkbenchCopy,
+  bannerCopy,
+  commonWorkbenchCopy,
+} from '@/components/create/workbench-copy';
+import { useDashboardLocale } from '@/lib/dashboard/use-dashboard-locale';
 import { cn } from '@/lib/utils';
 
 type AspectRatio = '9:16' | '1:1' | '16:9';
+type CreationMode = 'quick' | 'advanced';
+type ApparelModelType = 'fashion_model' | 'no_model' | 'partial_body' | 'lifestyle_talent';
+type ApparelScene = 'minimal_studio' | 'street_editorial' | 'luxury_boutique' | 'soft_daylight';
+type ApparelStyle = 'clean_commercial' | 'high_fashion' | 'korean_catalog' | 'premium_social_ad';
+
 type LibraryItem = {
   id?: string | number;
   name?: string;
@@ -32,6 +55,7 @@ type LibraryItem = {
   thumbnailUrl?: string;
   previewUrl?: string;
   publicUrl?: string;
+  asset?: string;
   type?: string;
 };
 
@@ -62,31 +86,28 @@ type JobStatusResponse = {
 const MAX_IMAGE_BYTES = 10 * 1024 * 1024;
 const ACCEPTED_IMAGE_TYPES = ['image/png', 'image/jpeg', 'image/webp'];
 const aspectRatios: AspectRatio[] = ['9:16', '1:1', '16:9'];
-
-const modelTypes = [
-  'Fashion model',
-  'No model',
-  'Partial body',
-  'Lifestyle talent',
+const modelTypeValues: ApparelModelType[] = [
+  'fashion_model',
+  'no_model',
+  'partial_body',
+  'lifestyle_talent',
 ];
-
-const sceneOptions = [
-  'Minimal studio',
-  'Street editorial',
-  'Luxury boutique',
-  'Soft daylight',
+const sceneValues: ApparelScene[] = [
+  'minimal_studio',
+  'street_editorial',
+  'luxury_boutique',
+  'soft_daylight',
 ];
-
-const stylePresets = [
-  'Clean commercial',
-  'High fashion',
-  'Korean catalog',
-  'Premium social ad',
+const styleValues: ApparelStyle[] = [
+  'clean_commercial',
+  'high_fashion',
+  'korean_catalog',
+  'premium_social_ad',
 ];
 
 function getItemImage(item: LibraryItem | null) {
   if (!item) return '';
-  return item.thumbnailUrl ?? item.previewUrl ?? item.imageUrl ?? item.publicUrl ?? '';
+  return item.thumbnailUrl ?? item.previewUrl ?? item.imageUrl ?? item.publicUrl ?? item.asset ?? '';
 }
 
 function getItemLabel(item: LibraryItem) {
@@ -98,7 +119,7 @@ function normalizeItems(value: unknown): LibraryItem[] {
   if (!value || typeof value !== 'object') return [];
 
   const record = value as Record<string, unknown>;
-  for (const key of ['items', 'templates', 'assets', 'data', 'results']) {
+  for (const key of ['items', 'templates', 'assets', 'data', 'results', 'list']) {
     if (Array.isArray(record[key])) return record[key] as LibraryItem[];
   }
 
@@ -146,13 +167,16 @@ async function postJson<T>(url: string, body: Record<string, unknown>, fallback:
   return (await response.json()) as T;
 }
 
-function validateImage(file: File) {
+function validateImage(
+  file: File,
+  labels: { invalidImage: string; imageTooLarge: string }
+) {
   if (!ACCEPTED_IMAGE_TYPES.includes(file.type)) {
-    return 'Use a PNG, JPEG, or WEBP image.';
+    return labels.invalidImage;
   }
 
   if (file.size > MAX_IMAGE_BYTES) {
-    return 'Image must be 10 MB or smaller.';
+    return labels.imageTooLarge;
   }
 
   return null;
@@ -173,7 +197,7 @@ function resultUrl(status: JobStatusResponse | null) {
   );
 }
 
-async function uploadAsset(file: File) {
+async function uploadAsset(file: File, labels: typeof commonWorkbenchCopy.en) {
   const presign = await postJson<PresignResponse>(
     '/api/assets/presign',
     {
@@ -181,7 +205,7 @@ async function uploadAsset(file: File) {
       mimeType: file.type,
       sizeBytes: file.size,
     },
-    'Upload could not be prepared.'
+    labels.uploadPrepareError
   );
 
   const uploadResponse = await fetch(presign.uploadUrl, {
@@ -191,7 +215,7 @@ async function uploadAsset(file: File) {
   });
 
   if (!uploadResponse.ok) {
-    throw new Error('Image upload failed.');
+    throw new Error(labels.uploadFailed);
   }
 
   await postJson(
@@ -200,13 +224,13 @@ async function uploadAsset(file: File) {
       assetId: presign.assetId,
       storageKey: presign.storageKey,
     },
-    'Image could not be saved.'
+    labels.imageSaveError
   );
 
   return presign.assetId;
 }
 
-async function fetchJobStatus(jobId: string) {
+async function fetchJobStatus(jobId: string, labels: typeof commonWorkbenchCopy.en) {
   const generationStatus = await fetch(`/api/generations/${jobId}/status`);
 
   if (generationStatus.ok) {
@@ -215,7 +239,7 @@ async function fetchJobStatus(jobId: string) {
 
   const legacyStatus = await fetch(`/api/jobs/${jobId}`);
   if (!legacyStatus.ok) {
-    throw new Error(await readResponseError(legacyStatus, 'Status could not be loaded.'));
+    throw new Error(await readResponseError(legacyStatus, labels.statusLoadError));
   }
 
   return (await legacyStatus.json()) as JobStatusResponse;
@@ -333,25 +357,27 @@ function LibraryTile({
 }
 
 export function ApparelWorkbench() {
+  const locale = useDashboardLocale();
+  const copy = apparelWorkbenchCopy[locale];
+  const commonCopy = commonWorkbenchCopy[locale];
+  const banner = bannerCopy[locale];
   const [primaryFile, setPrimaryFile] = useState<File | null>(null);
   const [primaryPreview, setPrimaryPreview] = useState<string | null>(null);
   const [templates, setTemplates] = useState<LibraryItem[]>([]);
   const [assets, setAssets] = useState<LibraryItem[]>([]);
   const [selectedTemplate, setSelectedTemplate] = useState<LibraryItem | null>(null);
-  const [selectedAsset, setSelectedAsset] = useState<LibraryItem | null>(null);
   const [isLoadingLibrary, setIsLoadingLibrary] = useState(true);
-  const [modelType, setModelType] = useState(modelTypes[0]);
-  const [scene, setScene] = useState(sceneOptions[0]);
-  const [style, setStyle] = useState(stylePresets[0]);
-  const [prompt, setPrompt] = useState(
-    'Preserve the garment details, improve drape, lighting, and merchandising appeal.'
-  );
-  const [negativePrompt, setNegativePrompt] = useState(
-    'distorted logo, extra sleeves, broken hands, low resolution'
-  );
+  const [creationMode, setCreationMode] = useState<CreationMode>('quick');
+  const [activeIdeaGroup, setActiveIdeaGroup] = useState(0);
+  const [modelType, setModelType] = useState<ApparelModelType>('fashion_model');
+  const [scene, setScene] = useState<ApparelScene>('minimal_studio');
+  const [style, setStyle] = useState<ApparelStyle>('clean_commercial');
+  const [prompt, setPrompt] = useState(() => copy.defaultPrompt);
+  const [negativePrompt, setNegativePrompt] = useState(() => copy.defaultNegativePrompt);
   const [aspectRatio, setAspectRatio] = useState<AspectRatio>('9:16');
   const [strength, setStrength] = useState(64);
   const [variants, setVariants] = useState(4);
+  const [exampleOffset, setExampleOffset] = useState(0);
   const [submitLabel, setSubmitLabel] = useState<string | null>(null);
   const [jobId, setJobId] = useState<string | null>(null);
   const [jobStatus, setJobStatus] = useState<JobStatusResponse | null>(null);
@@ -360,13 +386,29 @@ export function ApparelWorkbench() {
   const isSubmitting = Boolean(submitLabel);
   const selectedResultUrl = resultUrl(jobStatus);
   const selectedTemplateId = selectedTemplate?.id ?? selectedTemplate?.slug;
-  const selectedAssetId = selectedAsset?.id ?? selectedAsset?.slug;
-  const sourcePreview = primaryPreview ?? getItemImage(selectedAsset);
-  const sourceName = primaryFile?.name ?? (selectedAsset ? getItemLabel(selectedAsset) : null);
+  const sourcePreview = primaryPreview;
+  const sourceName = primaryFile?.name ?? null;
+  const modelTypeOptions = modelTypeValues.map((value, index) => ({
+    value,
+    label: copy.modelTypes[index] ?? value,
+  }));
+  const sceneOptions = sceneValues.map((value, index) => ({
+    value,
+    label: copy.sceneOptions[index] ?? value,
+  }));
+  const styleOptions = styleValues.map((value, index) => ({
+    value,
+    label: copy.stylePresets[index] ?? value,
+  }));
+  const selectedModelTypeLabel =
+    copy.modelTypes[modelTypeValues.indexOf(modelType)] ?? modelType;
+  const selectedSceneLabel = copy.sceneOptions[sceneValues.indexOf(scene)] ?? scene;
+  const selectedStyleLabel = copy.stylePresets[styleValues.indexOf(style)] ?? style;
+  const activePromptGroup = copy.promptIdeaGroups[activeIdeaGroup] ?? copy.promptIdeaGroups[0];
 
   const canSubmit = useMemo(() => {
-    return !isSubmitting && Boolean(primaryFile || selectedAssetId);
-  }, [isSubmitting, primaryFile, selectedAssetId]);
+    return !isSubmitting && Boolean(primaryFile);
+  }, [isSubmitting, primaryFile]);
 
   useEffect(() => {
     if (!primaryFile) {
@@ -385,22 +427,20 @@ export function ApparelWorkbench() {
     async function loadLibrary() {
       setIsLoadingLibrary(true);
       try {
-        const params = new URLSearchParams({ type: 'apparel_image' });
-        const [templateResponse, assetResponse] = await Promise.all([
-          fetch(`/api/creative-templates?${params.toString()}`),
-          fetch(`/api/library-assets?${params.toString()}`),
-        ]);
-
-        const [templateBody, assetBody] = await Promise.all([
-          templateResponse.ok ? templateResponse.json() : Promise.resolve({ items: [] }),
-          assetResponse.ok ? assetResponse.json() : Promise.resolve({ items: [] }),
-        ]);
+        const params = new URLSearchParams({
+          locale,
+          pageSize: '12',
+          type: 'image',
+        });
+        const templateResponse = await fetch(`/api/templates?${params.toString()}`);
+        const templateBody = templateResponse.ok
+          ? await templateResponse.json()
+          : { list: [] };
 
         if (!cancelled) {
           const nextTemplates = normalizeItems(templateBody);
-          const nextAssets = normalizeItems(assetBody);
           setTemplates(nextTemplates);
-          setAssets(nextAssets);
+          setAssets([]);
           setSelectedTemplate((current) => current ?? nextTemplates[0] ?? null);
         }
       } finally {
@@ -412,7 +452,7 @@ export function ApparelWorkbench() {
     return () => {
       cancelled = true;
     };
-  }, []);
+  }, [locale]);
 
   useEffect(() => {
     if (!jobId || terminalStatus(jobStatus?.status)) return;
@@ -420,14 +460,14 @@ export function ApparelWorkbench() {
     let cancelled = false;
     const poll = async () => {
       try {
-        const nextStatus = await fetchJobStatus(jobId);
+        const nextStatus = await fetchJobStatus(jobId, commonCopy);
         if (!cancelled) setJobStatus(nextStatus);
       } catch (statusError) {
         if (!cancelled) {
           setError(
             statusError instanceof Error
               ? statusError.message
-              : 'Status could not be loaded.'
+              : commonCopy.statusLoadError
           );
         }
       }
@@ -448,28 +488,21 @@ export function ApparelWorkbench() {
       return;
     }
 
-    const validationError = validateImage(file);
+    const validationError = validateImage(file, commonCopy);
     if (validationError) {
       setPrimaryFile(null);
       setError(validationError);
       return;
     }
 
-    setSelectedAsset(null);
     setPrimaryFile(file);
-  }
-
-  function selectLibraryAsset(asset: LibraryItem) {
-    setError(null);
-    setPrimaryFile(null);
-    setSelectedAsset(asset);
   }
 
   async function handleSubmit(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
 
-    if (!primaryFile && !selectedAssetId) {
-      setError('Upload an apparel image or select one from the library.');
+    if (!primaryFile) {
+      setError(copy.uploadRequired);
       return;
     }
 
@@ -478,10 +511,10 @@ export function ApparelWorkbench() {
     setJobStatus(null);
 
     try {
-      setSubmitLabel(primaryFile ? 'Uploading apparel image' : 'Preparing library asset');
-      const inputAssetId = primaryFile ? await uploadAsset(primaryFile) : selectedAssetId;
+      setSubmitLabel(copy.uploadingImage);
+      const inputAssetId = await uploadAsset(primaryFile, commonCopy);
 
-      setSubmitLabel('Starting generation');
+      setSubmitLabel(copy.startingGeneration);
       const generation = await postJson<GenerationResponse>(
         '/api/generations',
         {
@@ -491,9 +524,9 @@ export function ApparelWorkbench() {
           templateSlug: selectedTemplate?.slug ?? selectedTemplateId,
           prompt: [
             prompt.trim(),
-            `Model type: ${modelType}.`,
-            `Scene: ${scene}.`,
-            `Style: ${style}.`,
+            `${copy.modelType}: ${selectedModelTypeLabel}.`,
+            `${copy.scene}: ${selectedSceneLabel}.`,
+            `${copy.style}: ${selectedStyleLabel}.`,
             negativePrompt.trim() ? `Avoid: ${negativePrompt.trim()}.` : '',
           ]
             .filter(Boolean)
@@ -502,392 +535,394 @@ export function ApparelWorkbench() {
           strength,
           variants,
         },
-        'Generation could not be started.'
+        commonCopy.generationStartError
       );
       const nextJobId = generation.jobId ?? generation.id;
 
       if (!nextJobId) {
-        throw new Error('Generation response did not include a job id.');
+        throw new Error(commonCopy.missingJobError);
       }
 
       setJobId(nextJobId);
       setJobStatus({
         id: nextJobId,
         status: generation.status ?? 'queued',
-        progressLabel: 'Queued',
+        progressLabel: commonCopy.queued,
       });
     } catch (submitError) {
       setError(
         submitError instanceof Error
           ? submitError.message
-          : 'Generation could not be started.'
+          : commonCopy.generationStartError
       );
     } finally {
       setSubmitLabel(null);
     }
   }
 
-  return (
-    <section className="min-h-full px-4 py-5 text-white sm:px-6 lg:px-8">
-      <div className="mx-auto max-w-7xl">
-        <div className="mb-5 flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
-          <div>
-            <div className="inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/10 px-3 py-1 text-xs font-medium uppercase text-white/65">
-              <Sparkles className="size-3.5 text-amber-300" />
-              Apparel image studio
-            </div>
-            <h1 className="mt-4 max-w-3xl text-3xl font-bold leading-tight text-white md:text-4xl">
-              Turn a garment shot into a polished fashion commerce visual.
-            </h1>
-            <p className="mt-3 max-w-2xl text-sm leading-7 text-white/58">
-              Upload or pick a source, choose model, scene, and style direction,
-              then generate campaign-ready apparel imagery.
-            </p>
-          </div>
-          <div className="grid grid-cols-3 gap-2 rounded-lg border border-white/10 bg-white/[0.055] p-2 text-center">
-            {['Upload', 'Direct', 'Preview'].map((step, index) => (
-              <div key={step} className="min-w-20 px-2 py-1.5">
-                <div className="text-xs font-semibold text-amber-200">
-                  {String(index + 1).padStart(2, '0')}
-                </div>
-                <div className="mt-1 text-xs text-white/55">{step}</div>
-              </div>
-            ))}
-          </div>
-        </div>
+  function applyPromptIdea(idea: string) {
+    setCreationMode('quick');
+    setPrompt(idea);
+  }
 
-        <form
-          onSubmit={handleSubmit}
-          className="grid gap-4 xl:grid-cols-[370px_minmax(0,1fr)]"
+  function applyTemplate(template: LibraryItem | null | undefined) {
+    if (!template) return;
+
+    setSelectedTemplate(template);
+    setCreationMode('advanced');
+    setPrompt((current) => {
+      const label = getItemLabel(template);
+      const trimmed = current.trim();
+      return trimmed.includes(label) ? trimmed : `${trimmed} ${label}`.trim();
+    });
+  }
+
+  const baseLibraryImages = templates.map(getItemImage).filter(Boolean);
+  const libraryStart = baseLibraryImages.length ? exampleOffset % baseLibraryImages.length : 0;
+  const libraryImages = [
+    ...baseLibraryImages.slice(libraryStart),
+    ...baseLibraryImages.slice(0, libraryStart),
+  ].slice(0, 6);
+  const statusLabel = jobStatus?.progressLabel ?? jobStatus?.status ?? (jobId ? commonCopy.generating : null);
+
+  return (
+    <form
+      onSubmit={handleSubmit}
+      className="flex min-h-[calc(100dvh-58px)] flex-col bg-[#f4f6fa] text-gray-950 lg:flex-row"
+    >
+      <StudioPanel
+        footer={
+          <div className="flex items-center gap-3">
+            <button
+              type="button"
+              className="inline-flex h-11 items-center gap-2 rounded-full px-3 text-sm font-bold text-indigo-600"
+            >
+              <PanelsTopLeft className="size-4" />
+              {commonCopy.taskFlow}
+            </button>
+            <Button
+              type="submit"
+              disabled={!canSubmit}
+              className="h-12 flex-1 rounded-full bg-[#b8b8f6] text-sm font-bold text-white shadow-none hover:bg-[#a8a8ef] disabled:bg-gray-200 disabled:text-gray-400"
+            >
+              {isSubmitting ? <Loader2 className="size-4 animate-spin" /> : <Palette className="size-4" />}
+              {submitLabel ?? commonCopy.generateNow}
+              <span className="font-semibold opacity-90">{commonCopy.credits(8)}</span>
+            </Button>
+          </div>
+        }
+      >
+        <PanelSection title={copy.productLayout} required>
+          <UploadDropzone
+            id="apparel-file"
+            preview={sourcePreview}
+            fileName={sourceName}
+            emptyText={copy.productEmpty}
+            hint={copy.productHint}
+            disabled={isSubmitting}
+            onChange={(files) => selectPrimaryFile(files?.[0] ?? null)}
+          />
+        </PanelSection>
+
+        <PanelSection title={copy.size} required>
+          <SegmentedOptions
+            options={aspectRatios}
+            value={aspectRatio}
+            onChange={setAspectRatio}
+            disabled={isSubmitting}
+          />
+        </PanelSection>
+
+        <PanelSection title={copy.inspiration} required>
+          <div className="mb-3 flex rounded-lg border border-indigo-200 bg-white">
+            <button
+              type="button"
+              onClick={() => {
+                setCreationMode('quick');
+                applyPromptIdea(activePromptGroup.prompts[0] ?? copy.defaultPrompt);
+              }}
+              className={cn(
+                'h-11 flex-1 rounded-l-lg text-sm font-bold transition',
+                creationMode === 'quick'
+                  ? 'bg-gray-100 text-gray-700'
+                  : 'bg-white text-gray-500 hover:text-indigo-600'
+              )}
+            >
+              {copy.quick}
+              <span className="ml-2 rounded-full bg-red-500 px-1.5 py-0.5 text-[10px] text-white">
+                {copy.hot}
+              </span>
+            </button>
+            <button
+              type="button"
+              onClick={() => setCreationMode('advanced')}
+              className={cn(
+                'h-11 flex-1 rounded-r-lg text-sm font-bold transition',
+                creationMode === 'advanced'
+                  ? 'bg-white text-indigo-600'
+                  : 'bg-gray-100 text-gray-500 hover:text-indigo-600'
+              )}
+            >
+              {copy.advanced}
+            </button>
+          </div>
+          <textarea
+            id="apparel-prompt"
+            value={prompt}
+            onChange={(event) => setPrompt(event.target.value)}
+            rows={5}
+            disabled={isSubmitting}
+            placeholder={copy.promptPlaceholder}
+            className="min-h-32 w-full resize-none rounded-lg border border-gray-200 bg-gray-100 px-4 py-3 text-sm leading-6 text-gray-800 outline-none transition placeholder:text-gray-400 focus:border-indigo-300 focus:bg-white focus:ring-3 focus:ring-indigo-100 disabled:cursor-not-allowed disabled:opacity-60"
+          />
+
+          <div className="mt-4">
+            <div className="mb-2 flex items-center justify-between text-sm">
+              <span className="font-bold text-gray-900">{copy.promptIdeas}</span>
+              <button
+                type="button"
+                onClick={() => applyTemplate(selectedTemplate ?? templates[0])}
+                disabled={templates.length === 0}
+                className="font-semibold text-gray-500 hover:text-indigo-600 disabled:cursor-not-allowed disabled:opacity-40"
+              >
+                {copy.addFromTemplate}
+              </button>
+            </div>
+            <div className="grid grid-cols-[78px_1fr] gap-3">
+              <div className="space-y-2 text-sm font-semibold text-gray-500">
+                {copy.promptIdeaGroups.map((group, index) => (
+                  <button
+                    key={group.category}
+                    type="button"
+                    onClick={() => {
+                      setActiveIdeaGroup(index);
+                      applyPromptIdea(group.prompts[0] ?? copy.defaultPrompt);
+                    }}
+                    className={cn(
+                      'block w-full rounded-lg px-2 py-1 text-left',
+                      activeIdeaGroup === index && 'bg-indigo-50 text-indigo-600'
+                    )}
+                  >
+                    {group.category}
+                  </button>
+                ))}
+              </div>
+              <div className="grid grid-cols-2 gap-2">
+                {activePromptGroup.prompts.map((idea) => (
+                  <button
+                    key={idea}
+                    type="button"
+                    onClick={() => applyPromptIdea(idea)}
+                    className="min-h-12 rounded-lg border border-gray-200 bg-white px-3 py-2 text-left text-xs font-semibold leading-5 text-gray-600 transition hover:border-indigo-200 hover:text-indigo-600"
+                  >
+                    {idea}
+                  </button>
+                ))}
+              </div>
+            </div>
+          </div>
+        </PanelSection>
+
+        <PanelSection
+          title={copy.library}
+          hint={isLoadingLibrary ? commonCopy.loadingLibrary : commonCopy.templateCount(templates.length)}
         >
           <div className="space-y-4">
-            <section className="rounded-lg border border-white/10 bg-white/[0.055] p-4 shadow-2xl shadow-black/20 backdrop-blur">
-              <SectionTitle
-                icon={UploadCloud}
-                title="Source apparel"
-                note="PNG, JPEG, or WEBP up to 10 MB"
+            <div>
+              <h3 className="mb-2 text-xs font-bold text-gray-400">{copy.templateMaterials}</h3>
+              <div className="grid grid-cols-2 gap-2">
+                {templates.length === 0 ? (
+                  <p className="col-span-2 rounded-lg border border-dashed border-gray-200 px-3 py-4 text-sm text-gray-400">
+                    {commonCopy.noTemplates}
+                  </p>
+                ) : (
+                  templates.slice(0, 4).map((template) => {
+                    const image = getItemImage(template);
+                    const active =
+                      String(selectedTemplate?.id ?? selectedTemplate?.slug) ===
+                      String(template.id ?? template.slug);
+
+                    return (
+                      <button
+                        key={itemKey(template)}
+                        type="button"
+                        onClick={() => setSelectedTemplate(template)}
+                        className={cn(
+                          'rounded-lg border bg-white p-2 text-left transition',
+                          active ? 'border-indigo-500 text-indigo-600' : 'border-gray-200 text-gray-600'
+                        )}
+                      >
+                        <div className="aspect-square overflow-hidden rounded-md bg-gray-100">
+                          {image ? <img src={image} alt="" className="size-full object-cover" /> : null}
+                        </div>
+                        <p className="mt-2 truncate text-xs font-bold">{getItemLabel(template)}</p>
+                      </button>
+                    );
+                  })
+                )}
+              </div>
+            </div>
+          </div>
+        </PanelSection>
+
+        <PanelSection title={copy.settings}>
+          <div className="space-y-4">
+            <div>
+              <Label className="mb-2 text-xs font-bold text-gray-500">{copy.modelType}</Label>
+              <ChoiceGrid
+                options={modelTypeOptions}
+                value={modelType}
+                onChange={setModelType}
+                disabled={isSubmitting}
               />
+            </div>
+            <div>
+              <Label className="mb-2 text-xs font-bold text-gray-500">{copy.scene}</Label>
+              <ChoiceGrid
+                options={sceneOptions}
+                value={scene}
+                onChange={setScene}
+                disabled={isSubmitting}
+              />
+            </div>
+            <div>
+              <Label className="mb-2 text-xs font-bold text-gray-500">{copy.style}</Label>
+              <ChoiceGrid
+                options={styleOptions}
+                value={style}
+                onChange={setStyle}
+                disabled={isSubmitting}
+              />
+            </div>
+            <div>
+              <div className="mb-2 flex items-center justify-between">
+                <Label htmlFor="apparel-strength" className="text-xs font-bold text-gray-500">
+                  {copy.strength}
+                </Label>
+                <span className="text-xs font-bold text-indigo-600">{strength}</span>
+              </div>
+              <input
+                id="apparel-strength"
+                type="range"
+                min="20"
+                max="90"
+                value={strength}
+                onChange={(event) => setStrength(Number(event.target.value))}
+                disabled={isSubmitting}
+                className="w-full accent-indigo-500"
+              />
+            </div>
+            <div>
+              <Label className="mb-2 text-xs font-bold text-gray-500">{copy.variants}</Label>
+              <SegmentedOptions
+                options={[1, 2, 4]}
+                value={variants}
+                onChange={setVariants}
+                disabled={isSubmitting}
+              />
+            </div>
+            <div>
+              <Label htmlFor="apparel-negative-prompt" className="mb-2 text-xs font-bold text-gray-500">
+                {copy.negative}
+              </Label>
+              <textarea
+                id="apparel-negative-prompt"
+                value={negativePrompt}
+                onChange={(event) => setNegativePrompt(event.target.value)}
+                rows={3}
+                disabled={isSubmitting}
+                className="min-h-20 w-full resize-none rounded-lg border border-gray-200 bg-white px-3 py-2 text-sm leading-6 text-gray-800 outline-none transition focus:border-indigo-300 focus:ring-3 focus:ring-indigo-100 disabled:cursor-not-allowed disabled:opacity-60"
+              />
+            </div>
+          </div>
+        </PanelSection>
+
+        {error ? (
+          <div
+            className="mb-5 flex items-start gap-2 rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700"
+            role="alert"
+          >
+            <AlertCircle className="mt-0.5 size-4 shrink-0" />
+            <span>{error}</span>
+          </div>
+        ) : null}
+      </StudioPanel>
+
+      <CanvasStage
+        title={copy.canvasTitle}
+        banner={<BlueBanner title={banner.title} label={copy.banner} images={libraryImages.length ? libraryImages.slice(0, 4) : undefined} />}
+      >
+        <div className="mx-auto w-full max-w-[900px]">
+          {selectedResultUrl ? (
+            <ResultCard
+              resultUrl={selectedResultUrl}
+              status={statusLabel}
+              title={copy.resultTitle}
+              description={copy.resultDescription}
+              minHeight="min-h-[520px]"
+              waitingLabel={commonCopy.waitingUpload}
+            />
+          ) : (
+            <div className="rounded-lg border border-gray-200 bg-white p-8 shadow-sm">
               <label
-                htmlFor="apparel-file"
+                htmlFor="apparel-file-canvas"
                 className={cn(
-                  'mt-4 flex min-h-56 cursor-pointer flex-col items-center justify-center gap-3 rounded-lg border border-dashed border-white/15 bg-gray-950/55 p-3 text-center transition hover:border-amber-300/60 hover:bg-gray-950/75',
-                  isSubmitting && 'pointer-events-none opacity-70'
+                  'flex min-h-48 cursor-pointer flex-col items-center justify-center rounded-lg text-center transition hover:bg-gray-50',
+                  isSubmitting && 'pointer-events-none opacity-60'
                 )}
               >
                 {sourcePreview ? (
-                  <img
-                    src={sourcePreview}
-                    alt=""
-                    className="max-h-48 w-full rounded-md object-contain"
-                  />
+                  <img src={sourcePreview} alt="" className="max-h-56 rounded-lg object-contain" />
                 ) : (
-                  <span className="flex size-14 items-center justify-center rounded-full bg-white/10 text-white/55">
-                    <ImageIcon className="size-6" />
-                  </span>
+                  <>
+                    <span className="flex size-12 items-center justify-center rounded-lg bg-indigo-50 text-indigo-500">
+                      <UploadCloud className="size-6" />
+                    </span>
+                    <span className="mt-4 text-sm font-bold text-gray-800">
+                      {commonCopy.uploadClick}
+                    </span>
+                  </>
                 )}
-                <span className="flex max-w-full items-center gap-2 truncate text-sm font-medium text-white/80">
-                  <Plus className="size-4 shrink-0 text-amber-200" />
-                  <span className="truncate">{sourceName ?? 'Upload apparel image'}</span>
-                </span>
               </label>
               <Input
-                id="apparel-file"
+                id="apparel-file-canvas"
                 type="file"
                 accept={ACCEPTED_IMAGE_TYPES.join(',')}
                 className="sr-only"
                 onChange={(event) => selectPrimaryFile(event.target.files?.[0] ?? null)}
                 disabled={isSubmitting}
               />
-            </section>
-
-            <section className="rounded-lg border border-white/10 bg-white/[0.055] p-4 backdrop-blur">
-              <SectionTitle
-                icon={PanelsTopLeft}
-                title="Material library"
-                note={
-                  isLoadingLibrary
-                    ? 'Loading assets'
-                    : `${templates.length + assets.length} library items`
-                }
-              />
-              <div className="mt-4 space-y-4">
-                <div>
-                  <h3 className="mb-2 text-xs font-semibold uppercase text-white/40">
-                    Base templates
-                  </h3>
-                  <div className="grid grid-cols-2 gap-2">
-                    {templates.length === 0 ? (
-                      <p className="col-span-2 rounded-lg border border-dashed border-white/12 px-3 py-4 text-sm text-white/42">
-                        No templates yet
-                      </p>
-                    ) : (
-                      templates.slice(0, 4).map((template) => (
-                        <LibraryTile
-                          key={itemKey(template)}
-                          item={template}
-                          active={
-                            String(selectedTemplate?.id ?? selectedTemplate?.slug) ===
-                            String(template.id ?? template.slug)
-                          }
-                          onClick={() => setSelectedTemplate(template)}
-                        />
-                      ))
-                    )}
-                  </div>
-                </div>
-                <div>
-                  <h3 className="mb-2 text-xs font-semibold uppercase text-white/40">
-                    Apparel assets
-                  </h3>
-                  <div className="grid grid-cols-3 gap-2">
-                    {assets.length === 0 ? (
-                      <p className="col-span-3 rounded-lg border border-dashed border-white/12 px-3 py-4 text-sm text-white/42">
-                        No assets yet
-                      </p>
-                    ) : (
-                      assets.slice(0, 6).map((asset) => (
-                        <LibraryTile
-                          key={itemKey(asset)}
-                          item={asset}
-                          active={
-                            String(selectedAsset?.id ?? selectedAsset?.slug) ===
-                            String(asset.id ?? asset.slug)
-                          }
-                          onClick={() => selectLibraryAsset(asset)}
-                        />
-                      ))
-                    )}
-                  </div>
-                </div>
-              </div>
-            </section>
-          </div>
-
-          <div className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_340px]">
-            <section className="flex min-h-[640px] flex-col rounded-lg border border-white/10 bg-white/[0.055] p-4 shadow-2xl shadow-black/20 backdrop-blur">
-              <div className="flex items-center justify-between gap-3">
-                <SectionTitle
-                  icon={WandSparkles}
-                  title="Preview result"
-                  note={jobStatus?.progressLabel ?? jobStatus?.status ?? 'Ready'}
+              <div className="mt-6 grid gap-4 md:grid-cols-2">
+                <IconButtonCard
+                  icon={ImageIcon}
+                  label={commonCopy.chooseFromLibrary}
+                  onClick={() => applyTemplate(selectedTemplate ?? templates[0])}
+                  disabled={templates.length === 0}
                 />
-                {jobStatus?.status === 'succeeded' ? (
-                  <CheckCircle2 className="size-5 text-emerald-300" />
-                ) : jobId ? (
-                  <Loader2 className="size-5 animate-spin text-white/45" />
-                ) : null}
-              </div>
-
-              <div className="mt-4 flex flex-1 items-center justify-center overflow-hidden rounded-lg border border-white/10 bg-[linear-gradient(135deg,rgba(15,23,42,0.95),rgba(3,7,18,0.98))]">
-                {selectedResultUrl ? (
-                  <img
-                    src={selectedResultUrl}
-                    alt=""
-                    className="max-h-[720px] w-full object-contain"
-                  />
-                ) : (
-                  <div className="grid w-full gap-4 p-5 sm:grid-cols-[0.8fr_1.2fr] sm:items-center">
-                    <div className="mx-auto aspect-[3/4] w-full max-w-[250px] overflow-hidden rounded-lg border border-white/10 bg-white/[0.05]">
-                      {sourcePreview ? (
-                        <img src={sourcePreview} alt="" className="size-full object-cover" />
-                      ) : (
-                        <div className="flex size-full flex-col items-center justify-center gap-3 text-white/35">
-                          <Shirt className="size-10" />
-                          <span className="text-sm">Source image</span>
-                        </div>
-                      )}
-                    </div>
-                    <div className="space-y-4">
-                      <div className="rounded-lg border border-white/10 bg-white/[0.055] p-4">
-                        <p className="text-xs font-semibold uppercase text-emerald-200">
-                          Generation recipe
-                        </p>
-                        <div className="mt-3 grid gap-2 text-sm text-white/66">
-                          <p>{modelType}</p>
-                          <p>{scene}</p>
-                          <p>{style}</p>
-                          <p>{aspectRatio} output</p>
-                        </div>
-                      </div>
-                      <div className="grid grid-cols-2 gap-3">
-                        {['Detail lock', 'Studio light', 'Fabric texture', 'Clean edges'].map(
-                          (item) => (
-                            <div
-                              key={item}
-                              className="rounded-lg border border-white/10 bg-white/[0.045] p-3 text-xs font-medium text-white/55"
-                            >
-                              {item}
-                            </div>
-                          )
-                        )}
-                      </div>
-                    </div>
-                  </div>
-                )}
-              </div>
-
-              {jobStatus?.errorMessage ? (
-                <p className="mt-3 text-sm text-red-300">{jobStatus.errorMessage}</p>
-              ) : null}
-            </section>
-
-            <section className="rounded-lg border border-white/10 bg-white/[0.055] p-4 backdrop-blur">
-              <SectionTitle icon={UserRound} title="Creative direction" />
-              <div className="mt-4 space-y-5">
-                <OptionGroup
-                  label="Model type"
-                  options={modelTypes}
-                  value={modelType}
-                  onChange={setModelType}
+                <IconButtonCard
+                  icon={UploadCloud}
+                  label={commonCopy.uploadImage}
+                  onClick={() => document.getElementById('apparel-file-canvas')?.click()}
                   disabled={isSubmitting}
                 />
-                <OptionGroup
-                  label="Scene"
-                  options={sceneOptions}
-                  value={scene}
-                  onChange={setScene}
-                  disabled={isSubmitting}
-                />
-                <OptionGroup
-                  label="Style"
-                  options={stylePresets}
-                  value={style}
-                  onChange={setStyle}
-                  disabled={isSubmitting}
-                />
-
-                <div>
-                  <Label
-                    htmlFor="apparel-prompt"
-                    className="mb-2 text-xs font-medium uppercase text-white/45"
-                  >
-                    Style prompt
-                  </Label>
-                  <textarea
-                    id="apparel-prompt"
-                    value={prompt}
-                    onChange={(event) => setPrompt(event.target.value)}
-                    rows={4}
-                    disabled={isSubmitting}
-                    className="min-h-28 w-full rounded-lg border border-white/10 bg-gray-950/55 px-3 py-2 text-sm leading-6 text-white outline-none transition placeholder:text-white/25 focus:border-amber-300/70 focus:ring-3 focus:ring-amber-300/15 disabled:cursor-not-allowed disabled:opacity-50"
-                  />
-                </div>
-
-                <div>
-                  <Label
-                    htmlFor="apparel-negative-prompt"
-                    className="mb-2 text-xs font-medium uppercase text-white/45"
-                  >
-                    Negative prompt
-                  </Label>
-                  <textarea
-                    id="apparel-negative-prompt"
-                    value={negativePrompt}
-                    onChange={(event) => setNegativePrompt(event.target.value)}
-                    rows={3}
-                    disabled={isSubmitting}
-                    className="min-h-20 w-full rounded-lg border border-white/10 bg-gray-950/55 px-3 py-2 text-sm leading-6 text-white outline-none transition placeholder:text-white/25 focus:border-amber-300/70 focus:ring-3 focus:ring-amber-300/15 disabled:cursor-not-allowed disabled:opacity-50"
-                  />
-                </div>
-
-                <div className="space-y-4 rounded-lg border border-white/10 bg-gray-950/35 p-3">
-                  <SectionTitle icon={SlidersHorizontal} title="Parameters" />
-                  <div>
-                    <Label className="mb-2 text-xs font-medium uppercase text-white/45">
-                      Aspect ratio
-                    </Label>
-                    <div className="grid grid-cols-3 gap-2">
-                      {aspectRatios.map((option) => (
-                        <button
-                          key={option}
-                          type="button"
-                          disabled={isSubmitting}
-                          onClick={() => setAspectRatio(option)}
-                          className={cn(
-                            'h-10 rounded-lg border text-sm font-semibold transition disabled:cursor-not-allowed disabled:opacity-50',
-                            aspectRatio === option
-                              ? 'border-emerald-300/70 bg-emerald-300/15 text-white'
-                              : 'border-white/10 bg-white/[0.045] text-white/60 hover:border-white/20'
-                          )}
-                        >
-                          {option}
-                        </button>
-                      ))}
-                    </div>
-                  </div>
-                  <div>
-                    <div className="mb-2 flex items-center justify-between">
-                      <Label
-                        htmlFor="apparel-strength"
-                        className="text-xs font-medium uppercase text-white/45"
-                      >
-                        Creative strength
-                      </Label>
-                      <span className="text-xs font-semibold text-white/65">
-                        {strength}
-                      </span>
-                    </div>
-                    <input
-                      id="apparel-strength"
-                      type="range"
-                      min="20"
-                      max="90"
-                      value={strength}
-                      onChange={(event) => setStrength(Number(event.target.value))}
-                      disabled={isSubmitting}
-                      className="w-full accent-amber-300"
-                    />
-                  </div>
-                  <div>
-                    <Label
-                      htmlFor="apparel-variants"
-                      className="mb-2 text-xs font-medium uppercase text-white/45"
-                    >
-                      Variants
-                    </Label>
-                    <select
-                      id="apparel-variants"
-                      value={variants}
-                      onChange={(event) => setVariants(Number(event.target.value))}
-                      disabled={isSubmitting}
-                      className="h-10 w-full rounded-lg border border-white/10 bg-gray-950/80 px-3 text-sm text-white outline-none transition focus:border-amber-300/70 disabled:cursor-not-allowed disabled:opacity-50"
-                    >
-                      {[1, 2, 4].map((count) => (
-                        <option key={count} value={count}>
-                          {count}
-                        </option>
-                      ))}
-                    </select>
-                  </div>
-                </div>
-
-                {error ? (
-                  <div
-                    className="flex items-start gap-2 rounded-lg border border-red-300/30 bg-red-500/10 px-3 py-2 text-sm text-red-200"
-                    role="alert"
-                  >
-                    <AlertCircle className="mt-0.5 size-4 shrink-0" />
-                    <span>{error}</span>
-                  </div>
-                ) : null}
-
-                <Button
-                  type="submit"
-                  disabled={!canSubmit}
-                  className="h-12 w-full rounded-lg bg-white text-sm font-semibold text-gray-950 shadow-[0_18px_45px_rgba(255,255,255,0.12)] hover:bg-white/90"
-                >
-                  {isSubmitting ? (
-                    <Loader2 className="size-4 animate-spin" />
-                  ) : (
-                    <Palette className="size-4" />
-                  )}
-                  {submitLabel ?? 'Generate apparel image'}
-                </Button>
               </div>
-            </section>
-          </div>
-        </form>
-      </div>
-    </section>
+            </div>
+          )}
+
+          {jobStatus?.errorMessage ? (
+            <p className="mt-4 rounded-lg border border-red-200 bg-red-50 p-3 text-sm text-red-700">
+              {jobStatus.errorMessage}
+            </p>
+          ) : null}
+
+          <ExampleProducts
+            images={libraryImages.length ? libraryImages : undefined}
+            title={commonCopy.examples}
+            refreshLabel={commonCopy.refresh}
+            onRefresh={() => setExampleOffset((offset) => offset + 1)}
+          />
+        </div>
+      </CanvasStage>
+    </form>
   );
 }

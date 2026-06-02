@@ -19,6 +19,22 @@ import {
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import {
+  BlueBanner,
+  CanvasStage,
+  ChoiceGrid,
+  ExampleProducts,
+  PanelSection,
+  ResultCard,
+  SegmentedOptions,
+  StudioPanel,
+  UploadDropzone,
+} from '@/components/create/workbench-ui';
+import {
+  commonWorkbenchCopy,
+  imageVideoWorkbenchCopy,
+} from '@/components/create/workbench-copy';
+import { useDashboardLocale } from '@/lib/dashboard/use-dashboard-locale';
 import { cn } from '@/lib/utils';
 
 type AspectRatio = '9:16' | '1:1' | '16:9';
@@ -33,6 +49,7 @@ type LibraryItem = {
   thumbnailUrl?: string;
   previewUrl?: string;
   publicUrl?: string;
+  asset?: string;
   type?: string;
 };
 
@@ -67,20 +84,8 @@ const ACCEPTED_IMAGE_TYPES = ['image/png', 'image/jpeg', 'image/webp'];
 const aspectRatios: AspectRatio[] = ['9:16', '1:1', '16:9'];
 const durations: DurationSeconds[] = [5, 8, 10];
 
-const promptPresets = [
-  'Slow cinematic push-in, subtle parallax, premium product lighting',
-  'Handheld lifestyle motion, warm light, natural depth of field',
-  'Orbit camera move, glossy highlights, clean commercial finish',
-];
-
-const historyPlaceholders = [
-  'Hero product reveal',
-  'Lifestyle motion draft',
-  'Social cut preview',
-];
-
 function getItemImage(item: LibraryItem) {
-  return item.thumbnailUrl ?? item.previewUrl ?? item.imageUrl ?? item.publicUrl ?? '';
+  return item.thumbnailUrl ?? item.previewUrl ?? item.imageUrl ?? item.publicUrl ?? item.asset ?? '';
 }
 
 function getItemLabel(item: LibraryItem) {
@@ -103,13 +108,16 @@ function formatFileSize(sizeBytes: number) {
   return `${(sizeBytes / (1024 * 1024)).toFixed(1)} MB`;
 }
 
-function validateImage(file: File) {
+function validateImage(
+  file: File,
+  labels: { invalidImage: string; imageTooLarge: string }
+) {
   if (!ACCEPTED_IMAGE_TYPES.includes(file.type)) {
-    return 'Use a PNG, JPEG, or WEBP image.';
+    return labels.invalidImage;
   }
 
   if (file.size > MAX_IMAGE_BYTES) {
-    return 'Image must be 10 MB or smaller.';
+    return labels.imageTooLarge;
   }
 
   return null;
@@ -168,7 +176,7 @@ async function postJson<T>(url: string, body: Record<string, unknown>, fallback:
   return (await response.json()) as T;
 }
 
-async function uploadAsset(file: File) {
+async function uploadAsset(file: File, labels: typeof commonWorkbenchCopy.en) {
   const presign = await postJson<PresignResponse>(
     '/api/assets/presign',
     {
@@ -176,7 +184,7 @@ async function uploadAsset(file: File) {
       mimeType: file.type,
       sizeBytes: file.size,
     },
-    'Upload could not be prepared.'
+    labels.uploadPrepareError
   );
 
   const uploadResponse = await fetch(presign.uploadUrl, {
@@ -186,7 +194,7 @@ async function uploadAsset(file: File) {
   });
 
   if (!uploadResponse.ok) {
-    throw new Error('Image upload failed.');
+    throw new Error(labels.uploadFailed);
   }
 
   await postJson(
@@ -195,13 +203,13 @@ async function uploadAsset(file: File) {
       assetId: presign.assetId,
       storageKey: presign.storageKey,
     },
-    'Image could not be saved.'
+    labels.imageSaveError
   );
 
   return presign.assetId;
 }
 
-async function fetchJobStatus(jobId: string) {
+async function fetchJobStatus(jobId: string, labels: typeof commonWorkbenchCopy.en) {
   const generationStatus = await fetch(`/api/generations/${jobId}/status`);
 
   if (generationStatus.ok) {
@@ -210,7 +218,7 @@ async function fetchJobStatus(jobId: string) {
 
   const legacyStatus = await fetch(`/api/jobs/${jobId}`);
   if (!legacyStatus.ok) {
-    throw new Error(await readResponseError(legacyStatus, 'Status could not be loaded.'));
+    throw new Error(await readResponseError(legacyStatus, labels.statusLoadError));
   }
 
   return (await legacyStatus.json()) as JobStatusResponse;
@@ -248,11 +256,15 @@ function EmptyMedia({ label }: { label: string }) {
 }
 
 export function ImageVideoWorkbench() {
+  const locale = useDashboardLocale();
+  const copy = imageVideoWorkbenchCopy[locale];
+  const commonCopy = commonWorkbenchCopy[locale];
   const [sourceFile, setSourceFile] = useState<File | null>(null);
   const [sourcePreview, setSourcePreview] = useState<string | null>(null);
-  const [prompt, setPrompt] = useState(promptPresets[0]);
+  const [prompt, setPrompt] = useState(() => copy.promptPresets[0]);
   const [aspectRatio, setAspectRatio] = useState<AspectRatio>('9:16');
   const [durationSeconds, setDurationSeconds] = useState<DurationSeconds>(5);
+  const [exampleOffset, setExampleOffset] = useState(0);
   const [templates, setTemplates] = useState<LibraryItem[]>([]);
   const [assets, setAssets] = useState<LibraryItem[]>([]);
   const [selectedAsset, setSelectedAsset] = useState<LibraryItem | null>(null);
@@ -289,23 +301,21 @@ export function ImageVideoWorkbench() {
     async function loadLibrary() {
       setIsLoadingLibrary(true);
       try {
-        const params = new URLSearchParams({ type: 'image_to_video' });
-        const [templateResponse, assetResponse] = await Promise.all([
-          fetch(`/api/creative-templates?${params.toString()}`),
-          fetch(`/api/library-assets?${params.toString()}`),
-        ]);
-
-        const [templateBody, assetBody] = await Promise.all([
-          templateResponse.ok ? templateResponse.json() : Promise.resolve({ items: [] }),
-          assetResponse.ok ? assetResponse.json() : Promise.resolve({ items: [] }),
-        ]);
+        const params = new URLSearchParams({
+          locale,
+          pageSize: '12',
+          type: 'image_to_video',
+        });
+        const templateResponse = await fetch(`/api/templates?${params.toString()}`);
+        const templateBody = templateResponse.ok
+          ? await templateResponse.json()
+          : { list: [] };
 
         if (!cancelled) {
           const nextTemplates = normalizeItems(templateBody);
-          const nextAssets = normalizeItems(assetBody);
           setTemplates(nextTemplates);
-          setAssets(nextAssets);
-          setSelectedAsset((current) => current ?? nextAssets[0] ?? nextTemplates[0] ?? null);
+          setAssets([]);
+          setSelectedAsset((current) => current ?? nextTemplates[0] ?? null);
         }
       } finally {
         if (!cancelled) setIsLoadingLibrary(false);
@@ -316,7 +326,11 @@ export function ImageVideoWorkbench() {
     return () => {
       cancelled = true;
     };
-  }, []);
+  }, [locale]);
+
+  useEffect(() => {
+    setPrompt((current) => current || copy.promptPresets[0]);
+  }, [copy.promptPresets]);
 
   useEffect(() => {
     if (!jobId || terminalStatus(jobStatus?.status)) return;
@@ -324,12 +338,12 @@ export function ImageVideoWorkbench() {
     let cancelled = false;
     const poll = async () => {
       try {
-        const nextStatus = await fetchJobStatus(jobId);
+        const nextStatus = await fetchJobStatus(jobId, commonCopy);
         if (!cancelled) setJobStatus(nextStatus);
       } catch (statusError) {
         if (!cancelled) {
           setError(
-            statusError instanceof Error ? statusError.message : 'Status could not be loaded.'
+            statusError instanceof Error ? statusError.message : commonCopy.statusLoadError
           );
         }
       }
@@ -350,7 +364,7 @@ export function ImageVideoWorkbench() {
       return;
     }
 
-    const validationError = validateImage(file);
+    const validationError = validateImage(file, commonCopy);
     if (validationError) {
       setSourceFile(null);
       setError(validationError);
@@ -364,12 +378,12 @@ export function ImageVideoWorkbench() {
     event.preventDefault();
 
     if (!sourceFile) {
-      setError('Select a source image.');
+      setError(copy.selectSourceImage);
       return;
     }
 
     if (!trimmedPrompt) {
-      setError('Prompt is required.');
+      setError(copy.promptRequired);
       return;
     }
 
@@ -378,10 +392,10 @@ export function ImageVideoWorkbench() {
     setJobStatus(null);
 
     try {
-      setSubmitLabel('Uploading image');
-      const inputAssetId = await uploadAsset(sourceFile);
+      setSubmitLabel(copy.uploadingImage);
+      const inputAssetId = await uploadAsset(sourceFile, commonCopy);
 
-      setSubmitLabel('Starting generation');
+      setSubmitLabel(copy.startingGeneration);
       const generation = await postJson<GenerationResponse>(
         '/api/generations',
         {
@@ -391,349 +405,247 @@ export function ImageVideoWorkbench() {
           aspectRatio,
           durationSeconds,
         },
-        'Generation could not be started.'
+        commonCopy.generationStartError
       );
       const nextJobId = generation.jobId ?? generation.generationId ?? generation.id;
 
       if (!nextJobId) {
-        throw new Error('Generation response did not include a job id.');
+        throw new Error(commonCopy.missingJobError);
       }
 
       setJobId(nextJobId);
       setJobStatus({
         id: nextJobId,
         status: generation.status ?? 'queued',
-        progressLabel: 'Queued',
+        progressLabel: commonCopy.queued,
       });
     } catch (submitError) {
       setError(
-        submitError instanceof Error ? submitError.message : 'Generation could not be started.'
+        submitError instanceof Error ? submitError.message : commonCopy.generationStartError
       );
     } finally {
       setSubmitLabel(null);
     }
   }
 
+  function applyPromptSnippet(snippet: string) {
+    setPrompt((current) => {
+      const trimmed = current.trim();
+      return trimmed ? `${trimmed} ${snippet}` : snippet;
+    });
+  }
+
+  const baseExampleImages = libraryItems.map(getItemImage).filter(Boolean);
+  const exampleStart = baseExampleImages.length ? exampleOffset % baseExampleImages.length : 0;
+  const exampleImages = [
+    ...baseExampleImages.slice(exampleStart),
+    ...baseExampleImages.slice(0, exampleStart),
+  ].slice(0, 6);
+  const statusLabel = jobStatus?.progressLabel ?? jobStatus?.status ?? (jobId ? commonCopy.generating : null);
+
   return (
-    <section className="min-h-[calc(100dvh-60px)] bg-gray-950 text-white md:min-h-[calc(100dvh-72px)]">
-      <div className="relative overflow-hidden">
-        <div className="absolute inset-0">
-          <video
-            src="/bg.mp4"
-            className="size-full object-cover opacity-18"
-            autoPlay
-            loop
-            muted
-            playsInline
-          />
-          <div className="absolute inset-0 bg-[linear-gradient(115deg,rgba(2,6,23,0.98),rgba(15,23,42,0.9)_46%,rgba(17,24,39,0.74))]" />
-          <div className="absolute inset-0 bg-[radial-gradient(circle_at_26%_12%,rgba(34,211,238,0.14),transparent_30%),radial-gradient(circle_at_76%_8%,rgba(245,158,11,0.12),transparent_26%)]" />
+    <form
+      onSubmit={handleSubmit}
+      className="flex min-h-[calc(100dvh-58px)] flex-col bg-[#f4f6fa] text-gray-950 lg:flex-row"
+    >
+      <StudioPanel
+        footer={
+          <div className="flex items-center gap-3">
+            <button
+              type="button"
+              className="inline-flex h-11 items-center gap-2 rounded-full px-3 text-sm font-bold text-indigo-600"
+            >
+              <Layers3 className="size-4" />
+              {commonCopy.taskFlow}
+            </button>
+            <Button
+              type="submit"
+              disabled={!canSubmit}
+              className="h-12 flex-1 rounded-full bg-[#b8b8f6] text-sm font-bold text-white shadow-none hover:bg-[#a8a8ef] disabled:bg-gray-200 disabled:text-gray-400"
+            >
+              {isSubmitting ? <Loader2 className="size-4 animate-spin" /> : <Play className="size-4" />}
+              {submitLabel ?? commonCopy.generateNow}
+              <span className="font-semibold opacity-90">250</span>
+            </Button>
+          </div>
+        }
+      >
+        <div className="mb-5 grid grid-cols-2 rounded-lg bg-gray-100 p-1">
+          <button
+            type="button"
+            className="relative h-11 rounded-md bg-white text-sm font-bold text-gray-700 shadow-sm"
+          >
+            {copy.quickEdit}
+            <span className="ml-2 rounded-full bg-red-500 px-1.5 py-0.5 text-[10px] text-white">
+              NEW
+            </span>
+          </button>
+          <button
+            type="button"
+            className="h-11 rounded-md border border-indigo-200 bg-white text-sm font-bold text-indigo-600"
+          >
+            {copy.videoTab}
+          </button>
         </div>
 
-        <form onSubmit={handleSubmit} className="relative mx-auto max-w-7xl px-4 py-5 sm:px-6 lg:px-8">
-          <div className="mb-5 flex flex-col justify-between gap-4 lg:flex-row lg:items-end">
-            <div className="max-w-3xl">
-              <div className="inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/[0.07] px-3 py-1 text-xs font-semibold uppercase text-white/62 backdrop-blur">
-                <Sparkles className="size-3.5 text-amber-300" />
-                Image to video
-              </div>
-              <h1 className="mt-4 text-3xl font-bold leading-tight text-white md:text-4xl">
-                Animate product images into polished short videos.
-              </h1>
-              <p className="mt-3 max-w-2xl text-sm leading-6 text-white/58">
-                Upload a source frame, tune motion and framing, then generate a ready-to-review clip.
-              </p>
-            </div>
+        <PanelSection
+          title={copy.referenceVideo}
+          required
+          hint={copy.referenceHint}
+        >
+          <textarea
+            id="image-video-prompt"
+            value={prompt}
+            onChange={(event) => setPrompt(event.target.value)}
+            rows={7}
+            disabled={isSubmitting}
+            placeholder={copy.promptPlaceholder}
+            className="min-h-44 w-full resize-none rounded-lg border border-gray-200 bg-gray-100 px-4 py-3 text-sm leading-6 text-gray-800 outline-none transition placeholder:text-gray-400 focus:border-indigo-300 focus:bg-white focus:ring-3 focus:ring-indigo-100 disabled:cursor-not-allowed disabled:opacity-60"
+          />
+          <div className="mt-3 grid grid-cols-4 gap-2">
+            {copy.promptActions.map((item, index) => (
+              <button
+                key={item}
+                type="button"
+                onClick={() => applyPromptSnippet(copy.promptActionSnippets[index] ?? item)}
+                disabled={isSubmitting}
+                className="h-10 rounded-lg border border-gray-200 bg-white text-xs font-bold text-gray-700 hover:border-indigo-200 hover:text-indigo-600"
+              >
+                {item}
+                {index === 0 ? (
+                  <span className="ml-1 rounded bg-indigo-50 px-1 py-0.5 text-[10px] text-indigo-600">
+                    {copy.recommended}
+                  </span>
+                ) : null}
+              </button>
+            ))}
+          </div>
+        </PanelSection>
 
-            <div className="grid grid-cols-3 gap-2 rounded-lg border border-white/10 bg-white/[0.06] p-2 text-center backdrop-blur">
-              {[
-                ['Mode', 'I2V'],
-                ['Cost', 'Preview'],
-                ['Engine', 'Wanxiang'],
-              ].map(([label, value]) => (
-                <div key={label} className="min-w-20 px-2 py-1">
-                  <div className="text-[11px] font-semibold uppercase text-white/38">{label}</div>
-                  <div className="mt-1 text-sm font-semibold text-white">{value}</div>
-                </div>
-              ))}
+        <PanelSection title={copy.uploadTitle} required hint={copy.uploadHint}>
+          <UploadDropzone
+            id="source-file"
+            preview={sourcePreview}
+            fileName={sourceFile ? `${sourceFile.name} · ${formatFileSize(sourceFile.size)}` : null}
+            emptyText={commonCopy.uploadClick}
+            hint={copy.uploadDropHint}
+            disabled={isSubmitting}
+            onChange={(files) => selectSourceFile(files?.[0] ?? null)}
+          />
+        </PanelSection>
+
+        <PanelSection title={copy.specs}>
+          <div className="rounded-lg bg-gray-100 p-3">
+            <div className="mb-3 flex flex-wrap items-center gap-2 text-xs font-bold text-gray-600">
+              <span>{copy.specsLabel}</span>
+              <span className="rounded bg-white px-2 py-1">{aspectRatio}</span>
+              <span className="rounded bg-white px-2 py-1">{durationSeconds}{copy.seconds}</span>
+              <span className="rounded bg-white px-2 py-1">{copy.standardQuality}</span>
+              <label className="ml-auto inline-flex items-center gap-1">
+                <input type="checkbox" checked readOnly className="size-4 accent-indigo-500" />
+                {copy.audioSync}
+              </label>
+            </div>
+            <SegmentedOptions
+              options={aspectRatios}
+              value={aspectRatio}
+              onChange={setAspectRatio}
+              disabled={isSubmitting}
+            />
+            <div className="mt-3">
+              <SegmentedOptions
+                options={durations}
+                value={durationSeconds}
+                onChange={setDurationSeconds}
+                disabled={isSubmitting}
+              />
             </div>
           </div>
+        </PanelSection>
 
-          <div className="grid gap-4 xl:grid-cols-[300px_minmax(0,1fr)_340px]">
-            <aside className="rounded-lg border border-white/10 bg-white/[0.06] p-4 shadow-2xl shadow-black/25 backdrop-blur">
-              <SectionTitle
-                icon={Layers3}
-                title="Material library"
-                meta={isLoadingLibrary ? 'Loading' : `${libraryItems.length} items`}
+        <PanelSection title={copy.inspiration}>
+          <ChoiceGrid
+            options={copy.promptPresets}
+            value={prompt}
+            onChange={setPrompt}
+            disabled={isSubmitting}
+          />
+          <div className="mt-3 grid grid-cols-3 gap-2">
+            {(exampleImages.length ? exampleImages : ['/resources/example1.png', '/resources/example2.png', '/resources/example3.png']).map((image) => (
+              <img
+                key={image}
+                src={image}
+                alt=""
+                className="aspect-square rounded-lg bg-gray-100 object-cover"
               />
+            ))}
+          </div>
+        </PanelSection>
 
-              <div className="mt-4 overflow-hidden rounded-lg border border-white/10 bg-gray-950/60">
-                {selectedAssetImage ? (
+        {error ? (
+          <div
+            className="mb-5 flex items-start gap-2 rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700"
+            role="alert"
+          >
+            <AlertCircle className="mt-0.5 size-4 shrink-0" />
+            <span>{error}</span>
+          </div>
+        ) : null}
+      </StudioPanel>
+
+      <CanvasStage
+        title={copy.canvasTitle}
+        subtitle={copy.canvasSubtitle}
+        banner={
+          <div className="rounded-lg border border-amber-200 bg-amber-50 px-5 py-3 text-sm font-semibold text-amber-800">
+            {copy.canvasNotice}
+          </div>
+        }
+      >
+        <div className="mx-auto w-full max-w-4xl">
+          <div className="grid items-center gap-10 md:grid-cols-[1fr_1.2fr]">
+            <figure className="text-center">
+              <div className="mx-auto flex aspect-[4/5] w-full max-w-[280px] items-center justify-center overflow-hidden rounded-lg bg-white shadow-sm">
+                {sourcePreview || selectedAssetImage ? (
                   <img
-                    src={selectedAssetImage}
+                    src={sourcePreview ?? selectedAssetImage}
                     alt=""
-                    className="aspect-[4/5] w-full object-cover"
+                    className="size-full object-cover"
                   />
                 ) : (
-                  <EmptyMedia label="No library preview" />
+                  <ImageIcon className="size-10 text-gray-300" />
                 )}
               </div>
+              <figcaption className="mt-4 text-sm font-bold text-gray-500">
+                {copy.detailLabel}
+              </figcaption>
+            </figure>
 
-              <div className="mt-4 grid grid-cols-3 gap-2">
-                {libraryItems.length === 0 ? (
-                  Array.from({ length: 6 }).map((_, index) => (
-                    <div
-                      key={index}
-                      className="aspect-square rounded-md border border-dashed border-white/12 bg-white/[0.04]"
-                    />
-                  ))
-                ) : (
-                  libraryItems.slice(0, 9).map((item) => {
-                    const itemImage = getItemImage(item);
-                    const itemKey = String(item.id ?? item.slug ?? getItemLabel(item));
-                    const active =
-                      String(selectedAsset?.id ?? selectedAsset?.slug ?? '') ===
-                      String(item.id ?? item.slug ?? '');
-
-                    return (
-                      <button
-                        key={itemKey}
-                        type="button"
-                        title={getItemLabel(item)}
-                        onClick={() => setSelectedAsset(item)}
-                        className={cn(
-                          'aspect-square overflow-hidden rounded-md border bg-white/[0.04] transition',
-                          active
-                            ? 'border-amber-300 ring-2 ring-amber-300/20'
-                            : 'border-white/10 hover:border-white/28'
-                        )}
-                      >
-                        <img src={itemImage} alt="" className="size-full object-cover" />
-                      </button>
-                    );
-                  })
-                )}
-              </div>
-            </aside>
-
-            <div className="grid gap-4 lg:grid-cols-[minmax(0,0.95fr)_minmax(320px,1.05fr)] xl:grid-cols-1">
-              <section className="rounded-lg border border-white/10 bg-white/[0.075] p-4 shadow-2xl shadow-black/25 backdrop-blur">
-                <SectionTitle icon={UploadCloud} title="Source image" />
-
-                <label
-                  htmlFor="source-file"
-                  className={cn(
-                    'mt-4 flex min-h-72 cursor-pointer flex-col items-center justify-center overflow-hidden rounded-lg border border-dashed border-white/16 bg-gray-950/58 p-4 text-center transition hover:border-white/34 hover:bg-gray-950/72',
-                    isSubmitting && 'pointer-events-none opacity-70'
-                  )}
-                >
-                  {sourcePreview ? (
-                    <img
-                      src={sourcePreview}
-                      alt=""
-                      className="max-h-[360px] w-full rounded-md object-contain"
-                    />
-                  ) : (
-                    <>
-                      <span className="flex size-16 items-center justify-center rounded-lg border border-white/10 bg-white/[0.07] text-white/54">
-                        <ImageIcon className="size-7" />
-                      </span>
-                      <span className="mt-4 flex max-w-full items-center gap-2 text-sm font-semibold text-white">
-                        <UploadCloud className="size-4 text-amber-200" />
-                        <span className="truncate">Select image</span>
-                      </span>
-                      <span className="mt-2 text-xs text-white/40">PNG, JPEG, WEBP · 10 MB max</span>
-                    </>
-                  )}
-                </label>
-                <Input
-                  id="source-file"
-                  type="file"
-                  accept={ACCEPTED_IMAGE_TYPES.join(',')}
-                  className="sr-only"
-                  onChange={(event) => selectSourceFile(event.target.files?.[0] ?? null)}
-                  disabled={isSubmitting}
-                />
-
-                {sourceFile ? (
-                  <div className="mt-3 flex items-center justify-between gap-3 rounded-md border border-white/10 bg-white/[0.05] px-3 py-2 text-xs text-white/62">
-                    <span className="min-w-0 truncate">{sourceFile.name}</span>
-                    <span className="shrink-0">{formatFileSize(sourceFile.size)}</span>
-                  </div>
-                ) : null}
-              </section>
-
-              <section className="rounded-lg border border-white/10 bg-white/[0.075] p-4 shadow-2xl shadow-black/25 backdrop-blur">
-                <SectionTitle icon={WandSparkles} title="Prompt and parameters" />
-
-                <div className="mt-4 space-y-5">
-                  <div>
-                    <Label htmlFor="image-video-prompt" className="mb-2 text-white/72">
-                      Prompt
-                    </Label>
-                    <textarea
-                      id="image-video-prompt"
-                      value={prompt}
-                      onChange={(event) => setPrompt(event.target.value)}
-                      rows={6}
-                      disabled={isSubmitting}
-                      className="min-h-36 w-full resize-none rounded-lg border border-white/10 bg-gray-950/65 px-3 py-3 text-sm leading-6 text-white shadow-xs outline-none transition placeholder:text-white/28 focus-visible:border-amber-200/70 focus-visible:ring-2 focus-visible:ring-amber-200/20 disabled:cursor-not-allowed disabled:opacity-60"
-                    />
-                  </div>
-
-                  <div className="grid gap-2 sm:grid-cols-3">
-                    {promptPresets.map((preset) => (
-                      <button
-                        key={preset}
-                        type="button"
-                        onClick={() => setPrompt(preset)}
-                        disabled={isSubmitting}
-                        className="min-h-16 rounded-md border border-white/10 bg-white/[0.045] px-3 py-2 text-left text-xs font-medium leading-5 text-white/58 transition hover:border-white/24 hover:text-white disabled:cursor-not-allowed disabled:opacity-60"
-                      >
-                        {preset}
-                      </button>
-                    ))}
-                  </div>
-
-                  <div className="grid gap-4 sm:grid-cols-2">
-                    <div>
-                      <Label className="mb-2 text-white/72">Aspect ratio</Label>
-                      <div className="grid grid-cols-3 rounded-lg border border-white/10 bg-gray-950/55 p-1">
-                        {aspectRatios.map((option) => (
-                          <button
-                            key={option}
-                            type="button"
-                            className={cn(
-                              'h-10 rounded-md text-sm font-semibold transition-colors',
-                              aspectRatio === option
-                                ? 'bg-white text-gray-950 shadow-sm'
-                                : 'text-white/52 hover:text-white'
-                            )}
-                            onClick={() => setAspectRatio(option)}
-                            disabled={isSubmitting}
-                          >
-                            {option}
-                          </button>
-                        ))}
-                      </div>
-                    </div>
-
-                    <div>
-                      <Label className="mb-2 text-white/72">Duration</Label>
-                      <div className="grid grid-cols-3 rounded-lg border border-white/10 bg-gray-950/55 p-1">
-                        {durations.map((duration) => (
-                          <button
-                            key={duration}
-                            type="button"
-                            className={cn(
-                              'h-10 rounded-md text-sm font-semibold transition-colors',
-                              durationSeconds === duration
-                                ? 'bg-white text-gray-950 shadow-sm'
-                                : 'text-white/52 hover:text-white'
-                            )}
-                            onClick={() => setDurationSeconds(duration)}
-                            disabled={isSubmitting}
-                          >
-                            {duration}s
-                          </button>
-                        ))}
-                      </div>
-                    </div>
-                  </div>
-
-                  {error ? (
-                    <div
-                      className="flex items-start gap-2 rounded-md border border-red-400/30 bg-red-500/10 px-3 py-2 text-sm text-red-100"
-                      role="alert"
-                    >
-                      <AlertCircle className="mt-0.5 size-4 shrink-0" />
-                      <span>{error}</span>
-                    </div>
-                  ) : null}
-
-                  <Button
-                    type="submit"
-                    disabled={!canSubmit}
-                    className="h-12 w-full rounded-lg bg-white text-sm font-bold text-gray-950 shadow-lg shadow-black/20 hover:bg-amber-100"
-                  >
-                    {isSubmitting ? <Loader2 className="size-4 animate-spin" /> : <Play className="size-4" />}
-                    {submitLabel ?? 'Generate video'}
-                  </Button>
-                </div>
-              </section>
-            </div>
-
-            <aside className="grid gap-4">
-              <section className="flex min-h-[520px] flex-col rounded-lg border border-white/10 bg-white/[0.075] p-4 shadow-2xl shadow-black/25 backdrop-blur">
-                <SectionTitle
-                  icon={Clapperboard}
-                  title="Result"
-                  meta={jobStatus?.progressLabel ?? jobStatus?.status ?? 'Idle'}
-                />
-
-                <div className="mt-4 flex flex-1 items-center justify-center overflow-hidden rounded-lg border border-white/10 bg-gray-950/78">
-                  {selectedResultUrl ? (
-                    selectedResultUrl.endsWith('.mp4') || selectedResultUrl.includes('.mp4?') ? (
-                      <video
-                        src={selectedResultUrl}
-                        controls
-                        playsInline
-                        className="max-h-[620px] w-full object-contain"
-                      />
-                    ) : (
-                      <img
-                        src={selectedResultUrl}
-                        alt=""
-                        className="max-h-[620px] w-full object-contain"
-                      />
-                    )
-                  ) : (
-                    <EmptyMedia label="Video preview" />
-                  )}
-                </div>
-
-                <div className="mt-3 flex items-center justify-between gap-3 rounded-md border border-white/10 bg-white/[0.05] px-3 py-2 text-xs text-white/54">
-                  <span className="flex items-center gap-2">
-                    {jobStatus?.status === 'succeeded' ? (
-                      <CheckCircle2 className="size-4 text-emerald-300" />
-                    ) : jobId ? (
-                      <Loader2 className="size-4 animate-spin text-amber-200" />
-                    ) : (
-                      <Clock3 className="size-4 text-white/34" />
-                    )}
-                    {jobId ? `Job ${jobId}` : 'No active job'}
-                  </span>
-                  <span>{aspectRatio} · {durationSeconds}s</span>
-                </div>
-
-                {jobStatus?.errorMessage ? (
-                  <p className="mt-3 text-sm text-red-200">{jobStatus.errorMessage}</p>
-                ) : null}
-              </section>
-
-              <section className="rounded-lg border border-white/10 bg-white/[0.06] p-4 backdrop-blur">
-                <SectionTitle icon={Clock3} title="History" />
-                <div className="mt-4 space-y-2">
-                  {historyPlaceholders.map((item, index) => (
-                    <div
-                      key={item}
-                      className="flex items-center gap-3 rounded-md border border-white/10 bg-gray-950/46 p-2"
-                    >
-                      <div className="flex size-10 shrink-0 items-center justify-center rounded bg-white/[0.06] text-white/38">
-                        <Film className="size-4" />
-                      </div>
-                      <div className="min-w-0 flex-1">
-                        <p className="truncate text-sm font-medium text-white/72">{item}</p>
-                        <p className="mt-0.5 text-xs text-white/34">Draft slot {index + 1}</p>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              </section>
-            </aside>
+            <ResultCard
+              resultUrl={selectedResultUrl}
+              status={statusLabel}
+              title={copy.previewTitle}
+              description={copy.previewDescription}
+              mediaKind="video"
+              minHeight="min-h-[380px]"
+              waitingLabel={commonCopy.waitingUpload}
+            />
           </div>
-        </form>
-      </div>
-    </section>
+
+          {jobStatus?.errorMessage ? (
+            <p className="mt-4 rounded-lg border border-red-200 bg-red-50 p-3 text-sm text-red-700">
+              {jobStatus.errorMessage}
+            </p>
+          ) : null}
+
+          <ExampleProducts
+            images={exampleImages.length ? exampleImages : undefined}
+            title={commonCopy.examples}
+            refreshLabel={commonCopy.refresh}
+            onRefresh={() => setExampleOffset((offset) => offset + 1)}
+          />
+        </div>
+      </CanvasStage>
+    </form>
   );
 }

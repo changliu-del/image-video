@@ -2,7 +2,7 @@
 
 import Link from 'next/link';
 import { useEffect, useState } from 'react';
-import { usePathname, useRouter } from 'next/navigation';
+import { usePathname, useRouter, useSearchParams } from 'next/navigation';
 import { Button } from '@/components/ui/button';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import {
@@ -12,12 +12,15 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 import { signOut } from '@/app/(login)/actions';
-import {
-  ExternalLink,
-  LogOut,
-  Settings,
-} from 'lucide-react';
+import { Check, ChevronDown, ExternalLink, Gem, Globe2, LogOut, Settings } from 'lucide-react';
 import { identifyClientUser } from '@/lib/analytics/posthog';
+import {
+  dashboardLocales,
+  getDashboardContent,
+  type DashboardLocale,
+} from '@/lib/dashboard/content';
+import { useDashboardLocale, withDashboardLocale } from '@/lib/dashboard/use-dashboard-locale';
+import { getLocalizedHref } from '@/lib/marketing/content';
 import { cn } from '@/lib/utils';
 
 export type DashboardHeaderUser = {
@@ -35,12 +38,15 @@ function canAccessAdmin(user: DashboardHeaderUser) {
 function UserMenu({
   user,
   templateAdminUrl,
+  labels,
 }: {
   user: DashboardHeaderUser | null;
   templateAdminUrl?: string | null;
+  labels: ReturnType<typeof getDashboardContent>['userMenu'];
 }) {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const router = useRouter();
+  const locale = useDashboardLocale();
 
   useEffect(() => {
     if (!user) return;
@@ -60,13 +66,13 @@ function UserMenu({
     return (
       <>
         <Link
-          href="/sign-in"
-          className="text-sm font-medium text-white/70 hover:text-white"
+          href={withDashboardLocale('/sign-in', locale)}
+          className="text-sm font-medium text-gray-600 hover:text-gray-950"
         >
-          Sign in
+          {labels.signIn}
         </Link>
-        <Button asChild className="rounded-full bg-white text-gray-950 hover:bg-white/90">
-          <Link href="/sign-up">Start free</Link>
+        <Button asChild className="rounded-full bg-gray-950 text-white hover:bg-gray-800">
+          <Link href={withDashboardLocale('/sign-up', locale)}>{labels.startFree}</Link>
         </Button>
       </>
     );
@@ -82,10 +88,10 @@ function UserMenu({
       <DropdownMenuTrigger asChild>
         <button
           type="button"
-          className="rounded-full outline-none focus-visible:ring-2 focus-visible:ring-white/60 focus-visible:ring-offset-2 focus-visible:ring-offset-gray-950"
-          aria-label="Open user menu"
+          className="rounded-full outline-none focus-visible:ring-2 focus-visible:ring-indigo-300 focus-visible:ring-offset-2 focus-visible:ring-offset-white"
+          aria-label={labels.openMenu}
         >
-          <Avatar className="cursor-pointer size-9">
+          <Avatar className="size-9 cursor-pointer ring-2 ring-white shadow-sm">
             <AvatarImage alt={user.name || ''} />
             <AvatarFallback>{initials}</AvatarFallback>
           </Avatar>
@@ -93,9 +99,9 @@ function UserMenu({
       </DropdownMenuTrigger>
       <DropdownMenuContent align="end" className="flex flex-col gap-1">
         <DropdownMenuItem className="cursor-pointer">
-          <Link href="/dashboard" className="flex w-full items-center">
+          <Link href={withDashboardLocale('/dashboard/profile', locale)} className="flex w-full items-center">
             <Settings className="mr-2 h-4 w-4" />
-            <span>Account</span>
+            <span>{labels.account}</span>
           </Link>
         </DropdownMenuItem>
         {user && canAccessAdmin(user) && templateAdminUrl ? (
@@ -107,7 +113,7 @@ function UserMenu({
               className="flex w-full items-center"
             >
               <ExternalLink className="mr-2 h-4 w-4" />
-              <span>Template Admin</span>
+              <span>{labels.templateAdmin}</span>
             </a>
           </DropdownMenuItem>
         ) : null}
@@ -115,10 +121,70 @@ function UserMenu({
           <button type="submit" className="flex w-full">
             <DropdownMenuItem className="w-full flex-1 cursor-pointer">
               <LogOut className="mr-2 h-4 w-4" />
-              <span>Sign out</span>
+              <span>{labels.signOut}</span>
             </DropdownMenuItem>
           </button>
         </form>
+      </DropdownMenuContent>
+    </DropdownMenu>
+  );
+}
+
+function languageHref({
+  pathname,
+  searchParams,
+  locale,
+}: {
+  pathname: string;
+  searchParams: { toString(): string };
+  locale: DashboardLocale;
+}) {
+  const params = new URLSearchParams(searchParams.toString());
+  params.set('locale', locale);
+  const nextQuery = params.toString();
+
+  return nextQuery ? `${pathname}?${nextQuery}` : pathname;
+}
+
+function DashboardLanguageMenu({
+  locale,
+  content,
+}: {
+  locale: DashboardLocale;
+  content: ReturnType<typeof getDashboardContent>;
+}) {
+  const pathname = usePathname();
+  const searchParams = useSearchParams();
+
+  return (
+    <DropdownMenu>
+      <DropdownMenuTrigger asChild>
+        <button
+          type="button"
+          className="inline-flex h-9 items-center gap-2 rounded-full border border-gray-200 bg-white px-3 text-sm font-semibold text-gray-700 shadow-sm transition hover:border-indigo-200 hover:text-indigo-600"
+          aria-label={content.header.language}
+        >
+          <Globe2 className="size-4" />
+          <span className="hidden sm:inline">{content.localeNames[locale]}</span>
+          <ChevronDown className="size-3.5 text-gray-400" />
+        </button>
+      </DropdownMenuTrigger>
+      <DropdownMenuContent align="end">
+        {dashboardLocales.map((nextLocale) => (
+          <DropdownMenuItem key={nextLocale} asChild>
+            <Link
+              href={languageHref({
+                pathname,
+                searchParams,
+                locale: nextLocale,
+              })}
+              className="flex cursor-pointer items-center justify-between gap-4"
+            >
+              <span>{content.localeNames[nextLocale]}</span>
+              {nextLocale === locale ? <Check className="size-4 text-indigo-600" /> : null}
+            </Link>
+          </DropdownMenuItem>
+        ))}
       </DropdownMenuContent>
     </DropdownMenu>
   );
@@ -133,12 +199,8 @@ export function DashboardHeader({
 }) {
   const pathname = usePathname();
   const isAdminPage = pathname === '/admin' || pathname.startsWith('/admin/');
-  const navItems = [
-    { href: '/', label: 'Início', exact: true },
-    { href: '/pt/templates', label: 'Templates' },
-    { href: '/create', label: 'Estúdio' },
-    { href: '/pt/pricing', label: 'Preços' },
-  ];
+  const locale = useDashboardLocale();
+  const content = getDashboardContent(locale);
 
   return (
     <header
@@ -146,77 +208,41 @@ export function DashboardHeader({
         'sticky top-0 z-40 border-b backdrop-blur',
         isAdminPage
           ? 'border-gray-200 bg-white'
-          : 'border-white/10 bg-gray-950/90 text-white'
+          : 'border-gray-200 bg-[#f7f8fb]/95 text-gray-950'
       )}
     >
       <div
         className={cn(
-          'mx-auto flex h-[60px] items-center justify-between md:h-[72px]',
+          'flex h-[58px] items-center justify-between',
           isAdminPage
             ? 'w-full max-w-none px-5 sm:px-6'
-            : 'max-w-7xl px-4 md:px-8'
+            : 'w-full px-4 sm:px-5'
         )}
       >
-        <Link
-          href="/"
-          className="flex items-center gap-2"
-        >
-          <span
-            className={cn(
-              'flex size-9 items-center justify-center rounded-lg text-lg font-black',
-              isAdminPage
-                ? 'bg-gray-950 text-white'
-                : 'bg-white text-gray-950'
-            )}
-          >
-            g
-          </span>
-          <span className="hidden flex-col leading-none sm:flex">
-            <span
-              className={cn(
-                'text-base font-bold tracking-tight',
-                isAdminPage ? 'text-gray-950' : 'text-white'
-              )}
-            >
-              gptimage
-            </span>
-            <span
-              className={cn(
-                'text-[10px] font-medium uppercase tracking-[0.22em]',
-                isAdminPage ? 'text-gray-400' : 'text-white/40'
-              )}
-            >
-              AI Commerce Studio
-            </span>
-          </span>
+        <Link href={withDashboardLocale('/', locale)} className="text-sm font-bold text-gray-700">
+          {isAdminPage ? 'Admin' : content.header.workspace}
         </Link>
         {!isAdminPage ? (
-          <nav className="hidden items-center gap-2 md:flex">
-            {navItems.map((item) => {
-              const active = item.exact
-                ? pathname === item.href
-                : pathname === item.href || pathname.startsWith(`${item.href}/`);
-
-              return (
-                <Link
-                  key={item.href}
-                  href={item.href}
-                  className={cn(
-                    'rounded-md px-3 py-2 text-sm font-medium transition-colors',
-                    active
-                      ? 'text-white'
-                      : 'text-white/50 hover:bg-white/[0.06] hover:text-white'
-                  )}
-                  aria-current={active ? 'page' : undefined}
-                >
-                  {item.label}
-                </Link>
-              );
-            })}
-          </nav>
+          <div className="ml-auto flex items-center gap-2">
+            <div className="hidden h-9 items-center gap-2 rounded-full border border-gray-200 bg-white px-3 text-sm font-semibold text-indigo-600 shadow-sm md:flex">
+              <Gem className="size-4 fill-indigo-100" />
+              510
+              <span className="text-xs text-gray-400">{content.header.credits}</span>
+            </div>
+            <Link
+              href={getLocalizedHref(locale, '/pricing')}
+              className={cn(
+                'hidden h-9 items-center rounded-full border border-gray-200 bg-white px-4 text-sm font-semibold text-gray-800 shadow-sm transition hover:border-indigo-200 hover:text-indigo-600 sm:flex',
+                pathname.startsWith('/pricing') && 'text-indigo-600'
+              )}
+            >
+              {content.header.buy}
+            </Link>
+            <DashboardLanguageMenu locale={locale} content={content} />
+          </div>
         ) : null}
-        <div className="flex items-center space-x-4">
-          <UserMenu user={user} templateAdminUrl={templateAdminUrl} />
+        <div className="ml-2 flex items-center space-x-3">
+          <UserMenu user={user} templateAdminUrl={templateAdminUrl} labels={content.userMenu} />
         </div>
       </div>
     </header>

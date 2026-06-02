@@ -215,6 +215,7 @@ export const tryOnGenerationRequestSchema = z
     ...baseGenerationFields,
     tryOnMode: z.enum(TRY_ON_MODES).optional(),
     modelAssetId: idStringSchema.optional(),
+    modelCatalogAssetId: idStringSchema.optional(),
     inputAssetId: idStringSchema.optional(),
     garmentAssetId: idStringSchema.optional(),
     garmentAssetIds: z.array(idStringSchema).min(1).max(8).optional(),
@@ -236,11 +237,11 @@ export const tryOnGenerationRequestSchema = z
       });
     }
 
-    if (!value.modelAssetId && !value.inputAssetId) {
+    if (!value.modelAssetId && !value.inputAssetId && !value.modelCatalogAssetId) {
       context.addIssue({
         code: z.ZodIssueCode.custom,
-        message: 'modelAssetId is required',
-        path: ['modelAssetId'],
+        message: 'modelAssetId or modelCatalogAssetId is required',
+        path: ['modelCatalogAssetId'],
       });
     }
 
@@ -264,18 +265,19 @@ export const tryOnGenerationRequestSchema = z
   .transform(({ generationType, inputAssetId, mode, tryOnMode, ...value }) => {
     const normalizedTryOnMode =
       tryOnMode ?? (mode === 'multi' ? 'multi' : 'single');
-    const modelAssetId = value.modelAssetId ?? inputAssetId!;
+    const garmentAssetIds =
+      normalizedTryOnMode === 'single'
+        ? [value.garmentAssetId!]
+        : value.garmentAssetIds!;
+    const modelAssetId = value.modelAssetId ?? inputAssetId;
 
     return {
       ...value,
       generationType: 'try_on' as const,
       tryOnMode: normalizedTryOnMode,
       modelAssetId,
-      inputAssetId: modelAssetId,
-      garmentAssetIds:
-        normalizedTryOnMode === 'single'
-          ? [value.garmentAssetId!]
-          : value.garmentAssetIds!,
+      inputAssetId: modelAssetId ?? garmentAssetIds[0],
+      garmentAssetIds,
     };
   });
 
