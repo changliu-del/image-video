@@ -143,7 +143,7 @@ export function MarketingPricingPage({ locale }: { locale: Locale }) {
   return (
     <main className="bg-gray-950">
       <PricingHero content={content.hero} />
-      <PricingTabs plans={content.plans} labels={content.tabs} />
+      <PricingTabs plans={content.plans} locale={locale} labels={content.tabs} />
       <ValueSection content={content.value} />
       <PricingFaq content={content.faq} />
     </main>

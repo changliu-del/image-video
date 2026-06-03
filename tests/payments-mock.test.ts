@@ -3,8 +3,10 @@ import { describe, expect, it } from 'vitest';
 import {
   MOCK_CREDIT_PACKAGES,
   MOCK_MONTHLY_PLANS,
+  MOCK_SUBSCRIPTION_PLANS,
   getMockCreditPackageByPriceId,
   getMockMonthlyPlanByPriceId,
+  getMockSubscriptionPlanByPriceId,
   getMockStripePrices,
   getMockStripeProducts,
   isPaymentMockEnabled,
@@ -38,10 +40,10 @@ describe('payment mock mode', () => {
     const products = getMockStripeProducts();
 
     expect(prices).toHaveLength(
-      MOCK_CREDIT_PACKAGES.length + MOCK_MONTHLY_PLANS.length
+      MOCK_CREDIT_PACKAGES.length + MOCK_SUBSCRIPTION_PLANS.length
     );
     expect(products).toHaveLength(
-      MOCK_CREDIT_PACKAGES.length + MOCK_MONTHLY_PLANS.length
+      MOCK_CREDIT_PACKAGES.length + MOCK_SUBSCRIPTION_PLANS.length
     );
 
     for (const creditPackage of MOCK_CREDIT_PACKAGES) {
@@ -64,15 +66,15 @@ describe('payment mock mode', () => {
       );
     }
 
-    for (const plan of MOCK_MONTHLY_PLANS) {
-      expect(getMockMonthlyPlanByPriceId(plan.priceId)).toEqual(plan);
+    for (const plan of MOCK_SUBSCRIPTION_PLANS) {
+      expect(getMockSubscriptionPlanByPriceId(plan.priceId)).toEqual(plan);
       expect(prices).toContainEqual(
         expect.objectContaining({
           id: plan.priceId,
           productId: plan.productId,
           credits: plan.credits,
           unitAmount: plan.unitAmount,
-          interval: 'month',
+          interval: plan.interval,
         })
       );
       expect(products).toContainEqual(
@@ -81,6 +83,10 @@ describe('payment mock mode', () => {
           defaultPriceId: plan.priceId,
         })
       );
+    }
+
+    for (const plan of MOCK_MONTHLY_PLANS) {
+      expect(getMockMonthlyPlanByPriceId(plan.priceId)).toEqual(plan);
     }
   });
 });

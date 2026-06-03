@@ -1062,9 +1062,9 @@ const pt: MarketingContent = {
       yearly: 'Anual',
       monthly: 'Mensal',
       onetime: 'Avulso',
-      save: 'Economize 30%',
-      secure: 'Checkout seguro via Stripe, créditos prontos após pagamento',
-      buy: 'Comprar plano',
+      save: 'Economize 20%',
+      secure: 'Veja planos e créditos no workspace',
+      buy: 'Abrir planos',
       popular: 'Mais popular',
       perMonth: 'por mês',
     },
@@ -1073,57 +1073,55 @@ const pt: MarketingContent = {
         name: 'Basic',
         description: 'Para lojas que querem começar a testar assets com IA.',
         yearly: {
-          price: 'R$43.9',
-          credits: '1800 créditos por ano',
+          price: 'US$9.58',
+          credits: '150 créditos por mês, cobrança anual',
         },
         monthly: {
-          price: 'R$43.9',
+          price: 'US$12',
           credits: '150 créditos por mês',
         },
         onetime: {
-          price: 'R$43.9',
-          credits: '150 créditos, válidos por um mês',
+          price: 'US$9',
+          credits: '100 créditos avulsos',
         },
-        features: ['Todas as ferramentas disponíveis', 'Suporte por e-mail'],
+        features: ['Todas as ferramentas criativas', 'Imagem, vídeo e try-on', 'Ideal para testes'],
       },
       {
-        name: 'Standard',
+        name: 'Plus',
         description: 'Para lançamentos recorrentes e produção diária de anúncios.',
         yearly: {
-          oldPrice: 'R$129.0',
-          price: 'R$114.0',
-          credits: '7200 créditos por ano',
+          oldPrice: 'US$39',
+          price: 'US$31.17',
+          credits: '600 créditos por mês, cobrança anual',
         },
         monthly: {
-          oldPrice: 'R$143.0',
-          price: 'R$129.0',
+          price: 'US$39',
           credits: '600 créditos por mês',
         },
         onetime: {
-          price: 'R$143.0',
-          credits: '600 créditos, válidos por um mês',
+          price: 'US$39',
+          credits: '500 créditos avulsos',
         },
-        features: ['Todas as ferramentas disponíveis', 'Suporte por e-mail'],
+        features: ['Mais margem para campanhas', 'Imagem, vídeo e try-on', 'Recomendado para uso semanal'],
         highlighted: true,
       },
       {
-        name: 'Premium',
+        name: 'Pro',
         description: 'Para marcas, equipes e testes criativos frequentes.',
         yearly: {
-          oldPrice: 'R$256.9',
-          price: 'R$233.0',
-          credits: '18000 créditos por ano',
+          oldPrice: 'US$99',
+          price: 'US$79.17',
+          credits: '1500 créditos por mês, cobrança anual',
         },
         monthly: {
-          oldPrice: 'R$292.9',
-          price: 'R$256.0',
+          price: 'US$99',
           credits: '1500 créditos por mês',
         },
         onetime: {
-          price: 'R$292.0',
-          credits: '1500 créditos, válidos por um mês',
+          price: 'US$99',
+          credits: '1500 créditos avulsos',
         },
-        features: ['Todas as ferramentas disponíveis', 'Suporte por e-mail'],
+        features: ['Para lotes de SKU', 'Maior reserva de créditos', 'Testes criativos frequentes'],
       },
     ],
     value: {
@@ -1406,17 +1404,132 @@ const en: MarketingContent = {
         'Reduce external production costs',
         'Credits available after checkout',
       ],
+      stats: [
+        { stat: '3', label: 'subscription tiers' },
+        { stat: '2', label: 'billing cycles' },
+        { stat: '1', label: 'credit wallet' },
+      ],
     },
     tabs: {
       ...pt.pricing.tabs,
       yearly: 'Yearly',
       monthly: 'Monthly',
       onetime: 'One-time',
-      save: 'Save 30%',
-      secure: 'Secure Stripe checkout, credits ready after payment',
-      buy: 'Buy plan',
+      save: 'Save 20%',
+      secure: 'Open plans and credits in the workspace',
+      buy: 'Open plans',
       popular: 'Most popular',
       perMonth: 'per month',
+    },
+    plans: [
+      {
+        name: 'Basic',
+        description: 'For stores starting to test AI creative assets.',
+        yearly: {
+          price: 'US$9.58',
+          credits: '150 credits per month, billed yearly',
+        },
+        monthly: {
+          price: 'US$12',
+          credits: '150 credits per month',
+        },
+        onetime: {
+          price: 'US$9',
+          credits: '100 one-time credits',
+        },
+        features: ['All creative tools', 'Image, video, and try-on', 'Best for tests'],
+      },
+      {
+        name: 'Plus',
+        description: 'For recurring launches and weekly ad production.',
+        yearly: {
+          oldPrice: 'US$39',
+          price: 'US$31.17',
+          credits: '600 credits per month, billed yearly',
+        },
+        monthly: {
+          price: 'US$39',
+          credits: '600 credits per month',
+        },
+        onetime: {
+          price: 'US$39',
+          credits: '500 one-time credits',
+        },
+        features: ['More room for campaigns', 'Image, video, and try-on', 'Recommended for weekly use'],
+        highlighted: true,
+      },
+      {
+        name: 'Pro',
+        description: 'For brands, SKU batches, and frequent creative tests.',
+        yearly: {
+          oldPrice: 'US$99',
+          price: 'US$79.17',
+          credits: '1500 credits per month, billed yearly',
+        },
+        monthly: {
+          price: 'US$99',
+          credits: '1500 credits per month',
+        },
+        onetime: {
+          price: 'US$99',
+          credits: '1500 one-time credits',
+        },
+        features: ['Built for SKU batches', 'Largest credit reserve', 'Frequent creative testing'],
+      },
+    ],
+    value: {
+      items: [
+        {
+          title: 'Launch batches',
+          text: 'Generate hero images, PDP visuals, and short product videos together.',
+        },
+        {
+          title: 'Ad testing',
+          text: 'Explore styles and scenes faster before scaling paid campaigns.',
+        },
+        {
+          title: 'Workspace flow',
+          text: 'Plan recurring production with credits and avoid one-off outsourcing.',
+        },
+      ],
+      title: 'Why the plans are easy to budget',
+      points: [
+        'Subscriptions provide predictable monthly creative capacity.',
+        'Top-up credits are available when a campaign needs more output.',
+        'The workspace keeps plan, balance, and usage history in one place.',
+      ],
+      includedTitle: 'Included in the workspace',
+      included: [
+        'Full access to image, video, and try-on tools',
+        'Monthly and annual Basic, Plus, and Pro plans',
+        'One-time credit purchases for extra capacity',
+        'Credit ledger for reviewing account activity',
+      ],
+    },
+    faq: {
+      title: 'Subscription and credits',
+      items: [
+        {
+          question: 'Are there monthly and annual plans?',
+          answer: 'Yes. Basic, Plus, and Pro are available with monthly or annual billing.',
+        },
+        {
+          question: 'Can I buy credits without changing plans?',
+          answer: 'Yes. Use the workspace credits page to buy one-time top-ups.',
+        },
+        {
+          question: 'Will checkout charge real money now?',
+          answer: 'No. Checkout is mocked for this development phase.',
+        },
+        {
+          question: 'Where do I manage my plan?',
+          answer: 'The public pricing page leads to the workspace Plans page.',
+        },
+        {
+          question: 'Do credits work across tools?',
+          answer: 'Yes. The same wallet is used by image, video, and try-on generations.',
+        },
+      ],
     },
   },
 };
@@ -1624,17 +1737,132 @@ const zh: MarketingContent = {
       description:
         '用可预期的积分规划上新、广告创意、商品图和高质量视频产能。',
       badges: ['每次上新覆盖图片+视频', '降低外包制作成本', '付款后积分可用'],
+      stats: [
+        { stat: '3', label: '订阅档位' },
+        { stat: '2', label: '付费周期' },
+        { stat: '1', label: '积分余额' },
+      ],
     },
     tabs: {
       ...pt.pricing.tabs,
       yearly: '年付',
       monthly: '月付',
       onetime: '单次购买',
-      save: '节省 30%',
-      secure: 'Stripe 安全结账，付款后积分到账',
-      buy: '购买套餐',
+      save: '节省 20%',
+      secure: '在工作台查看订阅和积分',
+      buy: '进入订阅',
       popular: '最受欢迎',
       perMonth: '每月',
+    },
+    plans: [
+      {
+        name: 'Basic',
+        description: '适合刚开始测试 AI 商品素材的店铺。',
+        yearly: {
+          price: 'US$9.58',
+          credits: '每月 150 积分，按年付费',
+        },
+        monthly: {
+          price: 'US$12',
+          credits: '每月 150 积分',
+        },
+        onetime: {
+          price: 'US$9',
+          credits: '100 个一次性积分',
+        },
+        features: ['包含全部创作工具', '支持图片、视频和试衣', '适合小规模测试'],
+      },
+      {
+        name: 'Plus',
+        description: '适合持续上新和每周广告素材生产。',
+        yearly: {
+          oldPrice: 'US$39',
+          price: 'US$31.17',
+          credits: '每月 600 积分，按年付费',
+        },
+        monthly: {
+          price: 'US$39',
+          credits: '每月 600 积分',
+        },
+        onetime: {
+          price: 'US$39',
+          credits: '500 个一次性积分',
+        },
+        features: ['更适合活动批量生产', '支持图片、视频和试衣', '推荐给每周使用的卖家'],
+        highlighted: true,
+      },
+      {
+        name: 'Pro',
+        description: '适合品牌、SKU 批量生产和高频创意测试。',
+        yearly: {
+          oldPrice: 'US$99',
+          price: 'US$79.17',
+          credits: '每月 1500 积分，按年付费',
+        },
+        monthly: {
+          price: 'US$99',
+          credits: '每月 1500 积分',
+        },
+        onetime: {
+          price: 'US$99',
+          credits: '1500 个一次性积分',
+        },
+        features: ['适合 SKU 批量生产', '最大订阅积分额度', '支持高频创意测试'],
+      },
+    ],
+    value: {
+      items: [
+        {
+          title: '上新批量生产',
+          text: '围绕同一个 SKU 同时生成主图、详情页视觉和短视频。',
+        },
+        {
+          title: '广告测试',
+          text: '更快探索不同风格和场景，再决定是否放大投放。',
+        },
+        {
+          title: '工作台管理',
+          text: '订阅、余额、额外充值和流水都集中在用户工作台里。',
+        },
+      ],
+      title: '为什么积分套餐更容易规划',
+      points: [
+        '订阅提供可预期的每月创作额度。',
+        '活动临时需要更多产能时，可以单独购买积分。',
+        '工作台会展示当前计划、余额和积分流水。',
+      ],
+      includedTitle: '工作台内包含',
+      included: [
+        '图片、视频和智能试衣工具',
+        'Basic、Plus、Pro 的月付和年付订阅',
+        '额外积分购买入口',
+        '用于查看账户变化的积分流水',
+      ],
+    },
+    faq: {
+      title: '订阅和积分',
+      items: [
+        {
+          question: '是否支持月付和年付？',
+          answer: '支持。Basic、Plus、Pro 都有月付和年付两个周期。',
+        },
+        {
+          question: '不改订阅也能买积分吗？',
+          answer: '可以。进入工作台积分页即可购买一次性积分包。',
+        },
+        {
+          question: '现在会真的扣款吗？',
+          answer: '不会。本阶段支付统一使用 mock，不会产生真实费用。',
+        },
+        {
+          question: '在哪里管理订阅？',
+          answer: '公开价格页会引导到工作台里的订阅计划页。',
+        },
+        {
+          question: '积分能用于哪些工具？',
+          answer: '同一个积分余额可用于图片、视频和智能试衣生成。',
+        },
+      ],
     },
   },
 };

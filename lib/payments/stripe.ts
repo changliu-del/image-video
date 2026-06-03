@@ -3,9 +3,10 @@ import { randomUUID } from 'crypto';
 import { redirect } from 'next/navigation';
 import { POSTHOG_EVENTS, captureServerEvent } from '@/lib/analytics/posthog';
 import { grantPurchasedCredits } from '@/lib/credits';
+import { CREDIT_PACKAGES, SUBSCRIPTION_PLANS } from '@/lib/payments/catalog';
 import {
   getMockCreditPackageByPriceId,
-  getMockMonthlyPlanByPriceId,
+  getMockSubscriptionPlanByPriceId,
   getMockStripePrices,
   getMockStripeProducts,
   isPaymentMockEnabled,
@@ -33,20 +34,26 @@ type CreditsResolution = {
   source: string;
 };
 
-const CREDIT_PACKAGES_BY_AMOUNT_CENTS = new Map<number, number>([
-  [999, 50],
-  [3999, 300],
-  [9999, 1000]
-]);
+const CREDIT_PACKAGES_BY_AMOUNT_CENTS = new Map<number, number>(
+  CREDIT_PACKAGES.map((item) => [
+    item.unitAmount,
+    item.credits,
+  ])
+);
+
+function getCatalogSearchName(
+  item: (typeof CREDIT_PACKAGES)[number] | (typeof SUBSCRIPTION_PLANS)[number]
+) {
+  return 'displayName' in item ? item.displayName : item.shortName;
+}
 
 const CREDIT_PACKAGES_BY_NAME: Array<{
   pattern: RegExp;
   credits: number;
-}> = [
-  { pattern: /\bbusiness\b/i, credits: 1000 },
-  { pattern: /\bpro\b/i, credits: 300 },
-  { pattern: /\bstarter\b/i, credits: 50 }
-];
+}> = [...CREDIT_PACKAGES, ...SUBSCRIPTION_PLANS].map((item) => ({
+  pattern: new RegExp(`\\b${getCatalogSearchName(item)}\\b`, 'i'),
+  credits: item.credits,
+}));
 
 function parsePositiveInteger(value: string | number | null | undefined) {
   if (value == null || value === '') {
@@ -251,6 +258,7 @@ export async function createCheckoutSession({
 
   const price = await stripe.prices.retrieve(priceId);
   const isSubscription = Boolean(price.recurring);
+  const cancelPath = isSubscription ? '/dashboard/billing' : '/dashboard/credits';
   const session = await stripe.checkout.sessions.create({
     payment_method_types: ['card'],
     line_items: [
@@ -261,7 +269,7 @@ export async function createCheckoutSession({
     ],
     mode: isSubscription ? 'subscription' : 'payment',
     success_url: `${process.env.BASE_URL}/api/stripe/checkout?session_id={CHECKOUT_SESSION_ID}`,
-    cancel_url: `${process.env.BASE_URL}/pricing`,
+    cancel_url: `${process.env.BASE_URL}${cancelPath}`,
     customer: user.stripeCustomerId || undefined,
     client_reference_id: user.id.toString(),
     allow_promotion_codes: true,
@@ -305,34 +313,36 @@ async function createMockCheckoutSession({
   }
 
   const creditPackage = getMockCreditPackageByPriceId(priceId);
-  const monthlyPlan = getMockMonthlyPlanByPriceId(priceId);
+  const subscriptionPlan = getMockSubscriptionPlanByPriceId(priceId);
 
-  if (!creditPackage && !monthlyPlan) {
+  if (!creditPackage && !subscriptionPlan) {
     throw new Error(`Unknown mock payment price id: ${priceId}`);
   }
 
-  if (monthlyPlan) {
+  if (subscriptionPlan) {
     const stripeEventId = `mock_subscription:${user.id}:${priceId}:${randomUUID()}`;
-    const subscriptionId = `mock_sub_${user.id}_${monthlyPlan.key}`;
+    const subscriptionId = `mock_sub_${user.id}_${subscriptionPlan.key}`;
     const result = await grantPurchasedCredits({
       userId: user.id,
-      credits: monthlyPlan.credits,
+      credits: subscriptionPlan.credits,
       stripeEventId,
       metadata: {
         source: 'mock_subscription_checkout',
-        packageKey: monthlyPlan.key,
-        packageName: monthlyPlan.name,
+        packageKey: subscriptionPlan.key,
+        packageName: subscriptionPlan.name,
         priceId,
-        amountTotal: monthlyPlan.unitAmount,
-        currency: monthlyPlan.currency,
-        interval: monthlyPlan.interval,
+        amountTotal: subscriptionPlan.unitAmount,
+        currency: subscriptionPlan.currency,
+        interval: subscriptionPlan.interval,
+        tier: subscriptionPlan.tier,
+        monthlyCredits: subscriptionPlan.monthlyCredits,
       },
     });
 
     await updateUserSubscription(user.id, {
       stripeSubscriptionId: subscriptionId,
-      stripeProductId: monthlyPlan.productId,
-      planName: monthlyPlan.name,
+      stripeProductId: subscriptionPlan.productId,
+      planName: subscriptionPlan.name,
       subscriptionStatus: 'active',
     });
 
@@ -351,13 +361,15 @@ async function createMockCheckoutSession({
         userId: user.id,
         stripeCheckoutSessionId: stripeEventId,
         stripeEventId,
-        credits: monthlyPlan.credits,
+        credits: subscriptionPlan.credits,
         balance: result.balance,
         source: 'mock_subscription_checkout',
       },
     });
 
-    redirect('/dashboard/billing?checkout=mock_subscription_success');
+    redirect(
+      `/dashboard/billing?interval=${subscriptionPlan.interval}&checkout=mock_subscription_success`
+    );
   }
 
   await captureServerEvent({
@@ -416,11 +428,11 @@ export async function cancelMockSubscription(user: User) {
 
 export async function createCustomerPortalSession(user: User) {
   if (isPaymentMockEnabled()) {
-    return { url: '/pricing?billing=mock' };
+    return { url: '/dashboard/billing?billing=mock' };
   }
 
   if (!user.stripeCustomerId || !user.stripeProductId) {
-    redirect('/pricing');
+    redirect('/dashboard/billing');
   }
 
   let configuration: Stripe.BillingPortal.Configuration;

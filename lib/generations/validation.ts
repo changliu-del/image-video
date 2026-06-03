@@ -61,6 +61,24 @@ const cleanPromptField = z
   .min(1, 'Prompt is required')
   .max(MAX_TEXT_TO_IMAGE_PROMPT_LENGTH, 'Prompt is too long');
 
+const optionalCleanPromptField = z.preprocess(
+  (value) =>
+    typeof value === 'string' && value.trim() === '' ? undefined : value,
+  cleanPromptField.optional()
+);
+
+const optionalTemplateSlugSchema = z.preprocess(
+  (value) =>
+    typeof value === 'string' && value.trim() === '' ? undefined : value,
+  z
+    .string()
+    .trim()
+    .min(1)
+    .max(120)
+    .regex(/^[A-Za-z0-9_-]+$/)
+    .optional()
+);
+
 const durationSecondsSchema = z.preprocess(
   (value) => {
     if (typeof value === 'string' && /^\d+$/.test(value)) {
@@ -70,6 +88,28 @@ const durationSecondsSchema = z.preprocess(
     return value;
   },
   z.union([z.literal(5), z.literal(8), z.literal(10)])
+);
+
+const apparelStrengthSchema = z.preprocess(
+  (value) => {
+    if (typeof value === 'string' && /^\d+$/.test(value)) {
+      return Number(value);
+    }
+
+    return value;
+  },
+  z.number().int().min(0).max(100)
+);
+
+const apparelVariantsSchema = z.preprocess(
+  (value) => {
+    if (typeof value === 'string' && /^\d+$/.test(value)) {
+      return Number(value);
+    }
+
+    return value;
+  },
+  z.number().int().min(1).max(8)
 );
 
 const generationTypeInputSchema = z
@@ -94,6 +134,8 @@ const generationModeInputSchema = z
 const baseGenerationFields = {
   generationType: generationTypeInputSchema.optional(),
   mode: generationModeInputSchema.optional(),
+  templateId: idStringSchema.optional(),
+  templateSlug: optionalTemplateSlugSchema,
 };
 
 function assertMatchingGenerationMode(
@@ -143,7 +185,7 @@ export const imageToVideoGenerationRequestSchema = z
     ...baseGenerationFields,
     inputAssetId: idStringSchema.optional(),
     inputAsset: idStringSchema.optional(),
-    prompt: cleanPromptField.optional(),
+    prompt: optionalCleanPromptField,
     negativePrompt: z.string().trim().max(1000).optional(),
     aspectRatio: z.enum(VIDEO_ASPECT_RATIOS).optional(),
     durationSeconds: durationSecondsSchema.optional(),
@@ -180,8 +222,10 @@ export const apparelImageGenerationRequestSchema = z
     ...baseGenerationFields,
     inputAssetId: idStringSchema.optional(),
     inputAsset: idStringSchema.optional(),
-    prompt: cleanPromptField.optional(),
+    prompt: optionalCleanPromptField,
     aspectRatio: z.enum(VIDEO_ASPECT_RATIOS).optional(),
+    strength: apparelStrengthSchema.optional(),
+    variants: apparelVariantsSchema.optional(),
   })
   .strict()
   .superRefine((value, context) => {
@@ -219,7 +263,8 @@ export const tryOnGenerationRequestSchema = z
     inputAssetId: idStringSchema.optional(),
     garmentAssetId: idStringSchema.optional(),
     garmentAssetIds: z.array(idStringSchema).min(1).max(8).optional(),
-    prompt: cleanPromptField.optional(),
+    prompt: optionalCleanPromptField,
+    aspectRatio: z.enum(VIDEO_ASPECT_RATIOS).optional(),
   })
   .strict()
   .superRefine((value, context) => {

@@ -100,6 +100,19 @@ describe('imageToVideoGenerationRequestSchema', () => {
     expect(parsed.generationType).toBe('image_to_video');
   });
 
+  it('accepts optional workbench fields and treats an empty prompt as omitted', () => {
+    const parsed = imageToVideoGenerationRequestSchema.parse({
+      ...validImageToVideoRequest,
+      prompt: '',
+      templateId: 'template_123',
+      templateSlug: 'flash_sale',
+    });
+
+    expect(parsed.prompt).toBeUndefined();
+    expect(parsed.templateId).toBe('template_123');
+    expect(parsed.templateSlug).toBe('flash_sale');
+  });
+
   it('requires an input asset id and supports the inputAsset alias', () => {
     const missingAsset = imageToVideoGenerationRequestSchema.safeParse({
       ...validImageToVideoRequest,
@@ -137,6 +150,24 @@ describe('apparelImageGenerationRequestSchema', () => {
 
     expect(parsed.generationType).toBe('apparel_image');
     expect(getCreditCostForGeneration(parsed)).toBe(5);
+  });
+
+  it('accepts workbench controls for apparel image requests', () => {
+    const parsed = apparelImageGenerationRequestSchema.parse({
+      generationType: 'apparel_image',
+      inputAssetId: 'asset_123',
+      prompt: 'Generate a clean studio apparel image.',
+      templateId: 'template_123',
+      templateSlug: 'catalog_style',
+      aspectRatio: '1:1',
+      strength: '64',
+      variants: 4,
+    });
+
+    expect(parsed.templateId).toBe('template_123');
+    expect(parsed.templateSlug).toBe('catalog_style');
+    expect(parsed.strength).toBe(64);
+    expect(parsed.variants).toBe(4);
   });
 
   it('requires the apparel_image discriminator', () => {
@@ -187,6 +218,24 @@ describe('tryOnGenerationRequestSchema', () => {
     });
 
     expect(result.success).toBe(false);
+  });
+
+  it('accepts workbench metadata on try-on requests', () => {
+    const parsed = tryOnGenerationRequestSchema.parse({
+      generationType: 'try_on',
+      tryOnMode: 'single',
+      modelAssetId: 'model_asset',
+      garmentAssetId: 'garment_asset',
+      prompt: '',
+      aspectRatio: '9:16',
+      templateId: 'template_123',
+      templateSlug: 'try_on_default',
+    });
+
+    expect(parsed.prompt).toBeUndefined();
+    expect(parsed.aspectRatio).toBe('9:16');
+    expect(parsed.templateId).toBe('template_123');
+    expect(parsed.templateSlug).toBe('try_on_default');
   });
 });
 

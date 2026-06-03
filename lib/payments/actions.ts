@@ -11,7 +11,7 @@ import { getUser } from '@/lib/db/queries';
 export async function checkoutAction(formData: FormData) {
   const priceId = formData.get('priceId') as string;
   if (!priceId) {
-    redirect('/pricing');
+    redirect('/dashboard/billing');
   }
 
   await createCheckoutSession({ priceId });

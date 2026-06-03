@@ -1,19 +1,28 @@
 import type { ReactNode } from 'react';
 import { redirect } from 'next/navigation';
-import { getSession } from '@/lib/auth/session';
+import { getUser } from '@/lib/db/queries';
 import {
   DashboardHeader,
   type DashboardHeaderUser,
 } from './dashboard-header';
 import { AppShell } from './app-shell';
 
-function toHeaderUser(session: Awaited<ReturnType<typeof getSession>>) {
-  const userId = session?.user?.id;
+function toHeaderUser(user: Awaited<ReturnType<typeof getUser>>) {
+  if (!user) return null;
+
+  const userId = user?.id;
 
   if (typeof userId !== 'number') return null;
 
   return {
     id: userId,
+    email: user.email,
+    name: user.name,
+    isAdmin: user.isAdmin,
+    role: user.role,
+    creditBalance: user.creditBalance,
+    planName: user.planName,
+    subscriptionStatus: user.subscriptionStatus,
   } satisfies DashboardHeaderUser;
 }
 
@@ -22,8 +31,8 @@ export default async function Layout({
 }: {
   children: ReactNode;
 }) {
-  const session = await getSession();
-  const headerUser = toHeaderUser(session);
+  const user = await getUser();
+  const headerUser = toHeaderUser(user);
   const templateAdminUrl = process.env.TEMPLATE_ADMIN_URL ?? null;
 
   if (!headerUser) {

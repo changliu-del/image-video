@@ -1,0 +1,25 @@
+{
+  "name": "image-video-studio",
+  "version": "0.1.0",
+  "description": "Project-specific Codex plugin for the image-video SaaS.",
+  "author": {
+    "name": "Chang Liu"
+  },
+  "skills": "./skills/",
+  "interface": {
+    "displayName": "Image Video Studio",
+    "shortDescription": "Project mode for the image-video SaaS.",
+    "longDescription": "Image Video Studio gives Codex project-specific context, KB navigation, and a multi-agent development mode for this personal ecommerce image/video SaaS.",
+    "developerName": "Chang Liu",
+    "category": "Productivity",
+    "capabilities": [
+      "Write"
+    ],
+    "brandColor": "#6366F1",
+    "defaultPrompt": [
+      "Use image-video-studio mode to plan this change.",
+      "Use the project KB before modifying this SaaS.",
+      "Run frontend, backend, and QA agents for this task."
+    ]
+  }
+}

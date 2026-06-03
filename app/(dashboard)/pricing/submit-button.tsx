@@ -4,7 +4,15 @@ import { Button } from '@/components/ui/button';
 import { ArrowRight, Loader2 } from 'lucide-react';
 import { useFormStatus } from 'react-dom';
 
-export function SubmitButton({ disabled = false }: { disabled?: boolean }) {
+export function SubmitButton({
+  disabled = false,
+  label = 'Buy Credits',
+  loadingLabel = 'Loading...',
+}: {
+  disabled?: boolean;
+  label?: string;
+  loadingLabel?: string;
+}) {
   const { pending } = useFormStatus();
 
   return (
@@ -17,11 +25,11 @@ export function SubmitButton({ disabled = false }: { disabled?: boolean }) {
       {pending ? (
         <>
           <Loader2 className="animate-spin mr-2 h-4 w-4" />
-          Loading...
+          {loadingLabel}
         </>
       ) : (
         <>
-          Buy Credits
+          {label}
           <ArrowRight className="ml-2 h-4 w-4" />
         </>
       )}

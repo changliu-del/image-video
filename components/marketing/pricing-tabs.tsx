@@ -3,13 +3,14 @@
 import Link from 'next/link';
 import { useState } from 'react';
 import { Check, Layers, ShieldCheck, Sparkles, Zap } from 'lucide-react';
-import { type PricingPlan } from '@/lib/marketing/content';
+import { type Locale, type PricingPlan } from '@/lib/marketing/content';
 import { cn } from '@/lib/utils';
 
 type Billing = 'yearly' | 'monthly' | 'onetime';
 
 type PricingTabsProps = {
   plans: PricingPlan[];
+  locale: Locale;
   labels: {
     yearly: string;
     monthly: string;
@@ -24,7 +25,16 @@ type PricingTabsProps = {
 
 const planIcons = [Layers, Zap, Sparkles];
 
-export function PricingTabs({ plans, labels }: PricingTabsProps) {
+function workspacePricingHref(billing: Billing, locale: Locale) {
+  if (billing === 'onetime') {
+    return `/dashboard/credits?locale=${locale}`;
+  }
+
+  const interval = billing === 'yearly' ? 'year' : 'month';
+  return `/dashboard/billing?interval=${interval}&locale=${locale}`;
+}
+
+export function PricingTabs({ plans, locale, labels }: PricingTabsProps) {
   const [billing, setBilling] = useState<Billing>('yearly');
   const tabs: { key: Billing; label: string; badge?: string }[] = [
     { key: 'yearly', label: labels.yearly, badge: labels.save },
@@ -128,7 +138,7 @@ export function PricingTabs({ plans, labels }: PricingTabsProps) {
                   ))}
                 </ul>
                 <Link
-                  href="/sign-in"
+                  href={workspacePricingHref(billing, locale)}
                   className={cn(
                     'inline-flex h-11 w-full items-center justify-center rounded-lg text-sm font-semibold transition',
                     plan.highlighted

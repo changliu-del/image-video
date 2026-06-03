@@ -20,7 +20,6 @@ import {
   type DashboardLocale,
 } from '@/lib/dashboard/content';
 import { useDashboardLocale, withDashboardLocale } from '@/lib/dashboard/use-dashboard-locale';
-import { getLocalizedHref } from '@/lib/marketing/content';
 import { cn } from '@/lib/utils';
 
 export type DashboardHeaderUser = {
@@ -29,6 +28,9 @@ export type DashboardHeaderUser = {
   name?: string | null;
   isAdmin?: boolean;
   role?: string | null;
+  creditBalance?: number;
+  planName?: string | null;
+  subscriptionStatus?: string | null;
 };
 
 function canAccessAdmin(user: DashboardHeaderUser) {
@@ -230,16 +232,19 @@ export function DashboardHeader({
         </Link>
         {!isAdminPage ? (
           <div className="ml-auto flex items-center gap-2">
-            <div className="hidden h-9 items-center gap-2 rounded-full border border-indigo-100 bg-indigo-50 px-3 text-sm font-semibold text-indigo-600 shadow-sm md:flex">
-              <Gem className="size-4 fill-indigo-300 text-indigo-500" />
-              510
-              <span className="text-xs text-gray-500">{content.header.credits}</span>
-            </div>
             <Link
-              href={getLocalizedHref(locale, '/pricing')}
+              href={withDashboardLocale('/dashboard/credits', locale)}
+              className="hidden h-9 items-center gap-2 rounded-full border border-indigo-100 bg-indigo-50 px-3 text-sm font-semibold text-indigo-600 shadow-sm transition hover:border-indigo-200 hover:bg-indigo-100 md:flex"
+            >
+              <Gem className="size-4 fill-indigo-300 text-indigo-500" />
+              {user?.creditBalance ?? 0}
+              <span className="text-xs text-gray-500">{content.header.credits}</span>
+            </Link>
+            <Link
+              href={withDashboardLocale('/dashboard/billing', locale)}
               className={cn(
                 'hidden h-9 items-center rounded-full border border-gray-200 bg-white px-4 text-sm font-semibold text-gray-800 shadow-sm transition hover:border-indigo-200 hover:text-indigo-600 sm:flex',
-                pathname.startsWith('/pricing') && 'text-indigo-600'
+                pathname.startsWith('/dashboard/billing') && 'text-indigo-600'
               )}
             >
               {content.header.buy}

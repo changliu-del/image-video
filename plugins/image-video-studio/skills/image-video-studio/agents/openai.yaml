@@ -1,0 +1,8 @@
+interface:
+  display_name: "Image Video Studio"
+  short_description: "Project mode for the image-video SaaS"
+  brand_color: "#6366F1"
+  default_prompt: "Use $image-video-studio to plan and implement this image-video SaaS change."
+
+policy:
+  allow_implicit_invocation: true

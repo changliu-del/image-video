@@ -7,9 +7,9 @@ import { useState } from 'react';
 import {
   ChevronDown,
   CreditCard,
+  Coins,
   Home,
   ImageIcon,
-  ReceiptText,
   ShieldCheck,
   Shirt,
   UserRound,
@@ -129,8 +129,8 @@ export function AppShell({
     { href: '/create/try-on', icon: Shirt, label: content.nav.tryOn },
   ];
   const personalItems: ShellItem[] = [
-    { href: '/dashboard/credits', icon: CreditCard, label: content.nav.credits },
-    { href: '/dashboard/billing', icon: ReceiptText, label: content.nav.billing },
+    { href: '/dashboard/billing', icon: CreditCard, label: content.nav.billing },
+    { href: '/dashboard/credits', icon: Coins, label: content.nav.credits },
     { href: '/dashboard/security', icon: ShieldCheck, label: content.nav.security },
   ];
 
