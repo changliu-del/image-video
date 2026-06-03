@@ -289,30 +289,30 @@ function UploadPanel({
   children?: React.ReactNode;
 }) {
   return (
-    <div className="rounded-lg border border-white/10 bg-white/[0.055] p-3 shadow-2xl shadow-black/20 backdrop-blur">
+    <div className="rounded-lg border border-gray-200 bg-white p-3 shadow-sm">
       <div className="mb-3 flex items-center justify-between gap-2">
-        <div className="flex min-w-0 items-center gap-2 text-sm font-semibold text-white">
-          <Icon className="size-4 text-amber-300" />
+        <div className="flex min-w-0 items-center gap-2 text-sm font-semibold text-gray-800">
+          <Icon className="size-4 text-indigo-500" />
           <span className="truncate">{title}</span>
         </div>
-        <UploadCloud className="size-4 text-white/45" />
+        <UploadCloud className="size-4 text-gray-400" />
       </div>
       <label
         htmlFor={id}
         className={cn(
-          'flex min-h-64 cursor-pointer flex-col items-center justify-center overflow-hidden rounded-lg border border-dashed border-white/15 bg-gray-950/70 p-3 text-center transition hover:border-amber-300/60 hover:bg-gray-900',
+          'flex min-h-64 cursor-pointer flex-col items-center justify-center overflow-hidden rounded-lg border border-dashed border-gray-300 bg-gray-50 p-3 text-center transition hover:border-indigo-200 hover:bg-indigo-50/50',
           disabled && 'pointer-events-none opacity-70'
         )}
       >
         {preview ? (
           <img src={preview} alt="" className="max-h-56 w-full rounded-md object-contain" />
         ) : (
-          <span className="flex size-14 items-center justify-center rounded-lg border border-white/10 bg-white/[0.08] text-white/55">
+          <span className="flex size-14 items-center justify-center rounded-lg border border-gray-200 bg-white text-gray-300">
             <ImageIcon className="size-6" />
           </span>
         )}
-        <span className="mt-4 flex max-w-full items-center gap-2 truncate text-sm font-medium text-white/78">
-          <UploadCloud className="size-4 shrink-0 text-emerald-300" />
+        <span className="mt-4 flex max-w-full items-center gap-2 truncate text-sm font-medium text-gray-700">
+          <UploadCloud className="size-4 shrink-0 text-indigo-500" />
           <span className="truncate">{fileName ?? 'Upload image'}</span>
         </span>
       </label>
@@ -345,8 +345,8 @@ function SegmentedControl<T extends string>({
 }) {
   return (
     <div>
-      <Label className="mb-2 text-white/70">{label}</Label>
-      <div className="grid gap-1 rounded-lg border border-white/10 bg-gray-950/70 p-1">
+      <Label className="mb-2 text-gray-600">{label}</Label>
+      <div className="grid gap-1 rounded-lg border border-gray-200 bg-gray-50 p-1">
         {options.map((option) => {
           const Icon = option.icon;
           return (
@@ -356,8 +356,8 @@ function SegmentedControl<T extends string>({
               className={cn(
                 'flex h-10 items-center justify-center gap-2 rounded-md px-3 text-sm font-semibold transition',
                 value === option.value
-                  ? 'bg-white text-gray-950 shadow-lg shadow-black/20'
-                  : 'text-white/62 hover:bg-white/[0.08] hover:text-white'
+                  ? 'bg-white text-indigo-600 shadow-sm'
+                  : 'text-gray-500 hover:bg-white hover:text-indigo-600'
               )}
               onClick={() => onChange(option.value)}
               disabled={disabled}
@@ -389,12 +389,12 @@ function LibraryTile({
       className={cn(
         'group min-w-0 rounded-lg border p-2 text-left transition',
         active
-          ? 'border-amber-300 bg-amber-300/10'
-          : 'border-white/10 bg-white/[0.045] hover:border-white/25 hover:bg-white/[0.075]'
+          ? 'border-indigo-300 bg-indigo-50'
+          : 'border-gray-200 bg-white hover:border-indigo-200 hover:bg-indigo-50/40'
       )}
       onClick={onClick}
     >
-      <div className="aspect-square overflow-hidden rounded-md bg-gray-950">
+      <div className="aspect-square overflow-hidden rounded-md bg-gray-100">
         {image ? (
           <img
             src={image}
@@ -402,12 +402,12 @@ function LibraryTile({
             className="size-full object-cover transition duration-500 group-hover:scale-105"
           />
         ) : (
-          <span className="flex size-full items-center justify-center text-white/35">
+          <span className="flex size-full items-center justify-center text-gray-300">
             <ImageIcon className="size-5" />
           </span>
         )}
       </div>
-      <div className="mt-2 truncate text-xs font-semibold text-white/72">
+      <div className="mt-2 truncate text-xs font-semibold text-gray-600">
         {getItemLabel(item)}
       </div>
     </button>
@@ -706,7 +706,7 @@ export function TryOnWorkbench() {
   return (
     <form
       onSubmit={handleSubmit}
-      className="flex min-h-[calc(100dvh-58px)] flex-col bg-[#f4f6fa] text-gray-950 lg:flex-row"
+      className="flex min-h-[calc(100dvh-58px)] flex-col bg-[#f5f7fb] text-gray-950 lg:flex-row"
     >
       <StudioPanel
         footer={

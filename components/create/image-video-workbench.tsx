@@ -236,20 +236,20 @@ function SectionTitle({
   return (
     <div className="flex items-center justify-between gap-3">
       <div className="flex min-w-0 items-center gap-2">
-        <span className="flex size-8 shrink-0 items-center justify-center rounded-md border border-white/10 bg-white/[0.06] text-amber-200">
+        <span className="flex size-8 shrink-0 items-center justify-center rounded-md border border-indigo-100 bg-indigo-50 text-indigo-500">
           <Icon className="size-4" />
         </span>
-        <h2 className="truncate text-sm font-semibold text-white">{title}</h2>
+        <h2 className="truncate text-sm font-semibold text-gray-800">{title}</h2>
       </div>
-      {meta ? <p className="shrink-0 text-xs font-medium text-white/42">{meta}</p> : null}
+      {meta ? <p className="shrink-0 text-xs font-medium text-gray-400">{meta}</p> : null}
     </div>
   );
 }
 
 function EmptyMedia({ label }: { label: string }) {
   return (
-    <div className="flex h-full min-h-48 flex-col items-center justify-center text-center text-sm text-white/45">
-      <Film className="mb-3 size-9 text-white/28" />
+    <div className="flex h-full min-h-48 flex-col items-center justify-center text-center text-sm text-gray-400">
+      <Film className="mb-3 size-9 text-gray-300" />
       <span>{label}</span>
     </div>
   );
@@ -446,7 +446,7 @@ export function ImageVideoWorkbench() {
   return (
     <form
       onSubmit={handleSubmit}
-      className="flex min-h-[calc(100dvh-58px)] flex-col bg-[#f4f6fa] text-gray-950 lg:flex-row"
+      className="flex min-h-[calc(100dvh-58px)] flex-col bg-[#f5f7fb] text-gray-950 lg:flex-row"
     >
       <StudioPanel
         footer={

@@ -208,7 +208,7 @@ export function DashboardHeader({
         'sticky top-0 z-40 border-b backdrop-blur',
         isAdminPage
           ? 'border-gray-200 bg-white'
-          : 'border-gray-200 bg-[#f7f8fb]/95 text-gray-950'
+          : 'border-gray-200 bg-white/92 text-gray-950'
       )}
     >
       <div
@@ -219,15 +219,21 @@ export function DashboardHeader({
             : 'w-full px-4 sm:px-5'
         )}
       >
-        <Link href={withDashboardLocale('/', locale)} className="text-sm font-bold text-gray-700">
+        <Link
+          href={withDashboardLocale('/dashboard', locale)}
+          className={cn(
+            'text-sm font-bold',
+            isAdminPage ? 'text-gray-700' : 'text-gray-800'
+          )}
+        >
           {isAdminPage ? 'Admin' : content.header.workspace}
         </Link>
         {!isAdminPage ? (
           <div className="ml-auto flex items-center gap-2">
-            <div className="hidden h-9 items-center gap-2 rounded-full border border-gray-200 bg-white px-3 text-sm font-semibold text-indigo-600 shadow-sm md:flex">
-              <Gem className="size-4 fill-indigo-100" />
+            <div className="hidden h-9 items-center gap-2 rounded-full border border-indigo-100 bg-indigo-50 px-3 text-sm font-semibold text-indigo-600 shadow-sm md:flex">
+              <Gem className="size-4 fill-indigo-300 text-indigo-500" />
               510
-              <span className="text-xs text-gray-400">{content.header.credits}</span>
+              <span className="text-xs text-gray-500">{content.header.credits}</span>
             </div>
             <Link
               href={getLocalizedHref(locale, '/pricing')}

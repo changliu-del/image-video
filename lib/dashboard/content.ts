@@ -10,6 +10,10 @@ type DashboardContent = {
     imageVideo: string;
     apparel: string;
     tryOn: string;
+    personal: string;
+    credits: string;
+    billing: string;
+    security: string;
     profileCenter: string;
   };
   header: {
@@ -43,6 +47,10 @@ export const dashboardContent: Record<DashboardLocale, DashboardContent> = {
       imageVideo: 'Imagem para vídeo',
       apparel: 'Imagem de produto',
       tryOn: 'Provador virtual',
+      personal: 'Pessoal',
+      credits: 'Créditos',
+      billing: 'Cobrança',
+      security: 'Segurança',
       profileCenter: 'Centro pessoal',
     },
     header: {
@@ -72,6 +80,10 @@ export const dashboardContent: Record<DashboardLocale, DashboardContent> = {
       imageVideo: 'Image to video',
       apparel: 'Product image',
       tryOn: 'Virtual try-on',
+      personal: 'Personal',
+      credits: 'Credits',
+      billing: 'Billing',
+      security: 'Security',
       profileCenter: 'Personal center',
     },
     header: {
@@ -101,6 +113,10 @@ export const dashboardContent: Record<DashboardLocale, DashboardContent> = {
       imageVideo: '图生视频',
       apparel: '商品图',
       tryOn: '智能试衣',
+      personal: '个人空间',
+      credits: '算力值',
+      billing: '账单',
+      security: '安全',
       profileCenter: '个人中心',
     },
     header: {

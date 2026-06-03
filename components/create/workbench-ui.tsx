@@ -42,10 +42,10 @@ export function StudioPanel({
   footer?: ReactNode;
 }) {
   return (
-    <aside className="flex h-[calc(100dvh-58px)] w-full shrink-0 flex-col border-r border-gray-200 bg-white lg:w-[420px] xl:w-[452px]">
+    <aside className="flex h-[calc(100dvh-58px)] w-full shrink-0 flex-col border-r border-gray-200 bg-white shadow-sm lg:w-[420px] xl:w-[452px]">
       <div className="min-h-0 flex-1 overflow-y-auto px-5 py-5">{children}</div>
       {footer ? (
-        <div className="border-t border-gray-100 bg-white px-5 py-4 shadow-[0_-10px_28px_rgba(15,23,42,0.04)]">
+        <div className="border-t border-gray-100 bg-white px-5 py-4 shadow-[0_-10px_28px_rgba(15,23,42,0.06)]">
           {footer}
         </div>
       ) : null}
@@ -67,16 +67,27 @@ export function CanvasStage({
   actions?: ReactNode;
 }) {
   return (
-    <section className="min-w-0 flex-1 overflow-y-auto bg-[#f4f6fa] px-5 py-5 sm:px-8">
-      <div className="mx-auto flex min-h-full max-w-6xl flex-col">
+    <section className="relative min-w-0 flex-1 overflow-y-auto bg-[#f5f7fb] px-5 py-5 text-gray-950 sm:px-8">
+      <div className="pointer-events-none absolute inset-0 overflow-hidden">
+        <video
+          src="/bg.mp4"
+          className="size-full object-cover opacity-[0.04]"
+          autoPlay
+          loop
+          muted
+          playsInline
+        />
+        <div className="absolute inset-0 bg-[linear-gradient(135deg,rgba(248,250,252,0.98),rgba(239,246,255,0.92)_45%,rgba(255,247,237,0.78))]" />
+      </div>
+      <div className="relative mx-auto flex min-h-full max-w-6xl flex-col">
         {actions ? (
           <div className="mb-5 flex items-center justify-end gap-3">
             {actions}
           </div>
         ) : null}
-        {banner ? <div className="mx-auto mb-16 w-full max-w-[880px]">{banner}</div> : null}
+        {banner ? <div className="mx-auto mb-10 w-full max-w-[880px]">{banner}</div> : null}
         <div className="mb-6 text-center">
-          <h1 className="text-2xl font-bold text-gray-900">{title}</h1>
+          <h1 className="text-3xl font-bold tracking-tight text-gray-950">{title}</h1>
           {subtitle ? (
             <p className="mt-2 text-sm font-medium text-gray-500">{subtitle}</p>
           ) : null}
@@ -97,12 +108,12 @@ export function BlueBanner({
   images?: string[];
 }) {
   return (
-    <div className="flex h-24 items-center justify-between overflow-hidden rounded-lg bg-[#dceaff] px-8 shadow-sm">
+    <div className="flex h-24 items-center justify-between overflow-hidden rounded-lg border border-amber-100 bg-amber-50 px-8 shadow-sm">
       <div>
-        <p className="text-3xl font-black text-white drop-shadow-[0_2px_4px_rgba(77,111,255,0.45)]">
+        <p className="text-3xl font-black text-gray-950">
           {title}
         </p>
-        <p className="mt-2 inline-flex rounded-full bg-white/45 px-5 py-1 text-sm font-semibold text-indigo-600">
+        <p className="mt-2 inline-flex rounded-full bg-white px-5 py-1 text-sm font-semibold text-indigo-600 shadow-sm">
           {label}
         </p>
       </div>
@@ -112,7 +123,7 @@ export function BlueBanner({
             key={image}
             src={image}
             alt=""
-            className="h-16 w-16 rounded-lg border-2 border-white object-cover shadow-sm"
+            className="h-16 w-16 rounded-lg border-2 border-white/80 object-cover shadow-sm"
           />
         ))}
       </div>
@@ -176,8 +187,8 @@ export function UploadDropzone({
       <label
         htmlFor={id}
         className={cn(
-          'flex min-h-40 cursor-pointer flex-col items-center justify-center overflow-hidden rounded-lg bg-gray-100 px-4 py-5 text-center transition hover:bg-gray-50',
-          preview ? 'border border-gray-200' : 'border border-dashed border-gray-200',
+              'flex min-h-40 cursor-pointer flex-col items-center justify-center overflow-hidden rounded-lg bg-gray-100 px-4 py-5 text-center transition hover:bg-indigo-50/60',
+              preview ? 'border border-gray-200' : 'border border-dashed border-gray-300',
           disabled && 'pointer-events-none opacity-60'
         )}
       >
@@ -185,7 +196,7 @@ export function UploadDropzone({
           <img src={preview} alt="" className="max-h-56 w-full rounded-md object-contain" />
         ) : (
           <>
-            <span className="flex size-11 items-center justify-center rounded-lg bg-white text-indigo-500 shadow-sm">
+            <span className="flex size-11 items-center justify-center rounded-lg bg-white text-indigo-500 shadow-sm ring-1 ring-gray-100">
               <UploadCloud className="size-5" />
             </span>
             <span className="mt-3 text-sm font-semibold text-gray-700">{emptyText}</span>
@@ -246,7 +257,7 @@ export function SegmentedOptions<T extends string | number>({
             className={cn(
               'flex h-11 items-center justify-center rounded-lg border text-sm font-bold transition disabled:cursor-not-allowed disabled:opacity-60',
               value === optionValue
-                ? 'border-indigo-500 bg-indigo-50 text-indigo-600'
+                ? 'border-indigo-500 bg-indigo-600 text-white shadow-sm'
                 : 'border-gray-200 bg-white text-gray-600 hover:border-indigo-200 hover:text-indigo-600'
             )}
           >
@@ -283,7 +294,7 @@ export function ChoiceGrid<T extends string>({
             className={cn(
               'min-h-10 rounded-lg border px-3 py-2 text-left text-sm font-semibold transition disabled:cursor-not-allowed disabled:opacity-60',
               value === optionValue
-                ? 'border-indigo-500 bg-indigo-50 text-indigo-600'
+                ? 'border-indigo-500 bg-indigo-600 text-white shadow-sm'
                 : 'border-gray-200 bg-white text-gray-600 hover:border-indigo-200 hover:text-indigo-600'
             )}
           >
@@ -309,11 +320,11 @@ export function ExampleProducts({
   return (
     <section className="mt-7">
       <div className="mb-3 flex items-center justify-between">
-        <h2 className="text-base font-bold text-gray-900">{title}</h2>
+        <h2 className="text-base font-bold text-gray-950">{title}</h2>
         <button
           type="button"
           onClick={onRefresh}
-          className="inline-flex items-center gap-1 text-sm font-semibold text-gray-600 hover:text-indigo-600"
+          className="inline-flex items-center gap-1 text-sm font-semibold text-indigo-600 hover:text-indigo-700"
         >
           {refreshLabel}
           <RefreshCw className="size-4" />
@@ -325,7 +336,7 @@ export function ExampleProducts({
             key={image}
             src={image}
             alt=""
-            className="size-24 shrink-0 rounded-lg bg-white object-cover shadow-sm"
+            className="size-24 shrink-0 rounded-lg border border-gray-200 bg-white object-cover shadow-sm"
           />
         ))}
       </div>
@@ -358,7 +369,7 @@ export function ResultCard({
       <div className="flex h-full min-h-[inherit] flex-col">
         <div className="flex items-center justify-between gap-3">
           <div>
-            <h2 className="text-sm font-bold text-gray-900">{title}</h2>
+            <h2 className="text-sm font-bold text-gray-950">{title}</h2>
             <p className="mt-1 text-xs font-semibold text-gray-400">
               {status ?? waitingLabel}
             </p>
@@ -371,7 +382,7 @@ export function ResultCard({
             <Clock3 className="size-5 text-gray-300" />
           )}
         </div>
-        <div className="mt-4 flex flex-1 items-center justify-center overflow-hidden rounded-lg bg-gray-50">
+        <div className="mt-4 flex flex-1 items-center justify-center overflow-hidden rounded-lg bg-gray-950/70">
           {resultUrl ? (
             isVideo ? (
               <video src={resultUrl} controls playsInline className="max-h-[620px] w-full object-contain" />
@@ -380,12 +391,12 @@ export function ResultCard({
             )
           ) : (
             <div className="px-8 text-center">
-              <span className="mx-auto flex size-14 items-center justify-center rounded-lg bg-indigo-50 text-indigo-500">
+              <span className="mx-auto flex size-14 items-center justify-center rounded-lg bg-white text-indigo-600">
                 {mediaKind === 'video' ? <PlayCircle className="size-7" /> : <ImageIcon className="size-7" />}
               </span>
-              <p className="mt-4 text-sm font-bold text-gray-800">{title}</p>
+              <p className="mt-4 text-sm font-bold text-white">{title}</p>
               {description ? (
-                <p className="mt-2 max-w-sm text-sm leading-6 text-gray-500">{description}</p>
+                <p className="mt-2 max-w-sm text-sm leading-6 text-white/55">{description}</p>
               ) : null}
             </div>
           )}
@@ -409,8 +420,8 @@ export function IconButtonCard({
   onClick?: () => void;
 }) {
   const className = cn(
-    'rounded-lg border border-gray-200 bg-white p-4 text-center shadow-sm transition',
-    onClick && 'hover:border-indigo-200 hover:text-indigo-600',
+    'rounded-lg border border-gray-200 bg-white p-4 text-center text-gray-800 shadow-sm transition',
+    onClick && 'hover:border-indigo-200 hover:bg-indigo-50/50',
     disabled && 'cursor-not-allowed opacity-50'
   );
   const content = (

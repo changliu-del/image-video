@@ -257,12 +257,12 @@ function SectionTitle({
   return (
     <div className="flex items-start justify-between gap-4">
       <div className="flex items-center gap-2">
-        <span className="flex size-8 items-center justify-center rounded-lg border border-white/10 bg-white/[0.07] text-amber-200">
+        <span className="flex size-8 items-center justify-center rounded-lg border border-indigo-100 bg-indigo-50 text-indigo-500">
           <Icon className="size-4" />
         </span>
         <div>
-          <h2 className="text-sm font-semibold text-white">{title}</h2>
-          {note ? <p className="text-xs text-white/45">{note}</p> : null}
+          <h2 className="text-sm font-semibold text-gray-800">{title}</h2>
+          {note ? <p className="text-xs text-gray-400">{note}</p> : null}
         </div>
       </div>
     </div>
@@ -284,7 +284,7 @@ function OptionGroup<T extends string>({
 }) {
   return (
     <div>
-      <Label className="mb-2 text-xs font-medium uppercase text-white/45">
+      <Label className="mb-2 text-xs font-medium uppercase text-gray-400">
         {label}
       </Label>
       <div className="grid grid-cols-2 gap-2">
@@ -297,8 +297,8 @@ function OptionGroup<T extends string>({
             className={cn(
               'min-h-10 rounded-lg border px-3 py-2 text-left text-sm font-medium transition disabled:cursor-not-allowed disabled:opacity-50',
               value === option
-                ? 'border-amber-300/70 bg-amber-300/15 text-white shadow-[0_0_24px_rgba(251,191,36,0.12)]'
-                : 'border-white/10 bg-white/[0.045] text-white/68 hover:border-white/20 hover:bg-white/[0.075] hover:text-white'
+                ? 'border-indigo-300 bg-indigo-50 text-indigo-600 shadow-sm'
+                : 'border-gray-200 bg-white text-gray-600 hover:border-indigo-200 hover:bg-indigo-50/40 hover:text-indigo-600'
             )}
           >
             {option}
@@ -325,13 +325,13 @@ function LibraryTile({
       type="button"
       onClick={onClick}
       className={cn(
-        'group min-w-0 rounded-lg border bg-white/[0.045] p-2 text-left transition',
+        'group min-w-0 rounded-lg border bg-white p-2 text-left transition',
         active
-          ? 'border-emerald-300/70 shadow-[0_0_28px_rgba(110,231,183,0.12)]'
-          : 'border-white/10 hover:border-white/25 hover:bg-white/[0.07]'
+          ? 'border-emerald-300 shadow-sm'
+          : 'border-gray-200 hover:border-indigo-200 hover:bg-indigo-50/40'
       )}
     >
-      <div className="relative aspect-square overflow-hidden rounded-md bg-gray-950">
+      <div className="relative aspect-square overflow-hidden rounded-md bg-gray-100">
         {image ? (
           <img
             src={image}
@@ -339,7 +339,7 @@ function LibraryTile({
             className="size-full object-cover transition duration-500 group-hover:scale-105"
           />
         ) : (
-          <div className="flex size-full items-center justify-center text-white/35">
+          <div className="flex size-full items-center justify-center text-gray-300">
             <ImageIcon className="size-5" />
           </div>
         )}
@@ -349,7 +349,7 @@ function LibraryTile({
           </span>
         ) : null}
       </div>
-      <p className="mt-2 truncate text-xs font-medium text-white/72">
+      <p className="mt-2 truncate text-xs font-medium text-gray-600">
         {getItemLabel(item)}
       </p>
     </button>
@@ -588,7 +588,7 @@ export function ApparelWorkbench() {
   return (
     <form
       onSubmit={handleSubmit}
-      className="flex min-h-[calc(100dvh-58px)] flex-col bg-[#f4f6fa] text-gray-950 lg:flex-row"
+      className="flex min-h-[calc(100dvh-58px)] flex-col bg-[#f5f7fb] text-gray-950 lg:flex-row"
     >
       <StudioPanel
         footer={
