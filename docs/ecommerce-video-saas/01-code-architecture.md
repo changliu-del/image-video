@@ -113,8 +113,8 @@ RBAC
 ```text
 商品图上传
 电商视频生成表单
-任务进度页
-视频预览/下载页
+工作台内联任务进度
+生成结果预览/下载
 credits 系统
 provider adapter
 Trigger.dev task
@@ -127,8 +127,9 @@ Sentry 错误上报
 推荐目录：
 
 ```text
-app/(dashboard)/generate/page.tsx
-app/(dashboard)/jobs/[id]/page.tsx
+app/(dashboard)/create/video/page.tsx
+app/(dashboard)/create/apparel/page.tsx
+app/(dashboard)/create/try-on/page.tsx
 app/api/assets/presign/route.ts
 app/api/assets/complete/route.ts
 app/api/generations/route.ts
@@ -149,22 +150,18 @@ trigger.config.ts
 
 ## 4. 前端页面设计
 
-### `/generate`
+### `/create/video`、`/create/apparel`、`/create/try-on`
 
-用途：生成新视频。
+用途：当前主线创作工作台，分别对应图生视频、商品图、智能试衣。
 
 页面控件：
 
 ```text
-商品图上传
-商品名称 input
-核心卖点 textarea
-价格 input
-CTA input，默认 Shop Now
-视频比例 segmented control: 9:16 / 1:1 / 16:9
-视频时长 select: 5s / 8s / 10s
-模板 select: flash_sale / new_arrival / best_seller
-生成按钮
+素材上传或素材/模板库选择
+prompt 和创意预设
+比例、时长、模式、风格等工作台参数
+生成按钮，显示与后端一致的算力成本
+结果预览区
 ```
 
 前端行为：
@@ -174,29 +171,11 @@ CTA input，默认 Shop Now
 2. 浏览器直传图片到 R2
 3. 调 /api/assets/complete 记录 asset
 4. 调 /api/generations 创建 generation_job
-5. 跳转 /jobs/{jobId}
+5. 工作台内联轮询 /api/generations/{jobId}/status
+6. 若主状态接口不可用，兼容回退 /api/jobs/{jobId}
 ```
 
-### `/jobs/[id]`
-
-用途：查看任务进度和结果。
-
-展示状态：
-
-```text
-queued: 已进入队列
-running: 正在生成视频
-rendering: 正在添加电商模板
-succeeded: 可预览和下载
-failed: 显示失败原因和重试按钮
-```
-
-刷新策略：
-
-```text
-MVP: 每 3 秒轮询 /api/jobs/{id}
-后续: 接 Trigger.dev Realtime 或 WebSocket
-```
+`/generate` 仅作为兼容入口重定向到 `/create/video`。旧 `/jobs/[id]` 前端页面已移除，任务状态由三个工作台内联展示。
 
 ## 5. API 设计
 
@@ -305,10 +284,6 @@ storageKey 必须带 userId，避免覆盖其他用户文件
   "errorMessage": null
 }
 ```
-
-### `POST /api/jobs/[id]/retry`
-
-MVP 可以不做。若要做，只允许重试 `failed` 任务，并且重新冻结 credits。
 
 ## 6. 数据库设计
 

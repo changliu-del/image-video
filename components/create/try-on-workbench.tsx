@@ -37,6 +37,7 @@ import {
   tryOnWorkbenchCopy,
 } from '@/components/create/workbench-copy';
 import { useDashboardLocale } from '@/lib/dashboard/use-dashboard-locale';
+import { getTryOnCreditCost } from '@/lib/generations/credit-costs';
 import { cn } from '@/lib/utils';
 
 type TryOnMode = 'single' | 'multi';
@@ -725,7 +726,9 @@ export function TryOnWorkbench() {
             >
               {isSubmitting ? <Loader2 className="size-4 animate-spin" /> : <WandSparkles className="size-4" />}
               {submitLabel ?? commonCopy.generateNow}
-              <span className="font-semibold opacity-90">{commonCopy.credits(12)}</span>
+              <span className="font-semibold opacity-90">
+                {commonCopy.credits(getTryOnCreditCost(mode))}
+              </span>
             </Button>
           </div>
         }

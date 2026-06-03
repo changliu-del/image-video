@@ -244,6 +244,7 @@ export function Login({
               <input type="hidden" name="redirect" value={redirect || ''} />
               <input type="hidden" name="priceId" value={priceId || ''} />
               <input type="hidden" name="inviteId" value={inviteId || ''} />
+              <input type="hidden" name="locale" value={locale} />
 
               <label className="block" htmlFor="email">
                 <span className="mb-2 block text-xs font-medium uppercase tracking-wider text-white/45">

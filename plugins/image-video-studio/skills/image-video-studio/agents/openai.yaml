@@ -1,8 +1,8 @@
 interface:
   display_name: "Image Video Studio"
-  short_description: "Project mode for the image-video SaaS"
+  short_description: "Project mode and frontend architecture for the image-video SaaS"
   brand_color: "#6366F1"
-  default_prompt: "Use $image-video-studio to plan and implement this image-video SaaS change."
+  default_prompt: "Use $image-video-studio, load the project KB, and follow the frontend rendering architecture for image-video SaaS changes."
 
 policy:
   allow_implicit_invocation: true

@@ -3,6 +3,11 @@ import {
   MAX_TEXT_TO_IMAGE_PROMPT_LENGTH,
   MAX_UPLOAD_SIZE_BYTES,
 } from './constants';
+import {
+  getApparelImageCreditCost,
+  getCreditCostForDuration,
+  getTryOnCreditCost,
+} from './credit-costs';
 
 export {
   MAX_CTA_TEXT_LENGTH,
@@ -13,6 +18,11 @@ export {
   MAX_TEXT_TO_IMAGE_PROMPT_LENGTH,
   MAX_UPLOAD_SIZE_BYTES,
 } from './constants';
+export {
+  getApparelImageCreditCost,
+  getCreditCostForDuration,
+  getTryOnCreditCost,
+} from './credit-costs';
 
 export const ALLOWED_UPLOAD_MIME_TYPES = [
   'image/png',
@@ -346,26 +356,13 @@ export type TryOnGenerationRequest = z.infer<typeof tryOnGenerationRequestSchema
 export type GenerationRequest = z.infer<typeof generationRequestSchema>;
 export type GenerationApiRequest = z.infer<typeof generationApiRequestSchema>;
 
-export function getCreditCostForDuration(
-  durationSeconds: GenerationDurationSeconds
-) {
-  switch (durationSeconds) {
-    case 5:
-      return 10;
-    case 8:
-      return 18;
-    case 10:
-      return 25;
-  }
-}
-
 export function getCreditCostForGeneration(generation: GenerationRequest) {
   switch (generation.generationType) {
     case 'image_to_video':
       return getCreditCostForDuration(generation.durationSeconds ?? 5);
     case 'apparel_image':
-      return 5;
+      return getApparelImageCreditCost();
     case 'try_on':
-      return generation.tryOnMode === 'multi' ? 10 : 5;
+      return getTryOnCreditCost(generation.tryOnMode);
   }
 }

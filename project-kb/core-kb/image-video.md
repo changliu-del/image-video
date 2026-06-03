@@ -48,10 +48,9 @@ There is also older Trigger.dev/fal.ai/FFmpeg runner code in `lib/generations/ru
 - Keep first-party KB under `project-kb/`.
 - Keep product/deployment docs under `docs/ecommerce-video-saas/`.
 - Use plugin skill `image-video-studio` for project-specific Codex work.
+- Frontend dashboard pages should use a persistent shell plus async section data: render local controls/catalogs immediately, then hydrate account/API data through focused client fetches with loading/error/retry states. See `project-kb/code-kb/image-video/06-frontend-rendering-architecture.md`.
 
 ## Open Architecture Decisions
 
 - Whether to remove/retire Trigger.dev + fal.ai + FFmpeg runner, or revive it with matching migrations.
 - Whether generation creation should become DB-first with `queued/submitting` status before provider submit.
-- Whether dashboard credits and user metadata should come from session claims or server DB fetch on every dashboard render.
-

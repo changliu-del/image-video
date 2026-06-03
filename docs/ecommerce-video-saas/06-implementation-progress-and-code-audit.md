@@ -13,7 +13,7 @@
 | 模块 | 当前状态 | 进度判断 |
 |---|---|---|
 | 官网/营销页 | 多语言首页、模板页、价格页已有 | 可继续打磨转化文案和真实案例 |
-| 登录和 dashboard | SaaS starter 登录、dashboard shell、多语言导航已有 | 可用，但 header 用户信息和 credits 仍需接真实数据 |
+| 登录和 dashboard | SaaS starter 登录、dashboard shell、多语言导航、真实余额展示、订阅/算力工作台已有 | 可用，后续重点是移动端 smoke 和设置页细节 |
 | 创作工作台 | 图生视频、商品图、智能试衣三个入口已有 | 主流程基本成型，API schema 已补齐当前 payload 兼容 |
 | 上传/R2 | presign、浏览器直传、complete 落库已有 | 可用，建议 complete 阶段增加对象存在性校验 |
 | 生成任务 | 当前主线是万相 submit/query + DB 轮询 | 可跑通 provider 轮询型任务，但并发和任务原子性需收敛 |
@@ -27,7 +27,7 @@
 
 ### 2.1 页面和用户流
 
-- 营销入口：`app/[locale]/page.tsx`、`components/marketing/*`、`components/landing/*`。
+- 营销入口：`app/[locale]/page.tsx`、`components/marketing/*`。
 - 登录入口：`app/(login)/sign-in/page.tsx`、`app/(login)/sign-up/page.tsx`、`app/(login)/actions.ts`。
 - Dashboard shell：`app/(dashboard)/layout.tsx`、`app/(dashboard)/app-shell.tsx`、`app/(dashboard)/dashboard-header.tsx`。
 - 创作入口：
@@ -40,7 +40,7 @@
 
 - 资产上传：`app/api/assets/presign/route.ts`、`app/api/assets/complete/route.ts`、`lib/storage/r2.ts`。
 - 生成创建和查询：`app/api/generations/route.ts`、`app/api/generations/[id]/status/route.ts`、`lib/generations/jobs.ts`。
-- 兼容旧 job 查询：`app/api/jobs/[id]/route.ts`，retry 已显式返回不支持。
+- 兼容旧 job 查询：`app/api/jobs/[id]/route.ts` 仍作为三个工作台的状态查询 fallback。
 - 模板和模型素材：`app/api/templates/route.ts`、`app/api/model-assets/route.ts`、`lib/templates/query.ts`、`lib/model-assets/catalog.ts`。
 - 支付：`app/api/stripe/checkout/route.ts`、`app/api/stripe/webhook/route.ts`、`lib/payments/stripe.ts`、`lib/payments/mock.ts`。
 
@@ -73,9 +73,9 @@
 - 若主线切到万相 submit/query：移除或归档旧 runner，文档改成万相轮询链路。
 - 若仍要 Trigger/fal/FFmpeg：补 migration 和 API，让 schema、runner、前端状态完全一致。
 
-### P1: Dashboard header 仍有演示数据
+### P1: 前端渲染架构需要持续执行默认约束
 
-`app/(dashboard)/dashboard-header.tsx` 中 credits 显示为硬编码 `510`，`app/(dashboard)/layout.tsx` 传给 header 的 user 也只有 id。生产前应从 `getUser()` 或 session 扩展中传入真实 `creditBalance/email/name/role/isAdmin`。
+账单、算力和 dashboard shell 已收敛到“先渲染本地 UI，再异步补齐账户数据”的工作台模式。后续新增 dashboard 页面时应继续遵守 `project-kb/code-kb/image-video/06-frontend-rendering-architecture.md`，避免把主 UI 卡在后端调用、丢失 locale、或硬编码价格/算力值。
 
 ### P1: Workbench 客户端工具重复
 
@@ -112,12 +112,22 @@ pnpm test tests/generations-validation.test.ts
 
 结果：1 个测试文件通过，19 条测试通过。
 
+### 4.1 前端渲染审查补充
+
+已完成一次前端横向审查，并沉淀为 `project-kb/code-kb/image-video/06-frontend-rendering-architecture.md`：
+
+- 根布局移除全局 `getUser()` SWR fallback，避免 marketing 页触发账户查询。
+- `/dashboard` 移除冗余 `getUser()` 和 `force-dynamic`，由 dashboard layout 统一鉴权。
+- dashboard redirect/link、登录/注册 fallback、checkout handoff、sign-out、job detail 入口统一保留 locale。
+- 创作台按钮算力显示改为读取 `lib/generations/credit-costs.ts`，与后端 reserve/capture 成本一致。
+- `image-video-studio` skill 增加前端默认架构入口，后续前端开发应先加载该 KB。
+- 旧前端实现已清理：`components/create/create-workbench.tsx`、`components/video-generation/*`、`components/landing/*`、旧 `/jobs/[id]` 页面已删除；`/api/jobs/[id]` 仍保留为工作台状态查询兼容回退。
+
 ## 5. 下一步优先级
 
 1. 收敛生成任务架构，优先处理 provider submit 和 DB reserve 的原子性。
 2. 决定 Trigger/fal/FFmpeg runner 是否继续作为主线，并同步 schema/migration/docs。
-3. Dashboard header 接真实用户信息和 credit balance。
-4. 抽取 workbench 客户端共享工具，减少重复请求和错误处理逻辑。
+3. 抽取 workbench 客户端共享工具，减少重复请求和错误处理逻辑。
+4. 为 workbench 的模板/素材库加载增加局部 retry/error UI。
 5. 为 `/api/assets/*`、`/api/generations/*`、Stripe webhook 增加 route 级测试。
 6. 完成一次带真实 env 的 `pnpm typecheck`、`pnpm build`、上传生成、支付回调 smoke。
-

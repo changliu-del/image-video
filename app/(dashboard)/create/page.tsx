@@ -1,4 +1,5 @@
 import { redirect } from 'next/navigation';
+import { firstDashboardParam, withDashboardLocale } from '@/lib/dashboard/locale-url';
 
 type CreatePageProps = {
   searchParams?: Promise<{
@@ -8,8 +9,5 @@ type CreatePageProps = {
 
 export default async function CreatePage({ searchParams }: CreatePageProps) {
   const params = await searchParams;
-  const locale = Array.isArray(params?.locale) ? params?.locale[0] : params?.locale;
-  const suffix = locale ? `?locale=${encodeURIComponent(locale)}` : '';
-
-  redirect(`/create/video${suffix}`);
+  redirect(withDashboardLocale('/create/video', firstDashboardParam(params?.locale)));
 }

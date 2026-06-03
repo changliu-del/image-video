@@ -13,7 +13,7 @@ import {
 } from '@/lib/payments/mock';
 import { db } from '@/lib/db/drizzle';
 import { type User, users } from '@/lib/db/schema';
-import { normalizeDashboardLocale } from '@/lib/dashboard/content';
+import { withDashboardLocale } from '@/lib/dashboard/locale-url';
 import {
   getUserByStripeCustomerId,
   getUser,
@@ -34,15 +34,6 @@ type CreditsResolution = {
   credits: number;
   source: string;
 };
-
-function withDashboardLocaleParam(path: string, locale?: string | null) {
-  const [pathname, query = ''] = path.split('?');
-  const params = new URLSearchParams(query);
-  params.set('locale', normalizeDashboardLocale(locale));
-  const nextQuery = params.toString();
-
-  return nextQuery ? `${pathname}?${nextQuery}` : pathname;
-}
 
 const CREDIT_PACKAGES_BY_AMOUNT_CENTS = new Map<number, number>(
   CREDIT_PACKAGES.map((item) => [
@@ -270,7 +261,7 @@ export async function createCheckoutSession({
 
   const price = await stripe.prices.retrieve(priceId);
   const isSubscription = Boolean(price.recurring);
-  const cancelPath = withDashboardLocaleParam(
+  const cancelPath = withDashboardLocale(
     isSubscription ? '/dashboard/billing' : '/dashboard/credits',
     locale
   );
@@ -385,7 +376,7 @@ async function createMockCheckoutSession({
     });
 
     redirect(
-      withDashboardLocaleParam(
+      withDashboardLocale(
         `/dashboard/billing?interval=${subscriptionPlan.interval}&checkout=mock_subscription_success`,
         locale
       )
@@ -430,7 +421,7 @@ async function createMockCheckoutSession({
     }
   });
 
-  redirect(withDashboardLocaleParam('/dashboard/credits?checkout=mock_success', locale));
+  redirect(withDashboardLocale('/dashboard/credits?checkout=mock_success', locale));
 }
 
 export async function cancelMockSubscription(user: User) {
@@ -452,12 +443,12 @@ export async function createCustomerPortalSession(
 ) {
   if (isPaymentMockEnabled()) {
     return {
-      url: withDashboardLocaleParam('/dashboard/billing?billing=mock', options.locale),
+      url: withDashboardLocale('/dashboard/billing?billing=mock', options.locale),
     };
   }
 
   if (!user.stripeCustomerId || !user.stripeProductId) {
-    redirect(withDashboardLocaleParam('/dashboard/billing', options.locale));
+    redirect(withDashboardLocale('/dashboard/billing', options.locale));
   }
 
   let configuration: Stripe.BillingPortal.Configuration;
@@ -518,7 +509,7 @@ export async function createCustomerPortalSession(
 
   return stripe.billingPortal.sessions.create({
     customer: user.stripeCustomerId,
-    return_url: `${process.env.BASE_URL}${withDashboardLocaleParam('/dashboard/billing', options.locale)}`,
+    return_url: `${process.env.BASE_URL}${withDashboardLocale('/dashboard/billing', options.locale)}`,
     configuration: configuration.id
   });
 }

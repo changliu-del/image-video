@@ -8,8 +8,11 @@ Updated: 2026-06-03
 - `app/(dashboard)/dashboard-header.tsx` handles language menu, user menu, pricing link, and displayed credits.
 - `app/(dashboard)/app-shell.tsx` provides sidebar navigation.
 - `lib/dashboard/content.ts` provides pt/en/zh dashboard strings.
+- `lib/dashboard/locale-url.ts` is the shared server/client URL helper for preserving dashboard locale in redirects and links.
 
-Known issue: header credits currently display hardcoded `510`; this should be wired to the real user credit balance.
+Dashboard header credits are wired to the authenticated user balance from `app/(dashboard)/layout.tsx`.
+
+For the default rendering contract, route/data ownership rules, and frontend review checklist, load [06-frontend-rendering-architecture.md](06-frontend-rendering-architecture.md).
 
 ## Workbenches
 
@@ -23,8 +26,7 @@ Each workbench handles upload, payload construction, generation submission, poll
 
 ## Frontend Optimization Candidates
 
-- Extract repeated `readResponseError`, `postJson`, `uploadAsset`, `fetchJobStatus`, image validation, and result URL selection.
-- Replace hardcoded credit display/cost labels with API-backed values.
+- Extract repeated `readResponseError`, `postJson`, `uploadAsset`, `fetchJobStatus`, image validation, item normalization, and result URL selection from the three active workbenches.
+- Keep visible pricing, credit packages, and generation cost labels backed by shared catalog/cost modules.
 - Browser-test mobile and desktop routes after visual changes.
 - Keep operational/dashboard UI restrained and task-first.
-

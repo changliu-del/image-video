@@ -1,5 +1,13 @@
 import { redirect } from 'next/navigation';
+import { firstDashboardParam, withDashboardLocale } from '@/lib/dashboard/locale-url';
 
-export default function PricingPage() {
-  redirect('/dashboard/billing');
+type PricingPageProps = {
+  searchParams?: Promise<{
+    locale?: string | string[];
+  }>;
+};
+
+export default async function PricingPage({ searchParams }: PricingPageProps) {
+  const params = await searchParams;
+  redirect(withDashboardLocale('/dashboard/billing', firstDashboardParam(params?.locale)));
 }

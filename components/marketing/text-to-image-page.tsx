@@ -9,6 +9,7 @@ import {
 } from 'lucide-react';
 import {
   getMarketingContent,
+  getLocalizedHref,
   type Locale,
 } from '@/lib/marketing/content';
 
@@ -68,8 +69,10 @@ function ExampleCard({
 
 function TextImageHero({
   content,
+  locale,
 }: {
   content: TextToImageContent;
+  locale: Locale;
 }) {
   return (
     <section className="relative overflow-hidden border-b border-white/10 bg-gray-950">
@@ -125,7 +128,7 @@ function TextImageHero({
               ))}
             </div>
             <Link
-              href="/sign-in"
+              href={getLocalizedHref(locale, '/login')}
               className="inline-flex h-12 items-center justify-center rounded-lg bg-white px-8 text-sm font-semibold text-gray-950 transition hover:bg-white/90"
             >
               {content.hero.generate}
@@ -231,7 +234,7 @@ export function MarketingTextToImagePage({ locale }: { locale: Locale }) {
 
   return (
     <main className="bg-gray-950">
-      <TextImageHero content={content} />
+      <TextImageHero content={content} locale={locale} />
       <Examples content={content.examples} />
       <System content={content.system} />
     </main>

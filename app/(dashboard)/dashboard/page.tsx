@@ -1,6 +1,5 @@
 import type { ReactNode } from 'react';
 import Link from 'next/link';
-import { redirect } from 'next/navigation';
 import {
   ArrowRight,
   ImageIcon,
@@ -11,14 +10,11 @@ import {
   Video,
 } from 'lucide-react';
 
-import { getUser } from '@/lib/db/queries';
 import {
   normalizeDashboardLocale,
   type DashboardLocale,
 } from '@/lib/dashboard/content';
 import { cn } from '@/lib/utils';
-
-export const dynamic = 'force-dynamic';
 
 type DashboardPageProps = {
   searchParams?: Promise<{
@@ -560,11 +556,6 @@ export default async function DashboardPage({ searchParams }: DashboardPageProps
     Array.isArray(params?.locale) ? params?.locale[0] : params?.locale
   );
   const copy = dashboardCopy[locale];
-  const user = await getUser();
-
-  if (!user) {
-    redirect('/sign-in');
-  }
 
   return (
     <main className="min-h-[calc(100dvh-58px)] bg-[#f5f7fb] text-gray-950">

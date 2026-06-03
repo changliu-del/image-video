@@ -15,6 +15,7 @@ import { cookies } from 'next/headers';
 import { getSignupFreeCreditsAmount } from '@/lib/generations/free-credits';
 import { createCheckoutSession } from '@/lib/payments/stripe';
 import { getUser } from '@/lib/db/queries';
+import { withDashboardLocale } from '@/lib/dashboard/locale-url';
 import {
   validatedAction,
   validatedActionWithUser
@@ -31,6 +32,7 @@ const signInSchema = z.object({
 
 export const signIn = validatedAction(signInSchema, async (data, formData) => {
   const { email, password } = data;
+  const locale = formData.get('locale')?.toString();
 
   const foundUsers = await db
     .select()
@@ -66,14 +68,14 @@ export const signIn = validatedAction(signInSchema, async (data, formData) => {
   const redirectTo = formData.get('redirect') as string | null;
   if (redirectTo === 'checkout') {
     const priceId = formData.get('priceId') as string;
-    return createCheckoutSession({ priceId });
+    return createCheckoutSession({ priceId, locale });
   }
 
   if (isSafeLocalRedirect(redirectTo)) {
     redirect(redirectTo!);
   }
 
-  redirect('/dashboard');
+  redirect(withDashboardLocale('/dashboard', locale));
 });
 
 const signUpSchema = z.object({
@@ -83,6 +85,7 @@ const signUpSchema = z.object({
 
 export const signUp = validatedAction(signUpSchema, async (data, formData) => {
   const { email, password } = data;
+  const locale = formData.get('locale')?.toString();
 
   const existingUser = await db
     .select()
@@ -152,14 +155,14 @@ export const signUp = validatedAction(signUpSchema, async (data, formData) => {
   const redirectTo = formData.get('redirect') as string | null;
   if (redirectTo === 'checkout') {
     const priceId = formData.get('priceId') as string;
-    return createCheckoutSession({ priceId });
+    return createCheckoutSession({ priceId, locale });
   }
 
   if (isSafeLocalRedirect(redirectTo)) {
     redirect(redirectTo!);
   }
 
-  redirect('/dashboard');
+  redirect(withDashboardLocale('/dashboard', locale));
 });
 
 export async function signOut() {

@@ -61,7 +61,7 @@ function UserMenu({
 
   async function handleSignOut() {
     await signOut();
-    router.push('/');
+    router.push(`/${locale}`);
   }
 
   if (!user) {

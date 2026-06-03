@@ -38,6 +38,7 @@ import {
   commonWorkbenchCopy,
 } from '@/components/create/workbench-copy';
 import { useDashboardLocale } from '@/lib/dashboard/use-dashboard-locale';
+import { getApparelImageCreditCost } from '@/lib/generations/credit-costs';
 import { cn } from '@/lib/utils';
 
 type AspectRatio = '9:16' | '1:1' | '16:9';
@@ -607,7 +608,9 @@ export function ApparelWorkbench() {
             >
               {isSubmitting ? <Loader2 className="size-4 animate-spin" /> : <Palette className="size-4" />}
               {submitLabel ?? commonCopy.generateNow}
-              <span className="font-semibold opacity-90">{commonCopy.credits(8)}</span>
+              <span className="font-semibold opacity-90">
+                {commonCopy.credits(getApparelImageCreditCost())}
+              </span>
             </Button>
           </div>
         }

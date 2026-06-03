@@ -1,6 +1,6 @@
 ---
 name: image-video-studio
-description: Use for this personal image-video SaaS project when Codex is asked to understand project background, plan substantial changes, coordinate frontend/backend/QA subagents, update the project KB, or implement changes across Next.js routes, workbenches, API routes, generation providers, credits, payments, templates, storage, or deployment docs.
+description: Use for this personal image-video SaaS project when Codex is asked to understand project background, plan substantial changes, coordinate frontend/backend/QA subagents, update the project KB, or implement changes across Next.js routes, frontend rendering/workbench architecture, API routes, generation providers, credits, payments, templates, storage, or deployment docs.
 ---
 
 # Image Video Studio
@@ -15,6 +15,7 @@ This is the project-specific working mode for `/Users/changliu/workspace/src/git
 - Prefer the project's existing Next.js, TypeScript, Drizzle, Vitest, R2, Stripe, Wanxiang, and template-management patterns.
 - Use CodeGraph first for structural code questions, then read exact files only when needed.
 - Preserve user changes. The worktree may already be dirty.
+- For frontend work, default to the project frontend rendering contract: persistent dashboard shell, immediate local UI render, focused async data fetches with loading/error/retry, locale-preserving links/actions, and shared catalog/cost modules instead of hardcoded business values.
 - After code changes, run the narrowest useful validation first, then expand to `pnpm typecheck`, `pnpm test`, and `pnpm build` when the change spans shared behavior.
 - When project understanding changes, update `project-kb/` or `docs/ecommerce-video-saas/` so the next session starts smarter.
 
@@ -27,7 +28,21 @@ Start with `project-kb/README.md`, then load only the section that matches the t
 - Code modules, API contracts, risky areas: `project-kb/code-kb/image-video/README.md`
 - Feature plans and multi-agent work plans: `project-kb/td-kb/image-video/README.md`
 
+For frontend-visible changes, also load `project-kb/code-kb/image-video/06-frontend-rendering-architecture.md` before editing routes or components.
+
 Also consult `docs/ecommerce-video-saas/06-implementation-progress-and-code-audit.md` for the latest implementation audit and known risks.
+
+## Frontend Development Defaults
+
+Use this checklist before and after frontend edits:
+
+- Avoid route-level backend calls for pages whose main UI can render from local copy/catalogs; let the dashboard layout handle authentication.
+- Split thin server wrappers from client surfaces when a page has URL params plus async account/API data.
+- Keep static controls, plans, workbench forms, and marketing cards usable while optional data loads.
+- Use `lib/dashboard/locale-url.ts`, `useDashboardLocale()`, and hidden `locale` fields so links, redirects, and server actions preserve the workspace language.
+- Read prices, subscription metadata, credit packages, and generation costs from shared modules such as `lib/payments/catalog.ts` and `lib/generations/credit-costs.ts`.
+- Add scoped loading, error, empty, and retry states for every async section.
+- Browser-smoke the changed route in the relevant locale after implementation.
 
 ## Multi-Agent Mode
 
