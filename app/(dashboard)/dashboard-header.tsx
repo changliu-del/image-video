@@ -12,7 +12,7 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 import { signOut } from '@/app/(login)/actions';
-import { Check, ChevronDown, ExternalLink, Gem, Globe2, LogOut, Settings } from 'lucide-react';
+import { Check, ChevronDown, ExternalLink, Gem, Globe2, Home, LogOut, Settings } from 'lucide-react';
 import { identifyClientUser } from '@/lib/analytics/posthog';
 import {
   dashboardLocales,
@@ -203,6 +203,7 @@ export function DashboardHeader({
   const isAdminPage = pathname === '/admin' || pathname.startsWith('/admin/');
   const locale = useDashboardLocale();
   const content = getDashboardContent(locale);
+  const homeHref = isAdminPage ? withDashboardLocale('/dashboard', locale) : `/${locale}`;
 
   return (
     <header
@@ -222,13 +223,16 @@ export function DashboardHeader({
         )}
       >
         <Link
-          href={withDashboardLocale('/dashboard', locale)}
+          href={homeHref}
           className={cn(
-            'text-sm font-bold',
-            isAdminPage ? 'text-gray-700' : 'text-gray-800'
+            'inline-flex h-9 items-center gap-2 rounded-full px-2 text-sm font-bold transition',
+            isAdminPage
+              ? 'text-gray-700 hover:bg-gray-100'
+              : 'text-gray-800 hover:bg-indigo-50 hover:text-indigo-600'
           )}
         >
-          {isAdminPage ? 'Admin' : content.header.workspace}
+          {!isAdminPage ? <Home className="size-4" /> : null}
+          <span>{isAdminPage ? 'Admin' : content.header.marketingHome}</span>
         </Link>
         {!isAdminPage ? (
           <div className="ml-auto flex items-center gap-2">

@@ -730,8 +730,8 @@ const pt: MarketingContent = {
   navItems: [
     { label: 'Início', href: '' },
     { label: 'Templates', href: '/templates' },
-    { label: 'Estúdio', href: '/dashboard', localized: false },
     { label: 'Preços', href: '/pricing' },
+    { label: 'Estúdio', href: '/dashboard', localized: false },
   ],
   footer: {
     description:
@@ -1200,8 +1200,8 @@ const en: MarketingContent = {
   navItems: [
     { label: 'Home', href: '' },
     { label: 'Templates', href: '/templates' },
-    { label: 'Workbench', href: '/dashboard', localized: false },
     { label: 'Pricing', href: '/pricing' },
+    { label: 'Workbench', href: '/dashboard', localized: false },
   ],
   footer: {
     ...pt.footer,
@@ -1550,8 +1550,8 @@ const zh: MarketingContent = {
   navItems: [
     { label: '首页', href: '' },
     { label: '模板', href: '/templates' },
-    { label: '工作台', href: '/dashboard', localized: false },
     { label: '价格', href: '/pricing' },
+    { label: '工作台', href: '/dashboard', localized: false },
   ],
   footer: {
     ...pt.footer,

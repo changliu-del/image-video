@@ -11,6 +11,14 @@ Updated: 2026-06-03
 - [04-config-and-operations.md](04-config-and-operations.md)
 - [05-risky-change-areas.md](05-risky-change-areas.md)
 - [06-frontend-rendering-architecture.md](06-frontend-rendering-architecture.md)
+- [07-library-assets-and-admin.md](07-library-assets-and-admin.md)
+
+## Fast Topic Routing
+
+- Material/library asset upload, publish/archive, workbench inspiration, and Admin UX: [07-library-assets-and-admin.md](07-library-assets-and-admin.md)
+- Frontend rendering contract for dashboard/workbench routes: [06-frontend-rendering-architecture.md](06-frontend-rendering-architecture.md)
+- Generation API payloads, credit reservation, and provider jobs: [03-api-generation-and-credits.md](03-api-generation-and-credits.md)
+- Env, migrations, deployment, and operational caveats: [04-config-and-operations.md](04-config-and-operations.md)
 
 ## Validation Entry Points
 

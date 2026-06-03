@@ -37,6 +37,13 @@ import {
   bannerCopy,
   commonWorkbenchCopy,
 } from '@/components/create/workbench-copy';
+import {
+  getLibraryItemImage as getItemImage,
+  getLibraryItemLabel as getItemLabel,
+  libraryItemKey as itemKey,
+  normalizeLibraryItems as normalizeItems,
+  type WorkbenchLibraryItem as LibraryItem,
+} from '@/components/create/library-item-utils';
 import { useDashboardLocale } from '@/lib/dashboard/use-dashboard-locale';
 import { getApparelImageCreditCost } from '@/lib/generations/credit-costs';
 import { cn } from '@/lib/utils';
@@ -46,19 +53,6 @@ type CreationMode = 'quick' | 'advanced';
 type ApparelModelType = 'fashion_model' | 'no_model' | 'partial_body' | 'lifestyle_talent';
 type ApparelScene = 'minimal_studio' | 'street_editorial' | 'luxury_boutique' | 'soft_daylight';
 type ApparelStyle = 'clean_commercial' | 'high_fashion' | 'korean_catalog' | 'premium_social_ad';
-
-type LibraryItem = {
-  id?: string | number;
-  name?: string;
-  title?: string;
-  slug?: string;
-  imageUrl?: string;
-  thumbnailUrl?: string;
-  previewUrl?: string;
-  publicUrl?: string;
-  asset?: string;
-  type?: string;
-};
 
 type PresignResponse = {
   assetId: string;
@@ -106,31 +100,6 @@ const styleValues: ApparelStyle[] = [
   'korean_catalog',
   'premium_social_ad',
 ];
-
-function getItemImage(item: LibraryItem | null) {
-  if (!item) return '';
-  return item.thumbnailUrl ?? item.previewUrl ?? item.imageUrl ?? item.publicUrl ?? item.asset ?? '';
-}
-
-function getItemLabel(item: LibraryItem) {
-  return item.title ?? item.name ?? item.slug ?? String(item.id ?? 'Asset');
-}
-
-function normalizeItems(value: unknown): LibraryItem[] {
-  if (Array.isArray(value)) return value as LibraryItem[];
-  if (!value || typeof value !== 'object') return [];
-
-  const record = value as Record<string, unknown>;
-  for (const key of ['items', 'templates', 'assets', 'data', 'results', 'list']) {
-    if (Array.isArray(record[key])) return record[key] as LibraryItem[];
-  }
-
-  return [];
-}
-
-function itemKey(item: LibraryItem) {
-  return String(item.id ?? item.slug ?? getItemLabel(item));
-}
 
 async function readResponseError(response: Response, fallback: string) {
   try {
@@ -434,15 +403,25 @@ export function ApparelWorkbench() {
           pageSize: '12',
           type: 'image',
         });
-        const templateResponse = await fetch(`/api/templates?${params.toString()}`);
-        const templateBody = templateResponse.ok
-          ? await templateResponse.json()
-          : { list: [] };
+        const assetParams = new URLSearchParams({
+          locale,
+          pageSize: '12',
+          useCase: 'apparel_image',
+        });
+        const [templateResponse, assetResponse] = await Promise.all([
+          fetch(`/api/templates?${params.toString()}`),
+          fetch(`/api/library-assets?${assetParams.toString()}`),
+        ]);
+        const [templateBody, assetBody] = await Promise.all([
+          templateResponse.ok ? templateResponse.json() : Promise.resolve({ list: [] }),
+          assetResponse.ok ? assetResponse.json() : Promise.resolve({ items: [] }),
+        ]);
 
         if (!cancelled) {
           const nextTemplates = normalizeItems(templateBody);
+          const nextAssets = normalizeItems(assetBody);
           setTemplates(nextTemplates);
-          setAssets([]);
+          setAssets(nextAssets);
           setSelectedTemplate((current) => current ?? nextTemplates[0] ?? null);
         }
       } finally {
@@ -581,7 +560,18 @@ export function ApparelWorkbench() {
     });
   }
 
-  const baseLibraryImages = templates.map(getItemImage).filter(Boolean);
+  function applyLibraryAsset(asset: LibraryItem | null | undefined) {
+    if (!asset) return;
+
+    setCreationMode('advanced');
+    setPrompt((current) => {
+      const label = getItemLabel(asset);
+      const trimmed = current.trim();
+      return trimmed.includes(label) ? trimmed : `${trimmed} ${label}`.trim();
+    });
+  }
+
+  const baseLibraryImages = [...templates, ...assets].map(getItemImage).filter(Boolean);
   const libraryStart = baseLibraryImages.length ? exampleOffset % baseLibraryImages.length : 0;
   const libraryImages = [
     ...baseLibraryImages.slice(libraryStart),
@@ -731,7 +721,7 @@ export function ApparelWorkbench() {
 
         <PanelSection
           title={copy.library}
-          hint={isLoadingLibrary ? commonCopy.loadingLibrary : commonCopy.templateCount(templates.length)}
+          hint={isLoadingLibrary ? commonCopy.loadingLibrary : commonCopy.materialCount(templates.length + assets.length)}
         >
           <div className="space-y-4">
             <div>
@@ -768,6 +758,40 @@ export function ApparelWorkbench() {
                 )}
               </div>
             </div>
+            {assets.length > 0 ? (
+              <div>
+                <h3 className="mb-2 text-xs font-bold text-gray-400">
+                  {copy.libraryMaterials}
+                </h3>
+                <div className="grid grid-cols-2 gap-2">
+                  {assets.slice(0, 4).map((asset) => {
+                    const image = getItemImage(asset);
+
+                    return (
+                      <button
+                        key={itemKey(asset)}
+                        type="button"
+                        onClick={() => applyLibraryAsset(asset)}
+                        className="rounded-lg border border-gray-200 bg-white p-2 text-left text-gray-600 transition hover:border-indigo-200 hover:text-indigo-600"
+                      >
+                        <div className="aspect-square overflow-hidden rounded-md bg-gray-100">
+                          {image ? (
+                            <img
+                              src={image}
+                              alt=""
+                              className="size-full object-cover"
+                            />
+                          ) : null}
+                        </div>
+                        <p className="mt-2 truncate text-xs font-bold">
+                          {getItemLabel(asset)}
+                        </p>
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+            ) : null}
           </div>
         </PanelSection>
 

@@ -19,7 +19,7 @@
 | 生成任务 | 当前主线是万相 submit/query + DB 轮询 | 可跑通 provider 轮询型任务，但并发和任务原子性需收敛 |
 | Trigger/fal/FFmpeg runner | 旧设计代码仍在仓库 | 与当前 DB schema 不完全一致，需要决定保留、迁移或移除 |
 | 支付/积分 | Stripe webhook、mock payments、credit ledger、reserve/capture/refund 已有 | 主体完整，仍需真实 price metadata 和生产 webhook 联调 |
-| 模板/素材 | 模板表、标签、管理 API、爬虫 runbook、模型素材同步已有 | 运营后台雏形完成，素材库还需真实数据和审核流程 |
+| 模板/素材 | 模板表、标签、素材库表、管理 API、爬虫 runbook、模型素材同步已有 | 素材库管理闭环第一版完成，下一步重点是真实素材填充、批量运营和质量闭环 |
 | 测试 | Vitest 覆盖 validation、limits、credits、payments、provider input | 有基础单测，缺 API route 和端到端 smoke |
 | 部署文档 | 01-05 文档覆盖架构、成本、部署、爬虫 | 缺少当前实现进度和风险清单，本文补齐 |
 
@@ -35,13 +35,14 @@
   - `/create/apparel` -> `components/create/apparel-workbench.tsx`
   - `/create/try-on` -> `components/create/try-on-workbench.tsx`
 - Admin 入口：`app/(dashboard)/admin/page.tsx`、`components/admin/*`、`lib/admin/services/*`。
+- 素材库管理：`components/admin/library-assets-panel.tsx`、`app/api/admin/library-assets/*`。
 
 ### 2.2 API 和服务层
 
 - 资产上传：`app/api/assets/presign/route.ts`、`app/api/assets/complete/route.ts`、`lib/storage/r2.ts`。
 - 生成创建和查询：`app/api/generations/route.ts`、`app/api/generations/[id]/status/route.ts`、`lib/generations/jobs.ts`。
 - 兼容旧 job 查询：`app/api/jobs/[id]/route.ts` 仍作为三个工作台的状态查询 fallback。
-- 模板和模型素材：`app/api/templates/route.ts`、`app/api/model-assets/route.ts`、`lib/templates/query.ts`、`lib/model-assets/catalog.ts`。
+- 模板、素材库和模型素材：`app/api/templates/route.ts`、`app/api/library-assets/route.ts`、`app/api/model-assets/route.ts`、`lib/templates/query.ts`、`lib/library-assets/query.ts`、`lib/model-assets/catalog.ts`。
 - 支付：`app/api/stripe/checkout/route.ts`、`app/api/stripe/webhook/route.ts`、`lib/payments/stripe.ts`、`lib/payments/mock.ts`。
 
 ### 2.3 数据模型
@@ -51,6 +52,7 @@
 - 用户、角色、管理员权限和 credit balance。
 - 用户资产 `assets`。
 - 模板、标签、模板资产、审计日志。
+- 一等素材库 `library_assets`，引用 `assets` 并保存 locale、kind、status、tags、use cases、quality score、sort weight、来源和授权备注。
 - 模板爬虫 ingestion run 和 source record。
 - 万相模型素材 catalog。
 - 生成任务 `generation_jobs`。
@@ -88,7 +90,7 @@
 ### P2: 生产联调和工程化缺口
 
 - Stripe price metadata、webhook secret、mock/production 切换需要一次真实联调。
-- `ADMIN_API_URL/ADMIN_API_TOKEN` 未配置时素材库代理返回空列表，适合作降级，但需要在后台页面给 ops 明确提示。
+- 旧 `ADMIN_API_URL/ADMIN_API_TOKEN` 素材库代理已由本地 `library_assets` 公开 API 替代；若还需要外部素材源，应作为 ingestion/sync 能力接入本地素材库，而不是直接让工作台依赖外部代理。
 - Next 15 canary、PPR、clientSegmentCache 已启用，上线前需要固定一次完整 build 验证。
 - API route 的集成测试和创作流端到端测试还缺。
 
@@ -123,11 +125,31 @@ pnpm test tests/generations-validation.test.ts
 - `image-video-studio` skill 增加前端默认架构入口，后续前端开发应先加载该 KB。
 - 旧前端实现已清理：`components/create/create-workbench.tsx`、`components/video-generation/*`、`components/landing/*`、旧 `/jobs/[id]` 页面已删除；`/api/jobs/[id]` 仍保留为工作台状态查询兼容回退。
 
+### 4.2 素材库管理第一版
+
+已新增本地一等素材库能力：
+
+- `lib/db/schema.ts` 和 `lib/db/migrations/0009_library_assets.sql`
+  - 新增 `library_assets`，引用底层 `assets`，支持 `product_image/model_image/garment_image/scene_image/example_image/example_video`。
+  - 支持 `draft/published/archived`、tags、use cases、quality score、sort weight、usage count、source、license note。
+- `lib/admin/services/library-assets.ts`
+  - 支持素材库列表、R2 presign 上传、complete 入库、编辑、发布、归档、删除。
+  - ops 可录入/编辑草稿，发布/归档/删除仍需 admin。
+- `components/admin/library-assets-panel.tsx`
+  - 新增 Admin 一级 `Library Assets` 面板，支持视觉预览、搜索、上传创建、元数据编辑和发布操作。
+- `app/api/library-assets/route.ts`、`lib/library-assets/query.ts`
+  - 替换旧外部素材代理，公开返回已发布且上传完成的本地素材。
+- 三个工作台已开始消费素材库：
+  - 图生视频加载 `useCase=image_to_video` 素材。
+  - 商品图加载 `useCase=apparel_image` 素材作为灵感/示例，模板 ID 仍只来自模板记录。
+  - 试衣加载 `useCase=try_on` 素材，并与模板、官方 model catalog 共同构成素材区。
+
 ## 5. 下一步优先级
 
 1. 收敛生成任务架构，优先处理 provider submit 和 DB reserve 的原子性。
 2. 决定 Trigger/fal/FFmpeg runner 是否继续作为主线，并同步 schema/migration/docs。
-3. 抽取 workbench 客户端共享工具，减少重复请求和错误处理逻辑。
-4. 为 workbench 的模板/素材库加载增加局部 retry/error UI。
-5. 为 `/api/assets/*`、`/api/generations/*`、Stripe webhook 增加 route 级测试。
-6. 完成一次带真实 env 的 `pnpm typecheck`、`pnpm build`、上传生成、支付回调 smoke。
+3. 填充 50-100 条高质量素材库记录，覆盖商品图、模特图、服装图、场景图、成片案例和短视频案例。
+4. 抽取 workbench 客户端共享工具，减少重复请求和错误处理逻辑。
+5. 为 workbench 的模板/素材库加载增加局部 retry/error UI，并加入更完整的素材选择器筛选。
+6. 为 `/api/assets/*`、`/api/library-assets/*`、`/api/generations/*`、Stripe webhook 增加 route 级测试。
+7. 完成一次带真实 env 的 `pnpm typecheck`、`pnpm build`、上传生成、支付回调 smoke。

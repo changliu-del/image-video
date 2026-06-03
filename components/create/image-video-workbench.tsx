@@ -34,25 +34,18 @@ import {
   commonWorkbenchCopy,
   imageVideoWorkbenchCopy,
 } from '@/components/create/workbench-copy';
+import {
+  getLibraryItemImage as getItemImage,
+  getLibraryItemLabel as getItemLabel,
+  normalizeLibraryItems as normalizeItems,
+  type WorkbenchLibraryItem as LibraryItem,
+} from '@/components/create/library-item-utils';
 import { useDashboardLocale } from '@/lib/dashboard/use-dashboard-locale';
 import { getCreditCostForDuration } from '@/lib/generations/credit-costs';
 import { cn } from '@/lib/utils';
 
 type AspectRatio = '9:16' | '1:1' | '16:9';
 type DurationSeconds = 5 | 8 | 10;
-
-type LibraryItem = {
-  id?: string | number;
-  name?: string;
-  title?: string;
-  slug?: string;
-  imageUrl?: string;
-  thumbnailUrl?: string;
-  previewUrl?: string;
-  publicUrl?: string;
-  asset?: string;
-  type?: string;
-};
 
 type PresignResponse = {
   assetId: string;
@@ -85,26 +78,6 @@ const MAX_IMAGE_BYTES = 10 * 1024 * 1024;
 const ACCEPTED_IMAGE_TYPES = ['image/png', 'image/jpeg', 'image/webp'];
 const aspectRatios: AspectRatio[] = ['9:16', '1:1', '16:9'];
 const durations: DurationSeconds[] = [5, 8, 10];
-
-function getItemImage(item: LibraryItem) {
-  return item.thumbnailUrl ?? item.previewUrl ?? item.imageUrl ?? item.publicUrl ?? item.asset ?? '';
-}
-
-function getItemLabel(item: LibraryItem) {
-  return item.title ?? item.name ?? item.slug ?? String(item.id ?? 'Asset');
-}
-
-function normalizeItems(value: unknown): LibraryItem[] {
-  if (Array.isArray(value)) return value as LibraryItem[];
-  if (!value || typeof value !== 'object') return [];
-
-  const record = value as Record<string, unknown>;
-  for (const key of ['items', 'templates', 'assets', 'data', 'results', 'list']) {
-    if (Array.isArray(record[key])) return record[key] as LibraryItem[];
-  }
-
-  return [];
-}
 
 function formatFileSize(sizeBytes: number) {
   return `${(sizeBytes / (1024 * 1024)).toFixed(1)} MB`;
@@ -308,16 +281,27 @@ export function ImageVideoWorkbench() {
           pageSize: '12',
           type: 'image_to_video',
         });
-        const templateResponse = await fetch(`/api/templates?${params.toString()}`);
-        const templateBody = templateResponse.ok
-          ? await templateResponse.json()
-          : { list: [] };
+        const assetParams = new URLSearchParams({
+          locale,
+          pageSize: '12',
+          useCase: 'image_to_video',
+        });
+        const [templateResponse, assetResponse] = await Promise.all([
+          fetch(`/api/templates?${params.toString()}`),
+          fetch(`/api/library-assets?${assetParams.toString()}`),
+        ]);
+
+        const [templateBody, assetBody] = await Promise.all([
+          templateResponse.ok ? templateResponse.json() : Promise.resolve({ list: [] }),
+          assetResponse.ok ? assetResponse.json() : Promise.resolve({ items: [] }),
+        ]);
 
         if (!cancelled) {
           const nextTemplates = normalizeItems(templateBody);
+          const nextAssets = normalizeItems(assetBody);
           setTemplates(nextTemplates);
-          setAssets([]);
-          setSelectedAsset((current) => current ?? nextTemplates[0] ?? null);
+          setAssets(nextAssets);
+          setSelectedAsset((current) => current ?? nextAssets[0] ?? nextTemplates[0] ?? null);
         }
       } finally {
         if (!cancelled) setIsLoadingLibrary(false);

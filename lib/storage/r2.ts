@@ -139,6 +139,13 @@ export function buildTemplateAssetStorageKey(
   return `templates/${templateId}/${assetId}.${getTemplateAssetExtension(mimeType)}`;
 }
 
+export function buildLibraryAssetStorageKey(
+  assetId: string,
+  mimeType: TemplateAssetMimeType
+) {
+  return `library-assets/${assetId}.${getTemplateAssetExtension(mimeType)}`;
+}
+
 export function storageKeyBelongsToUser(userId: number, storageKey: string) {
   return (
     storageKey.startsWith(`users/${userId}/uploads/`) &&
@@ -180,6 +187,27 @@ export function storageKeyMatchesTemplateAsset(
     Object.values(TEMPLATE_ASSET_MIME_EXTENSIONS)
   );
   const prefix = `templates/${templateId}/${assetId}.`;
+  const extension = storageKey.slice(prefix.length);
+
+  return storageKey.startsWith(prefix) && allowedExtensions.has(extension);
+}
+
+export function storageKeyMatchesLibraryAsset(
+  assetId: string,
+  storageKey: string
+) {
+  if (
+    !storageKey.startsWith('library-assets/') ||
+    storageKey.includes('..') ||
+    storageKey.includes('//')
+  ) {
+    return false;
+  }
+
+  const allowedExtensions = new Set(
+    Object.values(TEMPLATE_ASSET_MIME_EXTENSIONS)
+  );
+  const prefix = `library-assets/${assetId}.`;
   const extension = storageKey.slice(prefix.length);
 
   return storageKey.startsWith(prefix) && allowedExtensions.has(extension);

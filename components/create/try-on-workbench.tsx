@@ -36,6 +36,12 @@ import {
   commonWorkbenchCopy,
   tryOnWorkbenchCopy,
 } from '@/components/create/workbench-copy';
+import {
+  getLibraryItemImage as getItemImage,
+  getLibraryItemLabel as getItemLabel,
+  normalizeLibraryItems as normalizeItems,
+  type WorkbenchLibraryItem as LibraryItem,
+} from '@/components/create/library-item-utils';
 import { useDashboardLocale } from '@/lib/dashboard/use-dashboard-locale';
 import { getTryOnCreditCost } from '@/lib/generations/credit-costs';
 import { cn } from '@/lib/utils';
@@ -45,19 +51,6 @@ type ModelSource = 'library' | 'custom';
 type PosePreset = 'auto' | 'front' | 'editorial' | 'runway';
 type BackgroundPreset = 'studio' | 'street' | 'minimal' | 'boutique';
 type FitPreset = 'natural' | 'tailored' | 'relaxed';
-
-type LibraryItem = {
-  id?: string | number;
-  name?: string;
-  title?: string;
-  slug?: string;
-  imageUrl?: string;
-  thumbnailUrl?: string;
-  previewUrl?: string;
-  publicUrl?: string;
-  asset?: string;
-  type?: string;
-};
 
 type ModelCatalogItem = {
   id: string;
@@ -102,26 +95,6 @@ const modeValues: TryOnMode[] = ['single', 'multi'];
 const poseValues: PosePreset[] = ['auto', 'front', 'editorial', 'runway'];
 const backgroundValues: BackgroundPreset[] = ['studio', 'street', 'minimal', 'boutique'];
 const fitValues: FitPreset[] = ['natural', 'tailored', 'relaxed'];
-
-function getItemImage(item: LibraryItem) {
-  return item.thumbnailUrl ?? item.previewUrl ?? item.imageUrl ?? item.publicUrl ?? item.asset ?? '';
-}
-
-function getItemLabel(item: LibraryItem) {
-  return item.title ?? item.name ?? item.slug ?? String(item.id ?? 'Library item');
-}
-
-function normalizeItems(value: unknown): LibraryItem[] {
-  if (Array.isArray(value)) return value as LibraryItem[];
-  if (!value || typeof value !== 'object') return [];
-
-  const record = value as Record<string, unknown>;
-  for (const key of ['items', 'templates', 'assets', 'data', 'results', 'list']) {
-    if (Array.isArray(record[key])) return record[key] as LibraryItem[];
-  }
-
-  return [];
-}
 
 function normalizeModelItems(value: unknown): ModelCatalogItem[] {
   if (!value || typeof value !== 'object') return [];
@@ -493,23 +466,31 @@ export function TryOnWorkbench() {
           locale,
           limit: '24',
         });
-        const [templateResponse, modelResponse] = await Promise.all([
+        const assetParams = new URLSearchParams({
+          locale,
+          pageSize: '12',
+          useCase: 'try_on',
+        });
+        const [templateResponse, modelResponse, assetResponse] = await Promise.all([
           fetch(`/api/templates?${templateParams.toString()}`),
           fetch(`/api/model-assets?${modelParams.toString()}`),
+          fetch(`/api/library-assets?${assetParams.toString()}`),
         ]);
 
-        const [templateBody, modelBody] = await Promise.all([
+        const [templateBody, modelBody, assetBody] = await Promise.all([
           templateResponse.ok ? templateResponse.json() : Promise.resolve({ list: [] }),
           modelResponse.ok ? modelResponse.json() : Promise.resolve({ items: [] }),
+          assetResponse.ok ? assetResponse.json() : Promise.resolve({ items: [] }),
         ]);
 
         if (!cancelled) {
           const nextTemplates = normalizeItems(templateBody);
           const nextModelAssets = normalizeModelItems(modelBody);
+          const nextAssets = normalizeItems(assetBody);
           setTemplates(nextTemplates);
-          setAssets([]);
+          setAssets(nextAssets);
           setModelAssets(nextModelAssets);
-          setSelectedLibraryItem((current) => current ?? nextTemplates[0] ?? null);
+          setSelectedLibraryItem((current) => current ?? nextTemplates[0] ?? nextAssets[0] ?? null);
           setSelectedModelAsset((current) => current ?? nextModelAssets[0] ?? null);
           if (nextModelAssets.length === 0) {
             setModelSource('custom');
@@ -694,9 +675,13 @@ export function TryOnWorkbench() {
     if (modelAssets[0]) {
       selectLibraryModel(modelAssets[0]);
     }
-    applyLibraryTemplate(selectedLibraryItem ?? templates[0]);
+    applyLibraryTemplate(selectedLibraryItem ?? templates[0] ?? assets[0]);
   }
 
+  const libraryTiles = useMemo(
+    () => [...templates, ...assets],
+    [assets, templates]
+  );
   const baseLibraryImages = [...templates, ...assets].map(getItemImage).filter(Boolean);
   const libraryStart = baseLibraryImages.length ? exampleOffset % baseLibraryImages.length : 0;
   const libraryImages = [
@@ -950,15 +935,15 @@ export function TryOnWorkbench() {
 
         <PanelSection
           title={copy.library}
-          hint={isLoadingLibrary ? commonCopy.loadingLibrary : commonCopy.templateCount(templates.length)}
+          hint={isLoadingLibrary ? commonCopy.loadingLibrary : commonCopy.materialCount(libraryTiles.length)}
         >
           <div className="grid grid-cols-3 gap-2">
-            {templates.length === 0 ? (
+            {libraryTiles.length === 0 ? (
               <p className="col-span-3 rounded-lg border border-dashed border-gray-200 px-3 py-4 text-sm text-gray-400">
                 {copy.noTemplates}
               </p>
             ) : (
-              templates.slice(0, 6).map((template) => {
+              libraryTiles.slice(0, 6).map((template) => {
                 const image = getItemImage(template);
                 const active =
                   String(selectedLibraryItem?.id ?? selectedLibraryItem?.slug) ===
@@ -1036,7 +1021,7 @@ export function TryOnWorkbench() {
                   icon={Images}
                   label={commonCopy.chooseFromLibrary}
                   onClick={chooseFromLibrary}
-                  disabled={modelAssets.length === 0 && templates.length === 0}
+                  disabled={modelAssets.length === 0 && libraryTiles.length === 0}
                 />
                 <IconButtonCard
                   icon={UploadCloud}

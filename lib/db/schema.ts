@@ -81,6 +81,23 @@ export const TEMPLATE_ASSET_ROLES = [
 ] as const;
 export type TemplateAssetRole = (typeof TEMPLATE_ASSET_ROLES)[number];
 
+export const LIBRARY_ASSET_KINDS = [
+  'product_image',
+  'model_image',
+  'garment_image',
+  'scene_image',
+  'example_image',
+  'example_video',
+] as const;
+export type LibraryAssetKind = (typeof LIBRARY_ASSET_KINDS)[number];
+
+export const LIBRARY_ASSET_STATUSES = [
+  'draft',
+  'published',
+  'archived',
+] as const;
+export type LibraryAssetStatus = (typeof LIBRARY_ASSET_STATUSES)[number];
+
 export const CREDIT_LEDGER_REASONS = [
   'purchase',
   'reserve',
@@ -417,6 +434,78 @@ export const templateSourceRecords = pgTable(
   ]
 );
 
+export const libraryAssets = pgTable(
+  'library_assets',
+  {
+    id: uuid('id').defaultRandom().primaryKey(),
+    assetId: uuid('asset_id')
+      .notNull()
+      .references(() => assets.id),
+    locale: varchar('locale', { length: 8 }).notNull().default('pt'),
+    title: varchar('title', { length: 140 }).notNull(),
+    description: text('description'),
+    kind: varchar('kind', { length: 32 })
+      .$type<LibraryAssetKind>()
+      .notNull(),
+    status: varchar('status', { length: 24 })
+      .$type<LibraryAssetStatus>()
+      .notNull()
+      .default('draft'),
+    source: varchar('source', { length: 80 }),
+    licenseNote: text('license_note'),
+    tagsJson: jsonb('tags_json')
+      .$type<string[]>()
+      .notNull()
+      .default(sql`'[]'::jsonb`),
+    useCasesJson: jsonb('use_cases_json')
+      .$type<GenerationType[]>()
+      .notNull()
+      .default(sql`'[]'::jsonb`),
+    qualityScore: integer('quality_score').notNull().default(0),
+    sortWeight: integer('sort_weight').notNull().default(0),
+    usageCount: integer('usage_count').notNull().default(0),
+    createdBy: integer('created_by').references(() => users.id),
+    updatedBy: integer('updated_by').references(() => users.id),
+    publishedBy: integer('published_by').references(() => users.id),
+    publishedAt: timestamp('published_at'),
+    createdAt: timestamp('created_at').notNull().defaultNow(),
+    updatedAt: timestamp('updated_at').notNull().defaultNow(),
+  },
+  (table) => [
+    uniqueIndex('library_assets_asset_id_unique').on(table.assetId),
+    index('library_assets_locale_status_idx').on(table.locale, table.status),
+    index('library_assets_kind_status_idx').on(table.kind, table.status),
+    index('library_assets_sort_quality_idx').on(
+      table.sortWeight,
+      table.qualityScore
+    ),
+    check(
+      'library_assets_kind_check',
+      sql`${table.kind} in ('product_image', 'model_image', 'garment_image', 'scene_image', 'example_image', 'example_video')`
+    ),
+    check(
+      'library_assets_status_check',
+      sql`${table.status} in ('draft', 'published', 'archived')`
+    ),
+    check(
+      'library_assets_quality_score_check',
+      sql`${table.qualityScore} between 0 and 100`
+    ),
+    check(
+      'library_assets_usage_count_check',
+      sql`${table.usageCount} >= 0`
+    ),
+    check(
+      'library_assets_tags_json_check',
+      sql`jsonb_typeof(${table.tagsJson}) = 'array'`
+    ),
+    check(
+      'library_assets_use_cases_json_check',
+      sql`jsonb_typeof(${table.useCasesJson}) = 'array' and ${table.useCasesJson} <@ '["image_to_video", "apparel_image", "try_on"]'::jsonb`
+    ),
+  ]
+);
+
 export const MODEL_CATALOG_ASSET_STATUSES = [
   'active',
   'inactive',
@@ -617,6 +706,9 @@ export const usersRelations = relations(users, ({ many }) => ({
   createdTemplates: many(templates, { relationName: 'templateCreator' }),
   updatedTemplates: many(templates, { relationName: 'templateUpdater' }),
   publishedTemplates: many(templates, { relationName: 'templatePublisher' }),
+  createdLibraryAssets: many(libraryAssets, { relationName: 'libraryAssetCreator' }),
+  updatedLibraryAssets: many(libraryAssets, { relationName: 'libraryAssetUpdater' }),
+  publishedLibraryAssets: many(libraryAssets, { relationName: 'libraryAssetPublisher' }),
   templateAuditLogs: many(templateAuditLogs),
 }));
 
@@ -631,6 +723,7 @@ export const assetsRelations = relations(assets, ({ one, many }) => ({
   previewForTemplates: many(templates, { relationName: 'templatePreviewAsset' }),
   thumbnailForTemplates: many(templates, { relationName: 'templateThumbnailAsset' }),
   templateAssets: many(templateAssets),
+  libraryAssetRecords: many(libraryAssets),
 }));
 
 export const templatesRelations = relations(templates, ({ one, many }) => ({
@@ -736,6 +829,28 @@ export const templateSourceRecordsRelations = relations(
   })
 );
 
+export const libraryAssetsRelations = relations(libraryAssets, ({ one }) => ({
+  asset: one(assets, {
+    fields: [libraryAssets.assetId],
+    references: [assets.id],
+  }),
+  creator: one(users, {
+    fields: [libraryAssets.createdBy],
+    references: [users.id],
+    relationName: 'libraryAssetCreator',
+  }),
+  updater: one(users, {
+    fields: [libraryAssets.updatedBy],
+    references: [users.id],
+    relationName: 'libraryAssetUpdater',
+  }),
+  publisher: one(users, {
+    fields: [libraryAssets.publishedBy],
+    references: [users.id],
+    relationName: 'libraryAssetPublisher',
+  }),
+}));
+
 export const generationJobsRelations = relations(
   generationJobs,
   ({ one }) => ({
@@ -790,6 +905,8 @@ export type TemplateIngestionRun = typeof templateIngestionRuns.$inferSelect;
 export type NewTemplateIngestionRun = typeof templateIngestionRuns.$inferInsert;
 export type TemplateSourceRecord = typeof templateSourceRecords.$inferSelect;
 export type NewTemplateSourceRecord = typeof templateSourceRecords.$inferInsert;
+export type LibraryAsset = typeof libraryAssets.$inferSelect;
+export type NewLibraryAsset = typeof libraryAssets.$inferInsert;
 export type GenerationJob = typeof generationJobs.$inferSelect;
 export type NewGenerationJob = typeof generationJobs.$inferInsert;
 export type CreditLedgerEntry = typeof creditLedger.$inferSelect;

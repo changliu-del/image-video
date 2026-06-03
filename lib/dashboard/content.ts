@@ -17,7 +17,7 @@ type DashboardContent = {
     profileCenter: string;
   };
   header: {
-    workspace: string;
+    marketingHome: string;
     credits: string;
     buy: string;
     language: string;
@@ -54,7 +54,7 @@ export const dashboardContent: Record<DashboardLocale, DashboardContent> = {
       profileCenter: 'Centro pessoal',
     },
     header: {
-      workspace: 'Estúdio',
+      marketingHome: 'Início gptimage',
       credits: 'créditos',
       buy: 'Planos',
       language: 'Idioma',
@@ -87,7 +87,7 @@ export const dashboardContent: Record<DashboardLocale, DashboardContent> = {
       profileCenter: 'Personal center',
     },
     header: {
-      workspace: 'Studio',
+      marketingHome: 'gptimage home',
       credits: 'credits',
       buy: 'Plans',
       language: 'Language',
@@ -120,7 +120,7 @@ export const dashboardContent: Record<DashboardLocale, DashboardContent> = {
       profileCenter: '个人中心',
     },
     header: {
-      workspace: '工作台',
+      marketingHome: '导购首页',
       credits: '算力值',
       buy: '订阅',
       language: '语言',

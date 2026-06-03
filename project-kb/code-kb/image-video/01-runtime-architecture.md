@@ -42,9 +42,16 @@ Key tables are defined in `lib/db/schema.ts`:
 - `templates`
 - `template_tags`
 - `template_assets`
+- `library_assets`
 - `model_catalog_assets`
 - `generation_jobs`
 - `credit_ledger`
+
+`library_assets` is the first-party reusable material layer. It references
+uploaded `assets` rows and stores operational metadata such as locale, kind,
+tags, use cases, quality score, sort weight, status, source, and license note.
+The public `/api/library-assets` route returns published uploaded records for
+workbench inspiration and examples.
 
 ## Architecture Caveat
 

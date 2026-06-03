@@ -6,9 +6,11 @@ import {
   Film,
   Image,
   LayoutTemplate,
+  Library,
   ReceiptText,
   Users,
 } from 'lucide-react';
+import { LibraryAssetsPanel } from '@/components/admin/library-assets-panel';
 import { TemplatesPanel } from '@/components/admin/templates-panel';
 import {
   ManagementPanel,
@@ -21,6 +23,12 @@ const TABLES = [
     key: 'templates',
     label: 'Templates',
     icon: LayoutTemplate,
+    adminOnly: false,
+  },
+  {
+    key: 'library-assets',
+    label: 'Library Assets',
+    icon: Library,
     adminOnly: false,
   },
   { key: 'users', label: 'Users', icon: Users, adminOnly: true },
@@ -42,7 +50,7 @@ const TABLES = [
 type TableKey = (typeof TABLES)[number]['key'];
 
 const MANAGEMENT_CONFIGS: Record<
-  Exclude<TableKey, 'templates'>,
+  Exclude<TableKey, 'templates' | 'library-assets'>,
   AdminTableConfig
 > = {
   users: {
@@ -320,9 +328,18 @@ export function AdminShell({ canManageUsers }: { canManageUsers: boolean }) {
         {activeTab === 'templates' ? (
           <TemplatesPanel canPublish={canManageUsers} />
         ) : null}
-        {activeTab !== 'templates' && activeTab in MANAGEMENT_CONFIGS ? (
+        {activeTab === 'library-assets' ? (
+          <LibraryAssetsPanel canPublish={canManageUsers} />
+        ) : null}
+        {activeTab !== 'templates' &&
+        activeTab !== 'library-assets' &&
+        activeTab in MANAGEMENT_CONFIGS ? (
           <ManagementPanel
-            config={MANAGEMENT_CONFIGS[activeTab as Exclude<TableKey, 'templates'>]}
+            config={
+              MANAGEMENT_CONFIGS[
+                activeTab as Exclude<TableKey, 'templates' | 'library-assets'>
+              ]
+            }
             canEdit={canManageUsers}
             canDelete={canManageUsers}
           />

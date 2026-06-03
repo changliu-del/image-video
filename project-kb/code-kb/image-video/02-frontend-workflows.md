@@ -24,6 +24,18 @@ For the default rendering contract, route/data ownership rules, and frontend rev
 
 Each workbench handles upload, payload construction, generation submission, polling, and result rendering.
 
+Workbench library loading now combines published templates with first-party
+library assets:
+
+- `/create/video` loads `image_to_video` templates plus `/api/library-assets?useCase=image_to_video`.
+- `/create/apparel` loads image templates plus `/api/library-assets?useCase=apparel_image`; library assets are used for inspiration/examples while template IDs remain template-only payload fields.
+- `/create/try-on` loads image templates, `/api/model-assets`, and `/api/library-assets?useCase=try_on`.
+
+Admin has a dedicated `Library Assets` tab for reusable product, model,
+garment, scene, example image, and example video materials. It supports
+R2-backed upload, metadata editing, publish/archive, tags, use cases, quality
+score, and sort weight.
+
 ## Frontend Optimization Candidates
 
 - Extract repeated `readResponseError`, `postJson`, `uploadAsset`, `fetchJobStatus`, image validation, item normalization, and result URL selection from the three active workbenches.

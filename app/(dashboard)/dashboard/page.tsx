@@ -14,6 +14,7 @@ import {
   normalizeDashboardLocale,
   type DashboardLocale,
 } from '@/lib/dashboard/content';
+import { LazyDashboardVideo } from '@/components/dashboard/lazy-dashboard-video';
 import { cn } from '@/lib/utils';
 
 type DashboardPageProps = {
@@ -360,6 +361,9 @@ function HeroShowcase({
                       src={cardImages[index] ?? showcaseImages[0]}
                       alt=""
                       className="size-full object-cover transition duration-500 group-hover:scale-105"
+                      loading={index === 0 ? 'eager' : 'lazy'}
+                      decoding="async"
+                      fetchPriority={index === 0 ? 'high' : 'low'}
                     />
                     {index === 2 ? (
                       <span className="absolute left-3 top-3 rounded-full bg-indigo-600 px-3 py-1 text-xs font-bold text-white shadow-sm">
@@ -426,19 +430,22 @@ function VideoDemo() {
     <div className="grid gap-4 sm:grid-cols-[0.8fr_1fr]">
       <div className="rounded-lg border border-gray-200 bg-white p-4 shadow-sm">
         <div className="flex aspect-[4/5] items-center justify-center overflow-hidden rounded-lg bg-gray-50">
-          <img src="/resources/example4.png" alt="" className="size-full object-cover" />
+          <img
+            src="/resources/example4.png"
+            alt=""
+            className="size-full object-cover"
+            loading="lazy"
+            decoding="async"
+          />
         </div>
         <p className="mt-3 text-center text-sm font-bold text-gray-500">商品主图</p>
       </div>
       <div className="rounded-lg border border-gray-200 bg-white p-4 shadow-sm">
         <div className="relative aspect-[9/12] overflow-hidden rounded-lg bg-gray-950">
-          <video
+          <LazyDashboardVideo
             src="/resources/example2.mp4"
+            poster="/resources/example2.png"
             className="size-full object-cover"
-            autoPlay
-            loop
-            muted
-            playsInline
           />
           <div className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/60 to-transparent p-4 text-white">
             <PlayCircle className="size-9" />
@@ -461,7 +468,13 @@ function ProductImageDemo() {
             index === 0 && 'row-span-2'
           )}
         >
-          <img src={image} alt="" className="size-full min-h-48 object-cover" />
+          <img
+            src={image}
+            alt=""
+            className="size-full min-h-48 object-cover"
+            loading="lazy"
+            decoding="async"
+          />
         </div>
       ))}
     </div>
@@ -473,10 +486,22 @@ function TryOnDemo() {
     <div className="rounded-lg border border-gray-200 bg-white p-4 shadow-sm">
       <div className="grid gap-4 sm:grid-cols-2">
         <div className="overflow-hidden rounded-lg bg-indigo-50">
-          <img src="/resources/example2.png" alt="" className="aspect-[4/5] size-full object-cover" />
+          <img
+            src="/resources/example2.png"
+            alt=""
+            className="aspect-[4/5] size-full object-cover"
+            loading="lazy"
+            decoding="async"
+          />
         </div>
         <div className="overflow-hidden rounded-lg bg-amber-50">
-          <img src="/resources/example6.png" alt="" className="aspect-[4/5] size-full object-cover" />
+          <img
+            src="/resources/example6.png"
+            alt=""
+            className="aspect-[4/5] size-full object-cover"
+            loading="lazy"
+            decoding="async"
+          />
         </div>
       </div>
       <div className="mt-4 flex items-center justify-between rounded-lg bg-gray-50 px-4 py-3 text-sm font-bold text-gray-600">
@@ -514,7 +539,13 @@ function LibraryDemo({ tabs }: { tabs: string[] }) {
               index === 3 && 'row-span-2'
             )}
           >
-            <img src={image} alt="" className="size-full min-h-44 object-cover" />
+            <img
+              src={image}
+              alt=""
+              className="size-full min-h-44 object-cover"
+              loading="lazy"
+              decoding="async"
+            />
           </div>
         ))}
       </div>

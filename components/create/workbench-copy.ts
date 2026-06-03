@@ -8,6 +8,7 @@ type CommonWorkbenchCopy = {
   loadingLibrary: string;
   noTemplates: string;
   templateCount: (count: number) => string;
+  materialCount: (count: number) => string;
   uploadClick: string;
   resultReady: string;
   waitingUpload: string;
@@ -35,6 +36,7 @@ export const commonWorkbenchCopy: Record<DashboardLocale, CommonWorkbenchCopy> =
     loadingLibrary: 'Carregando materiais',
     noTemplates: 'Nenhum template disponivel',
     templateCount: (count) => `${count} templates`,
+    materialCount: (count) => `${count} materiais`,
     uploadClick: 'Clique, arraste ou cole uma imagem',
     resultReady: 'Resultado',
     waitingUpload: 'Aguardando upload',
@@ -60,6 +62,7 @@ export const commonWorkbenchCopy: Record<DashboardLocale, CommonWorkbenchCopy> =
     loadingLibrary: 'Loading materials',
     noTemplates: 'No templates yet',
     templateCount: (count) => `${count} templates`,
+    materialCount: (count) => `${count} materials`,
     uploadClick: 'Click, drag, or paste an image',
     resultReady: 'Result',
     waitingUpload: 'Waiting for upload',
@@ -85,6 +88,7 @@ export const commonWorkbenchCopy: Record<DashboardLocale, CommonWorkbenchCopy> =
     loadingLibrary: '加载素材中',
     noTemplates: '暂无模板素材',
     templateCount: (count) => `${count} 个模板`,
+    materialCount: (count) => `${count} 个素材`,
     uploadClick: '点击/拖拽/粘贴上传图片',
     resultReady: '生成结果',
     waitingUpload: '等待上传',
@@ -285,6 +289,7 @@ export const apparelWorkbenchCopy = {
     ],
     library: 'Biblioteca',
     templateMaterials: 'Templates',
+    libraryMaterials: 'Materiais',
     settings: 'Configuracoes de criacao',
     modelType: 'Tipo de modelo',
     modelTypes: ['Modelo de moda', 'Sem modelo', 'Corpo parcial', 'Talento lifestyle'],
@@ -356,6 +361,7 @@ export const apparelWorkbenchCopy = {
     ],
     library: 'Library',
     templateMaterials: 'Templates',
+    libraryMaterials: 'Materials',
     settings: 'Creation settings',
     modelType: 'Model type',
     modelTypes: ['Fashion model', 'No model', 'Partial body', 'Lifestyle talent'],
@@ -412,6 +418,7 @@ export const apparelWorkbenchCopy = {
     ],
     library: '素材库',
     templateMaterials: '模板素材',
+    libraryMaterials: '素材',
     settings: '创作设置',
     modelType: '模特类型',
     modelTypes: ['时尚模特', '无模特', '半身局部', '生活方式模特'],
