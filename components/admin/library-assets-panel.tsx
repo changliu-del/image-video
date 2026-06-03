@@ -26,6 +26,7 @@ import {
   type AdminTableAction,
   type AdminTableColumn,
 } from '@/components/admin/admin-management-table';
+import type { AdminContent } from '@/lib/admin/content';
 import { cn } from '@/lib/utils';
 
 type LibraryAssetKind =
@@ -95,19 +96,19 @@ type PresignResponse = {
   publicUrl: string;
 };
 
-const kindOptions: Array<{ label: string; value: LibraryAssetKind }> = [
-  { value: 'product_image', label: 'Product image' },
-  { value: 'model_image', label: 'Model image' },
-  { value: 'garment_image', label: 'Garment image' },
-  { value: 'scene_image', label: 'Scene image' },
-  { value: 'example_image', label: 'Example image' },
-  { value: 'example_video', label: 'Example video' },
+const kindOptions: LibraryAssetKind[] = [
+  'product_image',
+  'model_image',
+  'garment_image',
+  'scene_image',
+  'example_image',
+  'example_video',
 ];
 
-const useCaseOptions: Array<{ label: string; value: LibraryAssetUseCase }> = [
-  { value: 'image_to_video', label: 'Image to video' },
-  { value: 'apparel_image', label: 'Apparel image' },
-  { value: 'try_on', label: 'Try-on' },
+const useCaseOptions: LibraryAssetUseCase[] = [
+  'image_to_video',
+  'apparel_image',
+  'try_on',
 ];
 
 const emptyForm: LibraryAssetFormState = {
@@ -290,9 +291,13 @@ function Field({
 
 export function LibraryAssetsPanel({
   canPublish,
+  content,
 }: {
   canPublish: boolean;
+  content: AdminContent;
 }) {
+  const copy = content.libraryAssets;
+  const common = content.common;
   const [data, setData] = useState<PaginatedLibraryAssets>({
     list: [],
     total: 0,
@@ -315,7 +320,7 @@ export function LibraryAssetsPanel({
     () => [
       {
         key: 'assetUrl',
-        label: 'Preview',
+        label: copy.columns.assetUrl,
         width: 96,
         render: (asset) => (
           <MediaPreview
@@ -327,7 +332,7 @@ export function LibraryAssetsPanel({
       },
       {
         key: 'title',
-        label: 'Material',
+        label: copy.columns.title,
         kind: 'primary',
         width: 270,
         render: (asset) => (
@@ -336,20 +341,25 @@ export function LibraryAssetsPanel({
               {asset.title}
             </div>
             <div className="mt-1 break-words font-mono text-xs text-gray-500">
-              {asset.locale} / {asset.kind}
+              {asset.locale} / {copy.kindOptions[asset.kind] ?? asset.kind}
             </div>
           </div>
         ),
       },
       {
         key: 'status',
-        label: 'Status',
+        label: copy.columns.status,
         width: 120,
-        render: (asset) => <AdminStatusBadge value={asset.status} />,
+        render: (asset) => (
+          <AdminStatusBadge
+            labels={content.statusLabels}
+            value={asset.status}
+          />
+        ),
       },
       {
         key: 'useCases',
-        label: 'Use Cases',
+        label: copy.columns.useCases,
         width: 260,
         render: (asset) => (
           <div className="flex flex-wrap gap-1">
@@ -358,7 +368,7 @@ export function LibraryAssetsPanel({
                 key={useCase}
                 className="rounded bg-indigo-50 px-1.5 py-0.5 text-[11px] font-medium text-indigo-600"
               >
-                {useCase}
+                {copy.useCaseOptions[useCase] ?? useCase}
               </span>
             ))}
           </div>
@@ -366,13 +376,13 @@ export function LibraryAssetsPanel({
       },
       {
         key: 'qualityScore',
-        label: 'Quality',
+        label: copy.columns.qualityScore,
         kind: 'number',
         width: 96,
       },
       {
         key: 'tags',
-        label: 'Tags',
+        label: copy.columns.tags,
         width: 260,
         render: (asset) => (
           <div className="flex flex-wrap gap-1">
@@ -394,7 +404,7 @@ export function LibraryAssetsPanel({
       },
       {
         key: 'updatedAt',
-        label: 'Updated At',
+        label: copy.columns.updatedAt,
         width: 178,
         render: (asset) => (
           <span className="text-xs tabular-nums text-gray-500">
@@ -403,7 +413,7 @@ export function LibraryAssetsPanel({
         ),
       },
     ],
-    []
+    [content.statusLabels, copy]
   );
 
   useEffect(() => {
@@ -429,7 +439,7 @@ export function LibraryAssetsPanel({
       const result = await requestJson<PaginatedLibraryAssets>(
         `/api/admin/library-assets?${params}`,
         { method: 'GET' },
-        'Load failed'
+        copy.errors.load
       );
 
       setData(result);
@@ -443,7 +453,7 @@ export function LibraryAssetsPanel({
         }
       }
     } catch (loadError) {
-      setError(loadError instanceof Error ? loadError.message : 'Load failed');
+      setError(loadError instanceof Error ? loadError.message : copy.errors.load);
     } finally {
       setLoading(false);
     }
@@ -509,7 +519,7 @@ export function LibraryAssetsPanel({
 
   async function uploadAndCreateAsset() {
     if (!uploadFile) {
-      throw new Error('Select a file first.');
+      throw new Error(copy.errors.selectFile);
     }
 
     const presign = await requestJson<PresignResponse>(
@@ -522,7 +532,7 @@ export function LibraryAssetsPanel({
           sizeBytes: uploadFile.size,
         }),
       },
-      'Upload could not be prepared'
+      copy.errors.prepareUpload
     );
 
     const uploadResponse = await fetch(presign.uploadUrl, {
@@ -532,7 +542,7 @@ export function LibraryAssetsPanel({
     });
 
     if (!uploadResponse.ok) {
-      throw new Error('Upload failed');
+      throw new Error(copy.errors.upload);
     }
 
     return requestJson<AdminLibraryAsset>(
@@ -545,7 +555,7 @@ export function LibraryAssetsPanel({
           storageKey: presign.storageKey,
         }),
       },
-      'Upload could not be completed'
+      copy.errors.completeUpload
     );
   }
 
@@ -567,7 +577,7 @@ export function LibraryAssetsPanel({
             method: 'PUT',
             body: JSON.stringify(buildPayload(form, canPublish)),
           },
-          'Save failed'
+          copy.errors.save
         );
         setSelectedAsset(updated);
         setForm(assetToForm(updated));
@@ -575,7 +585,7 @@ export function LibraryAssetsPanel({
         await loadAssets(data.page);
       }
     } catch (saveError) {
-      setError(saveError instanceof Error ? saveError.message : 'Save failed');
+      setError(saveError instanceof Error ? saveError.message : copy.errors.save);
     } finally {
       setSaving(false);
     }
@@ -592,7 +602,7 @@ export function LibraryAssetsPanel({
           method: 'POST',
           body: JSON.stringify({ action }),
         },
-        `${action} failed`
+        copy.errors[action]
       );
       setSelectedAsset(updated);
       setForm(assetToForm(updated));
@@ -600,7 +610,7 @@ export function LibraryAssetsPanel({
       await loadAssets(data.page);
     } catch (statusError) {
       setError(
-        statusError instanceof Error ? statusError.message : `${action} failed`
+        statusError instanceof Error ? statusError.message : copy.errors[action]
       );
     } finally {
       setSaving(false);
@@ -609,21 +619,21 @@ export function LibraryAssetsPanel({
 
   async function deleteLibraryAsset(asset = selectedAsset) {
     if (!asset?.id) return;
-    if (!window.confirm(`Remove ${asset.title} from the library?`)) return;
+    if (!window.confirm(copy.confirmRemove(asset.title))) return;
 
     setSaving(true);
     setError(null);
     try {
       await requestJson(`/api/admin/library-assets/${asset.id}`, {
         method: 'DELETE',
-      }, 'Delete failed');
+      }, copy.errors.delete);
       setSelectedAsset(null);
       setModalMode(null);
       setForm(freshEmptyForm());
       await loadAssets(data.page);
     } catch (deleteError) {
       setError(
-        deleteError instanceof Error ? deleteError.message : 'Delete failed'
+        deleteError instanceof Error ? deleteError.message : copy.errors.delete
       );
     } finally {
       setSaving(false);
@@ -641,13 +651,13 @@ export function LibraryAssetsPanel({
     const actions: AdminTableAction<AdminLibraryAsset>[] = [
       {
         key: 'view',
-        label: 'View details',
+        label: common.viewDetails,
         icon: Eye,
         onClick: openView,
       },
       {
         key: 'edit',
-        label: 'Edit',
+        label: common.edit,
         icon: Edit3,
         onClick: openEdit,
       },
@@ -656,7 +666,7 @@ export function LibraryAssetsPanel({
     if (canPublish) {
       actions.push({
         key: 'delete',
-        label: 'Remove from library',
+        label: common.delete,
         icon: Trash2,
         variant: 'destructive',
         onClick: deleteLibraryAsset,
@@ -669,10 +679,10 @@ export function LibraryAssetsPanel({
   const selectedKey = selectedAsset ? selectedAsset.id : null;
   const modalTitle =
     modalMode === 'create'
-      ? 'Add library asset'
+      ? copy.modalCreate
       : modalMode === 'edit'
-        ? 'Edit library asset'
-        : 'Library asset details';
+        ? copy.modalEdit
+        : copy.modalDetails;
   const previewUrl =
     modalMode === 'create' ? filePreview : selectedAsset?.assetUrl;
   const previewMime =
@@ -683,10 +693,11 @@ export function LibraryAssetsPanel({
       <AdminManagementTable
         actions={tableActions}
         columns={columns}
-        description="Manage reusable product, model, garment, scene, and example media for workbenches."
-        emptyText="No library assets."
+        description={copy.description}
+        emptyText={copy.emptyText}
         error={error}
         icon={ImagePlus}
+        labels={common}
         loading={loading}
         onRefresh={() => loadAssets(data.page)}
         onReset={resetSearch}
@@ -706,21 +717,23 @@ export function LibraryAssetsPanel({
             onClick={openCreate}
           >
             <Plus className="size-4" />
-            Add asset
+            {copy.addAsset}
           </Button>
         }
         rowKey="id"
         rows={data.list}
-        searchPlaceholder="Search title, kind, status, source, tags..."
+        searchPlaceholder={copy.searchPlaceholder}
         searchValue={search}
         selectedRowKey={selectedKey}
+        statusLabels={content.statusLabels}
         tableMinWidth={1360}
-        title="Library Assets"
+        title={copy.title}
       />
 
       <AdminModal
         open={Boolean(modalMode)}
         title={modalTitle}
+        closeLabel={common.close}
         maxWidth="max-w-5xl"
         onClose={() => setModalMode(null)}
         footer={
@@ -731,12 +744,12 @@ export function LibraryAssetsPanel({
                 variant="outline"
                 onClick={() => setModalMode(null)}
               >
-                Close
+                {common.close}
               </Button>
               {selectedAsset ? (
                 <Button type="button" onClick={() => setModalMode('edit')}>
                   <Edit3 className="size-4" />
-                  Edit
+                  {common.edit}
                 </Button>
               ) : null}
             </>
@@ -747,7 +760,7 @@ export function LibraryAssetsPanel({
                 variant="outline"
                 onClick={() => setModalMode(null)}
               >
-                Cancel
+                {common.cancel}
               </Button>
               {canPublish && form.id ? (
                 <>
@@ -756,20 +769,20 @@ export function LibraryAssetsPanel({
                     variant="outline"
                     onClick={() => runStatusAction('publish')}
                     disabled={saving}
-                    title="Publish"
+                    title={common.publish}
                   >
                     <Send className="size-4" />
-                    Publish
+                    {common.publish}
                   </Button>
                   <Button
                     type="button"
                     variant="outline"
                     onClick={() => runStatusAction('archive')}
                     disabled={saving}
-                    title="Archive"
+                    title={common.archive}
                   >
                     <Archive className="size-4" />
-                    Archive
+                    {common.archive}
                   </Button>
                 </>
               ) : null}
@@ -781,7 +794,7 @@ export function LibraryAssetsPanel({
                 ) : (
                   <Save className="size-4" />
                 )}
-                Save
+                {common.save}
               </Button>
             </>
           )
@@ -796,6 +809,8 @@ export function LibraryAssetsPanel({
             />
             <AdminRecordDetails
               record={selectedAsset as unknown as Record<string, unknown>}
+              fieldLabels={{ ...copy.fields, ...copy.columns }}
+              statusLabels={content.statusLabels}
               columns={[
                 'title',
                 'locale',
@@ -830,7 +845,7 @@ export function LibraryAssetsPanel({
               {modalMode === 'create' ? (
                 <label className="grid gap-2">
                   <span className="text-xs font-semibold uppercase text-gray-500">
-                    Upload file
+                    {copy.uploadFile}
                   </span>
                   <Input
                     type="file"
@@ -847,20 +862,20 @@ export function LibraryAssetsPanel({
                   rel="noreferrer"
                   className="break-all text-xs font-medium text-indigo-600 hover:text-indigo-700"
                 >
-                  Open asset URL
+                  {copy.openAssetUrl}
                 </a>
               ) : null}
             </div>
 
             <div className="grid gap-4">
               <div className="grid gap-4 md:grid-cols-2">
-                <Field label="Title">
+                <Field label={copy.fields.title}>
                   <Input
                     value={form.title}
                     onChange={(event) => updateForm('title', event.target.value)}
                   />
                 </Field>
-                <Field label="Locale">
+                <Field label={copy.fields.locale}>
                   <select
                     value={form.locale}
                     onChange={(event) =>
@@ -876,7 +891,7 @@ export function LibraryAssetsPanel({
                     <option value="zh">zh</option>
                   </select>
                 </Field>
-                <Field label="Kind">
+                <Field label={copy.fields.kind}>
                   <select
                     value={form.kind}
                     onChange={(event) =>
@@ -885,13 +900,13 @@ export function LibraryAssetsPanel({
                     className="h-9 rounded-md border border-gray-200 bg-white px-3 text-sm"
                   >
                     {kindOptions.map((option) => (
-                      <option key={option.value} value={option.value}>
-                        {option.label}
+                      <option key={option} value={option}>
+                        {copy.kindOptions[option] ?? option}
                       </option>
                     ))}
                   </select>
                 </Field>
-                <Field label="Status">
+                <Field label={copy.fields.status}>
                   <select
                     value={canPublish ? form.status : 'draft'}
                     disabled={!canPublish}
@@ -903,14 +918,18 @@ export function LibraryAssetsPanel({
                     }
                     className="h-9 rounded-md border border-gray-200 bg-white px-3 text-sm disabled:bg-gray-50 disabled:text-gray-500"
                   >
-                    <option value="draft">Draft</option>
-                    <option value="published">Published</option>
-                    <option value="archived">Archived</option>
+                    <option value="draft">{content.statusLabels.draft}</option>
+                    <option value="published">
+                      {content.statusLabels.published}
+                    </option>
+                    <option value="archived">
+                      {content.statusLabels.archived}
+                    </option>
                   </select>
                 </Field>
               </div>
 
-              <Field label="Description">
+              <Field label={copy.fields.description}>
                 <textarea
                   value={form.description}
                   onChange={(event) =>
@@ -923,39 +942,39 @@ export function LibraryAssetsPanel({
 
               <div>
                 <Label className="mb-2 block text-xs font-semibold uppercase text-gray-500">
-                  Use cases
+                  {copy.useCases}
                 </Label>
                 <div className="flex flex-wrap gap-2">
                   {useCaseOptions.map((option) => (
                     <button
-                      key={option.value}
+                      key={option}
                       type="button"
-                      onClick={() => toggleUseCase(option.value)}
+                      onClick={() => toggleUseCase(option)}
                       className={cn(
                         'rounded-md border px-3 py-2 text-sm font-medium transition',
-                        form.useCases.includes(option.value)
+                        form.useCases.includes(option)
                           ? 'border-indigo-300 bg-indigo-50 text-indigo-600'
                           : 'border-gray-200 bg-white text-gray-600 hover:border-indigo-200'
                       )}
                     >
-                      {option.label}
+                      {copy.useCaseOptions[option] ?? option}
                     </button>
                   ))}
                 </div>
               </div>
 
-              <Field label="Tags">
+              <Field label={copy.fields.tags}>
                 <Input
                   value={form.tagsText}
                   onChange={(event) =>
                     updateForm('tagsText', event.target.value)
                   }
-                  placeholder="product-image,fashion,ratio-9-16"
+                  placeholder={copy.placeholders.tags}
                 />
               </Field>
 
               <div className="grid gap-4 md:grid-cols-2">
-                <Field label="Quality Score">
+                <Field label={copy.fields.qualityScore}>
                   <Input
                     type="number"
                     min={0}
@@ -966,7 +985,7 @@ export function LibraryAssetsPanel({
                     }
                   />
                 </Field>
-                <Field label="Sort Weight">
+                <Field label={copy.fields.sortWeight}>
                   <Input
                     type="number"
                     value={form.sortWeight}
@@ -975,22 +994,22 @@ export function LibraryAssetsPanel({
                     }
                   />
                 </Field>
-                <Field label="Source">
+                <Field label={copy.fields.source}>
                   <Input
                     value={form.source}
                     onChange={(event) =>
                       updateForm('source', event.target.value)
                     }
-                    placeholder="manual / wanxiang / crawler"
+                    placeholder={copy.placeholders.source}
                   />
                 </Field>
-                <Field label="License Note">
+                <Field label={copy.fields.licenseNote}>
                   <Input
                     value={form.licenseNote}
                     onChange={(event) =>
                       updateForm('licenseNote', event.target.value)
                     }
-                    placeholder="Internal, licensed, generated, etc."
+                    placeholder={copy.placeholders.licenseNote}
                   />
                 </Field>
               </div>

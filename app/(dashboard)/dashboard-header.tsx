@@ -12,7 +12,17 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 import { signOut } from '@/app/(login)/actions';
-import { Check, ChevronDown, ExternalLink, Gem, Globe2, Home, LogOut, Settings } from 'lucide-react';
+import {
+  Check,
+  ChevronDown,
+  ExternalLink,
+  Gem,
+  Globe2,
+  Home,
+  LogOut,
+  Settings,
+  ShieldCheck,
+} from 'lucide-react';
 import { identifyClientUser } from '@/lib/analytics/posthog';
 import {
   dashboardLocales,
@@ -222,20 +232,34 @@ export function DashboardHeader({
             : 'w-full px-4 sm:px-5'
         )}
       >
-        <Link
-          href={homeHref}
-          className={cn(
-            'inline-flex h-9 items-center gap-2 rounded-full px-2 text-sm font-bold transition',
-            isAdminPage
-              ? 'text-gray-700 hover:bg-gray-100'
-              : 'text-gray-800 hover:bg-indigo-50 hover:text-indigo-600'
-          )}
-        >
-          {!isAdminPage ? <Home className="size-4" /> : null}
-          <span>{isAdminPage ? 'Admin' : content.header.marketingHome}</span>
-        </Link>
-        {!isAdminPage ? (
-          <div className="ml-auto flex items-center gap-2">
+        <div className="flex items-center gap-1.5">
+          <Link
+            href={homeHref}
+            className={cn(
+              'inline-flex h-9 items-center gap-2 rounded-full px-2 text-sm font-bold transition',
+              isAdminPage
+                ? 'text-gray-700 hover:bg-gray-100'
+                : 'text-gray-800 hover:bg-indigo-50 hover:text-indigo-600'
+            )}
+          >
+            {!isAdminPage ? <Home className="size-4" /> : null}
+            <span>
+              {isAdminPage ? content.header.admin : content.header.marketingHome}
+            </span>
+          </Link>
+          {!isAdminPage && user && canAccessAdmin(user) ? (
+            <Link
+              href={withDashboardLocale('/admin', locale)}
+              className="inline-flex h-9 items-center gap-2 rounded-full px-2 text-sm font-bold text-gray-800 transition hover:bg-indigo-50 hover:text-indigo-600"
+            >
+              <ShieldCheck className="size-4" />
+              <span>{content.header.admin}</span>
+            </Link>
+          ) : null}
+        </div>
+        <div className="ml-auto flex items-center gap-2">
+          {!isAdminPage ? (
+            <>
             <Link
               href={withDashboardLocale('/dashboard/credits', locale)}
               className="hidden h-9 items-center gap-2 rounded-full border border-indigo-100 bg-indigo-50 px-3 text-sm font-semibold text-indigo-600 shadow-sm transition hover:border-indigo-200 hover:bg-indigo-100 md:flex"
@@ -253,9 +277,10 @@ export function DashboardHeader({
             >
               {content.header.buy}
             </Link>
-            <DashboardLanguageMenu locale={locale} content={content} />
-          </div>
-        ) : null}
+            </>
+          ) : null}
+          <DashboardLanguageMenu locale={locale} content={content} />
+        </div>
         <div className="ml-2 flex items-center space-x-3">
           <UserMenu user={user} templateAdminUrl={templateAdminUrl} labels={content.userMenu} />
         </div>

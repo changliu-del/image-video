@@ -43,6 +43,18 @@ When updating this skill, edit the source under `plugins/image-video-studio/` fi
 
 The default local development URL is `http://localhost:30115`. Use this as the canonical browser target for local smoke tests and frontend verification; do not grep or rediscover the port before opening the local app.
 
+## Codex Admin Account
+
+Use this admin account when Codex needs to inspect or smoke-test the local Admin console:
+
+- Login URL: `http://localhost:30115/sign-in`
+- Admin URL: `http://localhost:30115/admin`
+- Email: `codex-admin@local.test`
+- Password: `CodexAdmin!2026`
+- Role: `admin`
+
+The account is maintained by `pnpm db:seed`, which upserts the user with `role = 'admin'`, `is_admin = true`, `credit_balance = 0`, and `deleted_at = null`.
+
 ## KB Loading
 
 Start with `project-kb/README.md`, then load only the section that matches the task:

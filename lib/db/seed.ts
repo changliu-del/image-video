@@ -4,8 +4,8 @@ import { hashPassword } from '@/lib/auth/session';
 import { eq } from 'drizzle-orm';
 
 async function seed() {
-  const email = 'admin@local.test';
-  const password = 'admin';
+  const email = 'codex-admin@local.test';
+  const password = 'CodexAdmin!2026';
   const passwordHash = await hashPassword(password);
 
   const existingAdmin = await db
@@ -18,7 +18,7 @@ async function seed() {
     await db
       .update(users)
       .set({
-        name: 'Admin',
+        name: 'Codex Admin',
         passwordHash,
         role: 'admin',
         isAdmin: true,
@@ -27,20 +27,20 @@ async function seed() {
         updatedAt: new Date(),
       })
       .where(eq(users.id, existingAdmin[0].id));
-    console.log('Admin user refreshed.');
+    console.log('Codex admin user refreshed.');
   } else {
     await db.insert(users).values({
-      name: 'Admin',
+      name: 'Codex Admin',
       email,
       passwordHash,
       role: 'admin',
       isAdmin: true,
       creditBalance: 0,
     });
-    console.log('Admin user created.');
+    console.log('Codex admin user created.');
   }
 
-  console.log('Seed is limited to the local admin account.');
+  console.log('Seed is limited to the Codex local admin account.');
 }
 
 seed()

@@ -26,6 +26,7 @@ import {
   type AdminTableAction,
   type AdminTableColumn,
 } from '@/components/admin/admin-management-table';
+import type { AdminContent, AdminLocale } from '@/lib/admin/content';
 import {
   templateTagGroups,
   templateTagOptions,
@@ -171,7 +172,17 @@ function Field({
   );
 }
 
-export function TemplatesPanel({ canPublish }: { canPublish: boolean }) {
+export function TemplatesPanel({
+  canPublish,
+  content,
+  locale,
+}: {
+  canPublish: boolean;
+  content: AdminContent;
+  locale: AdminLocale;
+}) {
+  const copy = content.templates;
+  const common = content.common;
   const [data, setData] = useState<PaginatedTemplates>({
     list: [],
     total: 0,
@@ -195,7 +206,7 @@ export function TemplatesPanel({ canPublish }: { canPublish: boolean }) {
     () => [
       {
         key: 'title',
-        label: 'Template',
+        label: copy.columns.title,
         kind: 'primary',
         width: 280,
         render: (template) => (
@@ -211,32 +222,38 @@ export function TemplatesPanel({ canPublish }: { canPublish: boolean }) {
       },
       {
         key: 'status',
-        label: 'Status',
+        label: copy.columns.status,
         width: 120,
-        render: (template) => <AdminStatusBadge value={template.status} />,
+        render: (template) => (
+          <AdminStatusBadge
+            labels={content.statusLabels}
+            value={template.status}
+          />
+        ),
       },
       {
         key: 'type',
-        label: 'Type',
+        label: copy.columns.type,
         kind: 'status',
         width: 150,
+        render: (template) => copy.typeOptions[template.type] ?? template.type,
       },
       {
         key: 'costCredits',
-        label: 'Credits',
+        label: copy.columns.costCredits,
         kind: 'number',
         width: 96,
       },
       {
         key: 'durationSeconds',
-        label: 'Duration',
+        label: copy.columns.durationSeconds,
         width: 104,
         render: (template) =>
           template.durationSeconds ? `${template.durationSeconds}s` : '-',
       },
       {
         key: 'tags',
-        label: 'Tags',
+        label: copy.columns.tags,
         width: 280,
         render: (template) => (
           <div className="flex flex-wrap gap-1">
@@ -258,13 +275,13 @@ export function TemplatesPanel({ canPublish }: { canPublish: boolean }) {
       },
       {
         key: 'usageCount',
-        label: 'Usage',
+        label: copy.columns.usageCount,
         kind: 'number',
         width: 90,
       },
       {
         key: 'updatedAt',
-        label: 'Updated At',
+        label: copy.columns.updatedAt,
         width: 178,
         render: (template) => (
           <span className="text-xs tabular-nums text-gray-500">
@@ -273,7 +290,7 @@ export function TemplatesPanel({ canPublish }: { canPublish: boolean }) {
         ),
       },
     ],
-    []
+    [content.statusLabels, copy]
   );
 
   async function loadTemplates(page = 1) {
@@ -288,7 +305,7 @@ export function TemplatesPanel({ canPublish }: { canPublish: boolean }) {
       const result = await requestJson<PaginatedTemplates>(
         `/api/admin/templates?${params}`,
         { method: 'GET' },
-        'Load failed'
+        copy.errors.load
       );
 
       setData(result);
@@ -302,7 +319,7 @@ export function TemplatesPanel({ canPublish }: { canPublish: boolean }) {
         }
       }
     } catch (loadError) {
-      setError(loadError instanceof Error ? loadError.message : 'Load failed');
+      setError(loadError instanceof Error ? loadError.message : copy.errors.load);
     } finally {
       setLoading(false);
     }
@@ -389,7 +406,7 @@ export function TemplatesPanel({ canPublish }: { canPublish: boolean }) {
           form.defaultInputsJson || '{}'
         ) as Record<string, unknown>;
       } catch {
-        throw new Error('Prompt JSON and default inputs must be valid JSON.');
+        throw new Error(copy.invalidJson);
       }
 
       const payload = {
@@ -405,7 +422,7 @@ export function TemplatesPanel({ canPublish }: { canPublish: boolean }) {
       await requestJson(url, {
         method,
         body: JSON.stringify(payload),
-      }, 'Save failed');
+      }, copy.errors.save);
       await loadTemplates(form.id ? data.page : 1);
       if (!form.id) {
         setModalMode(null);
@@ -414,7 +431,7 @@ export function TemplatesPanel({ canPublish }: { canPublish: boolean }) {
         setModalMode('view');
       }
     } catch (saveError) {
-      setError(saveError instanceof Error ? saveError.message : 'Save failed');
+      setError(saveError instanceof Error ? saveError.message : copy.errors.save);
     } finally {
       setSaving(false);
     }
@@ -428,11 +445,13 @@ export function TemplatesPanel({ canPublish }: { canPublish: boolean }) {
       await requestJson(`/api/admin/templates/${selectedTemplate.id}`, {
         method: 'POST',
         body: JSON.stringify({ action }),
-      }, `${action} failed`);
+      }, copy.errors[action]);
       await loadTemplates(data.page);
       setModalMode('view');
     } catch (statusError) {
-      setError(statusError instanceof Error ? statusError.message : `${action} failed`);
+      setError(
+        statusError instanceof Error ? statusError.message : copy.errors[action]
+      );
     } finally {
       setSaving(false);
     }
@@ -440,20 +459,20 @@ export function TemplatesPanel({ canPublish }: { canPublish: boolean }) {
 
   async function deleteTemplate(template = selectedTemplate) {
     if (!template?.id) return;
-    if (!window.confirm(`Delete template ${template.slug}?`)) return;
+    if (!window.confirm(copy.confirmDelete(template.slug))) return;
 
     setSaving(true);
     setError(null);
     try {
       await requestJson(`/api/admin/templates/${template.id}`, {
         method: 'DELETE',
-      }, 'Delete failed');
+      }, copy.errors.delete);
       setSelectedTemplate(null);
       setModalMode(null);
       setForm(freshEmptyForm());
       await loadTemplates(data.page);
     } catch (deleteError) {
-      setError(deleteError instanceof Error ? deleteError.message : 'Delete failed');
+      setError(deleteError instanceof Error ? deleteError.message : copy.errors.delete);
     } finally {
       setSaving(false);
     }
@@ -461,7 +480,7 @@ export function TemplatesPanel({ canPublish }: { canPublish: boolean }) {
 
   async function uploadTemplateAsset() {
     if (!form.id || !uploadFile) {
-      setError('Select a saved template and a file first.');
+      setError(copy.selectSavedTemplate);
       return;
     }
 
@@ -480,7 +499,7 @@ export function TemplatesPanel({ canPublish }: { canPublish: boolean }) {
           mimeType: uploadFile.type,
           sizeBytes: uploadFile.size,
         }),
-      }, 'Upload could not be prepared');
+      }, copy.errors.prepareUpload);
 
       const uploadResponse = await fetch(presign.uploadUrl, {
         method: 'PUT',
@@ -489,7 +508,7 @@ export function TemplatesPanel({ canPublish }: { canPublish: boolean }) {
       });
 
       if (!uploadResponse.ok) {
-        throw new Error('Upload failed');
+        throw new Error(copy.errors.upload);
       }
 
       await requestJson('/api/admin/template-assets/complete', {
@@ -500,12 +519,12 @@ export function TemplatesPanel({ canPublish }: { canPublish: boolean }) {
           storageKey: presign.storageKey,
           role: uploadRole,
         }),
-      }, 'Upload could not be completed');
+      }, copy.errors.completeUpload);
 
       setUploadFile(null);
       await loadTemplates(data.page);
     } catch (uploadError) {
-      setError(uploadError instanceof Error ? uploadError.message : 'Upload failed');
+      setError(uploadError instanceof Error ? uploadError.message : copy.errors.upload);
     } finally {
       setUploading(false);
     }
@@ -520,19 +539,19 @@ export function TemplatesPanel({ canPublish }: { canPublish: boolean }) {
     const actions: AdminTableAction<AdminTemplate>[] = [
       {
         key: 'view',
-        label: 'View details',
+        label: common.viewDetails,
         icon: Eye,
         onClick: openView,
       },
       {
         key: 'edit',
-        label: 'Edit',
+        label: common.edit,
         icon: Edit3,
         onClick: openEdit,
       },
       {
         key: 'upload',
-        label: 'Upload',
+        label: common.upload,
         icon: Upload,
         variant: 'outline',
         onClick: openEdit,
@@ -542,7 +561,7 @@ export function TemplatesPanel({ canPublish }: { canPublish: boolean }) {
     if (canPublish) {
       actions.push({
         key: 'delete',
-        label: 'Delete',
+        label: common.delete,
         icon: Trash2,
         variant: 'destructive',
         onClick: deleteTemplate,
@@ -558,20 +577,21 @@ export function TemplatesPanel({ canPublish }: { canPublish: boolean }) {
 
   const modalTitle =
     modalMode === 'create'
-      ? 'Create template'
+      ? copy.modalCreate
       : modalMode === 'edit'
-        ? 'Edit template'
-        : 'Template details';
+        ? copy.modalEdit
+        : copy.modalDetails;
 
   return (
     <>
       <AdminManagementTable
         actions={tableActions}
         columns={columns}
-        description="Manage template catalog records and preview media."
-        emptyText="No templates."
+        description={copy.description}
+        emptyText={copy.emptyText}
         error={error}
         icon={ImagePlus}
+        labels={common}
         loading={loading}
         onRefresh={() => loadTemplates(data.page)}
         onReset={resetSearch}
@@ -591,23 +611,25 @@ export function TemplatesPanel({ canPublish }: { canPublish: boolean }) {
             onClick={openCreate}
           >
             <Plus className="size-4" />
-            Create
+            {copy.create}
           </Button>
         }
         rowKey={(template, index) =>
           String(template.id ?? template.slug ?? index)
         }
         rows={data.list}
-        searchPlaceholder="Search title, slug, status, hook..."
+        searchPlaceholder={copy.searchPlaceholder}
         searchValue={search}
         selectedRowKey={selectedKey}
+        statusLabels={content.statusLabels}
         tableMinWidth={1320}
-        title="Templates"
+        title={copy.title}
       />
 
       <AdminModal
         open={Boolean(modalMode)}
         title={modalTitle}
+        closeLabel={common.close}
         maxWidth="max-w-5xl"
         onClose={() => setModalMode(null)}
         footer={
@@ -618,12 +640,12 @@ export function TemplatesPanel({ canPublish }: { canPublish: boolean }) {
                 variant="outline"
                 onClick={() => setModalMode(null)}
               >
-                Close
+                {common.close}
               </Button>
               {selectedTemplate ? (
                 <Button type="button" onClick={() => setModalMode('edit')}>
                   <Edit3 className="size-4" />
-                  Edit
+                  {common.edit}
                 </Button>
               ) : null}
             </>
@@ -634,7 +656,7 @@ export function TemplatesPanel({ canPublish }: { canPublish: boolean }) {
                 variant="outline"
                 onClick={() => setModalMode(null)}
               >
-                Cancel
+                {common.cancel}
               </Button>
               {canPublish && form.id ? (
                 <>
@@ -643,20 +665,20 @@ export function TemplatesPanel({ canPublish }: { canPublish: boolean }) {
                     variant="outline"
                     onClick={() => runStatusAction('publish')}
                     disabled={saving}
-                    title="Publish"
+                    title={common.publish}
                   >
                     <Send className="size-4" />
-                    Publish
+                    {common.publish}
                   </Button>
                   <Button
                     type="button"
                     variant="outline"
                     onClick={() => runStatusAction('archive')}
                     disabled={saving}
-                    title="Archive"
+                    title={common.archive}
                   >
                     <Archive className="size-4" />
-                    Archive
+                    {common.archive}
                   </Button>
                 </>
               ) : null}
@@ -666,7 +688,7 @@ export function TemplatesPanel({ canPublish }: { canPublish: boolean }) {
                 ) : (
                   <Save className="size-4" />
                 )}
-                Save
+                {common.save}
               </Button>
             </>
           )
@@ -675,6 +697,8 @@ export function TemplatesPanel({ canPublish }: { canPublish: boolean }) {
         {modalMode === 'view' && selectedTemplate ? (
           <AdminRecordDetails
             record={selectedTemplate as unknown as Record<string, unknown>}
+            fieldLabels={{ ...copy.fields, ...copy.columns }}
+            statusLabels={content.statusLabels}
             columns={[
               'title',
               'slug',
@@ -701,20 +725,20 @@ export function TemplatesPanel({ canPublish }: { canPublish: boolean }) {
         ) : (
           <div className="grid gap-5">
             <div className="grid gap-4 md:grid-cols-2">
-              <Field label="Title">
+              <Field label={copy.fields.title}>
                 <Input
                   value={form.title}
                   onChange={(event) => updateForm('title', event.target.value)}
                 />
               </Field>
-              <Field label="Slug">
+              <Field label={copy.fields.slug}>
                 <Input
                   value={form.slug}
                   onChange={(event) => updateForm('slug', event.target.value)}
-                  placeholder="auto from title"
+                  placeholder={copy.placeholders.slug}
                 />
               </Field>
-              <Field label="Locale">
+              <Field label={copy.fields.locale}>
                 <select
                   value={form.locale}
                   onChange={(event) =>
@@ -730,7 +754,7 @@ export function TemplatesPanel({ canPublish }: { canPublish: boolean }) {
                   <option value="zh">zh</option>
                 </select>
               </Field>
-              <Field label="Type">
+              <Field label={copy.fields.type}>
                 <select
                   value={form.type}
                   onChange={(event) =>
@@ -738,18 +762,20 @@ export function TemplatesPanel({ canPublish }: { canPublish: boolean }) {
                   }
                   className="h-9 rounded-md border border-gray-200 bg-white px-3 text-sm"
                 >
-                  <option value="image">Image</option>
-                  <option value="image_to_video">Image to video</option>
-                  <option value="video">Video</option>
+                  <option value="image">{copy.typeOptions.image}</option>
+                  <option value="image_to_video">
+                    {copy.typeOptions.image_to_video}
+                  </option>
+                  <option value="video">{copy.typeOptions.video}</option>
                 </select>
               </Field>
-              <Field label="Hook">
+              <Field label={copy.fields.hook}>
                 <Input
                   value={form.hook}
                   onChange={(event) => updateForm('hook', event.target.value)}
                 />
               </Field>
-              <Field label="CTA">
+              <Field label={copy.fields.cta}>
                 <Input
                   value={form.cta}
                   onChange={(event) => updateForm('cta', event.target.value)}
@@ -757,7 +783,7 @@ export function TemplatesPanel({ canPublish }: { canPublish: boolean }) {
               </Field>
             </div>
 
-            <Field label="Description">
+            <Field label={copy.fields.description}>
               <textarea
                 value={form.description}
                 onChange={(event) =>
@@ -767,7 +793,7 @@ export function TemplatesPanel({ canPublish }: { canPublish: boolean }) {
                 className="min-h-24 rounded-md border border-gray-200 bg-white px-3 py-2 text-sm outline-none focus:border-gray-400"
               />
             </Field>
-            <Field label="Prompt">
+            <Field label={copy.fields.prompt}>
               <textarea
                 value={form.prompt}
                 onChange={(event) => updateForm('prompt', event.target.value)}
@@ -776,7 +802,7 @@ export function TemplatesPanel({ canPublish }: { canPublish: boolean }) {
               />
             </Field>
             <div className="grid gap-4 md:grid-cols-2">
-              <Field label="Negative prompt">
+              <Field label={copy.fields.negativePrompt}>
                 <textarea
                   value={form.negativePrompt}
                   onChange={(event) =>
@@ -786,7 +812,7 @@ export function TemplatesPanel({ canPublish }: { canPublish: boolean }) {
                   className="min-h-28 rounded-md border border-gray-200 bg-white px-3 py-2 text-sm outline-none focus:border-gray-400"
                 />
               </Field>
-              <Field label="Prompt JSON">
+              <Field label={copy.fields.promptJson}>
                 <textarea
                   value={form.promptJson}
                   onChange={(event) =>
@@ -796,7 +822,7 @@ export function TemplatesPanel({ canPublish }: { canPublish: boolean }) {
                   className="min-h-28 rounded-md border border-gray-200 bg-white px-3 py-2 font-mono text-xs outline-none focus:border-gray-400"
                 />
               </Field>
-              <Field label="Default inputs JSON">
+              <Field label={copy.fields.defaultInputsJson}>
                 <textarea
                   value={form.defaultInputsJson}
                   onChange={(event) =>
@@ -807,7 +833,7 @@ export function TemplatesPanel({ canPublish }: { canPublish: boolean }) {
                 />
               </Field>
               <div className="grid gap-4 sm:grid-cols-3">
-                <Field label="Cost">
+                <Field label={copy.fields.costCredits}>
                   <Input
                     type="number"
                     min={0}
@@ -817,7 +843,7 @@ export function TemplatesPanel({ canPublish }: { canPublish: boolean }) {
                     }
                   />
                 </Field>
-                <Field label="Duration">
+                <Field label={copy.fields.durationSeconds}>
                   <select
                     value={form.durationSeconds}
                     disabled={form.type === 'image'}
@@ -834,7 +860,7 @@ export function TemplatesPanel({ canPublish }: { canPublish: boolean }) {
                     <option value={10}>10s</option>
                   </select>
                 </Field>
-                <Field label="Weight">
+                <Field label={copy.fields.sortWeight}>
                   <Input
                     type="number"
                     value={form.sortWeight}
@@ -848,7 +874,7 @@ export function TemplatesPanel({ canPublish }: { canPublish: boolean }) {
 
             <div>
               <Label className="mb-2 block text-xs font-semibold uppercase text-gray-500">
-                Aspect ratios
+                {copy.fields.aspectRatios}
               </Label>
               <div className="flex flex-wrap gap-2">
                 {(['9:16', '1:1', '16:9'] as const).map((ratio) => (
@@ -870,12 +896,14 @@ export function TemplatesPanel({ canPublish }: { canPublish: boolean }) {
             </div>
 
             <div className="rounded-lg border border-gray-200 bg-gray-50 p-4">
-              <div className="mb-4 text-sm font-semibold text-gray-950">Tags</div>
+              <div className="mb-4 text-sm font-semibold text-gray-950">
+                {copy.tags}
+              </div>
               <div className="grid gap-4">
                 {templateTagGroups.map(({ group, labels }) => (
                   <div key={group}>
                     <div className="mb-2 text-xs font-semibold uppercase text-gray-500">
-                      {labels.en}
+                      {labels[locale] ?? labels.en}
                     </div>
                     <div className="flex flex-wrap gap-2">
                       {templateTagOptions
@@ -892,7 +920,7 @@ export function TemplatesPanel({ canPublish }: { canPublish: boolean }) {
                                 : 'border-gray-200 bg-white text-gray-700'
                             )}
                           >
-                            {tag.labels.pt}
+                            {tag.labels[locale] ?? tag.labels.pt}
                           </button>
                         ))}
                     </div>
@@ -904,7 +932,7 @@ export function TemplatesPanel({ canPublish }: { canPublish: boolean }) {
             <div className="rounded-lg border border-gray-200 p-4">
               <div className="mb-4 flex items-center justify-between gap-3">
                 <div className="text-sm font-semibold text-gray-950">
-                  Upload asset
+                  {copy.uploadAsset}
                 </div>
                 {selectedTemplate?.asset ? (
                   <a
@@ -913,7 +941,7 @@ export function TemplatesPanel({ canPublish }: { canPublish: boolean }) {
                     rel="noreferrer"
                     className="text-xs font-semibold text-orange-700"
                   >
-                    Current asset
+                    {copy.currentAsset}
                   </a>
                 ) : null}
               </div>
@@ -925,10 +953,16 @@ export function TemplatesPanel({ canPublish }: { canPublish: boolean }) {
                   }
                   className="h-10 rounded-md border border-gray-200 bg-white px-3 text-sm"
                 >
-                  <option value="preview">Preview</option>
-                  <option value="thumbnail">Thumbnail</option>
-                  <option value="source">Source</option>
-                  <option value="example">Example</option>
+                  <option value="preview">
+                    {copy.uploadRoleOptions.preview}
+                  </option>
+                  <option value="thumbnail">
+                    {copy.uploadRoleOptions.thumbnail}
+                  </option>
+                  <option value="source">{copy.uploadRoleOptions.source}</option>
+                  <option value="example">
+                    {copy.uploadRoleOptions.example}
+                  </option>
                 </select>
                 <Input
                   type="file"
@@ -948,7 +982,7 @@ export function TemplatesPanel({ canPublish }: { canPublish: boolean }) {
                   ) : (
                     <ImagePlus className="size-4" />
                   )}
-                  Upload
+                  {common.upload}
                 </Button>
               </div>
             </div>

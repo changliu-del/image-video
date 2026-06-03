@@ -14,6 +14,7 @@ import {
   type AdminTableAction,
   type AdminTableColumn,
 } from '@/components/admin/admin-management-table';
+import type { AdminCommonCopy } from '@/lib/admin/content';
 
 export type AdminTableKey =
   | 'users'
@@ -22,12 +23,13 @@ export type AdminTableKey =
   | 'credit-ledger';
 
 type FieldType = 'text' | 'number' | 'textarea' | 'select' | 'json';
+type SelectOption = string | { value: string; label: string };
 
 export type AdminField = {
   key: string;
   label: string;
   type?: FieldType;
-  options?: string[];
+  options?: SelectOption[];
   readOnly?: boolean;
 };
 
@@ -100,10 +102,12 @@ async function readError(response: Response, fallback: string) {
 
 function DetailField({
   field,
+  labels,
   value,
   onChange,
 }: {
   field: AdminField;
+  labels: AdminCommonCopy;
   value: string;
   onChange: (value: string) => void;
 }) {
@@ -131,10 +135,13 @@ function DetailField({
           onChange={(event) => onChange(event.target.value)}
           className="h-9 rounded-md border border-gray-200 bg-white px-3 text-sm disabled:bg-gray-50 disabled:text-gray-500"
         >
-          <option value="">Select...</option>
+          <option value="">{labels.select}</option>
           {(field.options ?? []).map((option) => (
-            <option key={option} value={option}>
-              {option}
+            <option
+              key={typeof option === 'string' ? option : option.value}
+              value={typeof option === 'string' ? option : option.value}
+            >
+              {typeof option === 'string' ? option : option.label}
             </option>
           ))}
         </select>
@@ -160,10 +167,14 @@ export function ManagementPanel({
   canDelete,
   canEdit,
   config,
+  labels,
+  statusLabels,
 }: {
   canDelete: boolean;
   canEdit: boolean;
   config: AdminTableConfig;
+  labels: AdminCommonCopy;
+  statusLabels: Record<string, string>;
 }) {
   const [data, setData] = useState<PaginatedResp>({
     list: [],
@@ -205,17 +216,17 @@ export function ManagementPanel({
         }
         const response = await fetch(`${endpoint}?${params}`);
         if (!response.ok) {
-          throw new Error(await readError(response, 'Load failed'));
+          throw new Error(await readError(response, labels.loadFailed));
         }
         const json = (await response.json()) as PaginatedResp;
         setData(json);
       } catch (loadError) {
-        setError(loadError instanceof Error ? loadError.message : 'Load failed');
+        setError(loadError instanceof Error ? loadError.message : labels.loadFailed);
       } finally {
         setLoading(false);
       }
     },
-    [appliedFilters, appliedSearch, data.pageSize, endpoint]
+    [appliedFilters, appliedSearch, data.pageSize, endpoint, labels.loadFailed]
   );
 
   useEffect(() => {
@@ -318,7 +329,7 @@ export function ManagementPanel({
         body: JSON.stringify(body),
       });
       if (!response.ok) {
-        throw new Error(await readError(response, 'Save failed'));
+        throw new Error(await readError(response, labels.saveFailed));
       }
       const updated = (await response.json()) as Record<string, unknown>;
       setSelectedRow(updated);
@@ -326,7 +337,7 @@ export function ManagementPanel({
       setModalMode('view');
       await fetcher(data.page);
     } catch (saveError) {
-      setError(saveError instanceof Error ? saveError.message : 'Save failed');
+      setError(saveError instanceof Error ? saveError.message : labels.saveFailed);
     } finally {
       setSaving(false);
     }
@@ -335,7 +346,10 @@ export function ManagementPanel({
   async function deleteRow(row: Record<string, unknown>) {
     if (
       !window.confirm(
-        `Delete ${formatAdminValue(row[config.idField], 80)} from ${config.title}?`
+        labels.confirmDelete(
+          formatAdminValue(row[config.idField], 80),
+          config.title
+        )
       )
     ) {
       return;
@@ -350,7 +364,7 @@ export function ManagementPanel({
         body: JSON.stringify({ id: row[config.idField] }),
       });
       if (!response.ok) {
-        throw new Error(await readError(response, 'Delete failed'));
+        throw new Error(await readError(response, labels.deleteFailed));
       }
       if (selectedRow?.[config.idField] === row[config.idField]) {
         setSelectedRow(null);
@@ -358,7 +372,7 @@ export function ManagementPanel({
       }
       await fetcher(data.page);
     } catch (deleteError) {
-      setError(deleteError instanceof Error ? deleteError.message : 'Delete failed');
+      setError(deleteError instanceof Error ? deleteError.message : labels.deleteFailed);
     } finally {
       setSaving(false);
     }
@@ -374,11 +388,11 @@ export function ManagementPanel({
         body: JSON.stringify({ action: 'restore', id: row[config.idField] }),
       });
       if (!response.ok) {
-        throw new Error(await readError(response, 'Restore failed'));
+        throw new Error(await readError(response, labels.restoreFailed));
       }
       await fetcher(data.page);
     } catch (restoreError) {
-      setError(restoreError instanceof Error ? restoreError.message : 'Restore failed');
+      setError(restoreError instanceof Error ? restoreError.message : labels.restoreFailed);
     } finally {
       setSaving(false);
     }
@@ -402,7 +416,7 @@ export function ManagementPanel({
     const actions: AdminTableAction[] = [
       {
         key: 'view',
-        label: 'View details',
+        label: labels.viewDetails,
         icon: Eye,
         onClick: openView,
       },
@@ -411,7 +425,7 @@ export function ManagementPanel({
     if (canEditRow) {
       actions.push({
         key: 'edit',
-        label: 'Edit',
+        label: labels.edit,
         icon: Edit3,
         onClick: openEdit,
       });
@@ -422,7 +436,7 @@ export function ManagementPanel({
     if (canEditRow && isDeletedUser) {
       actions.push({
         key: 'restore',
-        label: 'Restore',
+        label: labels.restore,
         icon: RotateCcw,
         variant: 'outline',
         onClick: restoreUser,
@@ -432,7 +446,7 @@ export function ManagementPanel({
     if (canDelete && config.deleteEnabled && !isDeletedUser) {
       actions.push({
         key: 'delete',
-        label: 'Delete',
+        label: labels.delete,
         icon: Trash2,
         variant: 'destructive',
         onClick: deleteRow,
@@ -468,7 +482,7 @@ export function ManagementPanel({
         className="self-end bg-orange-600 text-white hover:bg-orange-700"
       >
         <Search className="size-4" />
-        Search
+        {labels.search}
       </Button>
     </>
   ) : null;
@@ -484,9 +498,10 @@ export function ManagementPanel({
         actions={tableActions}
         columns={columns}
         description={config.description}
-        emptyText="No records."
+        emptyText={labels.noRecords}
         error={error}
         icon={config.icon}
+        labels={labels}
         loading={loading}
         onRefresh={() => fetcher(data.page)}
         onReset={resetSearch}
@@ -506,6 +521,7 @@ export function ManagementPanel({
         searchPlaceholder={config.searchPlaceholder}
         searchValue={search}
         selectedRowKey={selectedKey}
+        statusLabels={statusLabels}
         tableMinWidth={config.tableMinWidth ?? 1160}
         title={config.title}
         toolbarFilters={toolbarFilters}
@@ -515,9 +531,10 @@ export function ManagementPanel({
         open={Boolean(modalMode && selectedRow)}
         title={
           modalMode === 'edit'
-            ? `Edit ${config.title}`
-            : `${config.title} details`
+            ? `${labels.edit} ${config.title}`
+            : `${config.title} ${labels.viewDetails}`
         }
+        closeLabel={labels.close}
         maxWidth="max-w-4xl"
         onClose={() => setModalMode(null)}
         footer={
@@ -528,7 +545,7 @@ export function ManagementPanel({
                 variant="outline"
                 onClick={() => setModalMode('view')}
               >
-                Cancel
+                {labels.cancel}
               </Button>
               <Button type="button" onClick={saveRow} disabled={saving}>
                 {saving ? (
@@ -536,7 +553,7 @@ export function ManagementPanel({
                 ) : (
                   <Edit3 className="size-4" />
                 )}
-                Save changes
+                {labels.saveChanges}
               </Button>
             </>
           ) : (
@@ -546,12 +563,12 @@ export function ManagementPanel({
                 variant="outline"
                 onClick={() => setModalMode(null)}
               >
-                Close
+                {labels.close}
               </Button>
               {canEdit && config.editEnabled !== false ? (
                 <Button type="button" onClick={() => setModalMode('edit')}>
                   <Edit3 className="size-4" />
-                  Edit
+                  {labels.edit}
                 </Button>
               ) : null}
             </>
@@ -576,6 +593,7 @@ export function ManagementPanel({
                 <DetailField
                   key={field.key}
                   field={field}
+                  labels={labels}
                   value={draft[field.key] ?? ''}
                   onChange={(value) =>
                     setDraft((current) => ({ ...current, [field.key]: value }))
@@ -588,6 +606,13 @@ export function ManagementPanel({
           <AdminRecordDetails
             record={selectedRow}
             layout={config.modalLayout ?? 'grid'}
+            fieldLabels={{
+              ...config.columnLabels,
+              ...Object.fromEntries(
+                config.editableFields.map((field) => [field.key, field.label])
+              ),
+            }}
+            statusLabels={statusLabels}
             columns={[
               ...config.columns,
               ...config.editableFields

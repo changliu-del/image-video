@@ -6,6 +6,7 @@ import { Loader2, RefreshCw, Search, X } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
+import type { AdminCommonCopy } from '@/lib/admin/content';
 import { cn } from '@/lib/utils';
 
 export type AdminTableRow = Record<string, unknown>;
@@ -37,6 +38,33 @@ type PaginationConfig = {
   onPageChange: (page: number) => void;
 };
 
+type AdminTableLabels = Pick<
+  AdminCommonCopy,
+  | 'actions'
+  | 'close'
+  | 'loading'
+  | 'next'
+  | 'page'
+  | 'previous'
+  | 'refresh'
+  | 'reset'
+  | 'search'
+  | 'total'
+>;
+
+const defaultTableLabels: AdminTableLabels = {
+  actions: 'Actions',
+  close: 'Close',
+  loading: 'Loading...',
+  next: 'Next',
+  page: 'Page',
+  previous: 'Previous',
+  refresh: 'Refresh',
+  reset: 'Reset',
+  search: 'Search',
+  total: 'Total',
+};
+
 export function formatAdminLabel(value: string) {
   return value
     .replace(/_/g, ' ')
@@ -66,9 +94,15 @@ export function formatAdminValue(value: unknown, max = 42) {
   return text.length > max ? `${text.slice(0, max)}...` : text;
 }
 
-export function AdminStatusBadge({ value }: { value: unknown }) {
-  const text = formatAdminValue(value, 24);
+export function AdminStatusBadge({
+  labels,
+  value,
+}: {
+  labels?: Record<string, string>;
+  value: unknown;
+}) {
   const normalized = String(value ?? '').toLowerCase();
+  const text = labels?.[normalized] ?? formatAdminValue(value, 24);
   const matched =
     [
       'published',
@@ -115,6 +149,7 @@ export function AdminStatusBadge({ value }: { value: unknown }) {
 
 export function AdminModal({
   children,
+  closeLabel = 'Close',
   footer,
   maxWidth = 'max-w-3xl',
   onClose,
@@ -122,6 +157,7 @@ export function AdminModal({
   title,
 }: {
   children: ReactNode;
+  closeLabel?: string;
   footer?: ReactNode;
   maxWidth?: string;
   onClose: () => void;
@@ -166,8 +202,8 @@ export function AdminModal({
             variant="ghost"
             size="icon"
             className="size-8"
-            aria-label="Close"
-            title="Close"
+            aria-label={closeLabel}
+            title={closeLabel}
             onClick={onClose}
           >
             <X className="size-4" />
@@ -186,12 +222,16 @@ export function AdminModal({
 
 export function AdminRecordDetails({
   columns,
+  fieldLabels,
   layout = 'grid',
   record,
+  statusLabels,
 }: {
   columns?: string[];
+  fieldLabels?: Record<string, string>;
   layout?: 'grid' | 'stacked';
   record: AdminTableRow;
+  statusLabels?: Record<string, string>;
 }) {
   const keys = columns?.length
     ? columns.filter((key) => key in record)
@@ -217,7 +257,7 @@ export function AdminRecordDetails({
             )}
           >
             <dt className="mb-1 text-xs font-semibold uppercase text-gray-500">
-              {formatAdminLabel(key)}
+              {fieldLabels?.[key] ?? formatAdminLabel(key)}
             </dt>
             <dd className="break-words text-sm text-gray-900">
               {isObject ? (
@@ -225,6 +265,7 @@ export function AdminRecordDetails({
                   {JSON.stringify(value, null, 2)}
                 </pre>
               ) : (
+                statusLabels?.[String(value ?? '').toLowerCase()] ??
                 formatAdminValue(value, 300)
               )}
             </dd>
@@ -246,7 +287,8 @@ function getRowKey<T extends AdminTableRow>(
 
 function defaultCell<T extends AdminTableRow>(
   column: AdminTableColumn<T>,
-  row: T
+  row: T,
+  statusLabels?: Record<string, string>
 ) {
   const value = row[column.key];
   const isTime =
@@ -255,7 +297,7 @@ function defaultCell<T extends AdminTableRow>(
     column.key.endsWith('_at');
 
   if (column.kind === 'status') {
-    return <AdminStatusBadge value={value} />;
+    return <AdminStatusBadge labels={statusLabels} value={value} />;
   }
 
   return (
@@ -281,6 +323,7 @@ export function AdminManagementTable<T extends AdminTableRow>({
   emptyText = 'No data.',
   error,
   icon: Icon,
+  labels,
   loading,
   onRefresh,
   onReset,
@@ -297,6 +340,7 @@ export function AdminManagementTable<T extends AdminTableRow>({
   title,
   toolbarFilters,
   onSearchValueChange,
+  statusLabels,
 }: {
   actions?: (row: T) => AdminTableAction<T>[];
   columns: AdminTableColumn<T>[];
@@ -304,6 +348,7 @@ export function AdminManagementTable<T extends AdminTableRow>({
   emptyText?: string;
   error?: string | null;
   icon?: ComponentType<{ className?: string }>;
+  labels?: Partial<AdminTableLabels>;
   loading: boolean;
   onRefresh?: () => void;
   onReset?: () => void;
@@ -320,6 +365,7 @@ export function AdminManagementTable<T extends AdminTableRow>({
   title: string;
   toolbarFilters?: ReactNode;
   onSearchValueChange?: (value: string) => void;
+  statusLabels?: Record<string, string>;
 }) {
   function submitSearch(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -329,6 +375,7 @@ export function AdminManagementTable<T extends AdminTableRow>({
   const showActions = Boolean(actions);
   const showSearch = Boolean(onSearch && onSearchValueChange);
   const colSpan = columns.length + (showActions ? 1 : 0);
+  const copy = { ...defaultTableLabels, ...labels };
   const canPageBackward = Boolean(pagination && pagination.page > 1);
   const canPageForward = Boolean(
     pagination && pagination.page * pagination.pageSize < pagination.total
@@ -376,7 +423,7 @@ export function AdminManagementTable<T extends AdminTableRow>({
                   className="bg-orange-600 text-white hover:bg-orange-700"
                 >
                   <Search className="size-4" />
-                  Search
+                  {copy.search}
                 </Button>
               </>
             ) : null}
@@ -388,7 +435,7 @@ export function AdminManagementTable<T extends AdminTableRow>({
                 className="self-end"
                 onClick={onReset}
               >
-                Reset
+                {copy.reset}
               </Button>
             ) : null}
             {onRefresh ? (
@@ -398,8 +445,8 @@ export function AdminManagementTable<T extends AdminTableRow>({
                 size="icon"
                 className="size-9 self-end"
                 onClick={onRefresh}
-                aria-label="Refresh"
-                title="Refresh"
+                aria-label={copy.refresh}
+                title={copy.refresh}
               >
                 <RefreshCw
                   className={cn('size-4', loading && 'animate-spin')}
@@ -441,7 +488,7 @@ export function AdminManagementTable<T extends AdminTableRow>({
                 ))}
                 {showActions ? (
                   <th className="sticky right-0 z-10 w-[132px] whitespace-nowrap border-b border-l border-gray-200 bg-gray-50 px-4 py-3 font-semibold">
-                    Actions
+                    {copy.actions}
                   </th>
                 ) : null}
               </tr>
@@ -454,7 +501,7 @@ export function AdminManagementTable<T extends AdminTableRow>({
                     className="h-48 px-4 py-10 text-center text-gray-500"
                   >
                     <Loader2 className="mx-auto mb-2 size-5 animate-spin" />
-                    Loading...
+                    {copy.loading}
                   </td>
                 </tr>
               ) : rows.length ? (
@@ -480,7 +527,7 @@ export function AdminManagementTable<T extends AdminTableRow>({
                         >
                           {column.render
                             ? column.render(row)
-                            : defaultCell(column, row)}
+                            : defaultCell(column, row, statusLabels)}
                         </td>
                       ))}
                       {showActions ? (
@@ -537,9 +584,11 @@ export function AdminManagementTable<T extends AdminTableRow>({
 
         {pagination ? (
           <div className="mt-4 flex flex-wrap items-center justify-between gap-3 text-sm text-gray-500">
-            <span>Total: {pagination.total}</span>
+            <span>{copy.total}: {pagination.total}</span>
             <div className="flex items-center gap-2">
-              <span className="text-xs">Page {pagination.page}</span>
+              <span className="text-xs">
+                {copy.page} {pagination.page}
+              </span>
               <Button
                 type="button"
                 size="sm"
@@ -547,7 +596,7 @@ export function AdminManagementTable<T extends AdminTableRow>({
                 disabled={!canPageBackward}
                 onClick={() => pagination.onPageChange(pagination.page - 1)}
               >
-                Previous
+                {copy.previous}
               </Button>
               <Button
                 type="button"
@@ -556,7 +605,7 @@ export function AdminManagementTable<T extends AdminTableRow>({
                 disabled={!canPageForward}
                 onClick={() => pagination.onPageChange(pagination.page + 1)}
               >
-                Next
+                {copy.next}
               </Button>
             </div>
           </div>
