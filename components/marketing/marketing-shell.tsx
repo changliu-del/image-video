@@ -10,6 +10,7 @@ import {
   locales,
   type Locale,
 } from '@/lib/marketing/content';
+import { withDashboardLocale } from '@/lib/dashboard/locale-url';
 import { cn } from '@/lib/utils';
 
 type MarketingShellProps = {
@@ -54,7 +55,13 @@ function localizedPath(pathname: string, nextLocale: Locale) {
 }
 
 function getNavHref(locale: Locale, item: MarketingNavItem) {
-  return item.localized === false ? item.href : getLocalizedHref(locale, item.href);
+  if (item.localized === false) {
+    return item.href.startsWith('/dashboard')
+      ? withDashboardLocale(item.href, locale)
+      : item.href;
+  }
+
+  return getLocalizedHref(locale, item.href);
 }
 
 function LanguageMenu({
@@ -115,9 +122,10 @@ function DesktopNav({
     <nav className="hidden items-center gap-2 md:flex">
       {content.navItems.map((item) => {
         const href = getNavHref(locale, item);
+        const hrefPathname = href.split('?')[0];
         const active =
-          pathname === href ||
-          (item.localized === false && pathname.startsWith(`${href}/`));
+          pathname === hrefPathname ||
+          (item.localized === false && pathname.startsWith(`${hrefPathname}/`));
 
         return (
           <Link

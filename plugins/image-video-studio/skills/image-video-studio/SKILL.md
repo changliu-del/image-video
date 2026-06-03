@@ -1,6 +1,6 @@
 ---
 name: image-video-studio
-description: Use for this personal image-video SaaS project when Codex is asked to understand project background, plan substantial changes, coordinate frontend/backend/QA subagents, update the project KB, or implement changes across Next.js routes, frontend rendering/workbench architecture, API routes, generation providers, credits, payments, templates, storage, or deployment docs.
+description: Use only when the current workspace is /Users/changliu/workspace/src/github.com/image-video, or when the user explicitly asks for this image-video SaaS project, and Codex needs project background, KB navigation, frontend/backend/QA coordination, or implementation across routes, workbenches, APIs, providers, credits, payments, templates, storage, or deployment docs.
 ---
 
 # Image Video Studio
@@ -11,6 +11,7 @@ This is the project-specific working mode for `/Users/changliu/workspace/src/git
 
 ## Ground Rules
 
+- Only activate this skill for `/Users/changliu/workspace/src/github.com/image-video` or when the user explicitly asks to use this image-video project mode. For Shopee/O2O enterprise repositories, prefer the SRA `development`, `ai-ops`, and `stress` skills instead.
 - Treat this as a personal project. Do not import company SRA gates, Confluence workflows, release-diff stages, or dev-agent ceremony unless the user explicitly asks.
 - Prefer the project's existing Next.js, TypeScript, Drizzle, Vitest, R2, Stripe, Wanxiang, and template-management patterns.
 - Use CodeGraph first for structural code questions, then read exact files only when needed.
