@@ -13,6 +13,7 @@ import {
 } from '@/lib/payments/mock';
 import { db } from '@/lib/db/drizzle';
 import { type User, users } from '@/lib/db/schema';
+import { normalizeDashboardLocale } from '@/lib/dashboard/content';
 import {
   getUserByStripeCustomerId,
   getUser,
@@ -33,6 +34,15 @@ type CreditsResolution = {
   credits: number;
   source: string;
 };
+
+function withDashboardLocaleParam(path: string, locale?: string | null) {
+  const [pathname, query = ''] = path.split('?');
+  const params = new URLSearchParams(query);
+  params.set('locale', normalizeDashboardLocale(locale));
+  const nextQuery = params.toString();
+
+  return nextQuery ? `${pathname}?${nextQuery}` : pathname;
+}
 
 const CREDIT_PACKAGES_BY_AMOUNT_CENTS = new Map<number, number>(
   CREDIT_PACKAGES.map((item) => [
@@ -242,12 +252,14 @@ async function getProductDetails(productRef: ProductRef) {
 }
 
 export async function createCheckoutSession({
-  priceId
+  priceId,
+  locale,
 }: {
   priceId: string;
+  locale?: string | null;
 }) {
   if (isPaymentMockEnabled()) {
-    return createMockCheckoutSession({ priceId });
+    return createMockCheckoutSession({ priceId, locale });
   }
 
   const user = await getUser();
@@ -258,7 +270,10 @@ export async function createCheckoutSession({
 
   const price = await stripe.prices.retrieve(priceId);
   const isSubscription = Boolean(price.recurring);
-  const cancelPath = isSubscription ? '/dashboard/billing' : '/dashboard/credits';
+  const cancelPath = withDashboardLocaleParam(
+    isSubscription ? '/dashboard/billing' : '/dashboard/credits',
+    locale
+  );
   const session = await stripe.checkout.sessions.create({
     payment_method_types: ['card'],
     line_items: [
@@ -302,9 +317,11 @@ export async function createCheckoutSession({
 }
 
 async function createMockCheckoutSession({
-  priceId
+  priceId,
+  locale,
 }: {
   priceId: string;
+  locale?: string | null;
 }) {
   const user = await getUser();
 
@@ -368,7 +385,10 @@ async function createMockCheckoutSession({
     });
 
     redirect(
-      `/dashboard/billing?interval=${subscriptionPlan.interval}&checkout=mock_subscription_success`
+      withDashboardLocaleParam(
+        `/dashboard/billing?interval=${subscriptionPlan.interval}&checkout=mock_subscription_success`,
+        locale
+      )
     );
   }
 
@@ -410,7 +430,7 @@ async function createMockCheckoutSession({
     }
   });
 
-  redirect('/dashboard/credits?checkout=mock_success');
+  redirect(withDashboardLocaleParam('/dashboard/credits?checkout=mock_success', locale));
 }
 
 export async function cancelMockSubscription(user: User) {
@@ -426,13 +446,18 @@ export async function cancelMockSubscription(user: User) {
   });
 }
 
-export async function createCustomerPortalSession(user: User) {
+export async function createCustomerPortalSession(
+  user: User,
+  options: { locale?: string | null } = {}
+) {
   if (isPaymentMockEnabled()) {
-    return { url: '/dashboard/billing?billing=mock' };
+    return {
+      url: withDashboardLocaleParam('/dashboard/billing?billing=mock', options.locale),
+    };
   }
 
   if (!user.stripeCustomerId || !user.stripeProductId) {
-    redirect('/dashboard/billing');
+    redirect(withDashboardLocaleParam('/dashboard/billing', options.locale));
   }
 
   let configuration: Stripe.BillingPortal.Configuration;
@@ -493,7 +518,7 @@ export async function createCustomerPortalSession(user: User) {
 
   return stripe.billingPortal.sessions.create({
     customer: user.stripeCustomerId,
-    return_url: `${process.env.BASE_URL}/dashboard`,
+    return_url: `${process.env.BASE_URL}${withDashboardLocaleParam('/dashboard/billing', options.locale)}`,
     configuration: configuration.id
   });
 }
