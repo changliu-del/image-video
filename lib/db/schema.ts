@@ -26,6 +26,8 @@ export const ASSET_STATUSES = ['pending', 'uploaded', 'failed'] as const;
 export type AssetStatus = (typeof ASSET_STATUSES)[number];
 
 export const GENERATION_JOB_STATUSES = [
+  'queued',
+  'submitting',
   'running',
   'succeeded',
   'failed',
@@ -482,7 +484,7 @@ export const generationJobs = pgTable(
     status: text('status')
       .$type<GenerationJobStatus>()
       .notNull()
-      .default('running'),
+      .default('queued'),
     generationType: text('generation_type')
       .$type<GenerationType>()
       .notNull(),
@@ -493,7 +495,9 @@ export const generationJobs = pgTable(
     finalImageAssetId: uuid('final_image_asset_id').references(() => assets.id),
     finalVideoAssetId: uuid('final_video_asset_id').references(() => assets.id),
     provider: text('provider').notNull().default('wanxiang'),
-    providerTaskId: text('provider_task_id').notNull(),
+    providerTaskId: text('provider_task_id'),
+    triggerRunId: text('trigger_run_id'),
+    providerStatus: varchar('provider_status', { length: 32 }),
     inputJson: jsonb('input_json')
       .$type<Record<string, unknown>>()
       .notNull()
@@ -502,8 +506,14 @@ export const generationJobs = pgTable(
     errorMessage: text('error_message'),
     creditReserved: integer('credit_reserved').notNull().default(0),
     creditSpent: integer('credit_spent').notNull().default(0),
+    attemptCount: integer('attempt_count').notNull().default(0),
+    providerPollCount: integer('provider_poll_count').notNull().default(0),
     createdAt: timestamp('created_at').notNull().defaultNow(),
     updatedAt: timestamp('updated_at').notNull().defaultNow(),
+    submittedAt: timestamp('submitted_at'),
+    startedAt: timestamp('started_at'),
+    lastProviderPollAt: timestamp('last_provider_poll_at'),
+    nextProviderPollAt: timestamp('next_provider_poll_at'),
     completedAt: timestamp('completed_at'),
   },
   (table) => [
@@ -513,14 +523,18 @@ export const generationJobs = pgTable(
       table.generationType,
       table.status
     ),
+    index('generation_jobs_status_next_poll_idx').on(
+      table.status,
+      table.nextProviderPollAt
+    ),
     index('generation_jobs_input_asset_id_idx').on(table.inputAssetId),
     uniqueIndex('generation_jobs_provider_task_id_unique').on(
       table.provider,
       table.providerTaskId
-    ),
+    ).where(sql`${table.providerTaskId} is not null`),
     check(
       'generation_jobs_status_check',
-      sql`${table.status} in ('running', 'succeeded', 'failed')`
+      sql`${table.status} in ('queued', 'submitting', 'running', 'succeeded', 'failed')`
     ),
     check(
       'generation_jobs_type_check',
@@ -539,6 +553,11 @@ export const generationJobs = pgTable(
       sql`${table.creditReserved} >= 0`
     ),
     check('generation_jobs_credit_spent_check', sql`${table.creditSpent} >= 0`),
+    check('generation_jobs_attempt_count_check', sql`${table.attemptCount} >= 0`),
+    check(
+      'generation_jobs_provider_poll_count_check',
+      sql`${table.providerPollCount} >= 0`
+    ),
   ]
 );
 

@@ -8,6 +8,9 @@ import { captureException } from '@/lib/observability/sentry';
 import { type NextRequest, NextResponse } from 'next/server';
 
 export const runtime = 'nodejs';
+const statusHeaders = {
+  'Cache-Control': 'no-store',
+};
 
 export async function GET(
   _request: NextRequest,
@@ -39,7 +42,7 @@ export async function GET(
       );
     }
 
-    return NextResponse.json(job);
+    return NextResponse.json(job, { headers: statusHeaders });
   } catch (error) {
     if (error instanceof GenerationApiError) {
       return NextResponse.json(

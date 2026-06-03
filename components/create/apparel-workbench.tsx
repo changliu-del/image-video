@@ -82,6 +82,7 @@ type JobStatusResponse = {
   resultUrl?: string | null;
   thumbnailUrl?: string | null;
   errorMessage?: string | null;
+  nextPollMs?: number | null;
 };
 
 const MAX_IMAGE_BYTES = 10 * 1024 * 1024;
@@ -474,13 +475,15 @@ export function ApparelWorkbench() {
       }
     };
 
-    poll();
-    const timer = window.setInterval(poll, 3000);
+    const timer = window.setTimeout(
+      poll,
+      jobStatus?.nextPollMs ?? (jobStatus?.status === 'queued' ? 2000 : 5000)
+    );
     return () => {
       cancelled = true;
-      window.clearInterval(timer);
+      window.clearTimeout(timer);
     };
-  }, [jobId, jobStatus?.status]);
+  }, [jobId, jobStatus?.nextPollMs, jobStatus?.status]);
 
   function selectPrimaryFile(file: File | null) {
     setError(null);

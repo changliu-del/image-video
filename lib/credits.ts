@@ -1,5 +1,3 @@
-import 'server-only';
-
 import { and, desc, eq, sql } from 'drizzle-orm';
 
 import { db } from '@/lib/db/drizzle';
@@ -244,6 +242,27 @@ export async function captureReservedCredits(
       };
     }
 
+    const refundRows = await tx
+      .select()
+      .from(creditLedger)
+      .where(
+        and(
+          eq(creditLedger.userId, input.userId),
+          eq(creditLedger.jobId, input.jobId),
+          eq(creditLedger.reason, 'refund')
+        )
+      )
+      .orderBy(desc(creditLedger.createdAt))
+      .limit(1);
+
+    if (refundRows[0]) {
+      return {
+        entry: refundRows[0],
+        balance: refundRows[0].balanceAfter,
+        alreadyProcessed: true,
+      };
+    }
+
     const reserveRows = await tx
       .select()
       .from(creditLedger)
@@ -331,6 +350,27 @@ export async function refundReservedCredits(
       return {
         entry: existingRows[0],
         balance: existingRows[0].balanceAfter,
+        alreadyProcessed: true,
+      };
+    }
+
+    const captureRows = await tx
+      .select()
+      .from(creditLedger)
+      .where(
+        and(
+          eq(creditLedger.userId, input.userId),
+          eq(creditLedger.jobId, input.jobId),
+          eq(creditLedger.reason, 'capture')
+        )
+      )
+      .orderBy(desc(creditLedger.createdAt))
+      .limit(1);
+
+    if (captureRows[0]) {
+      return {
+        entry: captureRows[0],
+        balance: captureRows[0].balanceAfter,
         alreadyProcessed: true,
       };
     }

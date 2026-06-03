@@ -5,6 +5,9 @@ import { captureException } from '@/lib/observability/sentry';
 import { type NextRequest, NextResponse } from 'next/server';
 
 export const runtime = 'nodejs';
+const statusHeaders = {
+  'Cache-Control': 'no-store',
+};
 
 type RouteContext = {
   params: Promise<{
@@ -45,12 +48,16 @@ export async function GET(_request: NextRequest, context: RouteContext) {
     return NextResponse.json({ error: 'Job not found' }, { status: 404 });
   }
 
-  return NextResponse.json({
-    id: job.id,
-    status: job.status,
-    progressLabel: job.progressLabel,
-    finalVideoUrl: job.finalVideoUrl,
-    thumbnailUrl: job.thumbnailUrl,
-    errorMessage: job.errorMessage,
-  });
+  return NextResponse.json(
+    {
+      id: job.id,
+      status: job.status,
+      progressLabel: job.progressLabel,
+      finalVideoUrl: job.finalVideoUrl,
+      thumbnailUrl: job.thumbnailUrl,
+      errorMessage: job.errorMessage,
+      nextPollMs: job.nextPollMs,
+    },
+    { headers: statusHeaders }
+  );
 }

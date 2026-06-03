@@ -12,13 +12,17 @@ Workbench selects file and options
 -> POST /api/generations
 -> lib/generations/validation.ts normalizes payload
 -> lib/generations/jobs.ts validates assets, limits, and credits
--> Wanxiang submit via lib/providers/wanxiang/*
--> generation_jobs row created as running
+-> generation_jobs row created as queued with reserved credits
+-> Trigger.dev generate-wanxiang worker is enqueued
+-> Trigger.dev worker submits to Wanxiang and stores providerTaskId
+-> Trigger.dev worker polls Wanxiang until terminal status
 -> frontend polls /api/generations/[id]/status
--> status route queries Wanxiang
+-> status route reads generation_jobs only
 -> success creates final_image/final_video assets and captures credits
 -> failure refunds reserved credits
 ```
+
+`/api/generations` is DB-first: local job and credit reservation happen before provider submit. Provider interaction now belongs to `trigger/generate-wanxiang.ts`, so Vercel API requests are not held open by Wanxiang latency.
 
 ## Provider Files
 
@@ -26,6 +30,7 @@ Workbench selects file and options
 - `lib/providers/wanxiang/cloth.ts`
 - `lib/providers/wanxiang/starlink.ts`
 - `lib/providers/wanxiang/models.ts`
+- `trigger/generate-wanxiang.ts` is the active Trigger.dev task for Wanxiang submit/query.
 - `lib/providers/video/fal.ts` remains for older runner path.
 
 ## Data Model
@@ -43,5 +48,4 @@ Key tables are defined in `lib/db/schema.ts`:
 
 ## Architecture Caveat
 
-`lib/generations/runner.ts` expects fields and statuses that are not currently present in active migrations/schema. Treat it as inactive or legacy until intentionally reconciled.
-
+`lib/generations/runner.ts` and `trigger/generate-video.ts` expect older fal/FFmpeg fields and statuses. Treat them as inactive legacy code until intentionally reconciled or removed.

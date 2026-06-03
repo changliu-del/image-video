@@ -7,6 +7,7 @@ import { completeAssetRequestSchema } from '@/lib/generations/validation';
 import {
   storageKeyBelongsToUser,
   storageKeyMatchesUploadAsset,
+  verifyUploadedObject,
 } from '@/lib/storage/r2';
 import { captureException } from '@/lib/observability/sentry';
 import { type NextRequest, NextResponse } from 'next/server';
@@ -63,6 +64,33 @@ export async function POST(request: NextRequest) {
   ) {
     return NextResponse.json(
       { error: 'Storage key does not match this asset' },
+      { status: 400 }
+    );
+  }
+
+  try {
+    const exists = await verifyUploadedObject({
+      storageKey: parsed.data.storageKey,
+      mimeType: asset.mimeType,
+      sizeBytes: asset.sizeBytes,
+    });
+
+    if (!exists) {
+      return NextResponse.json(
+        { error: 'Uploaded object metadata does not match this asset' },
+        { status: 400 }
+      );
+    }
+  } catch (error) {
+    await captureException(error, {
+      route: 'POST /api/assets/complete',
+      userId: user.id,
+      assetId: asset.id,
+      storageKey: parsed.data.storageKey,
+      phase: 'r2_head',
+    });
+    return NextResponse.json(
+      { error: 'Uploaded object was not found' },
       { status: 400 }
     );
   }

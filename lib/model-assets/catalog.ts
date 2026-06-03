@@ -1,5 +1,3 @@
-import 'server-only';
-
 import { client } from '@/lib/db/drizzle';
 import { fetchWanxiangModelCatalog } from '@/lib/providers/wanxiang/models';
 

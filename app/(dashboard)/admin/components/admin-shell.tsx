@@ -198,7 +198,7 @@ const MANAGEMENT_CONFIGS: Record<
         key: 'status',
         label: 'Status',
         type: 'select',
-        options: ['queued', 'running', 'rendering', 'succeeded', 'failed'],
+        options: ['queued', 'submitting', 'running', 'succeeded', 'failed'],
       },
       { key: 'productName', label: 'Product name' },
       { key: 'headline', label: 'Headline' },

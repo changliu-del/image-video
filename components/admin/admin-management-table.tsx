@@ -80,6 +80,7 @@ export function AdminStatusBadge({ value }: { value: unknown }) {
       'queued',
       'pending',
       'member',
+      'submitting',
       'running',
       'rendering',
       'ops',
@@ -98,7 +99,7 @@ export function AdminStatusBadge({ value }: { value: unknown }) {
         ) && 'bg-emerald-50 text-emerald-700',
         ['draft', 'queued', 'pending', 'member'].includes(normalized) &&
           'bg-amber-50 text-amber-700',
-        ['running', 'rendering', 'ops'].includes(normalized) &&
+        ['submitting', 'running', 'rendering', 'ops'].includes(normalized) &&
           'bg-sky-50 text-sky-700',
         ['failed', 'deleted'].includes(normalized) &&
           'bg-red-50 text-red-700',

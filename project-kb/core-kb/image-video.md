@@ -19,6 +19,7 @@ The project should optimize for fast commercial validation:
 - Drizzle ORM with Postgres.
 - Cloudflare R2 for user uploads and media assets.
 - Wanxiang providers for image-to-video, apparel image, and try-on.
+- Trigger.dev for long-running generation provider work.
 - Stripe for credits and subscriptions, with local mock payments in development.
 - Sentry and PostHog for observability.
 - Vitest for unit tests.
@@ -33,13 +34,13 @@ frontend workbench
 -> browser PUT to R2
 -> /api/assets/complete
 -> /api/generations
--> Wanxiang submit
--> generation_jobs running row with reserved credits
--> /api/generations/[id]/status polls Wanxiang
+-> generation_jobs queued row with reserved credits
+-> Trigger.dev generate-wanxiang task submits and polls Wanxiang
+-> /api/generations/[id]/status reads local DB state
 -> final asset rows and capture/refund credits
 ```
 
-There is also older Trigger.dev/fal.ai/FFmpeg runner code in `lib/generations/runner.ts` and `trigger/generate-video.ts`. It does not currently match the active `generation_jobs` schema and should be treated as a pending architecture decision.
+There is also older fal.ai/FFmpeg runner code in `lib/generations/runner.ts` and `trigger/generate-video.ts`. It does not currently match the active `generation_jobs` schema and should be treated as inactive legacy code.
 
 ## Stable Decisions
 
@@ -52,5 +53,4 @@ There is also older Trigger.dev/fal.ai/FFmpeg runner code in `lib/generations/ru
 
 ## Open Architecture Decisions
 
-- Whether to remove/retire Trigger.dev + fal.ai + FFmpeg runner, or revive it with matching migrations.
-- Whether generation creation should become DB-first with `queued/submitting` status before provider submit.
+- Whether to remove/retire the legacy fal.ai + FFmpeg runner, or revive it with matching migrations.

@@ -1,6 +1,6 @@
 import 'server-only';
 
-import { PutObjectCommand, S3Client } from '@aws-sdk/client-s3';
+import { HeadObjectCommand, PutObjectCommand, S3Client } from '@aws-sdk/client-s3';
 import { getSignedUrl } from '@aws-sdk/s3-request-presigner';
 
 import {
@@ -28,6 +28,12 @@ type PutObjectInput = {
   storageKey: string;
   body: Buffer | Uint8Array;
   mimeType: string;
+};
+
+type VerifyUploadedObjectInput = {
+  storageKey: string;
+  mimeType?: string | null;
+  sizeBytes?: number | null;
 };
 
 export const TEMPLATE_ASSET_MIME_TYPES = [
@@ -233,6 +239,31 @@ export async function uploadObjectToR2({
   );
 
   return buildPublicUrl(storageKey);
+}
+
+export async function verifyUploadedObject({
+  storageKey,
+  mimeType,
+  sizeBytes,
+}: VerifyUploadedObjectInput) {
+  const config = getR2Config();
+  const client = getR2Client(config);
+  const object = await client.send(
+    new HeadObjectCommand({
+      Bucket: config.bucket,
+      Key: storageKey,
+    })
+  );
+
+  if (sizeBytes != null && object.ContentLength !== sizeBytes) {
+    return false;
+  }
+
+  if (mimeType && object.ContentType && object.ContentType !== mimeType) {
+    return false;
+  }
+
+  return true;
 }
 
 async function createSignedPutUrlForMime({

@@ -48,4 +48,10 @@ Generation credit cost is currently:
 
 ## Current Risk
 
-`createGenerationForUser` submits to provider before inserting the local job row and reserving credits in the final transaction. If provider submit succeeds and DB write fails, a provider-side orphan task can exist. Prefer DB-first job creation for the next major backend cleanup.
+`createGenerationForUser` is now DB-first: it creates a queued `generation_jobs` row, reserves credits, and enqueues the Trigger.dev `generate-wanxiang` task before returning a job id. Wanxiang submit/query, terminal status updates, final asset creation, credit capture, and refund now happen in the Trigger worker.
+
+Remaining watch points:
+
+- Trigger.dev production env must include Postgres, Wanxiang, R2, Sentry/PostHog, and any email vars needed by worker-side code.
+- `lib/generations/runner.ts` and `trigger/generate-video.ts` remain legacy fal/FFmpeg code and should not be used as the active path.
+- API route integration tests are still thin; add DB-backed tests around queued creation, Trigger enqueue failure refund, and worker terminal transitions.

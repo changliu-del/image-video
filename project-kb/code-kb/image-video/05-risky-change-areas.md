@@ -4,14 +4,13 @@ Updated: 2026-06-03
 
 ## P0
 
-- Provider submit and DB job/credit creation are not one atomic lifecycle.
-- Active Wanxiang generation path and legacy Trigger/fal/FFmpeg runner path disagree on schema/statuses.
+- Active Wanxiang generation path is now DB-first and Trigger.dev-backed; deploy/migrate must happen together so queued jobs can be consumed.
+- Legacy Trigger/fal/FFmpeg runner path still disagrees with active schema/statuses and must remain inactive until reconciled or removed.
 
 ## P1
 
-- Dashboard header credits are hardcoded.
 - Workbench client utilities are duplicated across three components.
-- R2 upload complete does not verify object existence with HEAD.
+- Trigger.dev worker env and concurrency limits need production validation under realistic running-job volume.
 - Stripe production webhook and price metadata need real integration verification.
 
 ## P2
@@ -19,4 +18,3 @@ Updated: 2026-06-03
 - API route integration tests are thin.
 - Browser smoke coverage is not yet codified.
 - Admin/template empty-state behavior depends on `ADMIN_API_URL` and `ADMIN_API_TOKEN`.
-

@@ -50,6 +50,20 @@
       "when": 1780000004000,
       "tag": "0006_generation_jobs_wanxiang",
       "breakpoints": true
+    },
+    {
+      "idx": 7,
+      "version": "7",
+      "when": 1780000005000,
+      "tag": "0007_model_catalog_assets",
+      "breakpoints": true
+    },
+    {
+      "idx": 8,
+      "version": "7",
+      "when": 1780000006000,
+      "tag": "0008_trigger_wanxiang_jobs",
+      "breakpoints": true
     }
   ]
 }

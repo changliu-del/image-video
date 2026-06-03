@@ -3,6 +3,9 @@ import { isLocale } from '@/lib/marketing/content';
 import { listModelCatalogAssets } from '@/lib/model-assets/catalog';
 
 export const runtime = 'nodejs';
+const publicReadHeaders = {
+  'Cache-Control': 'public, s-maxage=60, stale-while-revalidate=300',
+};
 
 function parsePositiveInteger(value: string | null, fallback: number) {
   const parsed = Number.parseInt(value ?? '', 10);
@@ -21,7 +24,7 @@ export async function GET(request: NextRequest) {
       limit: parsePositiveInteger(searchParams.get('limit'), 24),
     });
 
-    return NextResponse.json({ items });
+    return NextResponse.json({ items }, { headers: publicReadHeaders });
   } catch (error) {
     console.error('Failed to list model assets', error);
     return NextResponse.json(
