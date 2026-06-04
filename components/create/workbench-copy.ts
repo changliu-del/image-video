@@ -94,7 +94,7 @@ export const commonWorkbenchCopy: Record<DashboardLocale, CommonWorkbenchCopy> =
     waitingUpload: '等待上传',
     examples: '示例商品',
     refresh: '换一换',
-    credits: (count) => `${count}算力值`,
+    credits: (count) => `${count} 算力值`,
     invalidImage: '请使用 PNG、JPEG 或 WEBP 图片。',
     imageTooLarge: '图片大小不能超过 10MB。',
     uploadPrepareError: '上传准备失败。',
@@ -199,9 +199,9 @@ export const imageVideoWorkbenchCopy = {
     quickEdit: '快捷创作',
     videoTab: '商品视频',
     referenceVideo: '创意参考',
-    referenceHint: '商品高保真，跑量创意高效复刻',
+    referenceHint: '商品高还原，爆款创意高效复刻',
     promptPlaceholder:
-      '使用 @快速调用参考内容，例如：@模特手持 @商品进行3秒的口播讲解，语气自然，画面干净。',
+      '使用 @ 快速调用参考内容，例如：@模特手持 @商品进行 3 秒口播讲解，语气自然，画面干净。',
     promptActions: ['出镜商品', '出镜模特', '参考素材', '@'],
     promptActionSnippets: [
       '商品居中展示，镜头缓慢推进',
@@ -233,7 +233,7 @@ export const imageVideoWorkbenchCopy = {
     selectSourceImage: '请选择一张源图片。',
     promptRequired: '请输入生成描述。',
     uploadingImage: '上传图片中',
-    startingGeneration: '启动生成中',
+    startingGeneration: '正在启动生成',
   },
 } satisfies Record<DashboardLocale, Record<string, unknown>>;
 
@@ -391,7 +391,7 @@ export const apparelWorkbenchCopy = {
     quick: '快捷创作',
     hot: 'HOT',
     advanced: '高级创作',
-    promptPlaceholder: '自由输入背景描述，或从模板库中选择',
+    promptPlaceholder: '输入背景描述，或从模板库中选择',
     promptIdeas: '描述词推荐：',
     addFromTemplate: '从模板库添加',
     promptIdeaGroups: [
@@ -437,7 +437,7 @@ export const apparelWorkbenchCopy = {
     resultDescription: '商品图生成后会在这里展示。',
     uploadRequired: '请上传一张商品图。',
     uploadingImage: '上传商品图中',
-    startingGeneration: '启动生成中',
+    startingGeneration: '正在启动生成',
   },
 } satisfies Record<DashboardLocale, Record<string, unknown>>;
 
@@ -566,6 +566,6 @@ export const tryOnWorkbenchCopy = {
     uploadingModel: '上传模特中',
     preparingModel: '准备模特中',
     uploadingGarment: (index: number) => `上传服饰 ${index}`,
-    startingTryOn: '启动试衣中',
+    startingTryOn: '正在启动试衣',
   },
 } satisfies Record<DashboardLocale, Record<string, unknown>>;

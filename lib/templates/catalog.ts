@@ -108,7 +108,7 @@ export const templateTagOptions: TemplateTagOption[] = [
   {
     slug: 'image-to-video',
     group: 'type',
-    labels: { pt: 'Imagem para video', en: 'Image to video', zh: '单图成视频' },
+    labels: { pt: 'Imagem para video', en: 'Image to video', zh: '图生视频' },
   },
   {
     slug: 'video',
@@ -294,7 +294,7 @@ export const templatesPageContent: Record<
     metadata: {
       title: '面向巴西电商的 AI 模板库',
       description:
-        '浏览促销、评价、详情页、WhatsApp 和 marketplace 场景的图片与视频模板。',
+        '浏览促销、评价、详情页、WhatsApp 和电商平台场景的图片与视频模板。',
     },
     eyebrow: '模板库',
     title: '按商品、渠道和活动目标，找到最合适的模板。',
@@ -305,10 +305,10 @@ export const templatesPageContent: Record<
     all: '全部',
     results: '个模板',
     useTemplate: '使用模板',
-    loginHint: '登录后可编辑 prompt、商品和 CTA。',
+    loginHint: '登录后可编辑提示词、商品和 CTA。',
     emptyTitle: '没有找到模板',
     emptyText: '减少筛选条件，或换一个卖货目标搜索。',
-    costSuffix: '积分',
+    costSuffix: '算力值',
     sortLabel: '排序',
     sortOptions: {
       featured: '推荐',
@@ -317,7 +317,7 @@ export const templatesPageContent: Record<
     },
     typeLabels: {
       image: '图片',
-      image_to_video: '单图成视频',
+      image_to_video: '图生视频',
       video: '视频',
     },
   },
@@ -688,7 +688,7 @@ const translations: Record<Exclude<Locale, 'pt'>, Record<string, Partial<Templat
   zh: {
     'promocao-pix-relampago': {
       title: 'Pix 限时促销',
-      description: '突出价格、紧迫感和 Pix CTA 的直接转化模板。',
+      description: '突出价格、紧迫感和 Pix CTA 的转化模板。',
       hook: '仅今天享 Pix 折扣',
       cta: '用 Pix 购买',
     },
@@ -706,12 +706,12 @@ const translations: Record<Exclude<Locale, 'pt'>, Record<string, Partial<Templat
     },
     'review-cliente-whatsapp': {
       title: '客户评价',
-      description: '适合短评价和聊天视觉的社会证明模板。',
+      description: '适合短评价和聊天截图风格的用户口碑模板。',
       hook: '买过的人都推荐',
       cta: 'WhatsApp 咨询',
     },
     'detalhe-pdp-textura': {
-      title: 'PDP 细节',
+      title: '详情页细节',
       description: '突出纹理、包装、材质和核心利益点。',
       hook: '细节决定购买',
       cta: '查看细节',
@@ -736,7 +736,7 @@ const translations: Record<Exclude<Locale, 'pt'>, Record<string, Partial<Templat
     },
     'food-delivery-oferta': {
       title: '食品优惠',
-      description: '适合价格、套餐和限时紧迫感的食品素材。',
+      description: '适合价格、套餐和限时活动的食品促销素材。',
       hook: '今日限定套餐',
       cta: '立即下单',
     },
@@ -747,7 +747,7 @@ const translations: Record<Exclude<Locale, 'pt'>, Record<string, Partial<Templat
       cta: '查看参数',
     },
     'moda-lookbook-marketplace': {
-      title: 'Marketplace 穿搭图',
+      title: '电商平台穿搭图',
       description: '适合穿搭、变体和商品目录的商业图片。',
       hook: '按你的风格搭配',
       cta: '查看变体',

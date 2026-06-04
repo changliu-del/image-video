@@ -21,8 +21,8 @@ import type {
 
 const DEFAULT_RANGE_DAYS = 7;
 const MAX_RANGE_DAYS = 90;
-const LARGE_PURCHASE_CREDIT_THRESHOLD = 1000;
 const STUCK_RUNNING_THRESHOLD_MINUTES = 15;
+const LARGE_PURCHASE_CREDIT_THRESHOLD = 1000;
 const DAY_MS = 24 * 60 * 60 * 1000;
 const DATE_KEY_RE = /^\d{4}-\d{2}-\d{2}$/;
 
@@ -42,9 +42,9 @@ const SOURCES = {
   },
   activityEstimate: {
     kind: 'estimate',
-    tables: ['assets', 'generation_jobs', 'credit_ledger'],
+    tables: ['assets', 'generation_jobs'],
     description:
-      'No dedicated login/session/page-view table exists, so active/login behavior is estimated from user uploads, generation jobs, and purchase ledger entries.',
+      'No dedicated session/page-view table exists, so active behavior is estimated from user uploads and generation jobs.',
   },
   uploads: {
     kind: 'exact',
@@ -63,12 +63,6 @@ const SOURCES = {
     tables: ['credit_ledger'],
     description:
       "Recharge metrics are counted from credit_ledger entries where reason = 'purchase'.",
-  },
-  rechargeRisk: {
-    kind: 'derived',
-    tables: ['credit_ledger', 'users'],
-    description:
-      'Recharge risk signals derive from Stripe linkage, large purchases, manual adjustments, and ledger/user balance mismatches.',
   },
 } satisfies Record<string, AdminDashboardMetricSource>;
 
@@ -137,11 +131,6 @@ function percent(numerator: number, denominator: number) {
   return Math.round((numerator / denominator) * 1000) / 10;
 }
 
-function ratio(numerator: number, denominator: number) {
-  if (!denominator) return 0;
-  return Math.round((numerator / denominator) * 10) / 10;
-}
-
 function conversionRate(value: number, previousValue: number | null) {
   return previousValue ? percent(value, previousValue) : null;
 }
@@ -162,25 +151,6 @@ function generationSeverity(totals: AdminDashboardTotals): AdminDashboardSeverit
     return 'critical';
   }
   if (totals.failureRate >= 10 || totals.runningRate >= 35) {
-    return 'warning';
-  }
-  return 'ok';
-}
-
-function rechargeRiskSeverity(
-  rechargeAnomalies: AdminDashboardRechargeAnomalies
-): AdminDashboardSeverity {
-  if (
-    rechargeAnomalies.missingStripeEvents > 0 ||
-    rechargeAnomalies.balanceMismatches > 0
-  ) {
-    return 'critical';
-  }
-  if (
-    rechargeAnomalies.largePurchases > 0 ||
-    rechargeAnomalies.manualCreditIncreases > 0 ||
-    rechargeAnomalies.manualCreditDecreases > 0
-  ) {
     return 'warning';
   }
   return 'ok';
@@ -217,25 +187,14 @@ function dailyTrendDiagnosis(points: AdminDashboardDailyPoint[]) {
   if (points.length === 0) return 'No daily data is available for this range.';
   const totalVisits = points.reduce((sum, point) => sum + point.visits, 0);
   const totalJobs = points.reduce((sum, point) => sum + point.generationJobs, 0);
-  const totalRisk = points.reduce(
-    (sum, point) => sum + point.abnormalRechargeSignals,
-    0
-  );
-  if (totalRisk > 0) {
-    return 'Daily risk spikes are present; inspect the recharge risk series beside purchases.';
-  }
   if (totalVisits === 0 && totalJobs === 0) {
     return 'No observable authenticated activity was recorded in this range.';
   }
-  return 'Daily trends combine registrations, observable activity, uploads, generation, and recharge events.';
+  return 'Daily trends combine registrations, active users, retained users, and generation health.';
 }
 
-function summaryCards(
-  totals: AdminDashboardTotals,
-  rechargeAnomalies: AdminDashboardRechargeAnomalies
-): AdminDashboardSummaryCard[] {
+function summaryCards(totals: AdminDashboardTotals): AdminDashboardSummaryCard[] {
   const generationRisk = generationSeverity(totals);
-  const rechargeSeverity = rechargeRiskSeverity(rechargeAnomalies);
 
   return [
     {
@@ -258,53 +217,27 @@ function summaryCards(
     },
     {
       key: 'activeEstimate',
-      label: 'Login / active estimate',
-      value: totals.activeUsers,
-      unit: 'users',
-      rate: {
-        value: percent(totals.activeUsers, totals.totalUsers),
-        unit: 'percent',
-        label: 'Active users / total users',
-      },
-      detail: `${totals.activeUserDays} active user-days; ${totals.visitEvents} observable actions`,
+      label: 'Active rate',
+      value: totals.activeRate,
+      unit: 'percent',
+      rate: null,
+      detail: `${totals.activeUsers} active user(s) / ${totals.totalUsers} total user(s)`,
       diagnosis:
-        'Estimated from authenticated asset, generation, and credit writes because there is no dedicated login log yet.',
+        'Estimated from authenticated upload and generation writes because dedicated session analytics do not exist yet.',
       severity: 'info',
       source: SOURCES.activityEstimate,
     },
     {
-      key: 'visitBehavior',
-      label: 'Observed visit behavior',
-      value: totals.visitEvents,
-      unit: 'events',
-      rate: {
-        value: ratio(totals.visitEvents, totals.activeUserDays),
-        unit: 'ratio',
-        label: 'Events / active user-day',
-      },
-      detail: `${totals.activeUserDays} active user-days across the range`,
+      key: 'retention',
+      label: 'Retention rate',
+      value: totals.retentionRate,
+      unit: 'percent',
+      rate: null,
+      detail: `${totals.retainedUsers} retained user(s) / ${totals.existingUsers} existing user(s)`,
       diagnosis:
-        'Visit behavior is an observed-action proxy until page-view analytics are persisted.',
-      severity: totals.visitEvents > 0 ? 'ok' : 'info',
+        'Returning users are existing accounts with observable upload or generation activity in the selected range.',
+      severity: totals.retentionRate > 0 ? 'ok' : 'info',
       source: SOURCES.activityEstimate,
-    },
-    {
-      key: 'uploads',
-      label: 'Uploads',
-      value: totals.uploadedAssets,
-      unit: 'assets',
-      rate: {
-        value: percent(totals.uploadUsers, totals.activeUsers),
-        unit: 'percent',
-        label: 'Upload users / active users',
-      },
-      detail: `${totals.uploadUsers} upload users; ${totals.uploadFailedAssets} failed uploads`,
-      diagnosis:
-        totals.uploadFailedAssets > 0
-          ? 'Some uploads failed or stayed incomplete; inspect asset status and storage callbacks.'
-          : 'Upload records are completing without visible failures in this range.',
-      severity: totals.uploadFailedAssets > 0 ? 'warning' : 'ok',
-      source: SOURCES.uploads,
     },
     {
       key: 'generation',
@@ -367,42 +300,6 @@ function summaryCards(
             : 'ok',
       source: SOURCES.generation,
     },
-    {
-      key: 'recharge',
-      label: 'Recharge',
-      value: totals.purchasedCredits,
-      unit: 'credits',
-      rate: {
-        value: percent(totals.payingUsers, totals.activeUsers),
-        unit: 'percent',
-        label: 'Paying users / active users',
-      },
-      detail: `${totals.purchaseEvents} purchase event(s); ${totals.payingUsers} paying user(s)`,
-      diagnosis:
-        totals.purchaseEvents > 0
-          ? 'Purchases were recorded in the credit ledger for this range.'
-          : 'No purchase ledger entries were recorded in this range.',
-      severity: totals.purchaseEvents > 0 ? 'ok' : 'info',
-      source: SOURCES.recharge,
-    },
-    {
-      key: 'rechargeRisk',
-      label: 'Recharge risk',
-      value: totals.abnormalRechargeSignals,
-      unit: 'signals',
-      rate: {
-        value: percent(totals.abnormalRechargeSignals, totals.purchaseEvents),
-        unit: 'percent',
-        label: 'Risk signals / purchase events',
-      },
-      detail: `${rechargeAnomalies.missingStripeEvents} missing Stripe links; ${rechargeAnomalies.balanceMismatches} balance mismatches`,
-      diagnosis:
-        totals.abnormalRechargeSignals > 0
-          ? 'Recharge risk signals are present and should be reconciled.'
-          : 'No recharge risk signals were detected in the selected range.',
-      severity: rechargeSeverity,
-      source: SOURCES.rechargeRisk,
-    },
   ];
 }
 
@@ -430,94 +327,52 @@ function funnelSteps(totals: AdminDashboardTotals): AdminDashboardFunnelStep[] {
     makeFunnelStep({
       key: 'registrations',
       label: 'Registered users',
-      value: totals.totalUsers,
+      value: totals.newUsers,
       unit: 'users',
       previousKey: null,
       previousValue: null,
       detail: `${totals.newUsers} new user(s) registered in this range`,
       diagnosis:
-        'This is the registered-account base; deleted users are excluded.',
+        'This funnel follows users who registered inside the selected range.',
       source: SOURCES.users,
     }),
     makeFunnelStep({
       key: 'activeEstimate',
-      label: 'Login / active estimate',
-      value: totals.activeUsers,
+      label: 'Active users',
+      value: totals.newActiveUsers,
       unit: 'users',
       previousKey: 'registrations',
-      previousValue: totals.totalUsers,
-      detail: `${totals.loginEvents} login event estimate(s) from active user-days`,
+      previousValue: totals.newUsers,
+      detail: `${totals.newActiveUsers} new user(s) had observable product activity`,
       diagnosis:
-        'Active/login conversion is estimated from authenticated writes, not a dedicated login event table.',
+        'Active conversion is estimated from authenticated upload and generation writes, not a dedicated session table.',
       source: SOURCES.activityEstimate,
-    }),
-    makeFunnelStep({
-      key: 'visitBehavior',
-      label: 'Observed visit behavior',
-      value: totals.activeUserDays,
-      unit: 'user_days',
-      previousKey: 'activeEstimate',
-      previousValue: totals.activeUsers,
-      detail: `${totals.visitEvents} observable action event(s)`,
-      diagnosis:
-        'This step measures frequency; conversion can exceed 100% when active users return across multiple days.',
-      source: SOURCES.activityEstimate,
-    }),
-    makeFunnelStep({
-      key: 'uploads',
-      label: 'Upload users',
-      value: totals.uploadUsers,
-      unit: 'users',
-      previousKey: 'activeEstimate',
-      previousValue: totals.activeUsers,
-      detail: `${totals.uploadedAssets} upload asset(s) created`,
-      diagnosis:
-        totals.uploadUsers < totals.activeUsers
-          ? 'Some active users did not upload media in the selected range.'
-          : 'Active users are represented in upload behavior for this range.',
-      source: SOURCES.uploads,
     }),
     makeFunnelStep({
       key: 'generation',
       label: 'Generation users',
-      value: totals.generationUsers,
+      value: totals.newGenerationUsers,
       unit: 'users',
-      previousKey: 'uploads',
-      previousValue: totals.uploadUsers,
-      detail: `${totals.generationJobs} generation job(s) created`,
+      previousKey: 'activeEstimate',
+      previousValue: totals.newActiveUsers,
+      detail: `${totals.newGenerationUsers} new user(s) created generation jobs`,
       diagnosis:
-        totals.generationUsers > totals.uploadUsers
-          ? 'Generation users exceed upload users, likely because users reused existing assets or uploads happened outside the range.'
-          : 'Upload-to-generation conversion is based on same-range user counts, not a strict cohort.',
+        'Generation conversion uses same-range user counts, so upload is not treated as a separate required funnel step.',
       source: SOURCES.generation,
     }),
     makeFunnelStep({
       key: 'successfulGeneration',
       label: 'Successful generation users',
-      value: totals.successfulGenerationUsers,
+      value: totals.newSuccessfulGenerationUsers,
       unit: 'users',
       previousKey: 'generation',
-      previousValue: totals.generationUsers,
-      detail: `${totals.succeededJobs} succeeded job(s); ${totals.failedJobs} failed job(s)`,
+      previousValue: totals.newGenerationUsers,
+      detail: `${totals.newSuccessfulGenerationUsers} new user(s) reached a successful generation`,
       diagnosis:
         totals.failedJobs > 0
           ? 'Some generation users did not reach a successful job in this range.'
           : 'Generation users reached successful jobs without visible failures.',
       source: SOURCES.generation,
-    }),
-    makeFunnelStep({
-      key: 'recharge',
-      label: 'Paying users',
-      value: totals.payingUsers,
-      unit: 'users',
-      previousKey: 'generation',
-      previousValue: totals.generationUsers,
-      detail: `${totals.purchaseEvents} purchase event(s); ${totals.purchasedCredits} credit(s) purchased`,
-      diagnosis:
-        totals.payingUsers > 0
-          ? 'Paying users purchased credits during the selected range.'
-          : 'No active generation users converted to recharge in this range.',
-      source: SOURCES.recharge,
     }),
   ];
 }
@@ -638,16 +493,12 @@ export async function getAdminDashboard(params: {
         union all
         select user_id, created_at from generation_jobs, range
         where created_at >= range.from_day and created_at < range.to_exclusive
-        union all
-        select user_id, created_at from credit_ledger, range
-        where created_at >= range.from_day and created_at < range.to_exclusive
-          and reason = 'purchase'
       ),
       active_user_days as (
         select distinct user_id, date_trunc('day', created_at)::date as day
         from activity_events
       ),
-      touched_users as (
+      credit_touched_users as (
         select distinct user_id
         from credit_ledger, range
         where created_at >= range.from_day
@@ -658,17 +509,37 @@ export async function getAdminDashboard(params: {
           credit_ledger.user_id,
           credit_ledger.balance_after
         from credit_ledger
-        inner join touched_users on touched_users.user_id = credit_ledger.user_id
+        inner join credit_touched_users
+          on credit_touched_users.user_id = credit_ledger.user_id
         order by credit_ledger.user_id, credit_ledger.created_at desc, credit_ledger.id desc
       )
       select
         (select count(*)::integer from users where deleted_at is null) as total_users,
         (select count(*)::integer from users, range
           where deleted_at is null
+            and created_at < range.from_day
+        ) as existing_users,
+        (select count(*)::integer from users, range
+          where deleted_at is null
             and created_at >= range.from_day
             and created_at < range.to_exclusive
         ) as new_users,
         (select count(distinct user_id)::integer from activity_events) as active_users,
+        (select count(distinct activity_events.user_id)::integer
+          from activity_events
+          inner join users on users.id = activity_events.user_id
+          cross join range
+          where users.deleted_at is null
+            and users.created_at >= range.from_day
+            and users.created_at < range.to_exclusive
+        ) as new_active_users,
+        (select count(distinct activity_events.user_id)::integer
+          from activity_events
+          inner join users on users.id = activity_events.user_id
+          cross join range
+          where users.deleted_at is null
+            and users.created_at < range.from_day
+        ) as retained_users,
         (select count(*)::integer from active_user_days) as active_user_days,
         (select count(*)::integer from activity_events) as visit_events,
         (select count(distinct user_id)::integer from assets, range
@@ -708,11 +579,32 @@ export async function getAdminDashboard(params: {
           where created_at >= range.from_day
             and created_at < range.to_exclusive
         ) as generation_users,
+        (select count(distinct generation_jobs.user_id)::integer
+          from generation_jobs
+          inner join users on users.id = generation_jobs.user_id
+          cross join range
+          where generation_jobs.created_at >= range.from_day
+            and generation_jobs.created_at < range.to_exclusive
+            and users.deleted_at is null
+            and users.created_at >= range.from_day
+            and users.created_at < range.to_exclusive
+        ) as new_generation_users,
         (select count(distinct user_id)::integer from generation_jobs, range
           where created_at >= range.from_day
             and created_at < range.to_exclusive
             and status = 'succeeded'
         ) as successful_generation_users,
+        (select count(distinct generation_jobs.user_id)::integer
+          from generation_jobs
+          inner join users on users.id = generation_jobs.user_id
+          cross join range
+          where generation_jobs.created_at >= range.from_day
+            and generation_jobs.created_at < range.to_exclusive
+            and generation_jobs.status = 'succeeded'
+            and users.deleted_at is null
+            and users.created_at >= range.from_day
+            and users.created_at < range.to_exclusive
+        ) as new_successful_generation_users,
         (select count(distinct user_id)::integer from generation_jobs, range
           where created_at >= range.from_day
             and created_at < range.to_exclusive
@@ -854,10 +746,6 @@ export async function getAdminDashboard(params: {
         union all
         select date_trunc('day', created_at)::date as day, user_id from generation_jobs, range
         where created_at >= range.from_day and created_at < range.to_exclusive
-        union all
-        select date_trunc('day', created_at)::date as day, user_id from credit_ledger, range
-        where created_at >= range.from_day and created_at < range.to_exclusive
-          and reason = 'purchase'
       ),
       visits as (
         select
@@ -867,6 +755,16 @@ export async function getAdminDashboard(params: {
           count(distinct user_id)::integer as active_user_days
         from activity_events
         group by day
+      ),
+      retained as (
+        select
+          activity_events.day,
+          count(distinct activity_events.user_id)::integer as users
+        from activity_events
+        inner join users on users.id = activity_events.user_id
+        where users.deleted_at is null
+          and users.created_at < activity_events.day
+        group by activity_events.day
       ),
       registrations as (
         select date_trunc('day', created_at)::date as day, count(*)::integer as total
@@ -906,26 +804,7 @@ export async function getAdminDashboard(params: {
           date_trunc('day', created_at)::date as day,
           count(*) filter (where reason = 'purchase')::integer as events,
           coalesce(sum(delta) filter (where reason = 'purchase'), 0)::integer as credits,
-          count(distinct user_id) filter (where reason = 'purchase')::integer as paying_users,
-          (
-            count(*) filter (
-              where reason = 'purchase'
-                and stripe_event_id is null
-            )
-            + count(*) filter (
-              where reason = 'purchase'
-                and delta >= ${LARGE_PURCHASE_CREDIT_THRESHOLD}
-            )
-            + count(*) filter (
-              where reason = 'admin_adjust'
-                and delta > 0
-                and coalesce(metadata_json ->> 'source', '') <> 'signup_free_credits'
-            )
-            + count(*) filter (
-              where reason = 'admin_adjust'
-                and delta < 0
-            )
-          )::integer as abnormal_signals
+          count(distinct user_id) filter (where reason = 'purchase')::integer as paying_users
         from credit_ledger, range
         where created_at >= range.from_day
           and created_at < range.to_exclusive
@@ -936,6 +815,7 @@ export async function getAdminDashboard(params: {
         coalesce(registrations.total, 0)::integer as registrations,
         coalesce(visits.active_users, 0)::integer as active_users,
         coalesce(visits.active_user_days, 0)::integer as active_user_days,
+        coalesce(retained.users, 0)::integer as retained_users,
         coalesce(visits.active_user_days, 0)::integer as login_events,
         coalesce(visits.visits, 0)::integer as visits,
         coalesce(uploads.users, 0)::integer as upload_users,
@@ -947,11 +827,11 @@ export async function getAdminDashboard(params: {
         coalesce(jobs.running, 0)::integer as running_jobs,
         coalesce(recharge.events, 0)::integer as recharge_events,
         coalesce(recharge.credits, 0)::integer as purchased_credits,
-        coalesce(recharge.paying_users, 0)::integer as paying_users,
-        coalesce(recharge.abnormal_signals, 0)::integer as abnormal_recharge_signals
+        coalesce(recharge.paying_users, 0)::integer as paying_users
       from days
       left join registrations on registrations.day = days.day
       left join visits on visits.day = days.day
+      left join retained on retained.day = days.day
       left join uploads on uploads.day = days.day
       left join jobs on jobs.day = days.day
       left join recharge on recharge.day = days.day
@@ -998,14 +878,10 @@ export async function getAdminDashboard(params: {
   ]);
 
   const summary = summaryRows[0] ?? {};
-  const rechargeAnomalies: AdminDashboardRechargeAnomalies = {
-    missingStripeEvents: numberValue(summary.missing_stripe_events),
-    largePurchases: numberValue(summary.large_purchases),
-    manualCreditIncreases: numberValue(summary.manual_credit_increases),
-    manualCreditDecreases: numberValue(summary.manual_credit_decreases),
-    balanceMismatches: numberValue(summary.balance_mismatches),
-  };
-
+  const totalUsers = numberValue(summary.total_users);
+  const existingUsers = numberValue(summary.existing_users);
+  const activeUsers = numberValue(summary.active_users);
+  const retainedUsers = numberValue(summary.retained_users);
   const generationJobs = numberValue(summary.generation_jobs);
   const succeededJobs = numberValue(summary.succeeded_jobs);
   const failedJobs = numberValue(summary.failed_jobs);
@@ -1013,26 +889,41 @@ export async function getAdminDashboard(params: {
   const submittingJobs = numberValue(summary.submitting_jobs);
   const runningActiveJobs = numberValue(summary.running_active_jobs);
   const runningJobs = numberValue(summary.running_jobs);
+  const rechargeAnomalies: AdminDashboardRechargeAnomalies = {
+    missingStripeEvents: numberValue(summary.missing_stripe_events),
+    largePurchases: numberValue(summary.large_purchases),
+    manualCreditIncreases: numberValue(summary.manual_credit_increases),
+    manualCreditDecreases: numberValue(summary.manual_credit_decreases),
+    balanceMismatches: numberValue(summary.balance_mismatches),
+  };
   const abnormalRechargeSignals = Object.values(rechargeAnomalies).reduce(
     (total, value) => total + value,
     0
   );
-
   const totals: AdminDashboardTotals = {
-    totalUsers: numberValue(summary.total_users),
+    totalUsers,
+    existingUsers,
     newUsers: numberValue(summary.new_users),
-    activeUsers: numberValue(summary.active_users),
+    activeUsers,
+    newActiveUsers: numberValue(summary.new_active_users),
     activeUserDays: numberValue(summary.active_user_days),
+    retainedUsers,
+    activeRate: percent(activeUsers, totalUsers),
+    retentionRate: percent(retainedUsers, existingUsers),
     uploadUsers: numberValue(summary.upload_users),
-    generationUsers: numberValue(summary.generation_users),
-    successfulGenerationUsers: numberValue(summary.successful_generation_users),
-    failedGenerationUsers: numberValue(summary.failed_generation_users),
     loginEvents: numberValue(summary.active_user_days),
     visitEvents: numberValue(summary.visit_events),
     uploadedAssets: numberValue(summary.uploaded_assets),
     uploadSucceededAssets: numberValue(summary.upload_succeeded_assets),
     uploadFailedAssets: numberValue(summary.upload_failed_assets),
     uploadPendingAssets: numberValue(summary.upload_pending_assets),
+    generationUsers: numberValue(summary.generation_users),
+    newGenerationUsers: numberValue(summary.new_generation_users),
+    successfulGenerationUsers: numberValue(summary.successful_generation_users),
+    newSuccessfulGenerationUsers: numberValue(
+      summary.new_successful_generation_users
+    ),
+    failedGenerationUsers: numberValue(summary.failed_generation_users),
     generationJobs,
     succeededJobs,
     failedJobs,
@@ -1064,6 +955,9 @@ export async function getAdminDashboard(params: {
       registrations: numberValue(row.registrations),
       activeUsers: numberValue(row.active_users),
       activeUserDays: numberValue(row.active_user_days),
+      retainedUsers: numberValue(row.retained_users),
+      activeRate: percent(numberValue(row.active_users), totals.totalUsers),
+      retentionRate: percent(numberValue(row.retained_users), totals.existingUsers),
       loginEvents: numberValue(row.login_events),
       visits: numberValue(row.visits),
       uploadUsers: numberValue(row.upload_users),
@@ -1168,17 +1062,11 @@ export async function getAdminDashboard(params: {
       dailySeries('activeUsers', 'Active users', 'users', daily, (point) =>
         point.activeUsers
       ),
-      dailySeries('visits', 'Observed actions', 'events', daily, (point) =>
-        point.visits
-      ),
-      dailySeries('uploadedAssets', 'Uploaded assets', 'assets', daily, (point) =>
-        point.uploadedAssets
+      dailySeries('retainedUsers', 'Retained users', 'users', daily, (point) =>
+        point.retainedUsers
       ),
       dailySeries('generationJobs', 'Generation jobs', 'jobs', daily, (point) =>
         point.generationJobs
-      ),
-      dailySeries('succeededJobs', 'Succeeded jobs', 'jobs', daily, (point) =>
-        point.succeededJobs
       ),
       dailySeries('failedJobs', 'Failed jobs', 'jobs', daily, (point) =>
         point.failedJobs
@@ -1186,16 +1074,10 @@ export async function getAdminDashboard(params: {
       dailySeries('runningJobs', 'Running jobs', 'jobs', daily, (point) =>
         point.runningJobs
       ),
-      dailySeries('rechargeEvents', 'Recharge events', 'events', daily, (point) =>
-        point.rechargeEvents
-      ),
-      dailySeries('purchasedCredits', 'Purchased credits', 'credits', daily, (point) =>
-        point.purchasedCredits
-      ),
       dailySeries(
         'abnormalRechargeSignals',
         'Recharge risk signals',
-        'signals',
+        'events',
         daily,
         (point) => point.abnormalRechargeSignals
       ),
@@ -1208,11 +1090,11 @@ export async function getAdminDashboard(params: {
     totals,
     daily,
     generationTypes,
-    rechargeAnomalies,
-    summaryCards: summaryCards(totals, rechargeAnomalies),
+    summaryCards: summaryCards(totals),
     funnelSteps: funnelSteps(totals),
     dailyTrends,
     generationHealth,
+    rechargeAnomalies,
     rechargeRiskSignals: rechargeRiskSignals(rechargeAnomalies),
   };
 }

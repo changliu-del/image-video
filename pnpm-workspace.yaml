@@ -4,3 +4,5 @@ allowBuilds:
   esbuild: true
   protobufjs: true
   sharp: true
+overrides:
+  baseline-browser-mapping: 2.10.33

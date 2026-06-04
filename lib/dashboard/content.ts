@@ -123,8 +123,8 @@ export const dashboardContent: Record<DashboardLocale, DashboardContent> = {
       profileCenter: '个人中心',
     },
     header: {
-      admin: '后台管理',
-      marketingHome: '导购首页',
+      admin: '管理后台',
+      marketingHome: '官网首页',
       credits: '算力值',
       buy: '订阅',
       language: '语言',
@@ -135,7 +135,7 @@ export const dashboardContent: Record<DashboardLocale, DashboardContent> = {
       startFree: '免费开始',
       signOut: '退出登录',
       openMenu: '打开用户菜单',
-      templateAdmin: '模板后台',
+      templateAdmin: '模板管理',
     },
   },
 };

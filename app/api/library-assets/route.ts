@@ -1,4 +1,5 @@
 import { type NextRequest, NextResponse } from 'next/server';
+import { publicCatalogReadHeaders } from '@/lib/http/cache-control';
 import {
   GENERATION_TYPES,
   LIBRARY_ASSET_KINDS,
@@ -11,10 +12,6 @@ import {
 import { isLocale } from '@/lib/marketing/content';
 
 export const runtime = 'nodejs';
-
-const publicReadHeaders = {
-  'Cache-Control': 'public, s-maxage=60, stale-while-revalidate=300',
-};
 
 const libraryAssetKinds = new Set<string>(LIBRARY_ASSET_KINDS);
 const generationTypes = new Set<string>(GENERATION_TYPES);
@@ -52,7 +49,7 @@ export async function GET(request: NextRequest) {
       tags,
     });
 
-    return NextResponse.json(result, { headers: publicReadHeaders });
+    return NextResponse.json(result, { headers: publicCatalogReadHeaders });
   } catch (error) {
     console.error('Failed to list library assets', error);
     return NextResponse.json(

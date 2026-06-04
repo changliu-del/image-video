@@ -614,12 +614,12 @@ export function AdminManagementTable<T extends AdminTableRow>({
             onSubmit={submitSearch}
             className={cn(
               'mb-4 flex flex-wrap items-end gap-2 border-b border-gray-200 pb-4',
-              primaryAction && 'sm:flex-nowrap'
+              primaryAction && 'lg:flex-nowrap'
             )}
           >
             {showSearch ? (
               <>
-                <div className="relative w-full min-w-0 sm:w-auto sm:flex-1">
+                <div className="relative w-full min-w-0 sm:w-72 sm:shrink-0 md:w-80 lg:w-96">
                   <Search className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-gray-400" />
                   <Input
                     value={searchValue ?? ''}

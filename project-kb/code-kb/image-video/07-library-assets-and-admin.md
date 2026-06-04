@@ -65,6 +65,18 @@ Workbench image grids must not render video URLs through `<img>`. Published
 video assets should either expose a real image thumbnail/poster or be omitted
 from image-only grids.
 
+2026-06-04 public catalog cache policy:
+
+- `/api/templates`, `/api/library-assets`, and `/api/model-assets` return public,
+  non-user-specific catalog data and share `publicCatalogReadHeaders` from
+  `lib/http/cache-control.ts`.
+- The current policy is `public, max-age=60, s-maxage=300,
+  stale-while-revalidate=600`: browsers can reuse responses briefly, shared
+  caches can absorb repeat catalog reads, and stale data can be served while a
+  background refresh catches up.
+- Do not reuse this public cache header for account, billing, credits, jobs, or
+  any response containing user-specific/private data.
+
 ## Admin UX
 
 The Admin shell exposes a dedicated `Library Assets` tab. Expected controls:
@@ -87,6 +99,7 @@ This UI is operational, so keep it dense, predictable, and task-first rather tha
 - Credit ledger defaults to amount, reason, resulting balance, and creation time. User ID, job ID, Stripe event ID, and metadata remain detail/filter fields.
 - Library asset upload should give immediate file feedback, infer a sensible material kind from the file, auto-fill a readable title when empty, and fold low-frequency fields such as sort weight, source, and license note behind advanced editing.
 - Library asset details should not expose R2 `storageKey` or long asset URLs as primary operational content; use the preview and open-link affordance instead.
+- Admin Help is a practical tab-level guide, not a generic handbook. It should use a tab selector, explain the selected tab's operating steps, field meanings, publish/check rules, and for Library Assets show the upload form layout plus where each published `useCase` appears in the workbenches.
 
 2026-06-04 Admin operational search:
 

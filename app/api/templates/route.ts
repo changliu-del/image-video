@@ -1,4 +1,5 @@
 import { type NextRequest, NextResponse } from 'next/server';
+import { publicCatalogReadHeaders } from '@/lib/http/cache-control';
 import { isLocale } from '@/lib/marketing/content';
 import {
   listPublishedTemplates,
@@ -14,9 +15,6 @@ const sortKeys = new Set<PublishedTemplateSort>([
   'newest',
   'lowCost',
 ]);
-const publicReadHeaders = {
-  'Cache-Control': 'public, s-maxage=60, stale-while-revalidate=300',
-};
 
 function parsePositiveInteger(value: string | null, fallback: number) {
   const parsed = Number.parseInt(value ?? '', 10);
@@ -51,7 +49,7 @@ export async function GET(request: NextRequest) {
           ? (rawSort as PublishedTemplateSort)
           : 'featured',
     });
-    return NextResponse.json(result, { headers: publicReadHeaders });
+    return NextResponse.json(result, { headers: publicCatalogReadHeaders });
   } catch (error) {
     console.error('Failed to list templates', error);
     return NextResponse.json(

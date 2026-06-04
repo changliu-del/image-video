@@ -1,6 +1,6 @@
 import { db } from './drizzle';
 import { users } from './schema';
-import { hashPassword } from '@/lib/auth/session';
+import { hashPassword } from '@/lib/auth/password';
 import { eq } from 'drizzle-orm';
 
 async function seed() {

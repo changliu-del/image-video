@@ -190,7 +190,7 @@ const dashboardCopy: Record<DashboardLocale, DashboardCopy> = {
     },
   },
   zh: {
-    hubEyebrow: '创作枢纽',
+    hubEyebrow: '创作中心',
     heroTitle: '今天要创作什么？',
     heroDescription:
       '选择一个创作流程，复用素材库里的商品、模特和参考图，快速开始生成商品内容。',
@@ -222,7 +222,7 @@ const dashboardCopy: Record<DashboardLocale, DashboardCopy> = {
         eyebrow: '商品图',
         title: '一张商品图，延展出一组商业素材',
         description:
-          '为不同品类生成本地化商品图、活动图和目录图，让商品展示更有 campaign 感。',
+          '为不同品类生成本地化商品图、活动图和目录图，让商品展示更有营销感。',
         bullets: ['支持上传或选择素材', '风格、场景、比例可控', '适合目录、广告和活动页'],
         action: '创作商品图',
         href: '/create/apparel',
@@ -242,7 +242,7 @@ const dashboardCopy: Record<DashboardLocale, DashboardCopy> = {
         description:
           '用素材库承载示例商品、模特、参考图和优质创意，减少每次从零开始的成本。',
         bullets: ['按类型浏览灵感', '复用最近素材', '一键进入对应创作流程'],
-        action: '查看模板',
+        action: '浏览模板',
         href: '/templates',
       },
     },

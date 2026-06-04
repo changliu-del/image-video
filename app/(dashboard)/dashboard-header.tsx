@@ -242,9 +242,9 @@ export function DashboardHeader({
                 : 'text-gray-800 hover:bg-indigo-50 hover:text-indigo-600'
             )}
           >
-            {!isAdminPage ? <Home className="size-4" /> : null}
+            <Home className="size-4" />
             <span>
-              {isAdminPage ? content.header.admin : content.header.marketingHome}
+              {isAdminPage ? content.nav.home : content.header.marketingHome}
             </span>
           </Link>
           {!isAdminPage && user && canAccessAdmin(user) ? (

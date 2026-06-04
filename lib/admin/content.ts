@@ -204,10 +204,9 @@ type AdminDashboardCopy = {
     | 'login'
     | 'visits'
     | 'activeUsers'
+    | 'retention'
     | 'generation'
-    | 'recharge'
-    | 'failedJobs'
-    | 'abnormalRecharge',
+    | 'failedJobs',
     {
       label: string;
       hint: string;
@@ -217,12 +216,15 @@ type AdminDashboardCopy = {
     funnel: string;
     trend: string;
     generationMix: string;
-    rechargeRisk: string;
   };
   metrics: Record<
     | 'totalUsers'
     | 'newUsers'
     | 'activeUsers'
+    | 'existingUsers'
+    | 'activeUserDays'
+    | 'retainedUsers'
+    | 'retention'
     | 'uploadUsers'
     | 'generationUsers'
     | 'payingUsers'
@@ -238,7 +240,6 @@ type AdminDashboardCopy = {
     | 'runningJobs',
     string
   >;
-  anomalies: Record<string, string>;
   funnelStages: Record<string, string>;
   diagnosis: {
     watch: string;
@@ -248,22 +249,16 @@ type AdminDashboardCopy = {
     healthy: Record<string, string>;
   };
   risk: {
-    action: string;
     conversion: string;
-    defaultAction: string;
     dropoff: string;
-    impact: string;
-    noRiskAction: string;
-    noRiskImpact: string;
-    noRiskTitle: string;
-    signals: string;
   };
-  riskActions: Record<string, string>;
-  riskImpacts: Record<string, string>;
   riskSeverity: Record<
     'critical' | 'high' | 'medium' | 'low' | 'info',
     string
   >;
+  calculationNotes: {
+    generationQueue: string;
+  };
   generationTypes: Record<string, string>;
 };
 
@@ -381,7 +376,7 @@ export const adminContent: Record<AdminLocale, AdminContent> = {
     dashboard: {
       title: 'Visão geral operacional',
       description:
-        'Painel de saúde para comportamento, entrada de usuários, criação, créditos e risco de recarga.',
+        'Acompanha atividade, retenção, funil de registro para criação e saúde da fila de geração.',
       rangeTitle: 'Intervalo',
       from: 'De',
       to: 'Até',
@@ -390,7 +385,7 @@ export const adminContent: Record<AdminLocale, AdminContent> = {
       loading: 'Carregando painel...',
       loadFailed: 'Falha ao carregar o painel',
       loginEstimate:
-        'Login usa usuários com atividade autenticada, pois ainda não há log dedicado de login.',
+        'Atividade usa uploads e gerações autenticadas, pois ainda não há analytics dedicado de sessão.',
       presets: {
         today: 'Hoje',
         last7: '7 dias',
@@ -411,36 +406,35 @@ export const adminContent: Record<AdminLocale, AdminContent> = {
           hint: 'Eventos observáveis no produto',
         },
         activeUsers: {
-          label: 'Usuários ativos',
-          hint: 'Usuários únicos com comportamento',
+          label: 'Taxa ativa',
+          hint: 'Usuários com comportamento observável sobre a base total',
+        },
+        retention: {
+          label: 'Retenção',
+          hint: 'Usuários existentes que voltaram a ficar ativos',
         },
         generation: {
           label: 'Criação',
           hint: 'Taxa de sucesso das gerações',
         },
-        recharge: {
-          label: 'Recarga',
-          hint: 'Créditos comprados',
-        },
         failedJobs: {
           label: 'Falhas',
           hint: 'Gerações com erro',
         },
-        abnormalRecharge: {
-          label: 'Recarga anormal',
-          hint: 'Sinais que precisam de revisão',
-        },
       },
       sections: {
-        funnel: 'Funil de comportamento',
-        trend: 'Tendência diária',
+        funnel: 'Funil registro -> criação',
+        trend: 'Atividade e criação',
         generationMix: 'Mix de criação',
-        rechargeRisk: 'Risco de recarga',
       },
       metrics: {
         totalUsers: 'Usuários totais',
         newUsers: 'Novos usuários',
         activeUsers: 'Ativos',
+        existingUsers: 'Usuários existentes',
+        activeUserDays: 'Dias ativos',
+        retainedUsers: 'Usuários retidos',
+        retention: 'Retenção',
         uploadUsers: 'Usuários com upload',
         generationUsers: 'Usuários criando',
         payingUsers: 'Usuários pagantes',
@@ -454,13 +448,6 @@ export const adminContent: Record<AdminLocale, AdminContent> = {
         creditEvents: 'Eventos de crédito',
         refundEvents: 'Reembolsos',
         runningJobs: 'Em execução',
-      },
-      anomalies: {
-        missingStripeEvents: 'Compras sem evento Stripe',
-        largePurchases: 'Compras grandes',
-        manualCreditIncreases: 'Aumentos manuais',
-        manualCreditDecreases: 'Reduções manuais',
-        balanceMismatches: 'Saldo divergente',
       },
       funnelStages: {
         registrations: 'Registro',
@@ -476,6 +463,8 @@ export const adminContent: Record<AdminLocale, AdminContent> = {
         empty: {
           registrations: 'Sem novos registros no intervalo.',
           login: 'Sem atividade autenticada observável.',
+          active: 'Sem atividade autenticada observável.',
+          retention: 'Nenhum usuário existente voltou a ficar ativo.',
           visits: 'Sem visitas de produto observáveis.',
           uploads: 'Sem usuários enviando materiais.',
           generation: 'Sem usuários criando no intervalo.',
@@ -484,49 +473,31 @@ export const adminContent: Record<AdminLocale, AdminContent> = {
         weak: {
           registrations: 'Entrada baixa em relação à base total.',
           login: 'Queda alta antes do login. Revise aquisição e login.',
+          active: 'Atividade autenticada abaixo do esperado.',
+          retention: 'Retenção baixa para a base existente.',
           visits: 'Usuários logados não estão avançando para uso do produto.',
           uploads: 'A etapa de envio está segurando a intenção de criação.',
-          generation: 'Muitos usuários não concluem a criação após upload.',
+          generation: 'Poucos usuários ativos chegam à criação.',
           recharge: 'Uso não está convertendo em compra de créditos.',
         },
         healthy: {
           registrations: 'Novas contas chegando no intervalo.',
           login: 'Usuários autenticados continuam ativos.',
+          active: 'Atividade autenticada observável no intervalo.',
+          retention: 'Usuários existentes voltaram a ficar ativos.',
           visits: 'Há comportamento de produto suficiente para análise.',
           uploads: 'Upload acompanhando o interesse do produto.',
           generation: 'Criação acompanha a atividade observada.',
-          recharge: 'Compra de créditos aparece no funil.',
+          recharge: 'Compras ficam no ledger de créditos.',
         },
       },
+      calculationNotes: {
+        generationQueue:
+          'Congestionamento = jobs queued + submitting + running dividido pelo total de generation_jobs no intervalo; travado = job ativo sem avanço por 15 minutos.',
+      },
       risk: {
-        action: 'Ação',
         conversion: 'Conversão',
-        defaultAction: 'Abra o livro de créditos e revise os eventos afetados.',
         dropoff: 'Perda',
-        impact: 'Pode afetar receita, saldo ou conciliação.',
-        noRiskAction: 'Nenhuma ação necessária agora.',
-        noRiskImpact: 'Sem impacto detectado no intervalo.',
-        noRiskTitle: 'Nenhum risco de recarga aberto',
-        signals: 'sinais',
-      },
-      riskActions: {
-        missingStripeEvents:
-          'Conferir cobranças sem stripe_event_id e reconciliar com Stripe.',
-        largePurchases:
-          'Verificar usuário, pacote e evento de pagamento antes de liberar manualmente.',
-        manualCreditIncreases:
-          'Auditar ajustes manuais positivos e confirmar autorização.',
-        manualCreditDecreases:
-          'Confirmar motivo do desconto e comunicar suporte se necessário.',
-        balanceMismatches:
-          'Recalcular saldo do usuário a partir do ledger antes de novas compras.',
-      },
-      riskImpacts: {
-        missingStripeEvents: 'Compra registrada sem evento Stripe rastreável.',
-        largePurchases: 'Valor alto merece conferência operacional.',
-        manualCreditIncreases: 'Crédito manual positivo altera receita reconhecida.',
-        manualCreditDecreases: 'Débito manual pode gerar disputa de suporte.',
-        balanceMismatches: 'Saldo atual diverge da última linha do ledger.',
       },
       riskSeverity: {
         critical: 'Crítico',
@@ -546,7 +517,7 @@ export const adminContent: Record<AdminLocale, AdminContent> = {
         title: 'Usuários',
         description:
           'Estado da conta, créditos, assinatura e controles de função.',
-        searchPlaceholder: 'Buscar email, nome, função ou assinatura...',
+        searchPlaceholder: 'Email, nome, função...',
         columns: {
           accountStatus: 'Status da conta',
           creditBalance: 'Saldo de créditos',
@@ -569,8 +540,7 @@ export const adminContent: Record<AdminLocale, AdminContent> = {
         title: 'Arquivos',
         description:
           'Mídias enviadas, ativos de template, arquivos gerados e metadados.',
-        searchPlaceholder:
-          'Buscar tipo de upload, status, formato MIME, usuário ou ID do arquivo...',
+        searchPlaceholder: 'Tipo, status, usuário, ID...',
         columns: {
           preview: 'Preview',
           type: 'Tipo',
@@ -597,8 +567,7 @@ export const adminContent: Record<AdminLocale, AdminContent> = {
         title: 'Gerações',
         description:
           'Status de geração, entradas de prompt, créditos e campos de recuperação.',
-        searchPlaceholder:
-          'Buscar prompt/produto, template, status, tipo, usuário ou erro...',
+        searchPlaceholder: 'Prompt, template, status...',
         columns: {
           inputPreview: 'Entrada',
           finalPreview: 'Resultado',
@@ -634,8 +603,7 @@ export const adminContent: Record<AdminLocale, AdminContent> = {
       'credit-ledger': {
         title: 'Livro de créditos',
         description: 'Movimentos de crédito e notas administrativas.',
-        searchPlaceholder:
-          'Buscar email/nome, motivo, evento Stripe, job, status ou nota...',
+        searchPlaceholder: 'Usuário, motivo, job...',
         columns: {
           userEmail: 'Email do usuário',
           userId: 'ID do usuário',
@@ -667,7 +635,7 @@ export const adminContent: Record<AdminLocale, AdminContent> = {
       title: 'Templates',
       description: 'Gerencie registros do catálogo e mídias de preview.',
       emptyText: 'Nenhum template.',
-      searchPlaceholder: 'Buscar título, slug, hook, tipo, status ou tag...',
+      searchPlaceholder: 'Título, slug, status...',
       create: 'Criar',
       modalCreate: 'Criar template',
       modalEdit: 'Editar template',
@@ -735,8 +703,7 @@ export const adminContent: Record<AdminLocale, AdminContent> = {
       description:
         'Gerencie mídias reutilizáveis de produto, modelo, peça, cena e exemplos.',
       emptyText: 'Nenhum ativo na biblioteca.',
-      searchPlaceholder:
-        'Buscar título do material, tipo, status, origem, tag ou uso...',
+      searchPlaceholder: 'Título, tipo, tag...',
       addAsset: 'Adicionar ativo',
       createAction: 'Enviar para biblioteca',
       modalCreate: 'Adicionar ativo da biblioteca',
@@ -817,7 +784,7 @@ export const adminContent: Record<AdminLocale, AdminContent> = {
           title: 'Início do dia',
           items: [
             'Comece pela Visão geral e abra apenas os cards com desvio real.',
-            'Revise gerações falhas, uploads quebrados e recargas suspeitas antes de editar conteúdo.',
+            'Revise falhas de geração e fila congestionada antes de editar conteúdo.',
           ],
         },
         {
@@ -853,21 +820,21 @@ export const adminContent: Record<AdminLocale, AdminContent> = {
           key: 'overview',
           title: 'Visão geral',
           purpose:
-            'Avaliar se registro, atividade autenticada, visitas, upload, criação e recarga estão saudáveis antes de priorizar ações do dia.',
+            'Avaliar atividade, retenção, funil de registro para criação e fila de geração antes de priorizar ações do dia.',
           dailyActions: [
             'Comece por hoje ou 7 dias e compare cada etapa do funil.',
-            'Abra falhas de geração e risco de recarga quando os cards subirem.',
-            'Leia anomalias junto com mídia paga, deploys e mudanças de pagamento.',
+            'Abra falhas de geração e jobs em execução quando os cards subirem.',
+            'Leia variações junto com mídia paga, deploys e mudanças de produto.',
           ],
           keyFields: [
-            'Funil de registro, login, acesso, upload, criação e recarga.',
-            'Taxa de sucesso, falhas, jobs em execução e mix de criação.',
-            'Tendência diária e cards de risco de recarga.',
+            'Funil de registro, atividade, criação e sucesso.',
+            'Taxa de atividade, retenção, falhas, jobs em execução e mix de criação.',
+            'Tendência diária de atividade, retenção e geração.',
           ],
           riskSignals: [
-            'Login é estimado por atividade autenticada, não por um log dedicado.',
+            'Atividade e retenção são estimadas por uploads e gerações autenticadas.',
             'Alta rápida em falhas costuma apontar para provider ou formato de mídia.',
-            'Risco de recarga é sinal de revisão, não conclusão automática de fraude.',
+            'Pagamentos devem ser analisados no ledger de créditos, fora do funil de usuários.',
           ],
         },
         {
@@ -1072,7 +1039,7 @@ export const adminContent: Record<AdminLocale, AdminContent> = {
     dashboard: {
       title: 'Operations dashboard',
       description:
-        'Health gauges for user behavior, signups, authenticated activity, generation, credits, and recharge risk.',
+        'Tracks activity, retention, the registration-to-generation funnel, and generation queue health.',
       rangeTitle: 'Date range',
       from: 'From',
       to: 'To',
@@ -1081,7 +1048,7 @@ export const adminContent: Record<AdminLocale, AdminContent> = {
       loading: 'Loading dashboard...',
       loadFailed: 'Failed to load dashboard',
       loginEstimate:
-        'Login uses authenticated activity users because dedicated login logs do not exist yet.',
+        'Activity uses authenticated uploads and generation jobs because dedicated session analytics do not exist yet.',
       presets: {
         today: 'Today',
         last7: '7 days',
@@ -1102,36 +1069,35 @@ export const adminContent: Record<AdminLocale, AdminContent> = {
           hint: 'Observable product events',
         },
         activeUsers: {
-          label: 'Active users',
-          hint: 'Unique users with behavior',
+          label: 'Active rate',
+          hint: 'Users with observable behavior over total users',
+        },
+        retention: {
+          label: 'Retention',
+          hint: 'Existing users who returned to active usage',
         },
         generation: {
           label: 'Generation',
           hint: 'Generation success rate',
         },
-        recharge: {
-          label: 'Recharge',
-          hint: 'Purchased credits',
-        },
         failedJobs: {
           label: 'Failures',
           hint: 'Failed generation jobs',
         },
-        abnormalRecharge: {
-          label: 'Abnormal recharge',
-          hint: 'Signals needing review',
-        },
       },
       sections: {
-        funnel: 'Behavior funnel',
-        trend: 'Daily trend',
+        funnel: 'Registration -> generation funnel',
+        trend: 'Activity and generation',
         generationMix: 'Generation mix',
-        rechargeRisk: 'Recharge risk',
       },
       metrics: {
         totalUsers: 'Total users',
         newUsers: 'New users',
         activeUsers: 'Active',
+        existingUsers: 'Existing users',
+        activeUserDays: 'Active days',
+        retainedUsers: 'Retained users',
+        retention: 'Retention',
         uploadUsers: 'Upload users',
         generationUsers: 'Creating users',
         payingUsers: 'Paying users',
@@ -1145,13 +1111,6 @@ export const adminContent: Record<AdminLocale, AdminContent> = {
         creditEvents: 'Credit events',
         refundEvents: 'Refunds',
         runningJobs: 'Running',
-      },
-      anomalies: {
-        missingStripeEvents: 'Purchases missing Stripe event',
-        largePurchases: 'Large purchases',
-        manualCreditIncreases: 'Manual credit increases',
-        manualCreditDecreases: 'Manual credit decreases',
-        balanceMismatches: 'Balance mismatches',
       },
       funnelStages: {
         registrations: 'Registration',
@@ -1167,6 +1126,8 @@ export const adminContent: Record<AdminLocale, AdminContent> = {
         empty: {
           registrations: 'No new registrations in this date range.',
           login: 'No observable authenticated activity.',
+          active: 'No observable authenticated activity.',
+          retention: 'No existing users returned to active usage.',
           visits: 'No observable product visits.',
           uploads: 'No users uploaded materials.',
           generation: 'No users generated content in this range.',
@@ -1175,50 +1136,31 @@ export const adminContent: Record<AdminLocale, AdminContent> = {
         weak: {
           registrations: 'Signup intake is low against the total user base.',
           login: 'High drop before login. Review acquisition and auth.',
+          active: 'Authenticated activity is below expectation.',
+          retention: 'Retention is low for the existing user base.',
           visits: 'Authenticated users are not reaching product usage.',
           uploads: 'Upload is holding back creation intent.',
-          generation: 'Many users do not complete generation after upload.',
+          generation: 'Too few active users reach generation.',
           recharge: 'Usage is not converting into credit purchases.',
         },
         healthy: {
           registrations: 'New accounts are entering during this range.',
           login: 'Authenticated users remain active.',
+          active: 'Authenticated activity is observable in this range.',
+          retention: 'Existing users returned to active usage.',
           visits: 'There is enough product behavior to inspect.',
           uploads: 'Uploads are tracking product interest.',
           generation: 'Generation follows observed activity.',
-          recharge: 'Credit purchases appear in the funnel.',
+          recharge: 'Credit purchases belong in the credit ledger.',
         },
       },
+      calculationNotes: {
+        generationQueue:
+          'Congestion = queued + submitting + running jobs divided by total generation_jobs in the range; stuck = an active job with no progress for 15 minutes.',
+      },
       risk: {
-        action: 'Action',
         conversion: 'Conversion',
-        defaultAction: 'Open the credit ledger and review affected events.',
         dropoff: 'Dropoff',
-        impact: 'May affect revenue, balance, or reconciliation.',
-        noRiskAction: 'No action needed right now.',
-        noRiskImpact: 'No impact detected in this range.',
-        noRiskTitle: 'No open recharge risk',
-        signals: 'signals',
-      },
-      riskActions: {
-        missingStripeEvents:
-          'Check purchases without stripe_event_id and reconcile with Stripe.',
-        largePurchases:
-          'Verify user, package, and payment event before manual release.',
-        manualCreditIncreases:
-          'Audit positive manual adjustments and confirm authorization.',
-        manualCreditDecreases:
-          'Confirm the deduction reason and notify support if needed.',
-        balanceMismatches:
-          'Recalculate user balance from ledger before new purchases.',
-      },
-      riskImpacts: {
-        missingStripeEvents: 'Purchase exists without a traceable Stripe event.',
-        largePurchases: 'Large value needs an operational check.',
-        manualCreditIncreases:
-          'Positive manual credit changes recognized revenue context.',
-        manualCreditDecreases: 'Manual deduction can create support disputes.',
-        balanceMismatches: 'Current balance differs from the latest ledger row.',
       },
       riskSeverity: {
         critical: 'Critical',
@@ -1237,7 +1179,7 @@ export const adminContent: Record<AdminLocale, AdminContent> = {
       users: {
         title: 'Users',
         description: 'Account state, credits, subscription, and role controls.',
-        searchPlaceholder: 'Search email, name, role, or subscription...',
+        searchPlaceholder: 'Email, name, role...',
         columns: {
           accountStatus: 'Account status',
           creditBalance: 'Credit Balance',
@@ -1260,8 +1202,7 @@ export const adminContent: Record<AdminLocale, AdminContent> = {
         title: 'Assets',
         description:
           'Uploaded media, template assets, generated files, and metadata.',
-        searchPlaceholder:
-          'Search upload type, status, MIME format, user, or asset ID...',
+        searchPlaceholder: 'Type, status, user, ID...',
         columns: {
           preview: 'Preview',
           type: 'Type',
@@ -1289,8 +1230,7 @@ export const adminContent: Record<AdminLocale, AdminContent> = {
         title: 'Generation Jobs',
         description:
           'Generation status, prompt inputs, credits, and recovery fields.',
-        searchPlaceholder:
-          'Search prompt/product, template, status, type, user, or error...',
+        searchPlaceholder: 'Prompt, template, status...',
         columns: {
           inputPreview: 'Input',
           finalPreview: 'Result',
@@ -1326,8 +1266,7 @@ export const adminContent: Record<AdminLocale, AdminContent> = {
       'credit-ledger': {
         title: 'Credit Ledger',
         description: 'Credit movements and admin metadata notes.',
-        searchPlaceholder:
-          'Search email/name, reason, Stripe event, job, status, or note...',
+        searchPlaceholder: 'User, reason, job...',
         columns: {
           userEmail: 'User email',
           userId: 'User ID',
@@ -1359,7 +1298,7 @@ export const adminContent: Record<AdminLocale, AdminContent> = {
       title: 'Templates',
       description: 'Manage template catalog records and preview media.',
       emptyText: 'No templates.',
-      searchPlaceholder: 'Search title, slug, hook, type, status, or tag...',
+      searchPlaceholder: 'Title, slug, status...',
       create: 'Create',
       modalCreate: 'Create template',
       modalEdit: 'Edit template',
@@ -1427,8 +1366,7 @@ export const adminContent: Record<AdminLocale, AdminContent> = {
       description:
         'Manage reusable product, model, garment, scene, and example media for workbenches.',
       emptyText: 'No library assets.',
-      searchPlaceholder:
-        'Search material title, kind, status, source, tag, or use case...',
+      searchPlaceholder: 'Title, kind, tag...',
       addAsset: 'Add asset',
       createAction: 'Upload to library',
       modalCreate: 'Add library asset',
@@ -1509,7 +1447,7 @@ export const adminContent: Record<AdminLocale, AdminContent> = {
           title: 'Start of day',
           items: [
             'Begin in Overview and open only cards with real movement.',
-            'Review failed generations, broken uploads, and recharge risk before editing content.',
+            'Review failed generations and queue congestion before editing content.',
           ],
         },
         {
@@ -1545,21 +1483,21 @@ export const adminContent: Record<AdminLocale, AdminContent> = {
           key: 'overview',
           title: 'Overview',
           purpose:
-            'Check whether signup, authenticated activity, visits, upload, generation, and recharge are healthy before prioritizing the day.',
+            'Check activity, retention, the registration-to-generation funnel, and generation queue health before prioritizing the day.',
           dailyActions: [
             'Start with today or 7 days and compare each funnel step.',
-            'Open generation failures and recharge risk when the cards rise.',
-            'Read anomalies alongside paid traffic, deployments, and payment changes.',
+            'Open generation failures and running jobs when the cards rise.',
+            'Read movement alongside paid traffic, deployments, and product changes.',
           ],
           keyFields: [
-            'Registration, login, visit, upload, generation, and recharge funnel.',
-            'Success rate, failed jobs, running jobs, and generation mix.',
-            'Daily trend and recharge risk cards.',
+            'Registration, activity, generation, and successful generation funnel.',
+            'Activity rate, retention, failures, running jobs, and generation mix.',
+            'Daily activity, retention, and generation trends.',
           ],
           riskSignals: [
-            'Login is estimated from authenticated activity, not a dedicated login log.',
+            'Activity and retention are estimated from authenticated uploads and generation jobs.',
             'A quick failure spike usually points to provider or media format issues.',
-            'Recharge risk is a review signal, not an automatic fraud conclusion.',
+            'Payments belong in the credit ledger, outside the user funnel.',
           ],
         },
         {
@@ -1746,33 +1684,33 @@ export const adminContent: Record<AdminLocale, AdminContent> = {
       confirmDelete: (value, title) => `确认从 ${title} 删除 ${value}？`,
     },
     shell: {
-      title: '后台管理',
+      title: '管理后台',
       forbiddenTitle: '403',
-      forbiddenDescription: '你没有权限访问后台管理控制台。',
+      forbiddenDescription: '你没有权限访问管理后台。',
     },
     tabs: {
       overview: '总览',
       templates: '模板',
       'library-assets': '素材库',
       users: '用户',
-      assets: '文件',
+      assets: '媒体文件',
       'generation-jobs': '生成任务',
       'credit-ledger': '算力流水',
       help: '帮助',
     },
     dashboard: {
-      title: '运营驾驶舱',
+      title: '运营数据概览',
       description:
-        '关注用户行为、登录活跃、注册、访问、充值与异常充值风险。',
+        '查看活跃率、留存率、注册到生成漏斗和生成队列健康。',
       rangeTitle: '日期范围',
       from: '开始',
       to: '结束',
       apply: '查询',
       refresh: '刷新',
-      loading: '正在加载表盘...',
-      loadFailed: '表盘加载失败',
+      loading: '正在加载数据概览...',
+      loadFailed: '数据概览加载失败',
       loginEstimate:
-        '登录表盘使用登录后的可观测行为估算，当前还没有独立登录日志。',
+        '活跃率使用上传和生成等登录后可观测产品行为估算，当前还没有独立会话分析。',
       presets: {
         today: '今天',
         last7: '近 7 天',
@@ -1793,36 +1731,35 @@ export const adminContent: Record<AdminLocale, AdminContent> = {
           hint: '可观测产品行为事件',
         },
         activeUsers: {
-          label: '活跃用户',
-          hint: '产生行为的去重用户',
+          label: '活跃率',
+          hint: '有可观测产品行为的用户占总用户比例',
+        },
+        retention: {
+          label: '留存率',
+          hint: '老用户中再次产生可观测行为的比例',
         },
         generation: {
           label: '生成',
           hint: '生成任务成功率',
         },
-        recharge: {
-          label: '充值',
-          hint: '购买算力值',
-        },
         failedJobs: {
           label: '失败',
           hint: '失败生成任务',
         },
-        abnormalRecharge: {
-          label: '异常充值',
-          hint: '需要复核的风险信号',
-        },
       },
       sections: {
-        funnel: '用户行为漏斗',
-        trend: '每日趋势',
+        funnel: '注册到生成漏斗',
+        trend: '活跃与生成趋势',
         generationMix: '生成类型分布',
-        rechargeRisk: '异常充值风险',
       },
       metrics: {
         totalUsers: '总用户',
         newUsers: '新增用户',
         activeUsers: '活跃',
+        existingUsers: '老用户',
+        activeUserDays: '活跃天数',
+        retainedUsers: '留存用户',
+        retention: '留存',
         uploadUsers: '上传用户',
         generationUsers: '生成用户',
         payingUsers: '充值用户',
@@ -1833,16 +1770,9 @@ export const adminContent: Record<AdminLocale, AdminContent> = {
         successRate: '成功率',
         purchaseEvents: '充值笔数',
         purchasedCredits: '充值算力',
-        creditEvents: '算力事件',
+        creditEvents: '算力流水',
         refundEvents: '退款/返还',
         runningJobs: '运行中',
-      },
-      anomalies: {
-        missingStripeEvents: '缺少 Stripe 事件',
-        largePurchases: '大额充值',
-        manualCreditIncreases: '人工加算力',
-        manualCreditDecreases: '人工扣算力',
-        balanceMismatches: '余额流水不一致',
       },
       funnelStages: {
         registrations: '注册',
@@ -1858,6 +1788,8 @@ export const adminContent: Record<AdminLocale, AdminContent> = {
         empty: {
           registrations: '当前日期范围内没有新增注册。',
           login: '没有可观测的登录后行为。',
+          active: '没有可观测的产品行为。',
+          retention: '没有老用户回访并产生行为。',
           visits: '没有可观测的产品访问。',
           uploads: '没有用户上传素材。',
           generation: '当前日期范围内没有用户生成。',
@@ -1866,45 +1798,31 @@ export const adminContent: Record<AdminLocale, AdminContent> = {
         weak: {
           registrations: '新增注册相对用户基数偏低。',
           login: '登录前流失较高，需要检查获客和登录链路。',
+          active: '活跃率低于预期。',
+          retention: '老用户留存偏低。',
           visits: '登录用户没有充分进入产品使用。',
           uploads: '上传步骤阻塞了后续生成意图。',
-          generation: '上传后进入生成的用户偏少。',
+          generation: '活跃用户进入生成的比例偏低。',
           recharge: '使用行为没有有效转化为算力购买。',
         },
         healthy: {
           registrations: '日期范围内有新增账号进入。',
           login: '登录后活跃保持可观测。',
+          active: '范围内有可观测产品行为。',
+          retention: '老用户回访并产生了有效行为。',
           visits: '产品访问行为足够支撑分析。',
           uploads: '上传行为跟随产品兴趣。',
           generation: '生成行为跟随活跃使用。',
-          recharge: '充值行为已进入漏斗。',
+          recharge: '充值行为归入算力流水查看。',
         },
       },
+      calculationNotes: {
+        generationQueue:
+          '拥挤度 = queued + submitting + running 任务数 / 范围内 generation_jobs 总数；卡住任务 = 15 分钟没有推进的活跃任务。',
+      },
       risk: {
-        action: '行动',
         conversion: '转化',
-        defaultAction: '打开算力流水，复核受影响事件。',
         dropoff: '流失',
-        impact: '可能影响收入、余额或对账。',
-        noRiskAction: '当前无需处理。',
-        noRiskImpact: '当前范围内未发现影响。',
-        noRiskTitle: '暂无待处理异常充值风险',
-        signals: '信号',
-      },
-      riskActions: {
-        missingStripeEvents:
-          '检查没有 stripe_event_id 的充值，并与 Stripe 事件对账。',
-        largePurchases: '复核用户、套餐和支付事件后再做人工放行。',
-        manualCreditIncreases: '审计人工加算力记录，确认授权来源。',
-        manualCreditDecreases: '确认扣减原因，必要时同步客服。',
-        balanceMismatches: '基于流水重算用户余额后再允许新充值。',
-      },
-      riskImpacts: {
-        missingStripeEvents: '充值记录缺少可追踪的 Stripe 事件。',
-        largePurchases: '大额充值需要运营复核。',
-        manualCreditIncreases: '人工加算力会影响收入识别。',
-        manualCreditDecreases: '人工扣减可能产生客服争议。',
-        balanceMismatches: '当前余额与最近一条流水不一致。',
       },
       riskSeverity: {
         critical: '严重',
@@ -1922,8 +1840,8 @@ export const adminContent: Record<AdminLocale, AdminContent> = {
     management: {
       users: {
         title: '用户',
-        description: '账号状态、算力、订阅和角色控制。',
-        searchPlaceholder: '搜索邮箱、姓名、角色或订阅状态...',
+        description: '管理账号状态、算力余额、订阅和角色。',
+        searchPlaceholder: '搜索邮箱、姓名、角色...',
         columns: {
           accountStatus: '账号状态',
           creditBalance: '算力余额',
@@ -1943,9 +1861,9 @@ export const adminContent: Record<AdminLocale, AdminContent> = {
         },
       },
       assets: {
-        title: '文件',
-        description: '上传媒体、模板素材、生成文件和元数据。',
-        searchPlaceholder: '搜索上传类型、状态、MIME 格式、用户或文件 ID...',
+        title: '媒体文件',
+        description: '管理用户上传、模板素材、生成文件和媒体元数据。',
+        searchPlaceholder: '搜索类型、状态、用户或 ID...',
         columns: {
           preview: '预览',
           type: '类型',
@@ -1960,7 +1878,7 @@ export const adminContent: Record<AdminLocale, AdminContent> = {
           previewMimeType: '预览 MIME',
           mediaKind: '媒体',
           status: '状态',
-          publicUrl: '公开 URL',
+          publicUrl: '公开链接',
           mimeType: 'MIME 类型',
           width: '宽度',
           height: '高度',
@@ -1971,8 +1889,8 @@ export const adminContent: Record<AdminLocale, AdminContent> = {
       },
       'generation-jobs': {
         title: '生成任务',
-        description: '生成状态、Prompt 输入、算力和恢复字段。',
-        searchPlaceholder: '搜索商品/Prompt、模板、状态、类型、用户或错误...',
+        description: '查看生成状态、提示词输入、算力消耗和恢复字段。',
+        searchPlaceholder: '搜索提示词、模板或状态...',
         columns: {
           inputPreview: '输入图',
           finalPreview: '成品',
@@ -2008,7 +1926,7 @@ export const adminContent: Record<AdminLocale, AdminContent> = {
       'credit-ledger': {
         title: '算力流水',
         description: '算力变动和后台备注元数据。',
-        searchPlaceholder: '搜索邮箱/姓名、原因、Stripe 事件、任务、状态或备注...',
+        searchPlaceholder: '搜索用户、原因或任务...',
         columns: {
           userEmail: '用户邮箱',
           userId: '用户 ID',
@@ -2027,7 +1945,7 @@ export const adminContent: Record<AdminLocale, AdminContent> = {
           jobStatus: '任务状态',
           jobTemplateSlug: '任务模板',
           jobInputSummary: '任务摘要',
-          metadataJson: 'Metadata JSON',
+          metadataJson: '元数据 JSON',
         },
         filters: {
           userId: '用户 ID',
@@ -2040,7 +1958,7 @@ export const adminContent: Record<AdminLocale, AdminContent> = {
       title: '模板',
       description: '管理模板目录记录和预览媒体。',
       emptyText: '暂无模板。',
-      searchPlaceholder: '搜索模板标题、slug、hook、类型、状态或标签...',
+      searchPlaceholder: '搜索标题、slug 或状态...',
       create: '创建',
       modalCreate: '创建模板',
       modalEdit: '编辑模板',
@@ -2049,13 +1967,13 @@ export const adminContent: Record<AdminLocale, AdminContent> = {
       uploadAsset: '上传素材',
       tags: '标签',
       selectSavedTemplate: '请先选择已保存的模板和文件。',
-      invalidJson: 'Prompt JSON 和默认输入必须是有效 JSON。',
+      invalidJson: '提示词 JSON 和默认输入必须是有效 JSON。',
       confirmDelete: (slug) => `确认删除模板 ${slug}？`,
       columns: {
         title: '模板',
         status: '状态',
         type: '类型',
-        costCredits: '算力',
+        costCredits: '消耗算力',
         durationSeconds: '时长',
         tags: '标签',
         usageCount: '使用量',
@@ -2066,16 +1984,16 @@ export const adminContent: Record<AdminLocale, AdminContent> = {
         slug: 'Slug',
         locale: '语言',
         type: '类型',
-        hook: 'Hook',
+        hook: '卖点 Hook',
         cta: 'CTA',
         description: '描述',
-        prompt: 'Prompt',
-        negativePrompt: '负向 Prompt',
-        promptJson: 'Prompt JSON',
+        prompt: '提示词',
+        negativePrompt: '负向提示词',
+        promptJson: '提示词 JSON',
         defaultInputsJson: '默认输入 JSON',
         costCredits: '成本',
         durationSeconds: '时长',
-        sortWeight: '权重',
+        sortWeight: '排序权重',
         aspectRatios: '画幅比例',
       },
       placeholders: {
@@ -2107,7 +2025,7 @@ export const adminContent: Record<AdminLocale, AdminContent> = {
       title: '素材库',
       description: '管理工作台可复用的产品、模特、服装、场景和示例媒体。',
       emptyText: '暂无素材。',
-      searchPlaceholder: '搜索素材标题、类型、状态、来源、标签或使用场景...',
+      searchPlaceholder: '搜索标题、类型或标签...',
       addAsset: '添加素材',
       createAction: '上传入库',
       modalCreate: '添加素材',
@@ -2117,7 +2035,7 @@ export const adminContent: Record<AdminLocale, AdminContent> = {
       noFileSelected: '未选择文件',
       selectedFile: '已选文件',
       uploadFile: '上传文件',
-      openAssetUrl: '打开素材 URL',
+      openAssetUrl: '打开素材链接',
       useCases: '使用场景',
       confirmRemove: (title) => `确认从素材库移除 ${title}？`,
       columns: {
@@ -2125,7 +2043,7 @@ export const adminContent: Record<AdminLocale, AdminContent> = {
         title: '素材',
         status: '状态',
         useCases: '使用场景',
-        qualityScore: '质量',
+        qualityScore: '质量分',
         tags: '标签',
         updatedAt: '更新时间',
       },
@@ -2174,218 +2092,265 @@ export const adminContent: Record<AdminLocale, AdminContent> = {
     help: {
       title: '运营帮助',
       description:
-        '按 Admin tab 梳理每天该看什么、该做什么，以及哪些字段容易被误读。',
+        '选择一个后台栏目，按真实操作顺序查看入口、字段含义、保存后会出现在哪里，以及发布前要检查什么。',
       principlesTitle: '这份手册怎么用',
       principles: [
-        '进入不熟悉的区域前先看帮助，把每个 tab 当成运营流程，而不是数据库表。',
-        '每个 tab 都按用途、日常动作、关键字段和风险信号来写，帮助运营把数据变成下一步动作。',
-        '首屏先看预览、状态、时间、用户、成本和错误；长 ID、URL、JSON 放到详情里排查。',
-        '发现异常时，先判断问题属于内容、媒体、生成、算力还是权限，再进入对应 tab 处理。',
+        '先在右上角下拉框选择要操作的 tab，再照着“实操步骤”做，不要把帮助当成数据字典。',
+        '字段说明只写运营必须知道的含义：为什么要填、填错会影响哪里、最终会被哪个前台页面读取。',
+        '保存之前先确认状态。草稿通常只在 Admin 可见，发布后才会进入工作台或前台列表。',
+        '遇到问题时按链路排查：模板决定创作入口，素材库提供可复用媒体，媒体文件确认上传状态，生成任务确认执行结果，算力流水解释余额。',
       ],
       rhythmTitle: '推荐运营节奏',
       rhythms: [
         {
-          title: '每天开始',
+          title: '上新前',
           items: [
-            '先看总览，只打开有真实波动的卡片，不要一上来改配置。',
-            '优先复核失败生成、异常上传和充值风险，再处理内容更新。',
+            '先准备模板或素材的预览，再补字段，最后发布。',
+            '发布前用对应工作台确认用户能看到正确入口或素材。',
           ],
         },
         {
-          title: '活动期间',
+          title: '日常巡检',
           items: [
-            '确认已发布模板的预览、CTA、成本和标签都和活动一致。',
-            '用素材库管理已审核素材，重复、过期、质量低的素材及时归档。',
+            '先看总览，再处理失败生成、异常队列和明显低质素材。',
+            '客服问题从用户、生成任务、算力流水三处交叉确认。',
           ],
         },
         {
-          title: '收尾对账',
+          title: '下架和复盘',
           items: [
-            '支付问题要同时看算力流水、用户余额和 Stripe 事件。',
-            '人工调整、退款、权限变更都要在 Admin 外留下说明，方便后续追溯。',
+            '过期模板和素材先归档，避免直接删除造成排查断点。',
+            '把重复踩坑补进对应 tab 的风险信号。',
           ],
         },
       ],
       maintenanceTitle: '这个栏目怎么维护',
       maintenance: [
-        '任何 tab 新增字段、筛选、权限或发布规则时，都同步更新 Help。',
-        '文案写给运营看：说明什么时候该操作、什么时候不该操作，以及用哪个 tab 验证判断。',
-        '示例保持短句，技术细节放在详情字段或工程文档里，不塞进首屏。',
-        '客服或运营重复踩过两次的坑，要补进对应 tab 的风险信号。',
+        '新增字段时同步写清楚字段含义、必填场景、错误后果和最终展示位置。',
+        '新增上传、发布、归档、删除等动作时，用步骤写法更新，不写抽象原则。',
+        '如果某个字段只用于排查，不在首屏出现，要写明去详情里看。',
+        '客服或运营重复踩过两次的坑，要补进对应 tab 的检查点。',
       ],
       labels: {
-        purpose: '用途',
-        dailyActions: '日常动作',
-        keyFields: '关键字段/看板',
-        riskSignals: '风险信号/误区',
+        purpose: '这个 tab 做什么 / 结果在哪里',
+        dailyActions: '实操步骤',
+        keyFields: '字段含义',
+        riskSignals: '发布前检查 / 常见误区',
       },
       items: [
         {
           key: 'overview',
           title: '总览',
           purpose:
-            '判断注册、登录后活跃、访问、上传、生成和充值链路是否健康，给当天运营动作排优先级。',
+            '用来决定今天先处理什么。它不创建内容，只把注册、活跃、生成、失败、队列和留存放在一起，帮助判断是内容问题、素材问题、生成问题还是支付问题。',
           dailyActions: [
-            '先看今天或近 7 天，再对比漏斗每一步是否突然变弱。',
-            '失败任务和异常充值卡片抬升时，优先进入对应 tab 复核。',
-            '把数据波动和当天投放、发布、支付配置变化放在一起看。',
+            '先切今天或近 7 天，看漏斗哪一步掉得最明显。',
+            '失败任务升高时，打开“生成任务”搜索最近失败和错误信息。',
+            '运行中任务变多时，先判断是否队列堵塞，再决定是否暂停活动或联系技术排查。',
+            '活动或发布当天，把总览波动和新模板、新素材、投放时间一起看。',
           ],
           keyFields: [
-            '注册、登录、访问、上传、生成、充值漏斗。',
-            '生成成功率、失败任务、运行中任务和生成类型分布。',
-            '每日趋势和异常充值风险卡片。',
+            '注册到生成漏斗：看新用户是否真的走到创作，不解释支付。',
+            '活跃率和留存率：由登录后上传、生成等产品行为估算，用来判断用户是否回来使用。',
+            '失败任务：短时间升高时优先查生成任务和服务商错误。',
+            '运行中任务：长时间高位代表队列或 provider 可能卡住。',
+            '生成类型分布：判断用户主要在用图生视频、商品图还是智能试衣。',
           ],
           riskSignals: [
-            '登录是用登录后行为估算的，不等于独立登录日志次数。',
-            '失败率短时间抬升，通常先查 provider、素材格式或近期发布。',
-            '异常充值只是复核线索，不要直接当成欺诈结论。',
+            '不要只凭总览改模板或素材，要到对应 tab 看具体记录。',
+            '支付和余额不在漏斗里解释，要去“算力流水”和“用户”。',
+            '投放、上线、服务商故障都会造成波动，先定位事件时间。',
           ],
         },
         {
           key: 'templates',
           title: '模板',
           purpose:
-            '维护生成配方和预览素材，决定用户在工作台看到哪些创作入口。',
+            '维护用户在工作台看到的创作入口和生成配方。发布后的模板会进入对应创作页面的模板/灵感列表，影响标题、预览、提示词、画幅、时长和消耗算力。',
           dailyActions: [
-            '先创建或编辑草稿，再发布到线上可见状态。',
-            '上传 preview、thumbnail、source 或 example，让结果预期清楚。',
-            '发布或归档前复核算力成本、时长、画幅比例和标签。',
+            '点击“创建”先保存草稿，确认 slug、语言、类型、标题和描述。',
+            '编辑提示词和 JSON 后先保存，不要直接发布。',
+            '进入已保存模板，上传 preview、thumbnail、source 或 example，让用户能看懂结果预期。',
+            '复核成本、时长、画幅比例和标签后再发布。',
+            '发布后到对应工作台查看模板是否出现，过期模板用归档。',
           ],
           keyFields: [
-            'Slug、语言、类型、状态、Hook、CTA 和描述。',
-            'Prompt、Prompt JSON、默认输入 JSON 和负向 Prompt。',
-            '算力成本、时长、画幅比例、标签、排序权重和使用量。',
+            'Slug：模板唯一标识，会被搜索、任务记录和链接引用，创建后不要随意改。',
+            '语言：决定模板主要服务哪个语言版本的工作台。',
+            '类型：决定模板出现在图片、视频或对应工作台入口。',
+            '状态：draft 只在 Admin，published 前台可见，archived 下架。',
+            'Hook、CTA、标题、描述：用户在工作台看到的营销文案。',
+            'Prompt、Prompt JSON、默认输入 JSON：真正给生成服务的配置，JSON 必须合法。',
+            '算力成本：用户点击生成时会按这个成本展示和预留，必须和后端真实规则一致。',
+            '时长和画幅比例：影响视频长度和生成尺寸，也影响用户预期。',
+            '标签和排序权重：决定前台分类、搜索和展示顺序。',
           ],
           riskSignals: [
-            'JSON 无效会导致保存失败，也可能掩盖 payload 配置错误。',
-            '已发布模板如果没有清晰预览，会降低用户对结果的信任。',
-            '前台展示成本要和真实生成预留算力保持一致。',
+            '没有清晰预览的模板不要发布，用户不知道会生成什么。',
+            'JSON 保存失败时先修 JSON，不要绕过字段。',
+            '算力成本填错会直接影响扣费解释和客服处理。',
+            '归档比删除安全，删除会让历史任务排查更难。',
           ],
         },
         {
           key: 'library-assets',
           title: '素材库',
           purpose:
-            '管理工作台可复用的一方素材，包括产品图、模特图、服装图、场景图和示例视频。',
+            '上传和管理可复用媒体素材。新上传保存后先是 Admin 里的素材记录；状态发布后，才会按“使用场景”出现在对应工作台：图生视频、商品图或智能试衣。',
           dailyActions: [
-            '上传文件后先看预览，再补齐基础元数据。',
-            '设置类型、使用场景、标签、质量分、来源和授权备注。',
-            '通过审核的素材发布；过期、重复或低质素材及时归档。',
+            '进入“素材库”，点击“新增素材”，先选择 PNG、JPG、WEBP、MP4 或 WEBM 文件。',
+            '看左侧预览是否正常。预览不正常时不要发布，先换文件或查媒体文件状态。',
+            '系统会根据文件名自动猜标题、类型、标签和使用场景，但运营需要逐项复核。',
+            '补标题、语言、类型、描述、使用场景和标签，必要时展开高级字段补质量分、排序权重、来源和授权备注。',
+            '先保存为草稿；确认质量、授权和展示位置后，由有权限的人发布。',
+            '发布后到对应工作台检查：image_to_video 看 /create/video，apparel_image 看 /create/apparel，try_on 看 /create/try-on。',
           ],
           keyFields: [
-            '预览、标题、类型、状态、语言和使用场景。',
-            '标签、质量分、排序权重、来源和授权备注。',
-            '详情里的素材 URL、MIME、尺寸、时长等媒体信息。',
+            '上传文件：真正写入 R2 的原始媒体。支持图片和视频；文件决定预览、MIME、大小、尺寸、时长。',
+            '预览：发布前第一检查点。看不清、打不开、比例明显不对时不要发布。',
+            '标题：运营可读名称，会用于 Admin 搜索和前台素材列表理解，不能只写文件名乱码。',
+            '语言：素材服务的默认语言版本。多语言素材要按实际使用区域选择。',
+            '类型：产品图、模特图、服装图、场景图、示例图、示例视频，用来告诉工作台这是什么素材。',
+            '状态：draft 只在 Admin；published 会进入公开素材 API；archived 从前台下架。',
+            '描述：说明适合什么商品、场景、风格或限制，帮助运营二次筛选。',
+            '使用场景：image_to_video 出现在图生视频；apparel_image 出现在商品图；try_on 出现在智能试衣。',
+            '标签：逗号分隔，用于搜索、分类和后续推荐，不要塞长句。',
+            '质量分：0 到 100，越高越适合优先展示；低质素材不要靠排序权重硬推。',
+            '排序权重：同类素材的人工排序加权，活动主推可以调高，活动结束要复原或归档。',
+            '来源和授权备注：记录 manual、crawler、wanxiang、内部授权、生成素材等来源，避免版权不清的素材上线。',
           ],
           riskSignals: [
-            '模板是生成配方，素材库是媒体库存，两个 ID 不要混用。',
-            '视频素材不能当图片直接渲染，否则会出现空预览或错位。',
-            '没有授权、质量差或用途不明确的素材不要发布。',
+            '草稿不会出现在前台。保存后找不到素材时，先检查是否 published。',
+            '使用场景选错会让素材出现在错误工作台，尤其模特图和服装图通常应该给 try_on。',
+            '视频素材不要当图片素材使用，否则前台可能没有图片缩略图。',
+            '版权不清、低清晰度、主体被裁切、商品和模特不适配的素材不要发布。',
+            '素材库是媒体资产，模板是生成配方，历史任务里看到的 template id 和 library asset id 不能混用。',
           ],
         },
         {
           key: 'users',
           title: '用户',
           purpose:
-            '查看账号、角色、算力余额和订阅状态，用于客服、权限和支付问题排查。',
+            '处理客服、权限和支付排查。用户 tab 显示账号是谁、能不能登录、是什么角色、当前余额和订阅状态；余额原因要去算力流水解释。',
           dailyActions: [
             '先按邮箱或姓名搜索，确认是同一个用户再操作。',
-            '回复客服前核对角色、账号状态、套餐、订阅和余额。',
-            '解释余额变化时跳到算力流水，不只看用户表余额。',
+            '看账号状态、角色、套餐、订阅和余额，判断是权限问题还是计费问题。',
+            '需要解释余额变化时，复制用户信息到“算力流水”继续查。',
+            '只有确认需要后台权限时才改角色，普通客服问题不要改角色。',
           ],
           keyFields: [
-            '邮箱、姓名、账号状态和角色。',
-            '算力余额、订阅状态、套餐和创建时间。',
-            '账号调查时关注更新时间和详情字段。',
+            '邮箱和姓名：确认用户身份，避免同名误操作。',
+            '账号状态：判断账号是否可用、停用或被删除。',
+            '角色：member 是普通用户，ops 可做运营，admin 可做用户、发布、删除等高权限操作。',
+            '算力余额：当前结果值，不解释原因。',
+            '订阅状态和套餐：判断用户是否处在付费、取消或异常状态。',
+            '创建和更新时间：用于判断新用户、老用户或近期是否被改过。',
           ],
           riskSignals: [
-            '修改角色会直接影响后台权限，操作前要二次确认。',
-            '用户表余额必须能被流水解释，不能孤立判断。',
-            '停用或软删除账号仍可能出现在客服排查里。',
+            '改角色会直接改变后台权限，发布和删除能力尤其要确认。',
+            '余额必须能被算力流水解释，不要只看用户表余额就答复。',
+            '停用或软删除用户可能仍出现在排查结果里，先看状态再判断。',
           ],
         },
         {
           key: 'assets',
-          title: '文件',
+          title: '媒体文件',
           purpose:
-            '追踪用户上传、模板素材、生成文件和媒体元数据，用于文件可用性排查。',
+            '排查所有底层媒体文件，包括用户上传、模板媒体、素材库上传和生成结果。它告诉你文件是否真的上传成功、能不能预览、MIME 和尺寸是否合理。',
           dailyActions: [
             '按上传类型、状态、MIME、用户或文件 ID 搜索。',
-            '先看预览是否正常，再判断是否需要改元数据。',
-            '恢复问题文件时查看尺寸、时长、媒体类型和公开 URL。',
+            '先看预览，再看 status 是否 uploaded。',
+            '如果模板或素材库看不到图，回到这里确认对应 asset 是否 pending 或 failed。',
+            '恢复问题文件时只在详情里查看公开链接、尺寸、时长和媒体类型。',
           ],
           keyFields: [
-            '预览、类型、状态、MIME、大小、创建和更新时间。',
-            '宽度、高度、时长和媒体类型。',
-            '公开 URL 放在详情里看，不作为默认扫表重点。',
+            '预览：判断文件是否能被前台展示。',
+            '类型：区分普通上传、模板素材、生成结果或素材库文件。',
+            '状态：pending 未完成，uploaded 可用，failed 不可用。',
+            'MIME 和大小：判断格式是否符合上传入口要求。',
+            '宽度、高度、时长和媒体类型：用于排查比例、视频时长和渲染问题。',
+            '公开链接：只用于恢复和技术排查，不是运营扫表字段。',
           ],
           riskSignals: [
             'pending 或 failed 文件不能拿去发布模板或素材库。',
-            'Storage Key 和长 URL 不是运营首屏字段，排查时再看。',
             '没有预览可能是格式不支持，也可能是上传还没完成。',
+            '不要把存储 key 或长 URL 当作运营判断依据。',
           ],
         },
         {
           key: 'generation-jobs',
           title: '生成任务',
           purpose:
-            '排查每一次生成从输入到成品的状态、模板、算力成本和 provider 错误。',
+            '排查每一次生成从用户输入到最终结果的链路。它回答“用户点了什么、用了哪个模板、扣了多少算力、服务商返回什么错误、结果在哪里”。',
           dailyActions: [
-            '按商品、Prompt、模板、状态、用户或错误信息搜索。',
-            '诊断前先对比输入预览和成品预览。',
-            '关注排队、长时间运行和最近失败的任务。',
+            '按用户、商品、提示词、模板、状态或错误信息搜索。',
+            '先对比输入预览和成品预览，再判断是素材问题还是服务商问题。',
+            'queued、submitting、running 太久时，优先查 provider 和队列。',
+            '失败任务要看是否预留或结算了算力，必要时到算力流水核对。',
           ],
           keyFields: [
-            '输入预览、成品预览、生成类型、状态和输入摘要。',
-            '模板、预留算力、时长、创建和更新时间。',
-            '详情里的错误信息和恢复字段。',
+            '输入预览：用户提交的图、视频或关键输入，排查质量问题先看这里。',
+            '成品预览：生成成功后用户看到的结果。',
+            '生成类型：图生视频、商品图、智能试衣等，用来定位对应工作台。',
+            '状态：queued、submitting、running 是处理中，succeeded 成功，failed 失败。',
+            '输入摘要：快速看商品名、提示词、模板 slug、画幅等，不替代原始素材。',
+            '模板：关联生成配方，模板问题要回到模板 tab 修改。',
+            '预留算力：这次生成占用的算力，余额争议要去算力流水核对。',
+            '错误信息：provider 或系统返回的失败原因。',
           ],
           riskSignals: [
-            '任务卡在 queued、submitting 或 running 太久，需要尽快复核。',
-            '失败任务如果已预留算力，可能需要退款或正确结算。',
-            '输入摘要只适合快速分诊，不能替代原始素材判断。',
+            '不要只看状态文字，必须结合输入预览、成品预览和错误信息。',
+            '失败但扣费异常时，不能手动猜，要到算力流水查 delta 和 reason。',
+            '模板、素材、provider、用户输入都可能导致失败，按链路逐步排查。',
           ],
         },
         {
           key: 'credit-ledger',
           title: '算力流水',
           purpose:
-            '作为算力余额的运营来源，追踪充值、预留、结算、退款和人工调整。',
+            '解释用户余额为什么变成现在这样。充值、预留、结算、退款、失败返还和人工调整都应该在这里形成流水。',
           dailyActions: [
             '按用户、任务、Stripe 事件、原因或日期筛选。',
-            '解释用户问题前，先看变动值和变动后余额。',
-            '重点审计人工调整、缺少支付事件和大额变动。',
+            '从时间顺序看 delta 和 balanceAfter，解释余额变化。',
+            '遇到支付问题，同时对照用户 tab 的当前余额和 Stripe 事件。',
+            '人工调整、退款和大额变动要记录背景，方便后续追溯。',
           ],
           keyFields: [
-            '用户、变动值、原因、变动后余额和创建时间。',
-            '任务 ID、生成类型、任务状态和任务模板。',
-            'Stripe 事件 ID 和用于对账的 metadata JSON。',
+            '用户：流水归属的账号。',
+            '变动值 delta：正数增加算力，负数扣减算力。',
+            '原因 reason：购买、预留、结算、退款、人工调整等业务原因。',
+            '变动后余额 balanceAfter：这条流水完成后的余额。',
+            '任务 ID、生成类型、任务状态和模板：解释生成扣费或返还。',
+            'Stripe 事件 ID：支付对账用，缺失时要警惕人工或异常来源。',
+            'metadata JSON：只在对账和技术排查时看。',
           ],
           riskSignals: [
-            '流水不是普通可编辑表，它是解释余额的依据。',
-            '用户余额和最后一条流水不一致时，要先对账再处理。',
-            '缺少 Stripe 事件或大额人工调整都需要复核。',
+            '流水不是普通表，不应随便编辑或删除。',
+            '用户当前余额和最后一条流水对不上时，先停止答复，做对账。',
+            '缺少 Stripe 事件、大额人工调整、重复扣费都需要复核。',
           ],
         },
         {
           key: 'help',
           title: '帮助',
           purpose:
-            '作为 Admin 的运营培训和栏目治理入口，让运营知道每个 tab 用来判断什么、不能判断什么。',
+            '帮助本身是后台使用说明，不是业务数据页。它应该告诉运营怎么填、怎么查、保存后去哪里验证。',
           dailyActions: [
-            '使用陌生 tab 或处理敏感客服案例前，先阅读对应说明。',
-            '流程、字段、筛选、权限或运营规则变化时，同步更新帮助。',
-            '事故或复盘后，把反复出现的经验沉淀成一句短规则。',
+            '进入帮助后先用下拉框选择要操作的 tab。',
+            '如果字段、按钮、权限或前台展示位置变了，同步更新对应说明。',
+            '每次复盘把“踩坑点”写进发布前检查，不要只写在聊天记录里。',
           ],
           keyFields: [
-            '这份手册怎么用、推荐运营节奏和栏目维护规则。',
-            '每个 tab 的用途、日常动作、关键字段和风险信号。',
-            '模板、素材库、文件、生成任务和算力流水之间的边界。',
+            '下拉框：选择总览、模板、素材库、用户、媒体文件、生成任务或算力流水说明。',
+            '实操步骤：按真实后台动作排序。',
+            '字段含义：说明字段为什么填、怎么填、影响哪里。',
+            '发布前检查：记录容易误操作的地方。',
+            '素材库字段示意图：对照上传弹窗看每个字段的位置。',
           ],
           riskSignals: [
-            '帮助文案过期会直接变成运营误操作来源。',
-            '写得太长反而没人读，优先保留短句、动作和验证位置。',
-            '规则依赖技术数据时，要写明去哪个 tab 或详情字段确认。',
+            '帮助过期会直接造成误发布、误扣费解释或错误权限操作。',
+            '不要写空泛原则，要写“点哪里、填什么、最后去哪看”。',
+            '如果一句话不能指导运营完成动作，就应该改写。',
           ],
         },
       ],

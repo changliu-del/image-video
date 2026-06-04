@@ -9,7 +9,8 @@ import {
   creditLedger,
   type NewUser,
 } from '@/lib/db/schema';
-import { comparePasswords, hashPassword, setSession } from '@/lib/auth/session';
+import { comparePasswords, hashPassword } from '@/lib/auth/password';
+import { setSession } from '@/lib/auth/session';
 import { redirect } from 'next/navigation';
 import { cookies } from 'next/headers';
 import { getSignupFreeCreditsAmount } from '@/lib/generations/free-credits';

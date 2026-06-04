@@ -8,18 +8,12 @@ import {
   BarChart3,
   CalendarDays,
   CheckCircle2,
-  CreditCard,
-  Gauge,
   Loader2,
-  LogIn,
-  MousePointerClick,
   RefreshCw,
   Search,
   Sparkles,
   Timer,
-  UploadCloud,
   UserPlus,
-  Wallet,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -31,7 +25,6 @@ import type {
   AdminDashboardGenerationStatus,
   AdminDashboardGenerationType,
   AdminDashboardMetricUnit,
-  AdminDashboardRechargeRiskSignal,
   AdminDashboardResponse,
   AdminDashboardSeverity,
   AdminDashboardSummaryCard,
@@ -120,12 +113,10 @@ const STATUS_TONES: Record<AdminDashboardGenerationStatus['status'], ToneKey> = 
 const SUMMARY_KEYS: AdminDashboardSummaryCard['key'][] = [
   'registrations',
   'activeEstimate',
-  'visitBehavior',
-  'uploads',
+  'retention',
   'generation',
   'generationFailures',
-  'recharge',
-  'rechargeRisk',
+  'generationRunning',
 ];
 
 const SUMMARY_CONFIG: Record<
@@ -145,19 +136,14 @@ const SUMMARY_CONFIG: Record<
     copyKey: 'registrations',
   },
   activeEstimate: {
-    icon: LogIn,
+    icon: Activity,
     tone: 'emerald',
-    copyKey: 'login',
+    copyKey: 'activeUsers',
   },
-  visitBehavior: {
-    icon: MousePointerClick,
+  retention: {
+    icon: RefreshCw,
     tone: 'indigo',
-    copyKey: 'visits',
-  },
-  uploads: {
-    icon: UploadCloud,
-    tone: 'slate',
-    copyKey: 'uploadedAssets',
+    copyKey: 'retention',
   },
   generation: {
     icon: Sparkles,
@@ -174,16 +160,6 @@ const SUMMARY_CONFIG: Record<
     tone: 'amber',
     copyKey: 'runningJobs',
   },
-  recharge: {
-    icon: CreditCard,
-    tone: 'amber',
-    copyKey: 'recharge',
-  },
-  rechargeRisk: {
-    icon: Wallet,
-    tone: 'rose',
-    copyKey: 'abnormalRecharge',
-  },
 };
 
 const TREND_SERIES: Array<{
@@ -191,11 +167,11 @@ const TREND_SERIES: Array<{
   tone: ToneKey;
 }> = [
   { key: 'registrations', tone: 'sky' },
-  { key: 'visits', tone: 'indigo' },
+  { key: 'activeUsers', tone: 'emerald' },
+  { key: 'retainedUsers', tone: 'indigo' },
   { key: 'generationJobs', tone: 'emerald' },
   { key: 'failedJobs', tone: 'rose' },
-  { key: 'purchasedCredits', tone: 'amber' },
-  { key: 'abnormalRechargeSignals', tone: 'slate' },
+  { key: 'runningJobs', tone: 'amber' },
 ];
 
 function dateKey(date: Date) {
@@ -259,6 +235,12 @@ function formatDuration(seconds: number | null) {
   }).format(seconds / 60)}m`;
 }
 
+function formatMetricValue(value: number, unit: AdminDashboardMetricUnit) {
+  if (unit === 'percent') return formatPercent(value);
+  if (unit === 'seconds') return formatDuration(value);
+  return formatNumber(value);
+}
+
 function boundedPercent(value: number | null) {
   if (value === null || !Number.isFinite(value)) return 0;
   return Math.max(0, Math.min(100, value));
@@ -307,12 +289,9 @@ function summaryLabel(content: AdminContent, card: AdminDashboardSummaryCard) {
 function funnelLabel(content: AdminContent, step: AdminDashboardFunnelStep) {
   const labels: Partial<Record<AdminDashboardFunnelStep['key'], string>> = {
     registrations: content.dashboard.funnelStages.registrations,
-    activeEstimate: content.dashboard.gauges.login.label,
-    visitBehavior: content.dashboard.gauges.visits.label,
-    uploads: content.dashboard.funnelStages.uploads,
+    activeEstimate: content.dashboard.gauges.activeUsers.label,
     generation: content.dashboard.funnelStages.generation,
     successfulGeneration: content.dashboard.metrics.successRate,
-    recharge: content.dashboard.funnelStages.recharge,
   };
   return labels[step.key] ?? step.label;
 }
@@ -324,6 +303,7 @@ function trendLabel(
   const labels: Partial<Record<AdminDashboardDailyTrendSeries['key'], string>> = {
     registrations: content.dashboard.gauges.registrations.label,
     activeUsers: content.dashboard.metrics.activeUsers,
+    retainedUsers: content.dashboard.metrics.retainedUsers,
     visits: content.dashboard.gauges.visits.label,
     uploadedAssets: content.dashboard.metrics.uploadedAssets,
     generationJobs: content.dashboard.metrics.generationJobs,
@@ -332,7 +312,6 @@ function trendLabel(
     runningJobs: content.dashboard.metrics.runningJobs,
     rechargeEvents: content.dashboard.metrics.purchaseEvents,
     purchasedCredits: content.dashboard.metrics.purchasedCredits,
-    abnormalRechargeSignals: content.dashboard.gauges.abnormalRecharge.label,
   };
   return labels[series.key] ?? series.label;
 }
@@ -343,12 +322,11 @@ function typeLabel(content: AdminContent, type: string) {
 
 function unitLabel(content: AdminContent, unit: AdminDashboardMetricUnit) {
   if (unit === 'users') return content.dashboard.metrics.activeUsers;
-  if (unit === 'user_days') return content.dashboard.gauges.login.label;
+  if (unit === 'user_days') return content.dashboard.metrics.activeUserDays;
   if (unit === 'events') return content.dashboard.metrics.visitEvents;
   if (unit === 'assets') return content.dashboard.metrics.uploadedAssets;
   if (unit === 'jobs') return content.dashboard.metrics.generationJobs;
   if (unit === 'credits') return content.dashboard.metrics.purchasedCredits;
-  if (unit === 'signals') return content.dashboard.risk.signals;
   if (unit === 'percent') return content.dashboard.metrics.successRate;
   return 's';
 }
@@ -358,18 +336,15 @@ function summaryDetail(
   data: AdminDashboardResponse,
   card: AdminDashboardSummaryCard
 ) {
-  const { totals, rechargeAnomalies } = data;
+  const { totals } = data;
   if (card.key === 'registrations') {
     return `${formatNumber(totals.totalUsers)} ${content.dashboard.metrics.totalUsers}`;
   }
   if (card.key === 'activeEstimate') {
-    return `${formatNumber(totals.activeUserDays)} ${content.dashboard.gauges.login.label} / ${formatNumber(totals.visitEvents)} ${content.dashboard.metrics.visitEvents}`;
+    return `${formatNumber(totals.activeUsers)} ${content.dashboard.metrics.activeUsers} / ${formatNumber(totals.totalUsers)} ${content.dashboard.metrics.totalUsers}`;
   }
-  if (card.key === 'visitBehavior') {
-    return `${formatNumber(totals.activeUserDays)} ${content.dashboard.gauges.login.label} / ${formatNumber(totals.activeUsers)} ${content.dashboard.metrics.activeUsers}`;
-  }
-  if (card.key === 'uploads') {
-    return `${formatNumber(totals.uploadUsers)} ${content.dashboard.metrics.uploadUsers} / ${formatNumber(totals.uploadFailedAssets)} ${content.dashboard.metrics.failedJobs}`;
+  if (card.key === 'retention') {
+    return `${formatNumber(totals.retainedUsers)} ${content.dashboard.metrics.retainedUsers} / ${formatNumber(totals.existingUsers)} ${content.dashboard.metrics.existingUsers}`;
   }
   if (card.key === 'generation') {
     return `${formatNumber(totals.succeededJobs)} ${content.statusLabels.succeeded} / ${formatNumber(totals.failedJobs)} ${content.statusLabels.failed}`;
@@ -380,10 +355,7 @@ function summaryDetail(
   if (card.key === 'generationRunning') {
     return `${formatNumber(totals.queuedJobs)} ${content.statusLabels.queued} / ${formatNumber(totals.runningActiveJobs)} ${content.statusLabels.running}`;
   }
-  if (card.key === 'recharge') {
-    return `${formatNumber(totals.purchaseEvents)} ${content.dashboard.metrics.purchaseEvents} / ${formatNumber(totals.payingUsers)} ${content.dashboard.metrics.payingUsers}`;
-  }
-  return `${formatNumber(rechargeAnomalies.missingStripeEvents)} ${content.dashboard.anomalies.missingStripeEvents} / ${formatNumber(rechargeAnomalies.balanceMismatches)} ${content.dashboard.anomalies.balanceMismatches}`;
+  return card.detail;
 }
 
 function summaryDiagnosis(
@@ -397,17 +369,15 @@ function summaryDiagnosis(
       ? content.dashboard.diagnosis.healthy.registrations
       : content.dashboard.diagnosis.empty.registrations;
   }
-  if (card.key === 'activeEstimate') return content.dashboard.loginEstimate;
-  if (card.key === 'visitBehavior') {
-    return totals.visitEvents > 0
-      ? content.dashboard.diagnosis.healthy.visits
-      : content.dashboard.diagnosis.empty.visits;
+  if (card.key === 'activeEstimate') {
+    return totals.activeUsers > 0
+      ? content.dashboard.diagnosis.healthy.active
+      : content.dashboard.diagnosis.empty.active;
   }
-  if (card.key === 'uploads') {
-    if (totals.uploadedAssets === 0) return content.dashboard.diagnosis.empty.uploads;
-    return totals.uploadFailedAssets > 0
-      ? content.dashboard.diagnosis.watch
-      : content.dashboard.diagnosis.healthy.uploads;
+  if (card.key === 'retention') {
+    return totals.retainedUsers > 0
+      ? content.dashboard.diagnosis.healthy.retention
+      : content.dashboard.diagnosis.empty.retention;
   }
   if (card.key === 'generation') {
     if (totals.generationJobs === 0) {
@@ -427,19 +397,11 @@ function summaryDiagnosis(
       ? content.dashboard.diagnosis.watch
       : content.dashboard.diagnosis.steady;
   }
-  if (card.key === 'recharge') {
-    return totals.purchaseEvents > 0
-      ? content.dashboard.diagnosis.healthy.recharge
-      : content.dashboard.diagnosis.empty.recharge;
-  }
-  return totals.abnormalRechargeSignals > 0
-    ? content.dashboard.risk.defaultAction
-    : content.dashboard.risk.noRiskAction;
+  return card.diagnosis;
 }
 
 function funnelDiagnosisKey(step: AdminDashboardFunnelStep) {
-  if (step.key === 'activeEstimate') return 'login';
-  if (step.key === 'visitBehavior') return 'visits';
+  if (step.key === 'activeEstimate') return 'active';
   if (step.key === 'successfulGeneration') return 'generation';
   return step.key;
 }
@@ -471,13 +433,8 @@ function funnelDiagnosis(content: AdminContent, step: AdminDashboardFunnelStep) 
 }
 
 function dailyTrendDiagnosis(content: AdminContent, data: AdminDashboardResponse) {
-  const riskSignals = data.dailyTrends.points.reduce(
-    (sum, point) => sum + point.abnormalRechargeSignals,
-    0
-  );
-  if (riskSignals > 0) return content.dashboard.risk.defaultAction;
   if (data.totals.visitEvents === 0 && data.totals.generationJobs === 0) {
-    return content.dashboard.diagnosis.empty.visits;
+    return content.dashboard.diagnosis.empty.active;
   }
   return content.dashboard.diagnosis.steady;
 }
@@ -502,19 +459,6 @@ function generationTypeDiagnosis(
     return content.dashboard.diagnosis.watch;
   }
   return content.dashboard.diagnosis.healthy.generation;
-}
-
-function sortedRisks(signals: AdminDashboardRechargeRiskSignal[]) {
-  const rank: Record<AdminDashboardSeverity, number> = {
-    critical: 4,
-    warning: 3,
-    info: 2,
-    ok: 1,
-  };
-  return [...signals].sort(
-    (left, right) =>
-      rank[right.severity] - rank[left.severity] || right.value - left.value
-  );
 }
 
 function SectionShell({
@@ -572,7 +516,7 @@ function SummaryCard({
             {summaryLabel(content, card)}
           </p>
           <p className="mt-2 truncate text-2xl font-semibold tabular-nums text-gray-950">
-            {formatNumber(card.value)}
+            {formatMetricValue(card.value, card.unit)}
           </p>
         </div>
         <span
@@ -609,61 +553,6 @@ function SummaryCard({
         {summaryDiagnosis(content, data, card)}
       </p>
     </article>
-  );
-}
-
-function MetricStrip({
-  content,
-  data,
-}: {
-  content: AdminContent;
-  data: AdminDashboardResponse;
-}) {
-  const totals = data.totals;
-  const items = [
-    {
-      label: content.dashboard.metrics.totalUsers,
-      value: formatNumber(totals.totalUsers),
-    },
-    {
-      label: content.dashboard.metrics.uploadUsers,
-      value: `${formatNumber(totals.uploadUsers)} / ${formatNumber(
-        totals.uploadedAssets
-      )}`,
-    },
-    {
-      label: content.dashboard.metrics.runningJobs,
-      value: `${formatNumber(totals.runningJobs)} / ${formatNumber(
-        totals.stuckRunningJobs
-      )}`,
-    },
-    {
-      label: content.dashboard.metrics.purchaseEvents,
-      value: `${formatNumber(totals.purchaseEvents)} / ${formatNumber(
-        totals.payingUsers
-      )}`,
-    },
-    {
-      label: content.dashboard.metrics.creditEvents,
-      value: formatNumber(totals.creditEvents),
-    },
-    {
-      label: content.dashboard.metrics.refundEvents,
-      value: formatNumber(totals.refundEvents),
-    },
-  ];
-
-  return (
-    <div className="grid gap-px overflow-hidden rounded-lg border border-gray-200 bg-gray-200 sm:grid-cols-3 xl:grid-cols-6">
-      {items.map((item) => (
-        <div key={item.label} className="bg-white px-3 py-2">
-          <p className="truncate text-xs text-gray-500">{item.label}</p>
-          <p className="mt-1 text-sm font-semibold tabular-nums text-gray-950">
-            {item.value}
-          </p>
-        </div>
-      ))}
-    </div>
   );
 }
 
@@ -711,19 +600,13 @@ function BehaviorFunnel({
       <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-7">
         {steps.map((step, index) => {
           const toneKey: ToneKey =
-            step.key === 'recharge'
-              ? 'amber'
-              : step.key === 'successfulGeneration'
+            step.key === 'successfulGeneration'
+              ? 'emerald'
+              : step.key === 'generation'
                 ? 'emerald'
-                : step.key === 'generation'
-                  ? 'emerald'
-                  : step.key === 'uploads'
-                    ? 'slate'
-                    : step.key === 'visitBehavior'
-                      ? 'indigo'
-                      : step.key === 'activeEstimate'
-                        ? 'emerald'
-                        : 'sky';
+                : step.key === 'activeEstimate'
+                  ? 'indigo'
+                  : 'sky';
           const tone = TONES[toneKey];
 
           return (
@@ -908,7 +791,7 @@ function TypeMix({
               {typeLabel(content, item.type)}
             </span>
             <span className="shrink-0 tabular-nums text-gray-500">
-              {formatNumber(item.total)} / {formatPercent(item.successRate)}
+              {formatNumber(item.runningJobs)} / {formatPercent(item.runningRate)}
             </span>
           </div>
           <div className="flex h-2 overflow-hidden rounded-full bg-gray-100">
@@ -963,6 +846,9 @@ function GenerationHealthPanel({
           </span>
         </div>
         <StatusBars content={content} statuses={health.byStatus} />
+        <p className="mt-3 text-xs leading-relaxed text-gray-500">
+          {content.dashboard.calculationNotes.generationQueue}
+        </p>
         <div className="mt-4 grid gap-px overflow-hidden rounded-lg border border-gray-200 bg-gray-200 sm:grid-cols-3">
           <div className="bg-white px-3 py-2">
             <p className="text-xs text-gray-500">Avg</p>
@@ -1026,72 +912,6 @@ function GenerationHealthPanel({
             )}
           </div>
         </div>
-      </div>
-    </div>
-  );
-}
-
-function RechargeRiskPanel({
-  content,
-  risks,
-}: {
-  content: AdminContent;
-  risks: AdminDashboardRechargeRiskSignal[];
-}) {
-  const sorted = sortedRisks(risks);
-  const active = sorted.filter((risk) => risk.value > 0);
-
-  return (
-    <div className="rounded-lg border border-gray-200 bg-white p-4 shadow-sm">
-      {active.length === 0 ? (
-        <div className="mb-4 flex items-start gap-3 rounded-lg border border-emerald-200 bg-emerald-50 px-3 py-3 text-sm text-emerald-800">
-          <CheckCircle2 className="mt-0.5 size-4 shrink-0" />
-          <div>
-            <p className="font-medium">{content.dashboard.risk.noRiskTitle}</p>
-            <p className="mt-1 text-emerald-700">
-              {content.dashboard.risk.noRiskAction}
-            </p>
-          </div>
-        </div>
-      ) : null}
-
-      <div className="grid gap-3 md:grid-cols-2">
-        {sorted.map((risk) => (
-          <article key={risk.key} className="border-l-2 border-gray-200 pl-3">
-            <div className="flex flex-wrap items-center justify-between gap-2">
-              <div className="min-w-0">
-                <p className="truncate text-sm font-semibold text-gray-950">
-                  {content.dashboard.anomalies[risk.key] ?? risk.label}
-                </p>
-                <p className="mt-1 text-xs text-gray-500">
-                  {content.dashboard.riskImpacts[risk.key] ?? risk.diagnosis}
-                </p>
-              </div>
-              <div className="flex shrink-0 items-center gap-2">
-                <span
-                  className={cn(
-                    'rounded-full border px-2 py-0.5 text-xs font-medium',
-                    SEVERITY_CLASS[risk.severity]
-                  )}
-                >
-                  {severityLabel(content, risk.severity)}
-                </span>
-                <span className="text-sm font-semibold tabular-nums text-gray-950">
-                  {formatNumber(risk.value)}
-                </span>
-              </div>
-            </div>
-            <p className="mt-2 text-sm leading-relaxed text-gray-700">
-              <span className="font-medium text-gray-950">
-                {content.dashboard.risk.action}:
-              </span>{' '}
-              {risk.value > 0
-                ? content.dashboard.riskActions[risk.key] ??
-                  content.dashboard.risk.defaultAction
-                : content.dashboard.risk.noRiskAction}
-            </p>
-          </article>
-        ))}
       </div>
     </div>
   );
@@ -1324,8 +1144,6 @@ export function AdminDashboardPanel({ content }: AdminDashboardPanelProps) {
             ))}
           </div>
 
-          <MetricStrip content={content} data={data} />
-
           <SectionShell
             title={content.dashboard.sections.funnel}
             icon={Activity}
@@ -1338,26 +1156,9 @@ export function AdminDashboardPanel({ content }: AdminDashboardPanelProps) {
             <BehaviorFunnel content={content} steps={data.funnelSteps} />
           </SectionShell>
 
-          <div className="grid gap-5 xl:grid-cols-[minmax(0,1.1fr)_minmax(360px,0.9fr)]">
-            <SectionShell title={content.dashboard.sections.trend} icon={BarChart3}>
-              <DailyTrend content={content} data={data} />
-            </SectionShell>
-            <SectionShell
-              title={content.dashboard.sections.rechargeRisk}
-              icon={Gauge}
-              aside={
-                <span className="text-xs text-gray-500">
-                  {formatNumber(data.totals.abnormalRechargeSignals)}{' '}
-                  {content.dashboard.risk.signals}
-                </span>
-              }
-            >
-              <RechargeRiskPanel
-                content={content}
-                risks={data.rechargeRiskSignals}
-              />
-            </SectionShell>
-          </div>
+          <SectionShell title={content.dashboard.sections.trend} icon={BarChart3}>
+            <DailyTrend content={content} data={data} />
+          </SectionShell>
 
           <SectionShell
             title={content.dashboard.sections.generationMix}

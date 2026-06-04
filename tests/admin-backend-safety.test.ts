@@ -54,8 +54,16 @@ describe('Admin backend safety rails', () => {
       .toBeGreaterThanOrEqual(6);
     expect(countOccurrences(source, "and reason = 'purchase'"))
       .toBeGreaterThanOrEqual(2);
-    expect(source).toContain(
-      'estimated from user uploads, generation jobs, and purchase ledger entries'
+    expect(source).not.toContain('select user_id, created_at from credit_ledger');
+    expect(source).not.toContain(
+      "select date_trunc('day', created_at)::date as day, user_id from credit_ledger"
     );
+    expect(source).toContain(
+      'estimated from user uploads and generation jobs'
+    );
+    expect(source).toContain('credit_touched_users');
+    expect(source).toContain('balance_mismatches');
+    expect(source).toContain('abnormal_recharge_signals');
+    expect(source).toContain('rechargeRiskSignals');
   });
 });

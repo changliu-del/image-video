@@ -13,7 +13,6 @@ export type AdminDashboardMetricUnit =
   | 'assets'
   | 'jobs'
   | 'credits'
-  | 'signals'
   | 'percent'
   | 'seconds';
 
@@ -33,13 +32,10 @@ export type AdminDashboardSummaryCard = {
   key:
     | 'registrations'
     | 'activeEstimate'
-    | 'visitBehavior'
-    | 'uploads'
+    | 'retention'
     | 'generation'
     | 'generationFailures'
-    | 'generationRunning'
-    | 'recharge'
-    | 'rechargeRisk';
+    | 'generationRunning';
   label: string;
   value: number;
   unit: AdminDashboardMetricUnit;
@@ -53,11 +49,8 @@ export type AdminDashboardSummaryCard = {
 export type AdminDashboardFunnelStepKey =
   | 'registrations'
   | 'activeEstimate'
-  | 'visitBehavior'
-  | 'uploads'
   | 'generation'
-  | 'successfulGeneration'
-  | 'recharge';
+  | 'successfulGeneration';
 
 export type AdminDashboardFunnelStep = {
   key: AdminDashboardFunnelStepKey;
@@ -76,12 +69,19 @@ export type AdminDashboardFunnelStep = {
 
 export type AdminDashboardTotals = {
   totalUsers: number;
+  existingUsers: number;
   newUsers: number;
   activeUsers: number;
+  newActiveUsers: number;
   activeUserDays: number;
+  retainedUsers: number;
+  activeRate: number;
+  retentionRate: number;
   uploadUsers: number;
   generationUsers: number;
+  newGenerationUsers: number;
   successfulGenerationUsers: number;
+  newSuccessfulGenerationUsers: number;
   failedGenerationUsers: number;
   loginEvents: number;
   visitEvents: number;
@@ -117,6 +117,9 @@ export type AdminDashboardDailyPoint = {
   registrations: number;
   activeUsers: number;
   activeUserDays: number;
+  retainedUsers: number;
+  activeRate: number;
+  retentionRate: number;
   loginEvents: number;
   visits: number;
   uploadUsers: number;
@@ -137,6 +140,7 @@ export type AdminDashboardDailyTrendSeries = {
   key:
     | 'registrations'
     | 'activeUsers'
+    | 'retainedUsers'
     | 'visits'
     | 'uploadedAssets'
     | 'generationJobs'
@@ -220,12 +224,7 @@ export type AdminDashboardRechargeAnomalies = {
 };
 
 export type AdminDashboardRechargeRiskSignal = {
-  key:
-    | 'missingStripeEvents'
-    | 'largePurchases'
-    | 'manualCreditIncreases'
-    | 'manualCreditDecreases'
-    | 'balanceMismatches';
+  key: keyof AdminDashboardRechargeAnomalies;
   label: string;
   value: number;
   severity: AdminDashboardSeverity;
@@ -239,10 +238,10 @@ export type AdminDashboardResponse = {
   totals: AdminDashboardTotals;
   daily: AdminDashboardDailyPoint[];
   generationTypes: AdminDashboardGenerationType[];
-  rechargeAnomalies: AdminDashboardRechargeAnomalies;
   summaryCards: AdminDashboardSummaryCard[];
   funnelSteps: AdminDashboardFunnelStep[];
   dailyTrends: AdminDashboardDailyTrends;
   generationHealth: AdminDashboardGenerationHealth;
+  rechargeAnomalies: AdminDashboardRechargeAnomalies;
   rechargeRiskSignals: AdminDashboardRechargeRiskSignal[];
 };

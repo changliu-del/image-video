@@ -1,6 +1,6 @@
 # Config and Operations
 
-Updated: 2026-06-03
+Updated: 2026-06-04
 
 ## Common Environment Variables
 
@@ -24,10 +24,10 @@ Updated: 2026-06-03
 
 ## Build Notes
 
-`pnpm build` currently passes. Known warnings:
+`pnpm build` currently passes cleanly.
 
-- Next.js warns that the `middleware` file convention is deprecated and suggests `proxy`.
-- `baseline-browser-mapping` data is over two months old.
+- Auth route protection uses `proxy.ts`, following the current Next.js proxy convention.
+- The build preloads `scripts/suppress-next-baseline-warning.cjs` to suppress only Next canary's vendored `baseline-browser-mapping` staleness warning; other warnings remain visible.
 
 ## Deployment Docs
 
@@ -35,4 +35,3 @@ Updated: 2026-06-03
 - Purchase checklist: `docs/ecommerce-video-saas/02-deployment-purchase-checklist.md`
 - Cost path: `docs/ecommerce-video-saas/04-cost-and-growth-path.md`
 - Template crawler: `docs/ecommerce-video-saas/05-template-crawler-runbook.md`
-

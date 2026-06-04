@@ -57,7 +57,7 @@ function getTextToImageRedirect(pathname: string) {
   return null;
 }
 
-export async function middleware(request: NextRequest) {
+export async function proxy(request: NextRequest) {
   const { pathname } = request.nextUrl;
   const textToImageRedirect = getTextToImageRedirect(pathname);
 
@@ -113,6 +113,5 @@ export async function middleware(request: NextRequest) {
 }
 
 export const config = {
-  matcher: ['/((?!api|_next/static|_next/image|favicon.ico).*)'],
-  runtime: 'nodejs'
+  matcher: ['/((?!api|_next/static|_next/image|favicon.ico).*)']
 };
