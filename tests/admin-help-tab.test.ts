@@ -120,8 +120,8 @@ describe('Admin Help tab coverage', () => {
 
     expect(source).toContain("searchParams.get('tab')");
     expect(source).toContain('visibleTables.some');
-    expect(source).toContain("table.key === 'overview'");
-    expect(source).toContain('`/admin?tab=${table.key}`');
+    expect(source).toContain("tab === 'overview'");
+    expect(source).toContain('`/admin?tab=${tab}`');
     expectCompleteKeySet(
       keys.filter((key) => key !== 'overview'),
       EXPECTED_ADMIN_TAB_KEYS.filter((key) => key !== 'overview')

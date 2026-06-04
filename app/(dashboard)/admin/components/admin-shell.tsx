@@ -1,7 +1,7 @@
 'use client';
 
-import Link from 'next/link';
 import { useSearchParams } from 'next/navigation';
+import { useEffect, useMemo, useState } from 'react';
 import {
   BookOpenText,
   Film,
@@ -66,11 +66,37 @@ const TABLES = [
 ] as const;
 
 type TableKey = (typeof TABLES)[number]['key'];
+type VisibleTable = (typeof TABLES)[number];
+type ManagementTableKey = Exclude<
+  TableKey,
+  'overview' | 'templates' | 'library-assets' | 'help'
+>;
 
-function buildManagementConfigs(content: AdminContent): Record<
-  Exclude<TableKey, 'overview' | 'templates' | 'library-assets' | 'help'>,
-  AdminTableConfig
-> {
+const MANAGEMENT_TABLE_KEYS = [
+  'users',
+  'assets',
+  'generation-jobs',
+  'credit-ledger',
+] as const satisfies readonly ManagementTableKey[];
+
+function normalizeAdminTab(
+  value: string | null,
+  visibleTables: readonly VisibleTable[]
+): TableKey {
+  if (value && visibleTables.some((table) => table.key === value)) {
+    return value as TableKey;
+  }
+
+  return 'overview';
+}
+
+function rememberVisitedTab(tabs: TableKey[], tab: TableKey) {
+  return tabs.includes(tab) ? tabs : [...tabs, tab];
+}
+
+function buildManagementConfigs(
+  content: AdminContent
+): Record<ManagementTableKey, AdminTableConfig> {
   const { management, statusLabels } = content;
 
   return {
@@ -374,17 +400,55 @@ function buildManagementConfigs(content: AdminContent): Record<
 export function AdminShell({ canManageUsers }: { canManageUsers: boolean }) {
   const locale = useDashboardLocale();
   const content = getAdminContent(locale);
-  const managementConfigs = buildManagementConfigs(content);
-  const visibleTables = TABLES.filter(
-    (table) => canManageUsers || !table.adminOnly
+  const managementConfigs = useMemo(
+    () => buildManagementConfigs(content),
+    [content]
+  );
+  const visibleTables = useMemo(
+    () => TABLES.filter((table) => canManageUsers || !table.adminOnly),
+    [canManageUsers]
   );
   const searchParams = useSearchParams();
-  const requestedTab = searchParams.get('tab') as TableKey | null;
-  const activeTab: TableKey = requestedTab && visibleTables.some(
-    (table) => table.key === requestedTab
-  )
-    ? requestedTab
-    : 'overview';
+  const activeTabFromUrl = normalizeAdminTab(
+    searchParams.get('tab'),
+    visibleTables
+  );
+  const [activeTab, setActiveTab] = useState<TableKey>(activeTabFromUrl);
+  const [visitedTabs, setVisitedTabs] = useState<TableKey[]>([
+    activeTabFromUrl,
+  ]);
+
+  useEffect(() => {
+    setActiveTab(activeTabFromUrl);
+    setVisitedTabs((current) => rememberVisitedTab(current, activeTabFromUrl));
+  }, [activeTabFromUrl]);
+
+  useEffect(() => {
+    function handlePopState() {
+      const nextTab = normalizeAdminTab(
+        new URLSearchParams(window.location.search).get('tab'),
+        visibleTables
+      );
+      setActiveTab(nextTab);
+      setVisitedTabs((current) => rememberVisitedTab(current, nextTab));
+    }
+
+    window.addEventListener('popstate', handlePopState);
+    return () => window.removeEventListener('popstate', handlePopState);
+  }, [visibleTables]);
+
+  function selectTab(tab: TableKey) {
+    setActiveTab(tab);
+    setVisitedTabs((current) => rememberVisitedTab(current, tab));
+    window.history.pushState(
+      null,
+      '',
+      withDashboardLocale(
+        tab === 'overview' ? '/admin' : `/admin?tab=${tab}`,
+        locale
+      )
+    );
+  }
 
   return (
     <div className="flex h-[calc(100vh-64px)] bg-gray-50">
@@ -396,16 +460,12 @@ export function AdminShell({ canManageUsers }: { canManageUsers: boolean }) {
         </div>
         <nav className="flex-1 overflow-y-auto py-1.5">
           {visibleTables.map((table) => (
-            <Link
+            <button
               key={table.key}
-              href={withDashboardLocale(
-                table.key === 'overview'
-                  ? '/admin'
-                  : `/admin?tab=${table.key}`,
-                locale
-              )}
+              type="button"
+              onClick={() => selectTab(table.key)}
               className={cn(
-                'flex w-full items-center gap-3 px-4 py-2.5 text-sm transition-colors',
+                'flex w-full items-center gap-3 px-4 py-2.5 text-left text-sm transition-colors',
                 activeTab === table.key
                   ? 'bg-orange-50 font-medium text-orange-700'
                   : 'text-gray-600 hover:bg-gray-100 hover:text-gray-950'
@@ -415,46 +475,49 @@ export function AdminShell({ canManageUsers }: { canManageUsers: boolean }) {
             >
               <table.icon className="size-5 flex-shrink-0" />
               <span>{content.tabs[table.key]}</span>
-            </Link>
+            </button>
           ))}
         </nav>
       </aside>
 
       <main className="min-w-0 flex-1 overflow-y-auto bg-gray-50 p-3 sm:p-4">
-        {activeTab === 'overview' ? (
-          <AdminDashboardPanel content={content} />
+        {visitedTabs.includes('overview') ? (
+          <div hidden={activeTab !== 'overview'}>
+            <AdminDashboardPanel content={content} />
+          </div>
         ) : null}
-        {activeTab === 'templates' ? (
-          <TemplatesPanel
-            canPublish={canManageUsers}
-            content={content}
-            locale={locale}
-          />
+        {visitedTabs.includes('templates') ? (
+          <div hidden={activeTab !== 'templates'}>
+            <TemplatesPanel
+              canPublish={canManageUsers}
+              content={content}
+              locale={locale}
+            />
+          </div>
         ) : null}
-        {activeTab === 'library-assets' ? (
-          <LibraryAssetsPanel canPublish={canManageUsers} content={content} />
+        {visitedTabs.includes('library-assets') ? (
+          <div hidden={activeTab !== 'library-assets'}>
+            <LibraryAssetsPanel canPublish={canManageUsers} content={content} />
+          </div>
         ) : null}
-        {activeTab === 'help' ? <AdminHelpPanel content={content} /> : null}
-        {activeTab !== 'templates' &&
-        activeTab !== 'overview' &&
-        activeTab !== 'library-assets' &&
-        activeTab !== 'help' &&
-        activeTab in managementConfigs ? (
-          <ManagementPanel
-            config={
-              managementConfigs[
-                activeTab as Exclude<
-                  TableKey,
-                  'overview' | 'templates' | 'library-assets' | 'help'
-                >
-              ]
-            }
-            canEdit={canManageUsers}
-            canDelete={canManageUsers}
-            labels={content.common}
-            statusLabels={content.statusLabels}
-          />
+        {visitedTabs.includes('help') ? (
+          <div hidden={activeTab !== 'help'}>
+            <AdminHelpPanel content={content} />
+          </div>
         ) : null}
+        {MANAGEMENT_TABLE_KEYS.map((tableKey) =>
+          visitedTabs.includes(tableKey) ? (
+            <div key={tableKey} hidden={activeTab !== tableKey}>
+              <ManagementPanel
+                config={managementConfigs[tableKey]}
+                canEdit={canManageUsers}
+                canDelete={canManageUsers}
+                labels={content.common}
+                statusLabels={content.statusLabels}
+              />
+            </div>
+          ) : null
+        )}
       </main>
     </div>
   );

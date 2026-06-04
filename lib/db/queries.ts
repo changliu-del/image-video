@@ -2,6 +2,7 @@ import { and, eq, isNull } from 'drizzle-orm';
 import { db } from './drizzle';
 import { type User, users } from './schema';
 import { cookies } from 'next/headers';
+import { cache } from 'react';
 import { verifyToken } from '@/lib/auth/session';
 
 export async function getUser() {
@@ -35,6 +36,8 @@ export async function getUser() {
 
   return user[0];
 }
+
+export const getCachedUser = cache(getUser);
 
 export async function requireUser() {
   const user = await getUser();

@@ -52,7 +52,7 @@ describe('Admin backend safety rails', () => {
 
     expect(countOccurrences(source, "storage_key like 'users/%/uploads/%'"))
       .toBeGreaterThanOrEqual(6);
-    expect(countOccurrences(source, "and reason = 'purchase'"))
+    expect(countOccurrences(source, "reason = 'purchase'"))
       .toBeGreaterThanOrEqual(2);
     expect(source).not.toContain('select user_id, created_at from credit_ledger');
     expect(source).not.toContain(
@@ -61,9 +61,5 @@ describe('Admin backend safety rails', () => {
     expect(source).toContain(
       'estimated from user uploads and generation jobs'
     );
-    expect(source).toContain('credit_touched_users');
-    expect(source).toContain('balance_mismatches');
-    expect(source).toContain('abnormal_recharge_signals');
-    expect(source).toContain('rechargeRiskSignals');
   });
 });

@@ -11,8 +11,6 @@ import type {
   AdminDashboardGenerationStatus,
   AdminDashboardGenerationType,
   AdminDashboardMetricSource,
-  AdminDashboardRechargeAnomalies,
-  AdminDashboardRechargeRiskSignal,
   AdminDashboardResponse,
   AdminDashboardSeverity,
   AdminDashboardSummaryCard,
@@ -22,7 +20,6 @@ import type {
 const DEFAULT_RANGE_DAYS = 7;
 const MAX_RANGE_DAYS = 90;
 const STUCK_RUNNING_THRESHOLD_MINUTES = 15;
-const LARGE_PURCHASE_CREDIT_THRESHOLD = 1000;
 const DAY_MS = 24 * 60 * 60 * 1000;
 const DATE_KEY_RE = /^\d{4}-\d{2}-\d{2}$/;
 
@@ -396,76 +393,6 @@ function dailySeries(
   };
 }
 
-function rechargeRiskSignals(
-  rechargeAnomalies: AdminDashboardRechargeAnomalies
-): AdminDashboardRechargeRiskSignal[] {
-  return [
-    {
-      key: 'missingStripeEvents',
-      label: 'Purchase ledger entries without Stripe event IDs',
-      value: rechargeAnomalies.missingStripeEvents,
-      severity:
-        rechargeAnomalies.missingStripeEvents > 0 ? 'critical' : 'ok',
-      threshold: 0,
-      diagnosis:
-        rechargeAnomalies.missingStripeEvents > 0
-          ? 'Purchase credits without Stripe linkage need reconciliation.'
-          : 'All purchase ledger entries in range have Stripe event linkage.',
-      source: SOURCES.rechargeRisk,
-    },
-    {
-      key: 'largePurchases',
-      label: 'Large credit purchases',
-      value: rechargeAnomalies.largePurchases,
-      severity: rechargeAnomalies.largePurchases > 0 ? 'warning' : 'ok',
-      threshold: LARGE_PURCHASE_CREDIT_THRESHOLD,
-      diagnosis:
-        rechargeAnomalies.largePurchases > 0
-          ? 'Large purchases should be checked against package catalog and payment records.'
-          : 'No purchase exceeded the large-credit threshold.',
-      source: SOURCES.rechargeRisk,
-    },
-    {
-      key: 'manualCreditIncreases',
-      label: 'Manual credit increases',
-      value: rechargeAnomalies.manualCreditIncreases,
-      severity:
-        rechargeAnomalies.manualCreditIncreases > 0 ? 'warning' : 'ok',
-      threshold: 0,
-      diagnosis:
-        rechargeAnomalies.manualCreditIncreases > 0
-          ? 'Manual increases outside signup free credits should be reviewed.'
-          : 'No manual credit increases were detected.',
-      source: SOURCES.rechargeRisk,
-    },
-    {
-      key: 'manualCreditDecreases',
-      label: 'Manual credit decreases',
-      value: rechargeAnomalies.manualCreditDecreases,
-      severity:
-        rechargeAnomalies.manualCreditDecreases > 0 ? 'warning' : 'ok',
-      threshold: 0,
-      diagnosis:
-        rechargeAnomalies.manualCreditDecreases > 0
-          ? 'Manual decreases may indicate support corrections or fraud response.'
-          : 'No manual credit decreases were detected.',
-      source: SOURCES.rechargeRisk,
-    },
-    {
-      key: 'balanceMismatches',
-      label: 'Ledger/user balance mismatches',
-      value: rechargeAnomalies.balanceMismatches,
-      severity: rechargeAnomalies.balanceMismatches > 0 ? 'critical' : 'ok',
-      threshold: 0,
-      diagnosis:
-        rechargeAnomalies.balanceMismatches > 0
-          ? 'Latest ledger balances do not match user balances and should be reconciled.'
-          : 'Latest ledger balances match user balances for users touched in range.',
-      source: SOURCES.rechargeRisk,
-    },
-  ];
-}
-
 export async function getAdminDashboard(params: {
   from?: string | null;
   to?: string | null;
@@ -498,20 +425,20 @@ export async function getAdminDashboard(params: {
         select distinct user_id, date_trunc('day', created_at)::date as day
         from activity_events
       ),
-      credit_touched_users as (
-        select distinct user_id
+      credit_window as (
+        select user_id, reason, delta
         from credit_ledger, range
         where created_at >= range.from_day
           and created_at < range.to_exclusive
       ),
-      latest_ledger as (
-        select distinct on (credit_ledger.user_id)
-          credit_ledger.user_id,
-          credit_ledger.balance_after
-        from credit_ledger
-        inner join credit_touched_users
-          on credit_touched_users.user_id = credit_ledger.user_id
-        order by credit_ledger.user_id, credit_ledger.created_at desc, credit_ledger.id desc
+      credit_rollup as (
+        select
+          count(*)::integer as credit_events,
+          count(*) filter (where reason = 'purchase')::integer as purchase_events,
+          coalesce(sum(delta) filter (where reason = 'purchase'), 0)::integer as purchased_credits,
+          count(distinct user_id) filter (where reason = 'purchase')::integer as paying_users,
+          count(*) filter (where reason = 'refund')::integer as refund_events
+        from credit_window
       )
       select
         (select count(*)::integer from users where deleted_at is null) as total_users,
@@ -671,61 +598,11 @@ export async function getAdminDashboard(params: {
             and completed_at is not null
             and completed_at >= created_at
         ) as p95_completion_seconds,
-        (select count(*)::integer from credit_ledger, range
-          where created_at >= range.from_day
-            and created_at < range.to_exclusive
-        ) as credit_events,
-        (select count(*)::integer from credit_ledger, range
-          where created_at >= range.from_day
-            and created_at < range.to_exclusive
-            and reason = 'purchase'
-        ) as purchase_events,
-        (select coalesce(sum(delta), 0)::integer from credit_ledger, range
-          where created_at >= range.from_day
-            and created_at < range.to_exclusive
-            and reason = 'purchase'
-        ) as purchased_credits,
-        (select count(distinct user_id)::integer from credit_ledger, range
-          where created_at >= range.from_day
-            and created_at < range.to_exclusive
-            and reason = 'purchase'
-        ) as paying_users,
-        (select count(*)::integer from credit_ledger, range
-          where created_at >= range.from_day
-            and created_at < range.to_exclusive
-            and reason = 'refund'
-        ) as refund_events,
-        (select count(*)::integer from credit_ledger, range
-          where created_at >= range.from_day
-            and created_at < range.to_exclusive
-            and reason = 'admin_adjust'
-            and delta > 0
-            and coalesce(metadata_json ->> 'source', '') <> 'signup_free_credits'
-        ) as manual_credit_increases,
-        (select count(*)::integer from credit_ledger, range
-          where created_at >= range.from_day
-            and created_at < range.to_exclusive
-            and reason = 'admin_adjust'
-            and delta < 0
-        ) as manual_credit_decreases,
-        (select count(*)::integer from credit_ledger, range
-          where created_at >= range.from_day
-            and created_at < range.to_exclusive
-            and reason = 'purchase'
-            and stripe_event_id is null
-        ) as missing_stripe_events,
-        (select count(*)::integer from credit_ledger, range
-          where created_at >= range.from_day
-            and created_at < range.to_exclusive
-            and reason = 'purchase'
-            and delta >= ${LARGE_PURCHASE_CREDIT_THRESHOLD}
-        ) as large_purchases,
-        (select count(*)::integer
-          from latest_ledger
-          inner join users on users.id = latest_ledger.user_id
-          where users.deleted_at is null
-            and latest_ledger.balance_after <> users.credit_balance
-        ) as balance_mismatches
+        (select credit_events from credit_rollup) as credit_events,
+        (select purchase_events from credit_rollup) as purchase_events,
+        (select purchased_credits from credit_rollup) as purchased_credits,
+        (select paying_users from credit_rollup) as paying_users,
+        (select refund_events from credit_rollup) as refund_events
     `,
     client`
       with range as (
@@ -889,17 +766,6 @@ export async function getAdminDashboard(params: {
   const submittingJobs = numberValue(summary.submitting_jobs);
   const runningActiveJobs = numberValue(summary.running_active_jobs);
   const runningJobs = numberValue(summary.running_jobs);
-  const rechargeAnomalies: AdminDashboardRechargeAnomalies = {
-    missingStripeEvents: numberValue(summary.missing_stripe_events),
-    largePurchases: numberValue(summary.large_purchases),
-    manualCreditIncreases: numberValue(summary.manual_credit_increases),
-    manualCreditDecreases: numberValue(summary.manual_credit_decreases),
-    balanceMismatches: numberValue(summary.balance_mismatches),
-  };
-  const abnormalRechargeSignals = Object.values(rechargeAnomalies).reduce(
-    (total, value) => total + value,
-    0
-  );
   const totals: AdminDashboardTotals = {
     totalUsers,
     existingUsers,
@@ -942,9 +808,6 @@ export async function getAdminDashboard(params: {
     payingUsers: numberValue(summary.paying_users),
     creditEvents: numberValue(summary.credit_events),
     refundEvents: numberValue(summary.refund_events),
-    manualCreditIncreases: rechargeAnomalies.manualCreditIncreases,
-    manualCreditDecreases: rechargeAnomalies.manualCreditDecreases,
-    abnormalRechargeSignals,
   };
 
   const daily: AdminDashboardDailyPoint[] = dailyRows.map((row) => {
@@ -971,7 +834,6 @@ export async function getAdminDashboard(params: {
       rechargeEvents: numberValue(row.recharge_events),
       purchasedCredits: numberValue(row.purchased_credits),
       payingUsers: numberValue(row.paying_users),
-      abnormalRechargeSignals: numberValue(row.abnormal_recharge_signals),
     };
   });
 
@@ -1074,13 +936,6 @@ export async function getAdminDashboard(params: {
       dailySeries('runningJobs', 'Running jobs', 'jobs', daily, (point) =>
         point.runningJobs
       ),
-      dailySeries(
-        'abnormalRechargeSignals',
-        'Recharge risk signals',
-        'events',
-        daily,
-        (point) => point.abnormalRechargeSignals
-      ),
     ],
     diagnosis: dailyTrendDiagnosis(daily),
   };
@@ -1094,7 +949,5 @@ export async function getAdminDashboard(params: {
     funnelSteps: funnelSteps(totals),
     dailyTrends,
     generationHealth,
-    rechargeAnomalies,
-    rechargeRiskSignals: rechargeRiskSignals(rechargeAnomalies),
   };
 }

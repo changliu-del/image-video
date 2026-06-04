@@ -107,9 +107,6 @@ export type AdminDashboardTotals = {
   payingUsers: number;
   creditEvents: number;
   refundEvents: number;
-  manualCreditIncreases: number;
-  manualCreditDecreases: number;
-  abnormalRechargeSignals: number;
 };
 
 export type AdminDashboardDailyPoint = {
@@ -133,7 +130,6 @@ export type AdminDashboardDailyPoint = {
   rechargeEvents: number;
   purchasedCredits: number;
   payingUsers: number;
-  abnormalRechargeSignals: number;
 };
 
 export type AdminDashboardDailyTrendSeries = {
@@ -148,8 +144,7 @@ export type AdminDashboardDailyTrendSeries = {
     | 'failedJobs'
     | 'runningJobs'
     | 'rechargeEvents'
-    | 'purchasedCredits'
-    | 'abnormalRechargeSignals';
+    | 'purchasedCredits';
   label: string;
   unit: AdminDashboardMetricUnit;
   total: number;
@@ -215,23 +210,6 @@ export type AdminDashboardGenerationHealth = {
   severity: AdminDashboardSeverity;
 };
 
-export type AdminDashboardRechargeAnomalies = {
-  missingStripeEvents: number;
-  largePurchases: number;
-  manualCreditIncreases: number;
-  manualCreditDecreases: number;
-  balanceMismatches: number;
-};
-
-export type AdminDashboardRechargeRiskSignal = {
-  key: keyof AdminDashboardRechargeAnomalies;
-  label: string;
-  value: number;
-  severity: AdminDashboardSeverity;
-  threshold: number;
-  diagnosis: string;
-  source: AdminDashboardMetricSource;
-};
 
 export type AdminDashboardResponse = {
   range: AdminDashboardRange;
@@ -242,6 +220,4 @@ export type AdminDashboardResponse = {
   funnelSteps: AdminDashboardFunnelStep[];
   dailyTrends: AdminDashboardDailyTrends;
   generationHealth: AdminDashboardGenerationHealth;
-  rechargeAnomalies: AdminDashboardRechargeAnomalies;
-  rechargeRiskSignals: AdminDashboardRechargeRiskSignal[];
 };

@@ -1,13 +1,13 @@
 import type { ReactNode } from 'react';
 import { redirect } from 'next/navigation';
-import { getUser } from '@/lib/db/queries';
+import { getCachedUser } from '@/lib/db/queries';
 import {
   DashboardHeader,
   type DashboardHeaderUser,
 } from './dashboard-header';
 import { AppShell } from './app-shell';
 
-function toHeaderUser(user: Awaited<ReturnType<typeof getUser>>) {
+function toHeaderUser(user: Awaited<ReturnType<typeof getCachedUser>>) {
   if (!user) return null;
 
   const userId = user?.id;
@@ -31,7 +31,7 @@ export default async function Layout({
 }: {
   children: ReactNode;
 }) {
-  const user = await getUser();
+  const user = await getCachedUser();
   const headerUser = toHeaderUser(user);
   const templateAdminUrl = process.env.TEMPLATE_ADMIN_URL ?? null;
 

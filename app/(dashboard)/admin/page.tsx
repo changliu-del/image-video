@@ -1,5 +1,9 @@
 import { redirect } from 'next/navigation';
-import { getUser, hasAdminAccess, hasOpsAccess } from '@/lib/db/queries';
+import {
+  getCachedUser,
+  hasAdminAccess,
+  hasOpsAccess,
+} from '@/lib/db/queries';
 import { getAdminContent } from '@/lib/admin/content';
 import {
   firstDashboardParam,
@@ -19,7 +23,7 @@ export default async function AdminPage({ searchParams }: AdminPageProps) {
   const params = await searchParams;
   const locale = firstDashboardParam(params?.locale);
   const content = getAdminContent(locale);
-  const user = await getUser();
+  const user = await getCachedUser();
   if (!user) redirect(withDashboardLocale('/sign-in', locale));
   if (!hasOpsAccess(user)) {
     return (
