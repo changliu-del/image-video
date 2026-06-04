@@ -9,6 +9,8 @@ description: Use only when the current workspace is /Users/changliu/workspace/sr
 
 This is the project-specific working mode for `/Users/changliu/workspace/src/github.com/image-video`. It gives Codex a stable KB entrypoint and a non-corporate, no-token-friction multi-agent development workflow for the personal ecommerce image/video SaaS.
 
+For substantive development work, default to a lead-agent plus five specialist-agent topology: case-search, reference-code, frontend implementation, backend implementation, and QA implementation. Add Product and KB/doc agents only when the task needs product scope decisions or durable documentation updates.
+
 ## Canonical Paths
 
 Use these fixed paths before running discovery commands. Do not rediscover the project skill or KB with `find`, `rg --files`, or broad home-directory scans unless one of these paths is missing.
@@ -85,17 +87,22 @@ Use this checklist before and after frontend edits:
 
 ## Multi-Agent Mode
 
-Use this mode when the user asks for no-token-limit development, multi-agent work, broad project progress analysis, or a change that naturally spans frontend, backend, and QA. This is not `dev-agent`; it is a practical project mode.
+Use this mode when the user asks for no-token-limit development, multi-agent work, broad project progress analysis, or any substantive implementation task. This is not `dev-agent`; it is a practical project mode.
 
-The lead agent keeps the critical path local and delegates sidecar tasks with disjoint responsibilities:
+The lead agent keeps the critical path local and delegates sidecar tasks with disjoint responsibilities. The standard development topology is:
 
-- Frontend agent: dashboard shell, marketing pages, workbenches, UX states, browser checks.
-- Backend agent: API routes, generation jobs, providers, credits, payments, storage, DB schema.
-- QA agent: test plan, Vitest coverage, typecheck/build, route smoke, regression risks.
-- KB/doc agent: project-kb updates, docs updates, decision records, open questions.
+- Case-search agent: external examples, competitor/product references, UX cases, implementation patterns from reliable sources.
+- Reference-code agent: existing local patterns, CodeGraph structural lookup, adjacent route/API/component/test conventions.
+- Frontend implementation agent: dashboard shell, marketing pages, workbenches, UX states, browser checks.
+- Backend implementation agent: API routes, generation jobs, providers, credits, payments, storage, DB schema.
+- QA implementation agent: Vitest coverage, typecheck/build, route smoke, regression risks, and test fixtures.
+
+Optional specialist agents:
+
 - Product agent: user flow, pricing/credits, MVP scope, business constraints.
+- KB/doc agent: project-kb updates, docs updates, decision records, open questions.
 
-Do not delegate the immediate blocker. Spawn agents only for independent work that can run while the lead agent implements or integrates another slice. Give each worker an explicit write scope and remind it not to revert other edits.
+For tiny one-file fixes, the lead agent may execute directly. For normal feature work, launch or explicitly account for all five standard agents; if a role has no useful work, record it as not applicable with the reason. Do not delegate the immediate blocker. Spawn agents only for independent work that can run while the lead agent implements or integrates another slice. Give each worker an explicit write scope and remind it not to revert other edits.
 
 Read `references/agent-mode.md` for role contracts and handoff templates when the task is substantial.
 
@@ -103,7 +110,7 @@ Read `references/agent-mode.md` for role contracts and handoff templates when th
 
 1. Load the relevant KB pages and current git status.
 2. Identify the product goal, affected modules, and validation target.
-3. If useful, launch frontend/backend/QA/KB agents with disjoint scopes.
+3. For substantive work, launch the standard case-search, reference-code, frontend, backend, and QA agents with disjoint scopes; add Product and KB/doc agents when needed.
 4. Implement with the smallest coherent patch; avoid speculative rewrites.
 5. Validate with focused tests, then broader checks when shared code changed.
 6. Update KB/docs when new facts, risks, or decisions were discovered.

@@ -31,7 +31,12 @@ import {
   verifyUploadedObject,
   type TemplateAssetMimeType,
 } from '@/lib/storage/r2';
-import { ilikeCol, withPagination, type PaginatedResult } from './shared';
+import {
+  exactCol,
+  ilikeCol,
+  withPagination,
+  type PaginatedResult,
+} from './shared';
 
 const MAX_LIBRARY_ASSET_BYTES = 80 * 1024 * 1024;
 const libraryAssetIdSchema = z.string().uuid();
@@ -227,19 +232,21 @@ export async function listAdminLibraryAssets(params: {
     pageSize: 20,
     ...params,
   };
-  const where = search
+  const query = search.trim();
+  const where = query
     ? or(
-        ilikeCol(libraryAssets.id, search),
-        ilikeCol(libraryAssets.title, search),
-        ilikeCol(libraryAssets.description, search),
-        ilikeCol(libraryAssets.kind, search),
-        ilikeCol(libraryAssets.status, search),
-        ilikeCol(libraryAssets.locale, search),
-        ilikeCol(libraryAssets.source, search),
-        ilikeCol(assets.storageKey, search),
-        ilikeCol(assets.mimeType, search),
-        sql`${libraryAssets.tagsJson}::text ILIKE ${'%' + search + '%'}`,
-        sql`${libraryAssets.useCasesJson}::text ILIKE ${'%' + search + '%'}`
+        exactCol(libraryAssets.id, query),
+        exactCol(libraryAssets.assetId, query),
+        ilikeCol(libraryAssets.title, query),
+        ilikeCol(libraryAssets.description, query),
+        ilikeCol(libraryAssets.kind, query),
+        ilikeCol(libraryAssets.status, query),
+        ilikeCol(libraryAssets.locale, query),
+        ilikeCol(libraryAssets.source, query),
+        ilikeCol(libraryAssets.licenseNote, query),
+        ilikeCol(assets.mimeType, query),
+        sql`${libraryAssets.tagsJson}::text ILIKE ${'%' + query + '%'}`,
+        sql`${libraryAssets.useCasesJson}::text ILIKE ${'%' + query + '%'}`
       )
     : undefined;
 

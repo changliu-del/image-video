@@ -2,7 +2,16 @@
 
 import { useEffect } from 'react';
 import type { ComponentType, FormEvent, ReactNode } from 'react';
-import { Loader2, RefreshCw, Search, X } from 'lucide-react';
+import {
+  FileText,
+  ImageIcon,
+  Loader2,
+  PlayCircle,
+  RefreshCw,
+  Search,
+  Video,
+  X,
+} from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
@@ -11,7 +20,14 @@ import { cn } from '@/lib/utils';
 
 export type AdminTableRow = Record<string, unknown>;
 
-type CellKind = 'id' | 'primary' | 'time' | 'mono' | 'status' | 'number';
+type CellKind =
+  | 'id'
+  | 'primary'
+  | 'time'
+  | 'mono'
+  | 'status'
+  | 'number'
+  | 'media';
 
 export type AdminTableColumn<T extends AdminTableRow = AdminTableRow> = {
   key: string;
@@ -92,6 +108,108 @@ export function formatAdminValue(value: unknown, max = 42) {
   if (value == null || value === '') return '-';
   const text = typeof value === 'string' ? value : JSON.stringify(value);
   return text.length > max ? `${text.slice(0, max)}...` : text;
+}
+
+function isVideoPreview(input: {
+  mediaKind?: unknown;
+  mimeType?: unknown;
+  url?: unknown;
+}) {
+  const mediaKind = String(input.mediaKind ?? '').toLowerCase();
+  const mimeType = String(input.mimeType ?? '').toLowerCase();
+  const url = String(input.url ?? '').toLowerCase();
+
+  return (
+    mediaKind.includes('video') ||
+    mimeType.startsWith('video/') ||
+    /\.(mp4|webm|mov|m4v)(\?|#|$)/.test(url)
+  );
+}
+
+function isImagePreview(input: {
+  mediaKind?: unknown;
+  mimeType?: unknown;
+  url?: unknown;
+}) {
+  const mediaKind = String(input.mediaKind ?? '').toLowerCase();
+  const mimeType = String(input.mimeType ?? '').toLowerCase();
+  const url = String(input.url ?? '').toLowerCase();
+
+  return (
+    mediaKind.includes('image') ||
+    mimeType.startsWith('image/') ||
+    /\.(png|jpe?g|webp|gif|avif)(\?|#|$)/.test(url)
+  );
+}
+
+export function AdminMediaPreview({
+  className,
+  label,
+  mediaKind,
+  mimeType,
+  url,
+  videoControls = false,
+}: {
+  className?: string;
+  label?: string;
+  mediaKind?: unknown;
+  mimeType?: unknown;
+  url?: unknown;
+  videoControls?: boolean;
+}) {
+  const mediaUrl = typeof url === 'string' && url.trim() ? url.trim() : null;
+  const isVideo = isVideoPreview({ mediaKind, mimeType, url: mediaUrl });
+  const isImage = isImagePreview({ mediaKind, mimeType, url: mediaUrl });
+
+  if (mediaUrl && isVideo) {
+    return (
+      <span
+        className={cn(
+          'relative block size-14 overflow-hidden rounded-md bg-gray-100',
+          className
+        )}
+        title={label}
+      >
+        <video
+          src={mediaUrl}
+          muted={!videoControls}
+          playsInline
+          preload="metadata"
+          controls={videoControls}
+          className="size-full object-cover"
+        />
+        {!videoControls ? (
+          <span className="pointer-events-none absolute inset-0 grid place-items-center bg-black/10 text-white">
+            <PlayCircle className="size-5" />
+          </span>
+        ) : null}
+      </span>
+    );
+  }
+
+  if (mediaUrl && isImage) {
+    return (
+      <img
+        src={mediaUrl}
+        alt={label ?? ''}
+        className={cn('size-14 rounded-md bg-gray-100 object-cover', className)}
+      />
+    );
+  }
+
+  const EmptyIcon = isVideo ? Video : mediaUrl ? FileText : ImageIcon;
+
+  return (
+    <span
+      className={cn(
+        'flex size-14 items-center justify-center rounded-md bg-gray-100 text-gray-300',
+        className
+      )}
+      title={label}
+    >
+      <EmptyIcon className="size-5" />
+    </span>
+  );
 }
 
 export function AdminStatusBadge({
@@ -220,6 +338,45 @@ export function AdminModal({
   );
 }
 
+function mediaFallbackKeys(key: string) {
+  if (key === 'inputPreviewUrl') {
+    return ['inputPreviewUrl', 'inputImageUrl', 'inputVideoUrl'];
+  }
+
+  if (key === 'finalPreviewUrl') {
+    return [
+      'finalPreviewUrl',
+      'finalVideoUrl',
+      'finalImageUrl',
+      'outputPreviewUrl',
+      'outputVideoUrl',
+      'outputImageUrl',
+    ];
+  }
+
+  return [key];
+}
+
+function firstRecordValue(record: AdminTableRow, keys: string[]) {
+  for (const key of keys) {
+    const value = record[key];
+    if (value != null && value !== '') return value;
+  }
+  return null;
+}
+
+function hasDetailColumn(record: AdminTableRow, key: string) {
+  if (
+    key === 'inputPreviewUrl' ||
+    key === 'finalPreviewUrl' ||
+    key.endsWith('PreviewUrl')
+  ) {
+    return firstRecordValue(record, mediaFallbackKeys(key)) != null;
+  }
+
+  return key in record;
+}
+
 export function AdminRecordDetails({
   columns,
   fieldLabels,
@@ -234,7 +391,7 @@ export function AdminRecordDetails({
   statusLabels?: Record<string, string>;
 }) {
   const keys = columns?.length
-    ? columns.filter((key) => key in record)
+    ? columns.filter((key) => hasDetailColumn(record, key))
     : Object.keys(record);
 
   return (
@@ -247,6 +404,51 @@ export function AdminRecordDetails({
       {keys.map((key) => {
         const value = record[key];
         const isObject = value != null && typeof value === 'object';
+        const isMediaUrl =
+          [
+            'previewUrl',
+            'publicUrl',
+            'inputPreviewUrl',
+            'inputImageUrl',
+            'inputVideoUrl',
+            'finalPreviewUrl',
+            'finalImageUrl',
+            'finalVideoUrl',
+          ].includes(key) ||
+          key.endsWith('PreviewUrl') ||
+          key.endsWith('ImageUrl') ||
+          key.endsWith('VideoUrl');
+        const mediaKindKey =
+          key === 'previewUrl' || key === 'publicUrl'
+            ? 'mediaKind'
+            : key
+                .replace('PreviewUrl', 'MediaKind')
+                .replace('ImageUrl', 'MediaKind')
+                .replace('VideoUrl', 'MediaKind');
+        const mediaMimeType =
+          record[key.replace('Url', 'MimeType')] ??
+          (key === 'publicUrl' ? record.mimeType : undefined);
+        const isInputVideo =
+          key === 'inputPreviewUrl' && Boolean(record.inputVideoUrl);
+        const isInputImage =
+          key === 'inputPreviewUrl' && Boolean(record.inputImageUrl);
+        const isFinalVideo =
+          key === 'finalPreviewUrl' &&
+          Boolean(record.finalVideoUrl || record.outputVideoUrl);
+        const isFinalImage =
+          key === 'finalPreviewUrl' &&
+          Boolean(record.finalImageUrl || record.outputImageUrl);
+        const mediaKind =
+          record[mediaKindKey] ??
+          (isInputVideo ? 'video' : undefined) ??
+          (isInputImage ? 'image' : undefined) ??
+          (isFinalVideo ? 'video' : undefined) ??
+          (isFinalImage ? 'image' : undefined) ??
+          (key.endsWith('VideoUrl') ? 'video' : undefined) ??
+          (key.endsWith('ImageUrl') ? 'image' : undefined);
+        const mediaUrl = isMediaUrl
+          ? firstRecordValue(record, mediaFallbackKeys(key))
+          : value;
 
         return (
           <div
@@ -260,7 +462,16 @@ export function AdminRecordDetails({
               {fieldLabels?.[key] ?? formatAdminLabel(key)}
             </dt>
             <dd className="break-words text-sm text-gray-900">
-              {isObject ? (
+              {isMediaUrl ? (
+                <AdminMediaPreview
+                  url={mediaUrl}
+                  mimeType={mediaMimeType}
+                  mediaKind={mediaKind}
+                  label={fieldLabels?.[key] ?? formatAdminLabel(key)}
+                  className="h-36 w-full max-w-72"
+                  videoControls
+                />
+              ) : isObject ? (
                 <pre className="max-h-72 overflow-auto whitespace-pre-wrap rounded-md bg-white p-3 font-mono text-xs leading-5 text-gray-700">
                   {JSON.stringify(value, null, 2)}
                 </pre>
@@ -374,6 +585,7 @@ export function AdminManagementTable<T extends AdminTableRow>({
 
   const showActions = Boolean(actions);
   const showSearch = Boolean(onSearch && onSearchValueChange);
+  const showToolbarFilters = Boolean(toolbarFilters);
   const colSpan = columns.length + (showActions ? 1 : 0);
   const copy = { ...defaultTableLabels, ...labels };
   const canPageBackward = Boolean(pagination && pagination.page > 1);
@@ -418,13 +630,15 @@ export function AdminManagementTable<T extends AdminTableRow>({
                     className="pl-9"
                   />
                 </div>
-                <Button
-                  type="submit"
-                  className="bg-orange-600 text-white hover:bg-orange-700"
-                >
-                  <Search className="size-4" />
-                  {copy.search}
-                </Button>
+                {!showToolbarFilters ? (
+                  <Button
+                    type="submit"
+                    className="bg-orange-600 text-white hover:bg-orange-700"
+                  >
+                    <Search className="size-4" />
+                    {copy.search}
+                  </Button>
+                ) : null}
               </>
             ) : null}
             {toolbarFilters}

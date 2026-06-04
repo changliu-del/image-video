@@ -5,9 +5,17 @@ import { z } from 'zod';
 import { db } from '@/lib/db/drizzle';
 import { USER_ROLES, users, type User, type UserRole } from '@/lib/db/schema';
 import { requireAdmin } from '@/lib/db/queries';
-import { withPagination, ilikeCol, type PaginatedResult } from './shared';
+import {
+  exactCol,
+  ilikeCol,
+  withPagination,
+  type PaginatedResult,
+} from './shared';
 
 export type AdminUser = Omit<User, 'passwordHash'>;
+export type AdminUserListItem = AdminUser & {
+  accountStatus: 'active' | 'deleted';
+};
 
 const adminUserColumns = {
   id: users.id,
@@ -45,11 +53,18 @@ const adjustCreditsSchema = z
   })
   .strict();
 
+function adminUserToListItem(user: AdminUser): AdminUserListItem {
+  return {
+    ...user,
+    accountStatus: user.deletedAt ? 'deleted' : 'active',
+  };
+}
+
 export async function listUsers(params: {
   search?: string;
   page?: number;
   pageSize?: number;
-}): Promise<PaginatedResult<AdminUser>> {
+}): Promise<PaginatedResult<AdminUserListItem>> {
   await requireAdmin();
   const { search, page, pageSize } = {
     search: '',
@@ -57,14 +72,20 @@ export async function listUsers(params: {
     pageSize: 20,
     ...params,
   };
+  const query = search.trim();
 
-  const where = search
+  const where = query
     ? or(
-        ilikeCol(users.id, search),
-        ilikeCol(users.email, search),
-        ilikeCol(users.name, search),
-        ilikeCol(users.role, search),
-        ilikeCol(users.subscriptionStatus, search)
+        exactCol(users.id, query),
+        exactCol(users.stripeCustomerId, query),
+        exactCol(users.stripeSubscriptionId, query),
+        exactCol(users.stripeProductId, query),
+        ilikeCol(users.email, query),
+        ilikeCol(users.name, query),
+        ilikeCol(users.role, query),
+        ilikeCol(users.planName, query),
+        ilikeCol(users.subscriptionStatus, query),
+        sql`(case when ${users.deletedAt} is null then 'active' else 'deleted' end) ILIKE ${'%' + query + '%'}`
       )
     : undefined;
 
@@ -82,7 +103,7 @@ export async function listUsers(params: {
   ]);
 
   return {
-    list: rows,
+    list: rows.map(adminUserToListItem),
     total: Number(countResult[0]?.count ?? 0),
     page,
     pageSize,
@@ -96,7 +117,7 @@ export async function getUserById(id: number) {
     .from(users)
     .where(eq(users.id, id))
     .limit(1);
-  return row ?? null;
+  return row ? adminUserToListItem(row) : null;
 }
 
 export async function updateUser(id: number, data: unknown) {
@@ -143,7 +164,7 @@ export async function updateUser(id: number, data: unknown) {
     throw new Error('User not found');
   }
 
-  return row;
+  return adminUserToListItem(row);
 }
 
 export async function softDeleteUser(id: number) {

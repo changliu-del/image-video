@@ -47,6 +47,13 @@ type DashboardCopy = {
   featureLabels: Record<FeatureKey, string>;
   features: Record<FeatureKey, FeatureCopy>;
   libraryTabs: string[];
+  demoLabels: {
+    newBadge: string;
+    productImage: string;
+    videoPreview: string;
+    tryOnModel: string;
+    tryOnOutput: string;
+  };
 };
 
 const dashboardCopy: Record<DashboardLocale, DashboardCopy> = {
@@ -108,6 +115,13 @@ const dashboardCopy: Record<DashboardLocale, DashboardCopy> = {
       },
     },
     libraryTabs: ['Selecionados', 'Produto', 'Moda', 'Vídeo', 'Campanha'],
+    demoLabels: {
+      newBadge: 'NOVO',
+      productImage: 'Imagem principal',
+      videoPreview: 'Prévia do vídeo',
+      tryOnModel: 'Modelo',
+      tryOnOutput: 'Resultado',
+    },
   },
   en: {
     hubEyebrow: 'Creative hub',
@@ -167,6 +181,13 @@ const dashboardCopy: Record<DashboardLocale, DashboardCopy> = {
       },
     },
     libraryTabs: ['Featured', 'Product', 'Fashion', 'Video', 'Campaign'],
+    demoLabels: {
+      newBadge: 'NEW',
+      productImage: 'Product image',
+      videoPreview: 'Video preview',
+      tryOnModel: 'Model',
+      tryOnOutput: 'Try-on output',
+    },
   },
   zh: {
     hubEyebrow: '创作枢纽',
@@ -226,6 +247,13 @@ const dashboardCopy: Record<DashboardLocale, DashboardCopy> = {
       },
     },
     libraryTabs: ['全部精选', '商品图', '服饰图', '图生视频', '营销图'],
+    demoLabels: {
+      newBadge: '新功能',
+      productImage: '商品主图',
+      videoPreview: '视频预览',
+      tryOnModel: '模特',
+      tryOnOutput: '试衣效果',
+    },
   },
 };
 
@@ -367,7 +395,7 @@ function HeroShowcase({
                     />
                     {index === 2 ? (
                       <span className="absolute left-3 top-3 rounded-full bg-indigo-600 px-3 py-1 text-xs font-bold text-white shadow-sm">
-                        NEW
+                        {copy.demoLabels.newBadge}
                       </span>
                     ) : null}
                   </div>
@@ -425,7 +453,7 @@ function HeroShowcase({
   );
 }
 
-function VideoDemo() {
+function VideoDemo({ labels }: { labels: DashboardCopy['demoLabels'] }) {
   return (
     <div className="grid gap-4 sm:grid-cols-[0.8fr_1fr]">
       <div className="rounded-lg border border-gray-200 bg-white p-4 shadow-sm">
@@ -438,7 +466,9 @@ function VideoDemo() {
             decoding="async"
           />
         </div>
-        <p className="mt-3 text-center text-sm font-bold text-gray-500">商品主图</p>
+        <p className="mt-3 text-center text-sm font-bold text-gray-500">
+          {labels.productImage}
+        </p>
       </div>
       <div className="rounded-lg border border-gray-200 bg-white p-4 shadow-sm">
         <div className="relative aspect-[9/12] overflow-hidden rounded-lg bg-gray-950">
@@ -449,7 +479,7 @@ function VideoDemo() {
           />
           <div className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/60 to-transparent p-4 text-white">
             <PlayCircle className="size-9" />
-            <p className="mt-2 text-sm font-bold">Video preview</p>
+            <p className="mt-2 text-sm font-bold">{labels.videoPreview}</p>
           </div>
         </div>
       </div>
@@ -481,7 +511,7 @@ function ProductImageDemo() {
   );
 }
 
-function TryOnDemo() {
+function TryOnDemo({ labels }: { labels: DashboardCopy['demoLabels'] }) {
   return (
     <div className="rounded-lg border border-gray-200 bg-white p-4 shadow-sm">
       <div className="grid gap-4 sm:grid-cols-2">
@@ -505,9 +535,9 @@ function TryOnDemo() {
         </div>
       </div>
       <div className="mt-4 flex items-center justify-between rounded-lg bg-gray-50 px-4 py-3 text-sm font-bold text-gray-600">
-        <span>Model</span>
+        <span>{labels.tryOnModel}</span>
         <ArrowRight className="size-4 text-indigo-500" />
-        <span>Try-on output</span>
+        <span>{labels.tryOnOutput}</span>
       </div>
     </div>
   );
@@ -593,7 +623,7 @@ export default async function DashboardPage({ searchParams }: DashboardPageProps
       <HeroShowcase copy={copy} locale={locale} />
 
       <FeatureSection feature={copy.features.video} locale={locale} band="soft">
-        <VideoDemo />
+        <VideoDemo labels={copy.demoLabels} />
       </FeatureSection>
 
       <FeatureSection feature={copy.features.product} locale={locale} reverse>
@@ -601,7 +631,7 @@ export default async function DashboardPage({ searchParams }: DashboardPageProps
       </FeatureSection>
 
       <FeatureSection feature={copy.features.tryOn} locale={locale} band="soft">
-        <TryOnDemo />
+        <TryOnDemo labels={copy.demoLabels} />
       </FeatureSection>
 
       <FeatureSection feature={copy.features.library} locale={locale} reverse>

@@ -6,6 +6,7 @@ import { Edit3, Eye, Loader2, RotateCcw, Search, Trash2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import {
+  AdminMediaPreview,
   AdminManagementTable,
   AdminModal,
   AdminRecordDetails,
@@ -24,6 +25,7 @@ export type AdminTableKey =
 
 type FieldType = 'text' | 'number' | 'textarea' | 'select' | 'json';
 type SelectOption = string | { value: string; label: string };
+type AdminMediaColumnKey = 'preview' | 'inputPreview' | 'finalPreview';
 
 export type AdminField = {
   key: string;
@@ -47,6 +49,8 @@ export type AdminTableConfig = {
   searchPlaceholder?: string;
   idField: string;
   columns: string[];
+  detailColumns?: string[];
+  optionalColumns?: string[];
   columnLabels?: Record<string, string>;
   columnWidths?: Record<string, number>;
   editableFields: AdminField[];
@@ -163,6 +167,82 @@ function initialFilters(config: AdminTableConfig) {
   ) as Record<string, string>;
 }
 
+function isMediaColumnKey(key: string): key is AdminMediaColumnKey {
+  return key === 'preview' || key === 'inputPreview' || key === 'finalPreview';
+}
+
+function firstString(...values: unknown[]) {
+  for (const value of values) {
+    if (typeof value === 'string' && value.trim()) {
+      return value.trim();
+    }
+  }
+  return null;
+}
+
+function mediaSourceForColumn(
+  row: Record<string, unknown>,
+  key: AdminMediaColumnKey
+) {
+  if (key === 'inputPreview') {
+    const url = firstString(
+      row.inputPreviewUrl,
+      row.inputImageUrl,
+      row.inputVideoUrl
+    );
+    return {
+      url,
+      mimeType: firstString(row.inputPreviewMimeType, row.inputMimeType),
+      mediaKind:
+        row.inputMediaKind ??
+        (firstString(row.inputVideoUrl) ? 'video' : undefined) ??
+        (firstString(row.inputImageUrl) ? 'image' : undefined),
+    };
+  }
+
+  if (key === 'finalPreview') {
+    const url = firstString(
+      row.finalPreviewUrl,
+      row.finalVideoUrl,
+      row.finalImageUrl,
+      row.outputPreviewUrl,
+      row.outputVideoUrl,
+      row.outputImageUrl
+    );
+    return {
+      url,
+      mimeType: firstString(
+        row.finalPreviewMimeType,
+        row.finalMimeType,
+        row.outputMimeType
+      ),
+      mediaKind:
+        row.finalMediaKind ??
+        row.outputMediaKind ??
+        (firstString(row.finalVideoUrl, row.outputVideoUrl)
+          ? 'video'
+          : undefined) ??
+        (firstString(row.finalImageUrl, row.outputImageUrl)
+          ? 'image'
+          : undefined),
+    };
+  }
+
+  return {
+    url: row.previewUrl,
+    mimeType: row.previewMimeType,
+    mediaKind: row.mediaKind,
+  };
+}
+
+function hasColumnValue(row: Record<string, unknown>, key: string) {
+  if (isMediaColumnKey(key)) {
+    return Boolean(mediaSourceForColumn(row, key).url);
+  }
+
+  return key in row;
+}
+
 export function ManagementPanel({
   canDelete,
   canEdit,
@@ -235,7 +315,11 @@ export function ManagementPanel({
 
   const columns = useMemo(() => {
     const sourceColumns = config.columns.length
-      ? config.columns
+      ? config.columns.filter(
+          (key) =>
+            !config.optionalColumns?.includes(key) ||
+            data.list.some((row) => hasColumnValue(row, key))
+        )
       : data.list[0]
         ? Object.keys(data.list[0]).filter(
             (key) =>
@@ -247,10 +331,38 @@ export function ManagementPanel({
         : [];
 
     return sourceColumns.map((key): AdminTableColumn => {
-      const isPrimary = ['email', 'title', 'productName', 'storageKey'].includes(
+      if (isMediaColumnKey(key)) {
+        return {
+          key,
+          label: config.columnLabels?.[key] ?? formatAdminLabel(key),
+          width: config.columnWidths?.[key] ?? 88,
+          render: (row) => {
+            const media = mediaSourceForColumn(row, key);
+            return (
+              <AdminMediaPreview
+                url={media.url}
+                mimeType={media.mimeType}
+                mediaKind={media.mediaKind}
+                label={config.columnLabels?.[key] ?? formatAdminLabel(key)}
+                className="size-16"
+              />
+            );
+          },
+        };
+      }
+
+      const isPrimary = ['email', 'title', 'inputSummary', 'storageKey'].includes(
         key
       );
-      const isStatus = ['status', 'role', 'subscriptionStatus'].includes(key);
+      const isStatus = [
+        'status',
+        'role',
+        'subscriptionStatus',
+        'accountStatus',
+        'generationType',
+        'type',
+        'reason',
+      ].includes(key);
       const isTime = key.endsWith('At') || key.endsWith('_at');
       const isNumber = [
         'creditBalance',
@@ -491,6 +603,14 @@ export function ManagementPanel({
     selectedRow && selectedRow[config.idField] != null
       ? String(selectedRow[config.idField])
       : null;
+  const detailColumns =
+    config.detailColumns ??
+    [
+      ...config.columns,
+      ...config.editableFields
+        .map((field) => field.key)
+        .filter((key) => !config.columns.includes(key)),
+    ];
 
   return (
     <>
@@ -613,12 +733,7 @@ export function ManagementPanel({
               ),
             }}
             statusLabels={statusLabels}
-            columns={[
-              ...config.columns,
-              ...config.editableFields
-                .map((field) => field.key)
-                .filter((key) => !config.columns.includes(key)),
-            ]}
+            columns={detailColumns}
           />
         ) : null}
       </AdminModal>

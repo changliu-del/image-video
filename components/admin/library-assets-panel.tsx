@@ -149,6 +149,47 @@ function defaultTags(kind: LibraryAssetKind) {
   return kind.replace(/_/g, '-');
 }
 
+function inferKindFromFile(file: File): LibraryAssetKind {
+  const name = file.name.toLowerCase();
+
+  if (file.type.startsWith('video/')) {
+    return 'example_video';
+  }
+
+  if (/(model|modelo|mannequin|person|模特)/.test(name)) {
+    return 'model_image';
+  }
+
+  if (/(garment|cloth|dress|shirt|pants|服装|衣服)/.test(name)) {
+    return 'garment_image';
+  }
+
+  if (/(scene|background|bg|场景|背景)/.test(name)) {
+    return 'scene_image';
+  }
+
+  if (/(example|demo|sample|示例)/.test(name)) {
+    return 'example_image';
+  }
+
+  return 'product_image';
+}
+
+function titleFromFileName(fileName: string) {
+  const withoutExt = fileName.replace(/\.[^.]+$/, '');
+  return withoutExt
+    .replace(/[_-]+/g, ' ')
+    .replace(/\s+/g, ' ')
+    .trim()
+    .replace(/\b\w/g, (char) => char.toUpperCase());
+}
+
+function formatFileSize(sizeBytes: number) {
+  if (sizeBytes < 1024) return `${sizeBytes} B`;
+  if (sizeBytes < 1024 * 1024) return `${(sizeBytes / 1024).toFixed(1)} KB`;
+  return `${(sizeBytes / 1024 / 1024).toFixed(1)} MB`;
+}
+
 function assetToForm(asset: AdminLibraryAsset): LibraryAssetFormState {
   return {
     id: asset.id,
@@ -499,8 +540,35 @@ export function LibraryAssetsPanel({
     setForm((current) => ({
       ...current,
       kind,
-      tagsText: current.tagsText || defaultTags(kind),
+      tagsText:
+        !current.tagsText.trim() ||
+        current.tagsText === defaultTags(current.kind) ||
+        current.tagsText === emptyForm.tagsText
+          ? defaultTags(kind)
+          : current.tagsText,
       useCases: defaultUseCases(kind),
+    }));
+  }
+
+  function handleUploadFileChange(file: File | null) {
+    setUploadFile(file);
+
+    if (!file) return;
+
+    const inferredKind = inferKindFromFile(file);
+    setForm((current) => ({
+      ...current,
+      title: current.title.trim() ? current.title : titleFromFileName(file.name),
+      kind: inferredKind,
+      tagsText:
+        current.tagsText === emptyForm.tagsText || !current.tagsText.trim()
+          ? defaultTags(inferredKind)
+          : current.tagsText,
+      useCases:
+        current.useCases.length === 0 ||
+        current.useCases.join(',') === emptyForm.useCases.join(',')
+          ? defaultUseCases(inferredKind)
+          : current.useCases,
     }));
   }
 
@@ -794,7 +862,7 @@ export function LibraryAssetsPanel({
                 ) : (
                   <Save className="size-4" />
                 )}
-                {common.save}
+                {modalMode === 'create' ? copy.createAction : common.save}
               </Button>
             </>
           )
@@ -820,14 +888,11 @@ export function LibraryAssetsPanel({
                 'tags',
                 'useCases',
                 'qualityScore',
-                'sortWeight',
                 'usageCount',
                 'source',
                 'licenseNote',
-                'assetUrl',
                 'mimeType',
                 'sizeBytes',
-                'storageKey',
                 'createdAt',
                 'updatedAt',
                 'publishedAt',
@@ -851,9 +916,14 @@ export function LibraryAssetsPanel({
                     type="file"
                     accept="image/png,image/jpeg,image/webp,video/mp4,video/webm"
                     onChange={(event) =>
-                      setUploadFile(event.target.files?.[0] ?? null)
+                      handleUploadFileChange(event.target.files?.[0] ?? null)
                     }
                   />
+                  <span className="text-xs text-gray-500">
+                    {uploadFile
+                      ? `${copy.selectedFile}: ${uploadFile.name} · ${formatFileSize(uploadFile.size)} · ${uploadFile.type || '-'}`
+                      : copy.noFileSelected}
+                  </span>
                 </label>
               ) : selectedAsset?.assetUrl ? (
                 <a
@@ -973,46 +1043,51 @@ export function LibraryAssetsPanel({
                 />
               </Field>
 
-              <div className="grid gap-4 md:grid-cols-2">
-                <Field label={copy.fields.qualityScore}>
-                  <Input
-                    type="number"
-                    min={0}
-                    max={100}
-                    value={form.qualityScore}
-                    onChange={(event) =>
-                      updateForm('qualityScore', Number(event.target.value))
-                    }
-                  />
-                </Field>
-                <Field label={copy.fields.sortWeight}>
-                  <Input
-                    type="number"
-                    value={form.sortWeight}
-                    onChange={(event) =>
-                      updateForm('sortWeight', Number(event.target.value))
-                    }
-                  />
-                </Field>
-                <Field label={copy.fields.source}>
-                  <Input
-                    value={form.source}
-                    onChange={(event) =>
-                      updateForm('source', event.target.value)
-                    }
-                    placeholder={copy.placeholders.source}
-                  />
-                </Field>
-                <Field label={copy.fields.licenseNote}>
-                  <Input
-                    value={form.licenseNote}
-                    onChange={(event) =>
-                      updateForm('licenseNote', event.target.value)
-                    }
-                    placeholder={copy.placeholders.licenseNote}
-                  />
-                </Field>
-              </div>
+              <details className="group">
+                <summary className="cursor-pointer text-sm font-semibold text-gray-700 marker:text-gray-400">
+                  {copy.advancedFields}
+                </summary>
+                <div className="mt-3 grid gap-4 md:grid-cols-2">
+                  <Field label={copy.fields.qualityScore}>
+                    <Input
+                      type="number"
+                      min={0}
+                      max={100}
+                      value={form.qualityScore}
+                      onChange={(event) =>
+                        updateForm('qualityScore', Number(event.target.value))
+                      }
+                    />
+                  </Field>
+                  <Field label={copy.fields.sortWeight}>
+                    <Input
+                      type="number"
+                      value={form.sortWeight}
+                      onChange={(event) =>
+                        updateForm('sortWeight', Number(event.target.value))
+                      }
+                    />
+                  </Field>
+                  <Field label={copy.fields.source}>
+                    <Input
+                      value={form.source}
+                      onChange={(event) =>
+                        updateForm('source', event.target.value)
+                      }
+                      placeholder={copy.placeholders.source}
+                    />
+                  </Field>
+                  <Field label={copy.fields.licenseNote}>
+                    <Input
+                      value={form.licenseNote}
+                      onChange={(event) =>
+                        updateForm('licenseNote', event.target.value)
+                      }
+                      placeholder={copy.placeholders.licenseNote}
+                    />
+                  </Field>
+                </div>
+              </details>
             </div>
           </div>
         )}

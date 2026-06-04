@@ -5,9 +5,33 @@ import { z } from 'zod';
 import { db } from '@/lib/db/drizzle';
 import { ASSET_STATUSES, assets } from '@/lib/db/schema';
 import { requireAdmin, requireOpsOrAdmin } from '@/lib/db/queries';
-import { withPagination, ilikeCol, type PaginatedResult } from './shared';
+import {
+  exactCol,
+  ilikeCol,
+  withPagination,
+  type PaginatedResult,
+} from './shared';
 
 const assetIdSchema = z.string().uuid();
+type AdminMediaKind = 'image' | 'video' | 'file';
+type AdminAssetListItem = typeof assets.$inferSelect & {
+  previewUrl: string | null;
+  previewMimeType: string | null;
+  mediaKind: AdminMediaKind;
+};
+
+const MIME_TYPE_BY_EXTENSION: Record<string, string> = {
+  avif: 'image/avif',
+  gif: 'image/gif',
+  jpeg: 'image/jpeg',
+  jpg: 'image/jpeg',
+  m4v: 'video/x-m4v',
+  mov: 'video/quicktime',
+  mp4: 'video/mp4',
+  png: 'image/png',
+  webm: 'video/webm',
+  webp: 'image/webp',
+};
 
 const updateAssetSchema = z
   .object({
@@ -20,11 +44,75 @@ const updateAssetSchema = z
   })
   .strict();
 
+function inferAdminMediaKind(input: {
+  mimeType?: string | null;
+  publicUrl?: string | null;
+}): AdminMediaKind {
+  const mimeType = input.mimeType?.trim().toLowerCase().split(';')[0] ?? '';
+  const url = input.publicUrl?.toLowerCase() ?? '';
+
+  if (
+    mimeType.startsWith('image/') ||
+    /\.(png|jpe?g|webp|gif|avif)(\?|#|$)/.test(url)
+  ) {
+    return 'image';
+  }
+
+  if (
+    mimeType.startsWith('video/') ||
+    /\.(mp4|webm|mov|m4v)(\?|#|$)/.test(url)
+  ) {
+    return 'video';
+  }
+
+  return 'file';
+}
+
+function inferMimeTypeFromUrl(publicUrl: string | null | undefined) {
+  const extension = publicUrl
+    ?.trim()
+    .toLowerCase()
+    .split(/[?#]/)[0]
+    ?.match(/\.([a-z0-9]+)$/)?.[1];
+
+  return extension ? MIME_TYPE_BY_EXTENSION[extension] ?? null : null;
+}
+
+function previewMimeTypeForAsset(asset: typeof assets.$inferSelect) {
+  const mimeType = asset.mimeType?.trim() || null;
+
+  if (mediaKindFromMimeType(mimeType)) {
+    return mimeType;
+  }
+
+  return inferMimeTypeFromUrl(asset.publicUrl) ?? mimeType;
+}
+
+function mediaKindFromMimeType(mimeType: string | null | undefined) {
+  const normalized = mimeType?.trim().toLowerCase().split(';')[0] ?? '';
+  if (normalized.startsWith('image/')) return 'image';
+  if (normalized.startsWith('video/')) return 'video';
+  return null;
+}
+
+function adminAssetToListItem(
+  asset: typeof assets.$inferSelect
+): AdminAssetListItem {
+  const mediaKind = inferAdminMediaKind(asset);
+
+  return {
+    ...asset,
+    previewUrl: mediaKind === 'file' ? null : asset.publicUrl,
+    previewMimeType: previewMimeTypeForAsset(asset),
+    mediaKind,
+  };
+}
+
 export async function listAssets(params: {
   search?: string;
   page?: number;
   pageSize?: number;
-}): Promise<PaginatedResult<typeof assets.$inferSelect>> {
+}): Promise<PaginatedResult<AdminAssetListItem>> {
   await requireOpsOrAdmin();
   const { search, page, pageSize } = {
     search: '',
@@ -32,14 +120,14 @@ export async function listAssets(params: {
     pageSize: 20,
     ...params,
   };
-  const where = search
+  const query = search.trim();
+  const where = query
     ? or(
-        ilikeCol(assets.id, search),
-        ilikeCol(assets.userId, search),
-        ilikeCol(assets.storageKey, search),
-        ilikeCol(assets.type, search),
-        ilikeCol(assets.status, search),
-        ilikeCol(assets.mimeType, search)
+        exactCol(assets.id, query),
+        exactCol(assets.userId, query),
+        ilikeCol(assets.type, query),
+        ilikeCol(assets.status, query),
+        ilikeCol(assets.mimeType, query)
       )
     : undefined;
   const [rows, countResult] = await Promise.all([
@@ -51,7 +139,7 @@ export async function listAssets(params: {
     db.select({ count: sql<number>`count(*)` }).from(assets).where(where),
   ]);
   return {
-    list: rows,
+    list: rows.map(adminAssetToListItem),
     total: Number(countResult[0]?.count ?? 0),
     page,
     pageSize,
@@ -104,7 +192,7 @@ export async function updateAsset(id: string, data: unknown) {
     throw new Error('Asset not found');
   }
 
-  return row;
+  return adminAssetToListItem(row);
 }
 
 export async function removeAsset(id: string) {

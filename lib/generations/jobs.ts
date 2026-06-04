@@ -1,10 +1,6 @@
 import { randomUUID } from 'crypto';
 import type postgres from 'postgres';
 
-import {
-  captureReservedCredits,
-  refundReservedCredits,
-} from '@/lib/credits';
 import { client } from '@/lib/db/drizzle';
 import { getGenerationLimitViolation } from '@/lib/generations/limits';
 import {
@@ -33,6 +29,7 @@ import {
 } from '@/lib/providers/wanxiang/starlink';
 
 const DEFAULT_PROVIDER = 'wanxiang';
+const PROVIDER_SUBMIT_LEASE_SECONDS = 120;
 type QueryableSql = postgres.Sql;
 
 type AssetRecord = {
@@ -116,6 +113,8 @@ type WanxiangQueryResult = {
   errorMessage?: string | null;
   rawResponse?: unknown;
 };
+
+type CreditLedgerMetadata = Record<string, unknown>;
 
 export class GenerationApiError extends Error {
   constructor(
@@ -289,6 +288,44 @@ export async function getAssetForUser(assetId: string, userId: number) {
   return row ? mapAssetRow(row) : null;
 }
 
+async function getPublishedLibraryAssetForGeneration(
+  assetId: string,
+  generationType: GenerationType
+) {
+  const rows = await client`
+    select
+      a.id,
+      a.user_id,
+      a.type,
+      a.status,
+      a.storage_key,
+      a.public_url,
+      a.mime_type,
+      a.size_bytes
+    from library_assets la
+    inner join assets a on a.id = la.asset_id
+    where la.asset_id = ${assetId}
+      and la.status = 'published'
+      and a.status = 'uploaded'
+      and la.use_cases_json ? ${generationType}
+    limit 1
+  `;
+
+  const row = rows[0] as Record<string, unknown> | undefined;
+  return row ? mapAssetRow(row) : null;
+}
+
+async function getGenerationInputAsset(
+  assetId: string,
+  userId: number,
+  generationType: GenerationType
+) {
+  return (
+    (await getAssetForUser(assetId, userId)) ??
+    (await getPublishedLibraryAssetForGeneration(assetId, generationType))
+  );
+}
+
 export async function markAssetUploaded(input: {
   assetId: string;
   userId: number;
@@ -383,7 +420,11 @@ async function assertInputAssetsForUser(
   const assets = new Map<string, AssetRecord>();
 
   for (const assetId of getInputAssetIds(generation)) {
-    const asset = await getAssetForUser(assetId, userId);
+    const asset = await getGenerationInputAsset(
+      assetId,
+      userId,
+      generation.generationType
+    );
 
     if (!asset) {
       throw new GenerationApiError(
@@ -670,30 +711,38 @@ async function markQueuedJobFailedAndRefund(input: {
   userId: number;
   errorMessage: string;
 }) {
-  const rows = await client`
-    update generation_jobs
-    set
-      status = 'failed',
-      error_message = ${input.errorMessage.slice(0, 2000)},
-      completed_at = now(),
-      updated_at = now()
-    where id = ${input.jobId}
-      and user_id = ${input.userId}
-      and status in ('queued', 'submitting', 'running')
-    returning id
-  `;
+  await client.begin(async (sql) => {
+    await sql`select pg_advisory_xact_lock(${input.userId})`;
 
-  if (!rows[0]) {
-    return;
-  }
+    const rows = await sql`
+      update generation_jobs
+      set
+        status = 'failed',
+        error_message = ${input.errorMessage.slice(0, 2000)},
+        completed_at = now(),
+        next_provider_poll_at = null,
+        updated_at = now()
+      where id = ${input.jobId}
+        and user_id = ${input.userId}
+        and status in ('queued', 'submitting', 'running')
+      returning id
+    `;
 
-  await refundReservedCredits({
-    userId: input.userId,
-    jobId: input.jobId,
-    metadata: {
-      reason: input.errorMessage.slice(0, 1000),
-      source: 'generation_enqueue_failed',
-    },
+    if (!rows[0]) {
+      return;
+    }
+
+    await refundReservedCreditsInTransaction(
+      {
+        userId: input.userId,
+        jobId: input.jobId,
+        metadata: {
+          reason: input.errorMessage.slice(0, 1000),
+          source: 'generation_enqueue_failed',
+        },
+      },
+      sql
+    );
   });
 }
 
@@ -878,17 +927,27 @@ async function markJobSubmitting(input: {
   jobId: string;
   triggerRunId?: string | null;
 }) {
-  await client`
+  const rows = await client`
     update generation_jobs
     set
       status = 'submitting',
       trigger_run_id = coalesce(${input.triggerRunId ?? null}, trigger_run_id),
       attempt_count = attempt_count + 1,
       started_at = coalesce(started_at, now()),
+      next_provider_poll_at = now() + (${PROVIDER_SUBMIT_LEASE_SECONDS}::text || ' seconds')::interval,
       updated_at = now()
     where id = ${input.jobId}
-      and status in ('queued', 'submitting')
+      and (
+        status = 'queued'
+        or (
+          status = 'submitting'
+          and coalesce(next_provider_poll_at, updated_at, created_at) <= now()
+        )
+      )
+    returning id
   `;
+
+  return Boolean(rows[0]);
 }
 
 async function markJobRunningWithProviderTask(input: {
@@ -902,6 +961,7 @@ async function markJobRunningWithProviderTask(input: {
       provider = ${input.submitResult.provider ?? DEFAULT_PROVIDER},
       provider_task_id = ${input.submitResult.providerTaskId},
       provider_status = 'running',
+      error_message = null,
       input_json = ${JSON.stringify({
         ...input.job.inputJson,
         providerSubmitRawResponse: input.submitResult.rawResponse,
@@ -957,6 +1017,202 @@ async function markJobWorkerErrorForRetry(input: {
       updated_at = now()
     where id = ${input.jobId}
       and status in ('queued', 'submitting', 'running')
+  `;
+}
+
+async function captureReservedCreditsInTransaction(
+  input: {
+    userId: number;
+    jobId: string;
+    metadata?: CreditLedgerMetadata;
+  },
+  sql: QueryableSql
+) {
+  const existingRows = await sql`
+    select id
+    from credit_ledger
+    where user_id = ${input.userId}
+      and job_id = ${input.jobId}
+      and reason = 'capture'
+    limit 1
+  `;
+
+  if (existingRows[0]) {
+    return;
+  }
+
+  const refundRows = await sql`
+    select id
+    from credit_ledger
+    where user_id = ${input.userId}
+      and job_id = ${input.jobId}
+      and reason = 'refund'
+    limit 1
+  `;
+
+  if (refundRows[0]) {
+    return;
+  }
+
+  const reserveRows = await sql`
+    select delta
+    from credit_ledger
+    where user_id = ${input.userId}
+      and job_id = ${input.jobId}
+      and reason = 'reserve'
+    order by created_at desc
+    limit 1
+  `;
+  const reserve = reserveRows[0] as Record<string, unknown> | undefined;
+
+  if (!reserve) {
+    throw new Error(`No reserved credits found for job ${input.jobId}`);
+  }
+
+  const balanceRows = await sql`
+    select credit_balance::integer as balance
+    from users
+    where id = ${input.userId}
+    limit 1
+  `;
+  const balanceRow = balanceRows[0] as Record<string, unknown> | undefined;
+
+  if (!balanceRow) {
+    throw new Error(`User ${input.userId} not found`);
+  }
+
+  const balance = Number(balanceRow.balance ?? 0);
+  const reservedCredits = Math.abs(Number(reserve.delta ?? 0));
+
+  await sql`
+    insert into credit_ledger (
+      user_id,
+      job_id,
+      delta,
+      reason,
+      balance_after,
+      metadata_json,
+      created_at
+    )
+    values (
+      ${input.userId},
+      ${input.jobId},
+      0,
+      'capture',
+      ${balance},
+      ${JSON.stringify({
+        reservedCredits,
+        ...(input.metadata ?? {}),
+      })}::jsonb,
+      now()
+    )
+  `;
+
+  await sql`
+    update generation_jobs
+    set
+      credit_spent = ${reservedCredits},
+      updated_at = now()
+    where id = ${input.jobId}
+      and user_id = ${input.userId}
+  `;
+}
+
+async function refundReservedCreditsInTransaction(
+  input: {
+    userId: number;
+    jobId: string;
+    metadata?: CreditLedgerMetadata;
+  },
+  sql: QueryableSql
+) {
+  const existingRows = await sql`
+    select id
+    from credit_ledger
+    where user_id = ${input.userId}
+      and job_id = ${input.jobId}
+      and reason = 'refund'
+    limit 1
+  `;
+
+  if (existingRows[0]) {
+    return;
+  }
+
+  const captureRows = await sql`
+    select id
+    from credit_ledger
+    where user_id = ${input.userId}
+      and job_id = ${input.jobId}
+      and reason = 'capture'
+    limit 1
+  `;
+
+  if (captureRows[0]) {
+    return;
+  }
+
+  const reserveRows = await sql`
+    select delta
+    from credit_ledger
+    where user_id = ${input.userId}
+      and job_id = ${input.jobId}
+      and reason = 'reserve'
+    order by created_at desc
+    limit 1
+  `;
+  const reserve = reserveRows[0] as Record<string, unknown> | undefined;
+
+  if (!reserve) {
+    throw new Error(`No reserved credits found for job ${input.jobId}`);
+  }
+
+  const balanceRows = await sql`
+    select credit_balance::integer as balance
+    from users
+    where id = ${input.userId}
+    limit 1
+  `;
+  const balanceRow = balanceRows[0] as Record<string, unknown> | undefined;
+
+  if (!balanceRow) {
+    throw new Error(`User ${input.userId} not found`);
+  }
+
+  const balance = Number(balanceRow.balance ?? 0);
+  const refundCredits = Math.abs(Number(reserve.delta ?? 0));
+  const balanceAfter = balance + refundCredits;
+
+  await sql`
+    update users
+    set
+      credit_balance = ${balanceAfter},
+      updated_at = now()
+    where id = ${input.userId}
+  `;
+
+  await sql`
+    insert into credit_ledger (
+      user_id,
+      job_id,
+      delta,
+      reason,
+      balance_after,
+      metadata_json,
+      created_at
+    )
+    values (
+      ${input.userId},
+      ${input.jobId},
+      ${refundCredits},
+      'refund',
+      ${balanceAfter},
+      ${JSON.stringify({
+        reservedCredits: refundCredits,
+        ...(input.metadata ?? {}),
+      })}::jsonb,
+      now()
+    )
   `;
 }
 
@@ -1040,6 +1296,8 @@ async function markJobSucceeded(input: {
     rawResponse: input.queryResult.rawResponse,
   };
   const transitioned = await client.begin(async (sql) => {
+    await sql`select pg_advisory_xact_lock(${input.job.userId})`;
+
     const transitionRows = await sql`
       update generation_jobs
       set
@@ -1094,22 +1352,25 @@ async function markJobSucceeded(input: {
         and status = 'succeeded'
     `;
 
+    await captureReservedCreditsInTransaction(
+      {
+        userId: input.job.userId,
+        jobId: input.job.id,
+        metadata: {
+          provider: input.job.provider,
+          providerTaskId: input.job.providerTaskId,
+          source: 'generation_status_succeeded',
+        },
+      },
+      sql
+    );
+
     return true;
   });
 
   if (!transitioned) {
     return;
   }
-
-  await captureReservedCredits({
-    userId: input.job.userId,
-    jobId: input.job.id,
-    metadata: {
-      provider: input.job.provider,
-      providerTaskId: input.job.providerTaskId,
-      source: 'generation_status_succeeded',
-    },
-  });
 }
 
 async function markJobFailed(input: {
@@ -1117,37 +1378,44 @@ async function markJobFailed(input: {
   errorMessage: string;
   rawResponse?: unknown;
 }) {
-  const rows = await client`
-    update generation_jobs
-    set
-      status = 'failed',
-      provider_status = 'failed',
-      output_json = ${JSON.stringify({
-        rawResponse: input.rawResponse,
-      })}::jsonb,
-      error_message = ${input.errorMessage},
-      completed_at = now(),
-      next_provider_poll_at = null,
-      updated_at = now()
-    where id = ${input.job.id}
-      and user_id = ${input.job.userId}
-      and status in ('queued', 'submitting', 'running')
-    returning id
-  `;
+  await client.begin(async (sql) => {
+    await sql`select pg_advisory_xact_lock(${input.job.userId})`;
 
-  if (!rows[0]) {
-    return;
-  }
+    const rows = await sql`
+      update generation_jobs
+      set
+        status = 'failed',
+        provider_status = 'failed',
+        output_json = ${JSON.stringify({
+          rawResponse: input.rawResponse,
+        })}::jsonb,
+        error_message = ${input.errorMessage},
+        completed_at = now(),
+        next_provider_poll_at = null,
+        updated_at = now()
+      where id = ${input.job.id}
+        and user_id = ${input.job.userId}
+        and status in ('queued', 'submitting', 'running')
+      returning id
+    `;
 
-  await refundReservedCredits({
-    userId: input.job.userId,
-    jobId: input.job.id,
-    metadata: {
-      provider: input.job.provider,
-      providerTaskId: input.job.providerTaskId,
-      reason: input.errorMessage,
-      source: 'generation_status_failed',
-    },
+    if (!rows[0]) {
+      return;
+    }
+
+    await refundReservedCreditsInTransaction(
+      {
+        userId: input.job.userId,
+        jobId: input.job.id,
+        metadata: {
+          provider: input.job.provider,
+          providerTaskId: input.job.providerTaskId,
+          reason: input.errorMessage,
+          source: 'generation_status_failed',
+        },
+      },
+      sql
+    );
   });
 }
 
@@ -1160,8 +1428,12 @@ export async function runWanxiangGenerationJob(
   } = {}
 ) {
   const attemptNumber = Math.max(1, Number(deps.attemptNumber ?? 1));
-  const maxAttempts = Math.max(attemptNumber, Number(deps.maxAttempts ?? attemptNumber));
+  const maxAttempts = Math.max(
+    attemptNumber,
+    Number(deps.maxAttempts ?? attemptNumber)
+  );
   let job = await getGenerationJobRecord(payload.jobId);
+  let terminalProviderStatus: WanxiangQueryResult['status'] | null = null;
 
   if (!job) {
     throw new Error(`generation job not found: ${payload.jobId}`);
@@ -1177,10 +1449,17 @@ export async function runWanxiangGenerationJob(
 
   try {
     if (!job.providerTaskId) {
-      await markJobSubmitting({
+      const acquiredSubmitLease = await markJobSubmitting({
         jobId: job.id,
         triggerRunId: deps.triggerRunId,
       });
+
+      if (!acquiredSubmitLease) {
+        return {
+          jobId: job.id,
+          status: 'running' as const,
+        };
+      }
 
       const generation = generationRequestSchema.parse(job.inputJson);
       const assetsById = await assertInputAssetsForUser(generation, job.userId);
@@ -1212,6 +1491,7 @@ export async function runWanxiangGenerationJob(
         ),
         inputJson: job.inputJson,
         metadata: {
+          idempotencyKey: `generation:${job.id}`,
           jobId: job.id,
           userId: job.userId,
         },
@@ -1258,6 +1538,8 @@ export async function runWanxiangGenerationJob(
       };
     }
 
+    terminalProviderStatus = queryResult.status;
+
     if (queryResult.status === 'succeeded') {
       await markJobSucceeded({ job, queryResult });
     } else {
@@ -1277,7 +1559,12 @@ export async function runWanxiangGenerationJob(
     const errorMessage = error instanceof Error ? error.message : String(error);
     const latestJob = (await getGenerationJobRecord(payload.jobId)) ?? job;
 
-    if (attemptNumber >= maxAttempts) {
+    if (terminalProviderStatus) {
+      await markJobWorkerErrorForRetry({
+        jobId: latestJob.id,
+        errorMessage,
+      });
+    } else if (attemptNumber >= maxAttempts) {
       await markJobFailed({
         job: latestJob,
         errorMessage,

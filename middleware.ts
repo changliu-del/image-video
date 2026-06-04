@@ -4,6 +4,38 @@ import { signToken, verifyToken } from '@/lib/auth/session';
 
 const protectedRoutes = ['/create', '/dashboard', '/generate', '/jobs'];
 const marketingLocales = ['pt', 'en', 'zh'] as const;
+type MarketingLocale = (typeof marketingLocales)[number];
+
+function isMarketingLocale(
+  value: string | null | undefined
+): value is MarketingLocale {
+  return (
+    typeof value === 'string' &&
+    marketingLocales.includes(value as MarketingLocale)
+  );
+}
+
+function getRequestLocale(request: NextRequest): MarketingLocale {
+  const queryLocale = request.nextUrl.searchParams.get('locale');
+  if (isMarketingLocale(queryLocale)) {
+    return queryLocale;
+  }
+
+  const [firstSegment] = request.nextUrl.pathname.split('/').filter(Boolean);
+  return isMarketingLocale(firstSegment) ? firstSegment : 'pt';
+}
+
+function getLoginRedirect(request: NextRequest) {
+  const redirectUrl = new URL('/sign-in', request.url);
+  redirectUrl.searchParams.set('locale', getRequestLocale(request));
+
+  const target = `${request.nextUrl.pathname}${request.nextUrl.search}`;
+  if (target && target !== '/') {
+    redirectUrl.searchParams.set('redirect', target);
+  }
+
+  return redirectUrl;
+}
 
 function getTextToImageRedirect(pathname: string) {
   const segments = pathname.split('/').filter(Boolean);
@@ -44,7 +76,7 @@ export async function middleware(request: NextRequest) {
   );
 
   if (isProtectedRoute && !sessionCookie) {
-    return NextResponse.redirect(new URL('/sign-in', request.url));
+    return NextResponse.redirect(getLoginRedirect(request));
   }
 
   let res = NextResponse.next();
@@ -72,7 +104,7 @@ export async function middleware(request: NextRequest) {
       console.error('Error updating session:', error);
       res.cookies.delete('session');
       if (isProtectedRoute) {
-        return NextResponse.redirect(new URL('/sign-in', request.url));
+        return NextResponse.redirect(getLoginRedirect(request));
       }
     }
   }

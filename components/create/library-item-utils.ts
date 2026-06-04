@@ -1,5 +1,6 @@
 export type WorkbenchLibraryItem = {
   id?: string | number;
+  assetId?: string | number | null;
   name?: string;
   title?: string;
   slug?: string;
@@ -50,6 +51,12 @@ export function getLibraryItemImage(item: WorkbenchLibraryItem | null | undefine
 
 export function getLibraryItemLabel(item: WorkbenchLibraryItem) {
   return item.title ?? item.name ?? item.slug ?? String(item.id ?? 'Asset');
+}
+
+export function getLibraryItemAssetId(
+  item: WorkbenchLibraryItem | null | undefined
+) {
+  return item?.assetId == null ? '' : String(item.assetId);
 }
 
 export function normalizeLibraryItems(value: unknown): WorkbenchLibraryItem[] {

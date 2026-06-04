@@ -38,6 +38,7 @@ import {
   commonWorkbenchCopy,
 } from '@/components/create/workbench-copy';
 import {
+  getLibraryItemAssetId as getItemAssetId,
   getLibraryItemImage as getItemImage,
   getLibraryItemLabel as getItemLabel,
   libraryItemKey as itemKey,
@@ -337,6 +338,8 @@ export function ApparelWorkbench() {
   const [templates, setTemplates] = useState<LibraryItem[]>([]);
   const [assets, setAssets] = useState<LibraryItem[]>([]);
   const [selectedTemplate, setSelectedTemplate] = useState<LibraryItem | null>(null);
+  const [selectedLibraryAsset, setSelectedLibraryAsset] =
+    useState<LibraryItem | null>(null);
   const [isLoadingLibrary, setIsLoadingLibrary] = useState(true);
   const [creationMode, setCreationMode] = useState<CreationMode>('quick');
   const [activeIdeaGroup, setActiveIdeaGroup] = useState(0);
@@ -357,8 +360,14 @@ export function ApparelWorkbench() {
   const isSubmitting = Boolean(submitLabel);
   const selectedResultUrl = resultUrl(jobStatus);
   const selectedTemplateId = selectedTemplate?.id ?? selectedTemplate?.slug;
-  const sourcePreview = primaryPreview;
-  const sourceName = primaryFile?.name ?? null;
+  const selectedLibraryAssetId = selectedLibraryAsset
+    ? getItemAssetId(selectedLibraryAsset)
+    : '';
+  const sourcePreview =
+    primaryPreview ?? (selectedLibraryAsset ? getItemImage(selectedLibraryAsset) : '');
+  const sourceName = primaryFile?.name ?? (
+    selectedLibraryAsset ? getItemLabel(selectedLibraryAsset) : null
+  );
   const modelTypeOptions = modelTypeValues.map((value, index) => ({
     value,
     label: copy.modelTypes[index] ?? value,
@@ -376,10 +385,14 @@ export function ApparelWorkbench() {
   const selectedSceneLabel = copy.sceneOptions[sceneValues.indexOf(scene)] ?? scene;
   const selectedStyleLabel = copy.stylePresets[styleValues.indexOf(style)] ?? style;
   const activePromptGroup = copy.promptIdeaGroups[activeIdeaGroup] ?? copy.promptIdeaGroups[0];
+  const selectableAssets = useMemo(
+    () => assets.filter((item) => getItemAssetId(item) && getItemImage(item)),
+    [assets]
+  );
 
   const canSubmit = useMemo(() => {
-    return !isSubmitting && Boolean(primaryFile);
-  }, [isSubmitting, primaryFile]);
+    return !isSubmitting && Boolean(primaryFile || selectedLibraryAssetId);
+  }, [isSubmitting, primaryFile, selectedLibraryAssetId]);
 
   useEffect(() => {
     if (!primaryFile) {
@@ -479,12 +492,13 @@ export function ApparelWorkbench() {
     }
 
     setPrimaryFile(file);
+    setSelectedLibraryAsset(null);
   }
 
   async function handleSubmit(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
 
-    if (!primaryFile) {
+    if (!primaryFile && !selectedLibraryAssetId) {
       setError(copy.uploadRequired);
       return;
     }
@@ -494,8 +508,11 @@ export function ApparelWorkbench() {
     setJobStatus(null);
 
     try {
-      setSubmitLabel(copy.uploadingImage);
-      const inputAssetId = await uploadAsset(primaryFile, commonCopy);
+      let inputAssetId = selectedLibraryAssetId;
+      if (primaryFile) {
+        setSubmitLabel(copy.uploadingImage);
+        inputAssetId = await uploadAsset(primaryFile, commonCopy);
+      }
 
       setSubmitLabel(copy.startingGeneration);
       const generation = await postJson<GenerationResponse>(
@@ -561,8 +578,11 @@ export function ApparelWorkbench() {
   }
 
   function applyLibraryAsset(asset: LibraryItem | null | undefined) {
-    if (!asset) return;
+    if (!asset || !getItemAssetId(asset)) return;
 
+    setError(null);
+    setPrimaryFile(null);
+    setSelectedLibraryAsset(asset);
     setCreationMode('advanced');
     setPrompt((current) => {
       const label = getItemLabel(asset);
@@ -758,21 +778,28 @@ export function ApparelWorkbench() {
                 )}
               </div>
             </div>
-            {assets.length > 0 ? (
+            {selectableAssets.length > 0 ? (
               <div>
                 <h3 className="mb-2 text-xs font-bold text-gray-400">
                   {copy.libraryMaterials}
                 </h3>
                 <div className="grid grid-cols-2 gap-2">
-                  {assets.slice(0, 4).map((asset) => {
+                  {selectableAssets.slice(0, 4).map((asset) => {
                     const image = getItemImage(asset);
+                    const active =
+                      selectedLibraryAssetId === getItemAssetId(asset);
 
                     return (
                       <button
                         key={itemKey(asset)}
                         type="button"
                         onClick={() => applyLibraryAsset(asset)}
-                        className="rounded-lg border border-gray-200 bg-white p-2 text-left text-gray-600 transition hover:border-indigo-200 hover:text-indigo-600"
+                        className={cn(
+                          'rounded-lg border bg-white p-2 text-left text-gray-600 transition hover:border-indigo-200 hover:text-indigo-600',
+                          active
+                            ? 'border-indigo-500 ring-2 ring-indigo-100'
+                            : 'border-gray-200'
+                        )}
                       >
                         <div className="aspect-square overflow-hidden rounded-md bg-gray-100">
                           {image ? (
@@ -926,8 +953,10 @@ export function ApparelWorkbench() {
                 <IconButtonCard
                   icon={ImageIcon}
                   label={commonCopy.chooseFromLibrary}
-                  onClick={() => applyTemplate(selectedTemplate ?? templates[0])}
-                  disabled={templates.length === 0}
+                  onClick={() =>
+                    applyLibraryAsset(selectedLibraryAsset ?? selectableAssets[0])
+                  }
+                  disabled={selectableAssets.length === 0}
                 />
                 <IconButtonCard
                   icon={UploadCloud}

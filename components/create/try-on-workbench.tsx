@@ -37,6 +37,7 @@ import {
   tryOnWorkbenchCopy,
 } from '@/components/create/workbench-copy';
 import {
+  getLibraryItemAssetId as getItemAssetId,
   getLibraryItemImage as getItemImage,
   getLibraryItemLabel as getItemLabel,
   normalizeLibraryItems as normalizeItems,
@@ -410,6 +411,8 @@ export function TryOnWorkbench() {
   const [modelAssets, setModelAssets] = useState<ModelCatalogItem[]>([]);
   const [selectedModelAsset, setSelectedModelAsset] = useState<ModelCatalogItem | null>(null);
   const [selectedLibraryItem, setSelectedLibraryItem] = useState<LibraryItem | null>(null);
+  const [selectedGarmentAsset, setSelectedGarmentAsset] =
+    useState<LibraryItem | null>(null);
   const [isLoadingLibrary, setIsLoadingLibrary] = useState(true);
   const [exampleOffset, setExampleOffset] = useState(0);
   const [submitLabel, setSubmitLabel] = useState<string | null>(null);
@@ -423,6 +426,15 @@ export function TryOnWorkbench() {
     modelSource === 'custom' ? modelPreview : getModelAssetImage(selectedModelAsset);
   const selectedModelLabel =
     modelSource === 'custom' ? modelFile?.name : selectedModelAsset?.title;
+  const selectedGarmentAssetId = selectedGarmentAsset
+    ? getItemAssetId(selectedGarmentAsset)
+    : '';
+  const selectedGarmentPreview = selectedGarmentAsset
+    ? getItemImage(selectedGarmentAsset)
+    : '';
+  const selectedGarmentLabel = selectedGarmentAsset
+    ? getItemLabel(selectedGarmentAsset)
+    : undefined;
   const modeOptions = modeValues.map((value) => ({
     value,
     label: copy.modeOptions[value],
@@ -431,8 +443,18 @@ export function TryOnWorkbench() {
   const canSubmit = useMemo(() => {
     const hasModel = modelSource === 'custom' ? Boolean(modelFile) : Boolean(selectedModelAsset);
     if (isSubmitting || !hasModel) return false;
-    return mode === 'single' ? garmentFiles.length >= 1 : garmentFiles.length >= 2;
-  }, [garmentFiles.length, isSubmitting, mode, modelFile, modelSource, selectedModelAsset]);
+    return mode === 'single'
+      ? garmentFiles.length >= 1 || Boolean(selectedGarmentAssetId)
+      : garmentFiles.length >= 2;
+  }, [
+    garmentFiles.length,
+    isSubmitting,
+    mode,
+    modelFile,
+    modelSource,
+    selectedGarmentAssetId,
+    selectedModelAsset,
+  ]);
 
   useEffect(() => {
     if (!modelFile) {
@@ -568,6 +590,7 @@ export function TryOnWorkbench() {
     }
 
     setGarmentFiles(mode === 'single' ? nextFiles.slice(0, 1) : nextFiles.slice(0, 4));
+    setSelectedGarmentAsset(null);
   }
 
   async function handleSubmit(event: React.FormEvent<HTMLFormElement>) {
@@ -580,7 +603,7 @@ export function TryOnWorkbench() {
       return;
     }
 
-    if (mode === 'single' && garmentFiles.length === 0) {
+    if (mode === 'single' && garmentFiles.length === 0 && !selectedGarmentAssetId) {
       setError(copy.selectSingleGarmentError);
       return;
     }
@@ -597,12 +620,15 @@ export function TryOnWorkbench() {
     try {
       setSubmitLabel(useCustomModel ? copy.uploadingModel : copy.preparingModel);
       const modelAssetId = useCustomModel && modelFile ? await uploadAsset(modelFile, commonCopy) : undefined;
-      const garmentAssetIds = await Promise.all(
-        garmentFiles.map(async (file, index) => {
-          setSubmitLabel(copy.uploadingGarment(index + 1));
-          return uploadAsset(file, commonCopy);
-        })
-      );
+      const garmentAssetIds =
+        mode === 'single' && selectedGarmentAssetId && garmentFiles.length === 0
+          ? [selectedGarmentAssetId]
+          : await Promise.all(
+              garmentFiles.map(async (file, index) => {
+                setSubmitLabel(copy.uploadingGarment(index + 1));
+                return uploadAsset(file, commonCopy);
+              })
+            );
 
       setSubmitLabel(copy.startingTryOn);
       const generation = await postJson<GenerationResponse>(
@@ -671,9 +697,30 @@ export function TryOnWorkbench() {
     });
   }
 
+  function selectLibraryGarment(asset: LibraryItem | null | undefined) {
+    if (!asset || !getItemAssetId(asset) || mode !== 'single') return;
+
+    setError(null);
+    setGarmentFiles([]);
+    setSelectedGarmentAsset(asset);
+    setSelectedLibraryItem(asset);
+    setPrompt((current) => {
+      const label = getItemLabel(asset);
+      const trimmed = current.trim();
+      return trimmed.includes(label) ? trimmed : `${trimmed} ${label}`.trim();
+    });
+  }
+
   function chooseFromLibrary() {
     if (modelAssets[0]) {
       selectLibraryModel(modelAssets[0]);
+    }
+    if (mode === 'single') {
+      const garmentAsset = selectedGarmentAsset ?? selectableGarmentAssets[0];
+      if (garmentAsset) {
+        selectLibraryGarment(garmentAsset);
+        return;
+      }
     }
     applyLibraryTemplate(selectedLibraryItem ?? templates[0] ?? assets[0]);
   }
@@ -681,6 +728,10 @@ export function TryOnWorkbench() {
   const libraryTiles = useMemo(
     () => [...templates, ...assets],
     [assets, templates]
+  );
+  const selectableGarmentAssets = useMemo(
+    () => assets.filter((item) => getItemAssetId(item) && getItemImage(item)),
+    [assets]
   );
   const baseLibraryImages = [...templates, ...assets].map(getItemImage).filter(Boolean);
   const libraryStart = baseLibraryImages.length ? exampleOffset % baseLibraryImages.length : 0;
@@ -690,7 +741,9 @@ export function TryOnWorkbench() {
   ].slice(0, 6);
   const statusLabel = jobStatus?.progressLabel ?? jobStatus?.status ?? (jobId ? commonCopy.generating : null);
   const garmentLabel =
-    garmentFiles.length > 1 ? copy.garmentCount(garmentFiles.length) : garmentFiles[0]?.name;
+    garmentFiles.length > 1
+      ? copy.garmentCount(garmentFiles.length)
+      : garmentFiles[0]?.name ?? selectedGarmentLabel;
 
   return (
     <form
@@ -734,7 +787,7 @@ export function TryOnWorkbench() {
             />
             <UploadDropzone
               id="try-on-garments"
-              preview={garmentPreviews[0]}
+              preview={garmentPreviews[0] ?? selectedGarmentPreview}
               fileName={garmentLabel}
               emptyText={mode === 'single' ? copy.garmentSingleEmpty : copy.garmentMultiEmpty}
               hint={copy.garmentHint}
@@ -766,6 +819,9 @@ export function TryOnWorkbench() {
             onChange={(nextMode) => {
               setMode(nextMode);
               setGarmentFiles((files) => (nextMode === 'single' ? files.slice(0, 1) : files));
+              if (nextMode === 'multi') {
+                setSelectedGarmentAsset(null);
+              }
             }}
             disabled={isSubmitting}
             columns={2}
@@ -945,15 +1001,21 @@ export function TryOnWorkbench() {
             ) : (
               libraryTiles.slice(0, 6).map((template) => {
                 const image = getItemImage(template);
-                const active =
-                  String(selectedLibraryItem?.id ?? selectedLibraryItem?.slug) ===
-                  String(template.id ?? template.slug);
+                const assetId = getItemAssetId(template);
+                const active = assetId
+                  ? selectedGarmentAssetId === assetId
+                  : String(selectedLibraryItem?.id ?? selectedLibraryItem?.slug) ===
+                    String(template.id ?? template.slug);
 
                 return (
                   <button
                     key={String(template.id ?? template.slug ?? image)}
                     type="button"
-                    onClick={() => applyLibraryTemplate(template)}
+                    onClick={() =>
+                      assetId && mode === 'single'
+                        ? selectLibraryGarment(template)
+                        : applyLibraryTemplate(template)
+                    }
                     className={cn(
                       'aspect-square overflow-hidden rounded-lg border bg-gray-100',
                       active ? 'border-indigo-500 ring-2 ring-indigo-100' : 'border-gray-200'
@@ -1007,7 +1069,7 @@ export function TryOnWorkbench() {
                 />
                 <UploadDropzone
                   id="try-on-garments-canvas"
-                  preview={garmentPreviews[0]}
+                  preview={garmentPreviews[0] ?? selectedGarmentPreview}
                   fileName={garmentLabel}
                   emptyText={copy.garmentCanvasEmpty}
                   hint={copy.garmentHint}

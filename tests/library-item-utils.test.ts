@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 
 import {
+  getLibraryItemAssetId,
   getLibraryItemImage,
   getLibraryItemLabel,
   libraryItemKey,
@@ -55,5 +56,10 @@ describe('library item utilities', () => {
 
     expect(getLibraryItemLabel(item)).toBe('Hero product');
     expect(libraryItemKey(item)).toBe('asset-1');
+  });
+
+  it('normalizes the underlying asset id for generation inputs', () => {
+    expect(getLibraryItemAssetId({ assetId: 123, title: 'Asset' })).toBe('123');
+    expect(getLibraryItemAssetId({ id: 'template-1', title: 'Template' })).toBe('');
   });
 });

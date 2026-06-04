@@ -1,6 +1,6 @@
 # Library Assets and Admin
 
-Updated: 2026-06-03
+Updated: 2026-06-04
 
 ## Purpose
 
@@ -78,6 +78,23 @@ The Admin shell exposes a dedicated `Library Assets` tab. Expected controls:
 - publish/archive/remove according to role
 
 This UI is operational, so keep it dense, predictable, and task-first rather than marketing-like.
+
+2026-06-04 Admin UX cleanup:
+
+- Generic Admin tables should not behave like raw database browsers. Default table columns should show operator-readable fields; IDs, storage keys, Stripe identifiers, provider task IDs, and raw JSON should stay out of the main table unless they are needed for a recovery workflow.
+- User management defaults to email, name, account status, role, credit balance, subscription, plan, and creation time. `is_admin`, soft-delete timestamps, and Stripe IDs are not first-scan fields.
+- Asset and generation job tables are for triage. Asset rows should start with an image/video preview, then show media type/status/format/size/timestamps. Generation rows should expose input and output media previews when available, then show generation type, status, input summary, template, credits, and timestamps; product/template summaries are derived from `inputJson`.
+- Credit ledger defaults to amount, reason, resulting balance, and creation time. User ID, job ID, Stripe event ID, and metadata remain detail/filter fields.
+- Library asset upload should give immediate file feedback, infer a sensible material kind from the file, auto-fill a readable title when empty, and fold low-frequency fields such as sort weight, source, and license note behind advanced editing.
+- Library asset details should not expose R2 `storageKey` or long asset URLs as primary operational content; use the preview and open-link affordance instead.
+
+2026-06-04 Admin operational search:
+
+- Templates and library assets serve different jobs. Templates are generation recipes: prompt, hook, CTA, type, cost, duration, aspect ratio, tags, and preview media. Library assets are reusable media inventory: product/model/garment/scene/example images or videos that can feed workbenches.
+- Admin keyword search should be anchored on operator-facing fields. Templates search title, slug, hook, type, status, locale, CTA, and tag labels/slugs. Library assets search title, description, kind, status, locale, source, tags, use cases, and MIME format.
+- Generic assets search upload type, status, MIME format, user/file ID, and keeps storage keys or public URLs out of default keyword search.
+- Generation jobs search product/prompt summary, template, status, generation type, provider/status, user email/name, error text, and whitelisted input fields such as product name, headline, prompt, template slug, and aspect ratio. Do not search whole raw JSON or media URLs by default.
+- Credit ledger search supports user email/name, credit reason, Stripe event/payment identifiers, job status/type, package/source metadata, and admin notes; user ID, job ID, and date remain explicit filters for reconciliation.
 
 ## Operational Notes
 

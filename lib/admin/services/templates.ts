@@ -32,8 +32,13 @@ import {
   createSignedTemplateAssetPutUrl,
   isTemplateAssetMimeType,
   storageKeyMatchesTemplateAsset,
+  verifyUploadedObject,
   type TemplateAssetMimeType,
 } from '@/lib/storage/r2';
+import {
+  adminSearchMatches,
+  normalizeAdminSearchQuery,
+} from '@/lib/admin/search';
 import { type PaginatedResult } from './shared';
 
 const MAX_TEMPLATE_ASSET_BYTES = 80 * 1024 * 1024;
@@ -111,6 +116,10 @@ const completeTemplateAssetSchema = z
     role: z.enum(['thumbnail', 'preview', 'source', 'example']),
   })
   .strict();
+
+function matchesAdminExactId(value: string | null | undefined, query: string) {
+  return Boolean(value && query && value.toLowerCase() === query);
+}
 
 function slugify(value: string) {
   return (
@@ -232,7 +241,7 @@ export async function listAdminTemplates(params: {
 }): Promise<PaginatedResult<AdminTemplateListItem>> {
   await requireOpsOrAdmin();
   const { search = '', page = 1, pageSize = 20 } = params;
-  const query = search.trim().toLowerCase();
+  const query = normalizeAdminSearchQuery(search);
 
   const rows = (await db.query.templates.findMany({
     with: {
@@ -249,19 +258,27 @@ export async function listAdminTemplates(params: {
 
   const filtered = query
     ? rows.filter((row) =>
-        [
-          row.title,
-          row.description,
-          row.hook,
-          row.slug,
-          row.locale,
-          row.type,
-          row.status,
-          ...row.tagRelations.map((relation) => relation.tag.slug),
-        ]
-          .join(' ')
-          .toLowerCase()
-          .includes(query)
+        matchesAdminExactId(row.id, query) ||
+        adminSearchMatches(
+          [
+            row.title,
+            row.description,
+            row.hook,
+            row.cta,
+            row.slug,
+            row.locale,
+            row.type,
+            row.status,
+            ...row.tagRelations.flatMap((relation) => [
+              relation.tag.slug,
+              relation.tag.group,
+              relation.tag.labelPt,
+              relation.tag.labelEn,
+              relation.tag.labelZh,
+            ]),
+          ],
+          query
+        )
       )
     : rows;
 
@@ -283,7 +300,7 @@ export async function listTemplateAssets(params: {
 }): Promise<PaginatedResult<AdminTemplateAssetListItem>> {
   await requireOpsOrAdmin();
   const { search = '', page = 1, pageSize = 20 } = params;
-  const query = search.trim().toLowerCase();
+  const query = normalizeAdminSearchQuery(search);
 
   const rows = (await db.query.templateAssets.findMany({
     with: {
@@ -295,21 +312,23 @@ export async function listTemplateAssets(params: {
 
   const filtered = query
     ? rows.filter((row) =>
-        [
-          row.id,
-          row.templateId,
-          row.assetId,
-          row.role,
-          row.asset?.storageKey,
-          row.asset?.publicUrl,
-          row.asset?.mimeType,
-          row.template?.slug,
-          row.template?.title,
-        ]
-          .filter(Boolean)
-          .join(' ')
-          .toLowerCase()
-          .includes(query)
+        [row.id, row.templateId, row.assetId].some((id) =>
+          matchesAdminExactId(id, query)
+        ) ||
+        adminSearchMatches(
+          [
+            row.role,
+            row.asset?.type,
+            row.asset?.status,
+            row.asset?.mimeType,
+            row.template?.slug,
+            row.template?.title,
+            row.template?.locale,
+            row.template?.type,
+            row.template?.status,
+          ],
+          query
+        )
       )
     : rows;
 
@@ -582,6 +601,16 @@ export async function completeTemplateAsset(input: unknown) {
     )
   ) {
     throw new Error('Storage key does not match this template asset');
+  }
+
+  const uploadedObjectMatches = await verifyUploadedObject({
+    storageKey: payload.storageKey,
+    mimeType: asset.mimeType,
+    sizeBytes: asset.sizeBytes,
+  }).catch(() => false);
+
+  if (!uploadedObjectMatches) {
+    throw new Error('Invalid uploaded object metadata');
   }
 
   await db

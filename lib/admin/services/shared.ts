@@ -18,7 +18,27 @@ export function withPagination<T extends { limit: (n: number) => any; offset: (n
 }
 
 export function ilikeCol(column: PgColumn, search: string): SQL {
-  return sql`${column}::text ILIKE ${'%' + search + '%'}`;
+  return sql`${column}::text ILIKE ${'%' + search.trim() + '%'}`;
+}
+
+export function exactCol(column: PgColumn, search: string): SQL {
+  return sql`${column}::text = ${search.trim()}`;
+}
+
+export function ilikeJsonTextField(
+  column: PgColumn,
+  key: string,
+  search: string
+): SQL {
+  return sql`${column}->>${key} ILIKE ${'%' + search.trim() + '%'}`;
+}
+
+export function exactJsonTextField(
+  column: PgColumn,
+  key: string,
+  search: string
+): SQL {
+  return sql`${column}->>${key} = ${search.trim()}`;
 }
 
 export function parsePagination(searchParams: URLSearchParams) {

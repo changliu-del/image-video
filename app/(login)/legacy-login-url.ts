@@ -1,9 +1,18 @@
-import type { Locale } from '@/lib/marketing/content';
+import { isLocale, type Locale } from '@/lib/marketing/content';
 
 export type LegacyLoginSearchParams = Record<
   string,
   string | string[] | undefined
 >;
+
+function getFirstParam(value: string | string[] | undefined) {
+  return Array.isArray(value) ? value[0] : value;
+}
+
+function getSearchLocale(searchParams: LegacyLoginSearchParams) {
+  const locale = getFirstParam(searchParams.locale);
+  return locale && isLocale(locale) ? locale : null;
+}
 
 export function getLegacyLoginHref(
   mode: 'signin' | 'signup',
@@ -11,6 +20,7 @@ export function getLegacyLoginHref(
   locale: Locale = 'pt'
 ) {
   const params = new URLSearchParams();
+  const resolvedLocale = getSearchLocale(searchParams) ?? locale;
 
   Object.entries(searchParams).forEach(([key, value]) => {
     if (typeof value === 'string') {
@@ -28,5 +38,5 @@ export function getLegacyLoginHref(
   }
 
   const query = params.toString();
-  return `/${locale}/login${query ? `?${query}` : ''}`;
+  return `/${resolvedLocale}/login${query ? `?${query}` : ''}`;
 }

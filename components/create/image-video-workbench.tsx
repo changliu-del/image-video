@@ -35,8 +35,10 @@ import {
   imageVideoWorkbenchCopy,
 } from '@/components/create/workbench-copy';
 import {
+  getLibraryItemAssetId as getItemAssetId,
   getLibraryItemImage as getItemImage,
   getLibraryItemLabel as getItemLabel,
+  libraryItemKey as itemKey,
   normalizeLibraryItems as normalizeItems,
   type WorkbenchLibraryItem as LibraryItem,
 } from '@/components/create/library-item-utils';
@@ -253,11 +255,18 @@ export function ImageVideoWorkbench() {
   const trimmedPrompt = prompt.trim();
   const selectedResultUrl = resultUrl(jobStatus);
   const selectedAssetImage = selectedAsset ? getItemImage(selectedAsset) : '';
+  const selectedAssetId = selectedAsset ? getItemAssetId(selectedAsset) : '';
   const libraryItems = useMemo(
     () => [...assets, ...templates].filter((item) => getItemImage(item)),
     [assets, templates]
   );
-  const canSubmit = Boolean(sourceFile && trimmedPrompt && !isSubmitting);
+  const selectableAssets = useMemo(
+    () => assets.filter((item) => getItemAssetId(item) && getItemImage(item)),
+    [assets]
+  );
+  const canSubmit = Boolean(
+    (sourceFile || selectedAssetId) && trimmedPrompt && !isSubmitting
+  );
 
   useEffect(() => {
     if (!sourceFile) {
@@ -299,9 +308,14 @@ export function ImageVideoWorkbench() {
         if (!cancelled) {
           const nextTemplates = normalizeItems(templateBody);
           const nextAssets = normalizeItems(assetBody);
+          const defaultAsset = nextAssets.find(
+            (asset) => getItemAssetId(asset) && getItemImage(asset)
+          );
           setTemplates(nextTemplates);
           setAssets(nextAssets);
-          setSelectedAsset((current) => current ?? nextAssets[0] ?? nextTemplates[0] ?? null);
+          setSelectedAsset((current) =>
+            current && getItemAssetId(current) ? current : defaultAsset ?? null
+          );
         }
       } finally {
         if (!cancelled) setIsLoadingLibrary(false);
@@ -360,12 +374,21 @@ export function ImageVideoWorkbench() {
     }
 
     setSourceFile(file);
+    setSelectedAsset(null);
+  }
+
+  function selectLibraryAsset(asset: LibraryItem | null | undefined) {
+    if (!asset || !getItemAssetId(asset)) return;
+
+    setError(null);
+    setSourceFile(null);
+    setSelectedAsset(asset);
   }
 
   async function handleSubmit(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
 
-    if (!sourceFile) {
+    if (!sourceFile && !selectedAssetId) {
       setError(copy.selectSourceImage);
       return;
     }
@@ -380,8 +403,11 @@ export function ImageVideoWorkbench() {
     setJobStatus(null);
 
     try {
-      setSubmitLabel(copy.uploadingImage);
-      const inputAssetId = await uploadAsset(sourceFile, commonCopy);
+      let inputAssetId = selectedAssetId;
+      if (sourceFile) {
+        setSubmitLabel(copy.uploadingImage);
+        inputAssetId = await uploadAsset(sourceFile, commonCopy);
+      }
 
       setSubmitLabel(copy.startingGeneration);
       const generation = await postJson<GenerationResponse>(
@@ -515,8 +541,14 @@ export function ImageVideoWorkbench() {
         <PanelSection title={copy.uploadTitle} required hint={copy.uploadHint}>
           <UploadDropzone
             id="source-file"
-            preview={sourcePreview}
-            fileName={sourceFile ? `${sourceFile.name} · ${formatFileSize(sourceFile.size)}` : null}
+            preview={sourcePreview ?? selectedAssetImage}
+            fileName={
+              sourceFile
+                ? `${sourceFile.name} · ${formatFileSize(sourceFile.size)}`
+                : selectedAsset
+                  ? getItemLabel(selectedAsset)
+                  : null
+            }
             emptyText={commonCopy.uploadClick}
             hint={copy.uploadDropHint}
             disabled={isSubmitting}
@@ -561,14 +593,45 @@ export function ImageVideoWorkbench() {
             disabled={isSubmitting}
           />
           <div className="mt-3 grid grid-cols-3 gap-2">
-            {(exampleImages.length ? exampleImages : ['/resources/example1.png', '/resources/example2.png', '/resources/example3.png']).map((image) => (
-              <img
-                key={image}
-                src={image}
-                alt=""
-                className="aspect-square rounded-lg bg-gray-100 object-cover"
-              />
-            ))}
+            {selectableAssets.length
+              ? selectableAssets.slice(0, 6).map((asset) => {
+                  const image = getItemImage(asset);
+                  const active = selectedAssetId === getItemAssetId(asset);
+
+                  return (
+                    <button
+                      key={itemKey(asset)}
+                      type="button"
+                      onClick={() => selectLibraryAsset(asset)}
+                      disabled={isSubmitting}
+                      className={cn(
+                        'relative aspect-square overflow-hidden rounded-lg border bg-gray-100 transition disabled:cursor-not-allowed disabled:opacity-60',
+                        active
+                          ? 'border-indigo-500 ring-2 ring-indigo-100'
+                          : 'border-gray-200 hover:border-indigo-200'
+                      )}
+                      title={getItemLabel(asset)}
+                    >
+                      <img src={image} alt="" className="size-full object-cover" />
+                      {active ? (
+                        <span className="absolute right-2 top-2 flex size-6 items-center justify-center rounded-full bg-emerald-300 text-gray-950">
+                          <CheckCircle2 className="size-4" />
+                        </span>
+                      ) : null}
+                    </button>
+                  );
+                })
+              : (exampleImages.length
+                  ? exampleImages
+                  : ['/resources/example1.png', '/resources/example2.png', '/resources/example3.png']
+                ).map((image) => (
+                  <img
+                    key={image}
+                    src={image}
+                    alt=""
+                    className="aspect-square rounded-lg bg-gray-100 object-cover"
+                  />
+                ))}
           </div>
         </PanelSection>
 

@@ -3,13 +3,17 @@
 import Link from 'next/link';
 import { useSearchParams } from 'next/navigation';
 import {
+  BookOpenText,
   Film,
+  Gauge,
   Image,
   LayoutTemplate,
   Library,
   ReceiptText,
   Users,
 } from 'lucide-react';
+import { AdminDashboardPanel } from '@/components/admin/dashboard-panel';
+import { AdminHelpPanel } from '@/components/admin/help-panel';
 import { LibraryAssetsPanel } from '@/components/admin/library-assets-panel';
 import { TemplatesPanel } from '@/components/admin/templates-panel';
 import {
@@ -27,6 +31,11 @@ import {
 import { cn } from '@/lib/utils';
 
 const TABLES = [
+  {
+    key: 'overview',
+    icon: Gauge,
+    adminOnly: false,
+  },
   {
     key: 'templates',
     icon: LayoutTemplate,
@@ -49,12 +58,17 @@ const TABLES = [
     icon: ReceiptText,
     adminOnly: true,
   },
+  {
+    key: 'help',
+    icon: BookOpenText,
+    adminOnly: false,
+  },
 ] as const;
 
 type TableKey = (typeof TABLES)[number]['key'];
 
 function buildManagementConfigs(content: AdminContent): Record<
-  Exclude<TableKey, 'templates' | 'library-assets'>,
+  Exclude<TableKey, 'overview' | 'templates' | 'library-assets' | 'help'>,
   AdminTableConfig
 > {
   const { management, statusLabels } = content;
@@ -69,29 +83,38 @@ function buildManagementConfigs(content: AdminContent): Record<
       icon: Users,
       deleteEnabled: true,
       columns: [
-        'id',
         'email',
         'name',
+        'accountStatus',
         'role',
-        'isAdmin',
         'creditBalance',
         'subscriptionStatus',
+        'planName',
         'createdAt',
-        'deletedAt',
       ],
       columnLabels: { ...management.users.fields, ...management.users.columns },
       columnWidths: {
-        id: 88,
-        email: 260,
+        email: 300,
         name: 180,
+        accountStatus: 118,
         role: 112,
-        isAdmin: 112,
         creditBalance: 136,
         subscriptionStatus: 150,
+        planName: 132,
         createdAt: 178,
-        deletedAt: 178,
       },
-      tableMinWidth: 1300,
+      detailColumns: [
+        'email',
+        'name',
+        'accountStatus',
+        'role',
+        'creditBalance',
+        'subscriptionStatus',
+        'planName',
+        'createdAt',
+        'updatedAt',
+      ],
+      tableMinWidth: 1180,
       modalLayout: 'stacked',
       editableFields: [
         { key: 'email', label: management.users.fields.email },
@@ -117,6 +140,11 @@ function buildManagementConfigs(content: AdminContent): Record<
           label: management.users.fields.subscriptionStatus,
           readOnly: true,
         },
+        {
+          key: 'planName',
+          label: management.users.fields.planName,
+          readOnly: true,
+        },
       ],
     },
     assets: {
@@ -128,27 +156,39 @@ function buildManagementConfigs(content: AdminContent): Record<
       icon: Image,
       deleteEnabled: true,
       columns: [
-        'id',
-        'userId',
+        'preview',
         'type',
         'status',
-        'storageKey',
         'mimeType',
         'sizeBytes',
         'createdAt',
+        'updatedAt',
       ],
       columnLabels: { ...management.assets.fields, ...management.assets.columns },
       columnWidths: {
-        id: 240,
-        userId: 96,
+        preview: 88,
         type: 140,
         status: 120,
-        storageKey: 300,
-        mimeType: 150,
+        mimeType: 180,
         sizeBytes: 120,
         createdAt: 178,
+        updatedAt: 178,
       },
-      tableMinWidth: 1360,
+      detailColumns: [
+        'previewUrl',
+        'type',
+        'status',
+        'mediaKind',
+        'previewMimeType',
+        'mimeType',
+        'sizeBytes',
+        'width',
+        'height',
+        'durationSeconds',
+        'createdAt',
+        'updatedAt',
+      ],
+      tableMinWidth: 1040,
       editableFields: [
         {
           key: 'status',
@@ -184,30 +224,46 @@ function buildManagementConfigs(content: AdminContent): Record<
       icon: Film,
       deleteEnabled: true,
       columns: [
-        'id',
-        'userId',
+        'inputPreview',
+        'finalPreview',
+        'generationType',
         'status',
-        'productName',
+        'inputSummary',
         'templateSlug',
-        'durationSeconds',
         'creditReserved',
         'createdAt',
+        'updatedAt',
       ],
+      optionalColumns: ['inputPreview', 'finalPreview'],
       columnLabels: {
         ...management['generation-jobs'].fields,
         ...management['generation-jobs'].columns,
       },
       columnWidths: {
-        id: 240,
-        userId: 96,
+        inputPreview: 88,
+        finalPreview: 88,
+        generationType: 150,
         status: 128,
-        productName: 220,
+        inputSummary: 260,
         templateSlug: 220,
-        durationSeconds: 112,
         creditReserved: 136,
         createdAt: 178,
+        updatedAt: 178,
       },
-      tableMinWidth: 1360,
+      detailColumns: [
+        'inputPreviewUrl',
+        'finalPreviewUrl',
+        'generationType',
+        'status',
+        'inputSummary',
+        'templateSlug',
+        'durationSeconds',
+        'creditReserved',
+        'errorMessage',
+        'createdAt',
+        'updatedAt',
+      ],
+      tableMinWidth: 1380,
       editableFields: [
         {
           key: 'status',
@@ -222,18 +278,6 @@ function buildManagementConfigs(content: AdminContent): Record<
           ],
         },
         {
-          key: 'productName',
-          label: management['generation-jobs'].fields.productName,
-        },
-        { key: 'headline', label: management['generation-jobs'].fields.headline },
-        {
-          key: 'sellingPoint',
-          label: management['generation-jobs'].fields.sellingPoint,
-          type: 'textarea',
-        },
-        { key: 'priceText', label: management['generation-jobs'].fields.priceText },
-        { key: 'ctaText', label: management['generation-jobs'].fields.ctaText },
-        {
           key: 'errorMessage',
           label: management['generation-jobs'].fields.errorMessage,
           type: 'textarea',
@@ -244,17 +288,15 @@ function buildManagementConfigs(content: AdminContent): Record<
       key: 'credit-ledger',
       title: management['credit-ledger'].title,
       description: management['credit-ledger'].description,
+      searchPlaceholder: management['credit-ledger'].searchPlaceholder,
       idField: 'id',
       icon: ReceiptText,
       deleteEnabled: false,
       columns: [
-        'id',
-        'userId',
-        'jobId',
+        'userEmail',
         'delta',
         'reason',
         'balanceAfter',
-        'stripeEventId',
         'createdAt',
       ],
       columnLabels: {
@@ -262,15 +304,28 @@ function buildManagementConfigs(content: AdminContent): Record<
         ...management['credit-ledger'].columns,
       },
       columnWidths: {
-        id: 240,
-        userId: 96,
-        jobId: 240,
+        userEmail: 260,
         delta: 92,
         reason: 220,
         balanceAfter: 140,
-        stripeEventId: 240,
         createdAt: 178,
       },
+      detailColumns: [
+        'userEmail',
+        'userName',
+        'delta',
+        'reason',
+        'balanceAfter',
+        'userId',
+        'jobId',
+        'generationType',
+        'jobStatus',
+        'jobTemplateSlug',
+        'jobInputSummary',
+        'stripeEventId',
+        'metadataJson',
+        'createdAt',
+      ],
       filterFields: [
         {
           key: 'userId',
@@ -286,7 +341,7 @@ function buildManagementConfigs(content: AdminContent): Record<
           type: 'date',
         },
       ],
-      tableMinWidth: 1460,
+      tableMinWidth: 1020,
       editEnabled: false,
       editableFields: [
         {
@@ -329,28 +384,28 @@ export function AdminShell({ canManageUsers }: { canManageUsers: boolean }) {
     (table) => table.key === requestedTab
   )
     ? requestedTab
-    : 'templates';
+    : 'overview';
 
   return (
     <div className="flex h-[calc(100vh-64px)] bg-gray-50">
-      <aside className="flex w-60 flex-col border-r border-gray-200 bg-white">
-        <div className="border-b border-gray-200 px-4 py-4">
+      <aside className="flex w-56 flex-col border-r border-gray-200 bg-white">
+        <div className="border-b border-gray-200 px-4 py-3">
           <span className="text-sm font-semibold uppercase text-gray-500">
             {content.shell.title}
           </span>
         </div>
-        <nav className="flex-1 overflow-y-auto py-2">
+        <nav className="flex-1 overflow-y-auto py-1.5">
           {visibleTables.map((table) => (
             <Link
               key={table.key}
               href={withDashboardLocale(
-                table.key === 'templates'
+                table.key === 'overview'
                   ? '/admin'
                   : `/admin?tab=${table.key}`,
                 locale
               )}
               className={cn(
-                'flex w-full items-center gap-3 px-4 py-3 text-base transition-colors',
+                'flex w-full items-center gap-3 px-4 py-2.5 text-sm transition-colors',
                 activeTab === table.key
                   ? 'bg-orange-50 font-medium text-orange-700'
                   : 'text-gray-600 hover:bg-gray-100 hover:text-gray-950'
@@ -365,7 +420,10 @@ export function AdminShell({ canManageUsers }: { canManageUsers: boolean }) {
         </nav>
       </aside>
 
-      <main className="min-w-0 flex-1 overflow-y-auto bg-gray-50 p-4 sm:p-6">
+      <main className="min-w-0 flex-1 overflow-y-auto bg-gray-50 p-3 sm:p-4">
+        {activeTab === 'overview' ? (
+          <AdminDashboardPanel content={content} />
+        ) : null}
         {activeTab === 'templates' ? (
           <TemplatesPanel
             canPublish={canManageUsers}
@@ -376,13 +434,19 @@ export function AdminShell({ canManageUsers }: { canManageUsers: boolean }) {
         {activeTab === 'library-assets' ? (
           <LibraryAssetsPanel canPublish={canManageUsers} content={content} />
         ) : null}
+        {activeTab === 'help' ? <AdminHelpPanel content={content} /> : null}
         {activeTab !== 'templates' &&
+        activeTab !== 'overview' &&
         activeTab !== 'library-assets' &&
+        activeTab !== 'help' &&
         activeTab in managementConfigs ? (
           <ManagementPanel
             config={
               managementConfigs[
-                activeTab as Exclude<TableKey, 'templates' | 'library-assets'>
+                activeTab as Exclude<
+                  TableKey,
+                  'overview' | 'templates' | 'library-assets' | 'help'
+                >
               ]
             }
             canEdit={canManageUsers}
