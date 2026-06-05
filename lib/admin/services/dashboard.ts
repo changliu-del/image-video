@@ -575,28 +575,27 @@ export async function getAdminDashboard(params: {
           where created_at >= range.from_day
             and created_at < range.to_exclusive
             and status in ('queued', 'submitting', 'running')
-            and coalesce(next_provider_poll_at, last_provider_poll_at, updated_at, created_at)
-              < now() - (${STUCK_RUNNING_THRESHOLD_MINUTES}::text || ' minutes')::interval
+            and updated_at < now() - (${STUCK_RUNNING_THRESHOLD_MINUTES}::text || ' minutes')::interval
         ) as stuck_running_jobs,
-        (select round(avg(extract(epoch from (completed_at - created_at))))::integer
+        (select round(avg(extract(epoch from (updated_at - created_at))))::integer
           from generation_jobs, range
           where created_at >= range.from_day
             and created_at < range.to_exclusive
-            and completed_at is not null
-            and completed_at >= created_at
+            and status in ('succeeded', 'failed')
+            and updated_at >= created_at
         ) as avg_completion_seconds,
         (select round(
             (
               percentile_cont(0.95) within group (
-                order by extract(epoch from (completed_at - created_at))
+                order by extract(epoch from (updated_at - created_at))
               )
             )::numeric
           )::integer
           from generation_jobs, range
           where created_at >= range.from_day
             and created_at < range.to_exclusive
-            and completed_at is not null
-            and completed_at >= created_at
+            and status in ('succeeded', 'failed')
+            and updated_at >= created_at
         ) as p95_completion_seconds,
         (select credit_events from credit_rollup) as credit_events,
         (select purchase_events from credit_rollup) as purchase_events,
@@ -728,7 +727,9 @@ export async function getAdminDashboard(params: {
         count(*) filter (where status = 'queued')::integer as queued,
         count(*) filter (where status = 'submitting')::integer as submitting,
         count(*) filter (where status = 'running')::integer as running,
-        round(avg(extract(epoch from (completed_at - created_at))))::integer as avg_completion_seconds
+        round((avg(extract(epoch from (updated_at - created_at))) filter (
+          where status in ('succeeded', 'failed') and updated_at >= created_at
+        )))::integer as avg_completion_seconds
       from generation_jobs, range
       where created_at >= range.from_day
         and created_at < range.to_exclusive

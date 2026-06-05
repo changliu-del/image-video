@@ -53,6 +53,7 @@ export async function GET(_request: NextRequest, context: RouteContext) {
       id: job.id,
       status: job.status,
       progressLabel: job.progressLabel,
+      finalImageUrl: job.finalImageUrl,
       finalVideoUrl: job.finalVideoUrl,
       thumbnailUrl: job.thumbnailUrl,
       errorMessage: job.errorMessage,

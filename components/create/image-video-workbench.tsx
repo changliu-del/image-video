@@ -49,6 +49,7 @@ import { cn } from '@/lib/utils';
 
 type AspectRatio = '9:16' | '1:1' | '16:9';
 type DurationSeconds = 5 | 8 | 10;
+type MaterialPickerSource = 'official' | 'history';
 
 type PresignResponse = {
   assetId: string;
@@ -81,6 +82,32 @@ const MAX_IMAGE_BYTES = 10 * 1024 * 1024;
 const ACCEPTED_IMAGE_TYPES = ['image/png', 'image/jpeg', 'image/webp'];
 const aspectRatios: AspectRatio[] = ['9:16', '1:1', '16:9'];
 const durations: DurationSeconds[] = [5, 8, 10];
+const materialPickerCopy = {
+  pt: {
+    official: 'Materiais oficiais',
+    history: 'Meu historico',
+    loadingHistory: 'Carregando historico',
+    historyError: 'Nao foi possivel carregar seu historico.',
+    emptyHistory: 'Seu historico ainda nao tem imagens para este fluxo.',
+    retry: 'Tentar novamente',
+  },
+  en: {
+    official: 'Official materials',
+    history: 'My history',
+    loadingHistory: 'Loading history',
+    historyError: 'History could not be loaded.',
+    emptyHistory: 'Your history does not have images for this flow yet.',
+    retry: 'Retry',
+  },
+  zh: {
+    official: '官方素材',
+    history: '我的历史',
+    loadingHistory: '加载历史素材中',
+    historyError: '历史素材加载失败。',
+    emptyHistory: '当前流程还没有可用的历史图片。',
+    retry: '重试',
+  },
+};
 
 function formatFileSize(sizeBytes: number) {
   return `${(sizeBytes / (1024 * 1024)).toFixed(1)} MB`;
@@ -243,6 +270,7 @@ export function ImageVideoWorkbench({
   const locale = useDashboardLocale();
   const copy = imageVideoWorkbenchCopy[locale];
   const commonCopy = commonWorkbenchCopy[locale];
+  const materialCopy = materialPickerCopy[locale];
   const starterPrompt = initialPrompt.trim();
   const [sourceFile, setSourceFile] = useState<File | null>(null);
   const [sourcePreview, setSourcePreview] = useState<string | null>(null);
@@ -254,6 +282,12 @@ export function ImageVideoWorkbench({
   const [exampleOffset, setExampleOffset] = useState(0);
   const [templates, setTemplates] = useState<LibraryItem[]>([]);
   const [assets, setAssets] = useState<LibraryItem[]>([]);
+  const [materialSource, setMaterialSource] =
+    useState<MaterialPickerSource>('official');
+  const [historyItems, setHistoryItems] = useState<LibraryItem[]>([]);
+  const [hasLoadedHistory, setHasLoadedHistory] = useState(false);
+  const [isLoadingHistory, setIsLoadingHistory] = useState(false);
+  const [historyError, setHistoryError] = useState(false);
   const [selectedTemplate, setSelectedTemplate] =
     useState<LibraryItem | null>(null);
   const [selectedAsset, setSelectedAsset] = useState<LibraryItem | null>(null);
@@ -278,6 +312,11 @@ export function ImageVideoWorkbench({
   const selectableAssets = useMemo(
     () => assets.filter((item) => getItemAssetId(item) && getItemImage(item)),
     [assets]
+  );
+  const selectableHistoryItems = useMemo(
+    () =>
+      historyItems.filter((item) => getItemAssetId(item) && getItemImage(item)),
+    [historyItems]
   );
   const canSubmit = Boolean(
     (sourceFile || selectedAssetId) && trimmedPrompt && !isSubmitting
@@ -362,6 +401,49 @@ export function ImageVideoWorkbench({
       cancelled = true;
     };
   }, [locale, requestedTemplateId]);
+
+  useEffect(() => {
+    if (materialSource !== 'history' || hasLoadedHistory) return;
+
+    let cancelled = false;
+
+    async function loadHistory() {
+      setIsLoadingHistory(true);
+      setHistoryError(false);
+
+      try {
+        const params = new URLSearchParams({
+          generationType: 'image_to_video',
+          pageSize: '12',
+        });
+        const response = await fetch(`/api/user-media?${params.toString()}`);
+
+        if (!response.ok) {
+          throw new Error('history-load-failed');
+        }
+
+        const body = await response.json();
+        if (!cancelled) {
+          setHistoryItems(normalizeItems(body));
+        }
+      } catch {
+        if (!cancelled) {
+          setHistoryItems([]);
+          setHistoryError(true);
+        }
+      } finally {
+        if (!cancelled) {
+          setIsLoadingHistory(false);
+          setHasLoadedHistory(true);
+        }
+      }
+    }
+
+    void loadHistory();
+    return () => {
+      cancelled = true;
+    };
+  }, [hasLoadedHistory, materialSource]);
 
   useEffect(() => {
     setPrompt((current) => current || copy.promptPresets[0]);
@@ -627,15 +709,100 @@ export function ImageVideoWorkbench({
           </div>
         </PanelSection>
 
-        <PanelSection title={copy.inspiration}>
+        <PanelSection
+          title={copy.inspiration}
+          hint={
+            materialSource === 'history'
+              ? isLoadingHistory
+                ? materialCopy.loadingHistory
+                : commonCopy.materialCount(selectableHistoryItems.length)
+              : isLoadingLibrary
+                ? commonCopy.loadingLibrary
+                : commonCopy.materialCount(selectableAssets.length)
+          }
+        >
           <ChoiceGrid
             options={copy.promptPresets}
             value={prompt}
             onChange={setPrompt}
             disabled={isSubmitting}
           />
+          <div className="mt-3 grid grid-cols-2 rounded-lg bg-gray-100 p-1">
+            {(['official', 'history'] as const).map((source) => (
+              <button
+                key={source}
+                type="button"
+                onClick={() => setMaterialSource(source)}
+                disabled={isSubmitting}
+                className={cn(
+                  'h-9 rounded-md text-xs font-bold transition disabled:cursor-not-allowed disabled:opacity-60',
+                  materialSource === source
+                    ? 'bg-white text-indigo-600 shadow-sm'
+                    : 'text-gray-500 hover:bg-white hover:text-indigo-600'
+                )}
+              >
+                {source === 'official' ? materialCopy.official : materialCopy.history}
+              </button>
+            ))}
+          </div>
           <div className="mt-3 grid grid-cols-3 gap-2">
-            {selectableAssets.length
+            {materialSource === 'history' ? (
+              isLoadingHistory ? (
+                <div className="col-span-3 flex items-center justify-center gap-2 rounded-lg border border-dashed border-gray-200 px-3 py-4 text-sm font-semibold text-gray-400">
+                  <Loader2 className="size-4 animate-spin" />
+                  {materialCopy.loadingHistory}
+                </div>
+              ) : historyError ? (
+                <div className="col-span-3 rounded-lg border border-red-100 bg-red-50 px-3 py-4 text-sm text-red-700">
+                  <div className="flex items-start gap-2">
+                    <AlertCircle className="mt-0.5 size-4 shrink-0" />
+                    <span>{materialCopy.historyError}</span>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setHistoryError(false);
+                      setHasLoadedHistory(false);
+                    }}
+                    className="mt-2 text-xs font-bold text-red-700 underline underline-offset-2"
+                  >
+                    {materialCopy.retry}
+                  </button>
+                </div>
+              ) : selectableHistoryItems.length ? (
+                selectableHistoryItems.slice(0, 12).map((asset) => {
+                  const image = getItemImage(asset);
+                  const active = selectedAssetId === getItemAssetId(asset);
+
+                  return (
+                    <button
+                      key={itemKey(asset)}
+                      type="button"
+                      onClick={() => selectLibraryAsset(asset)}
+                      disabled={isSubmitting}
+                      className={cn(
+                        'relative aspect-square overflow-hidden rounded-lg border bg-gray-100 transition disabled:cursor-not-allowed disabled:opacity-60',
+                        active
+                          ? 'border-indigo-500 ring-2 ring-indigo-100'
+                          : 'border-gray-200 hover:border-indigo-200'
+                      )}
+                      title={getItemLabel(asset)}
+                    >
+                      <img src={image} alt="" className="size-full object-cover" />
+                      {active ? (
+                        <span className="absolute right-2 top-2 flex size-6 items-center justify-center rounded-full bg-emerald-300 text-gray-950">
+                          <CheckCircle2 className="size-4" />
+                        </span>
+                      ) : null}
+                    </button>
+                  );
+                })
+              ) : (
+                <div className="col-span-3 rounded-lg border border-dashed border-gray-200 px-3 py-4 text-sm text-gray-400">
+                  {materialCopy.emptyHistory}
+                </div>
+              )
+            ) : selectableAssets.length
               ? selectableAssets.slice(0, 6).map((asset) => {
                   const image = getItemImage(asset);
                   const active = selectedAssetId === getItemAssetId(asset);

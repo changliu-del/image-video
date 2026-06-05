@@ -61,4 +61,25 @@ describe('library item utilities', () => {
     expect(getLibraryItemAssetId({ assetId: 123, title: 'Asset' })).toBe('123');
     expect(getLibraryItemAssetId({ id: 'template-1', title: 'Template' })).toBe('');
   });
+
+  it('supports user media items as generation-ready library items', () => {
+    const [item] = normalizeLibraryItems({
+      items: [
+        {
+          id: 'media-1',
+          assetId: 'asset-1',
+          title: 'Past result',
+          generationType: 'apparel_image',
+          imageUrl: 'https://cdn.example.com/history.webp',
+          source: 'history',
+          isFavorite: true,
+          usedCount: 2,
+        },
+      ],
+    });
+
+    expect(getLibraryItemAssetId(item)).toBe('asset-1');
+    expect(getLibraryItemImage(item)).toBe('https://cdn.example.com/history.webp');
+    expect(getLibraryItemLabel(item)).toBe('Past result');
+  });
 });

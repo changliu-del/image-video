@@ -24,7 +24,7 @@ type AdminCreditLedgerRecord = {
   user: Pick<typeof users.$inferSelect, 'email' | 'name'> | null;
   job: Pick<
     typeof generationJobs.$inferSelect,
-    'generationType' | 'inputJson' | 'status' | 'templateId'
+    'generationType' | 'inputJson' | 'status'
   > | null;
 };
 type AdminCreditLedgerListItem = typeof creditLedger.$inferSelect & {
@@ -54,7 +54,6 @@ function selectCreditsWithContext() {
         generationType: generationJobs.generationType,
         inputJson: generationJobs.inputJson,
         status: generationJobs.status,
-        templateId: generationJobs.templateId,
       },
     })
     .from(creditLedger)
@@ -74,7 +73,7 @@ function adminCreditLedgerRecordToListItem({
     generationType: job?.generationType ?? null,
     jobStatus: job?.status ?? null,
     jobInputSummary: summarizeAdminJobInput(job?.inputJson),
-    jobTemplateId: job?.templateId ?? getAdminJobTemplateId(job?.inputJson),
+    jobTemplateId: getAdminJobTemplateId(job?.inputJson),
   };
 }
 
@@ -124,7 +123,6 @@ export async function listCredits(params: {
       ilikeCol(users.name, query),
       ilikeCol(generationJobs.status, query),
       ilikeCol(generationJobs.generationType, query),
-      ilikeCol(generationJobs.templateId, query),
       ilikeJsonTextField(generationJobs.inputJson, 'productName', query),
       ilikeJsonTextField(generationJobs.inputJson, 'prompt', query),
       ilikeJsonTextField(generationJobs.inputJson, 'templateId', query),

@@ -3,8 +3,11 @@ export type WorkbenchLibraryItem = {
   assetId?: string | number | null;
   name?: string;
   title?: string;
+  description?: string | null;
   slug?: string;
   prompt?: string | null;
+  source?: string | null;
+  generationType?: string | null;
   imageUrl?: string | null;
   thumbnailUrl?: string | null;
   previewUrl?: string | null;
@@ -14,6 +17,8 @@ export type WorkbenchLibraryItem = {
   videoUrl?: string | null;
   mimeType?: string | null;
   type?: string | null;
+  isFavorite?: boolean | null;
+  usedCount?: number | null;
 };
 
 function isVideoUrl(value: string | null | undefined) {

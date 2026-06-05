@@ -27,6 +27,7 @@ import {
   submitTryOnMulti,
   submitTryOnSingle,
 } from '@/lib/providers/wanxiang/starlink';
+import { upsertUserMediaHistory } from '@/lib/user-media/service';
 
 const DEFAULT_PROVIDER = 'wanxiang';
 const PROVIDER_SUBMIT_LEASE_SECONDS = 120;
@@ -65,23 +66,16 @@ type GenerationJobRecord = {
   id: string;
   userId: number;
   generationType: GenerationType;
-  tryOnMode: TryOnMode | null;
   status: 'queued' | 'submitting' | 'running' | 'succeeded' | 'failed';
   provider: string;
   providerTaskId: string | null;
-  templateId: string | null;
   inputJson: Record<string, unknown>;
   outputJson: Record<string, unknown> | null;
   inputAssetId: string;
-  finalImageAssetId: string | null;
-  finalVideoAssetId: string | null;
+  outputAssetId: string | null;
   errorMessage: string | null;
   creditReserved: number;
   triggerRunId: string | null;
-  providerStatus: string | null;
-  attemptCount: number;
-  providerPollCount: number;
-  nextProviderPollAt: Date | null;
 };
 
 type JobStatusRecord = {
@@ -157,19 +151,6 @@ function toNullableNumber(value: unknown) {
   return Number.isFinite(numberValue) ? numberValue : null;
 }
 
-function toNullableDate(value: unknown) {
-  if (value == null) {
-    return null;
-  }
-
-  if (value instanceof Date) {
-    return value;
-  }
-
-  const date = new Date(String(value));
-  return Number.isNaN(date.getTime()) ? null : date;
-}
-
 function toBooleanValue(value: unknown) {
   if (typeof value === 'boolean') {
     return value;
@@ -188,6 +169,11 @@ function toJsonObject(value: unknown): Record<string, unknown> {
   }
 
   return {};
+}
+
+function getTryOnModeFromInput(input: Record<string, unknown>) {
+  const mode = input.tryOnMode ?? input.mode;
+  return mode === 'single' || mode === 'multi' ? mode : null;
 }
 
 function mapAssetRow(row: Record<string, unknown>): AssetRecord {
@@ -215,23 +201,16 @@ function mapGenerationJobRow(row: Record<string, unknown>): GenerationJobRecord 
     id: toStringValue(row.id),
     userId: Number(row.user_id),
     generationType: toStringValue(row.generation_type) as GenerationType,
-    tryOnMode: toNullableString(row.try_on_mode) as TryOnMode | null,
     status: toStringValue(row.status) as GenerationJobRecord['status'],
     provider: toStringValue(row.provider),
     providerTaskId: toNullableString(row.provider_task_id),
-    templateId: toNullableString(row.template_id),
     inputJson: toJsonObject(row.input_json),
     outputJson: row.output_json == null ? null : toJsonObject(row.output_json),
     inputAssetId: toStringValue(row.input_asset_id),
-    finalImageAssetId: toNullableString(row.final_image_asset_id),
-    finalVideoAssetId: toNullableString(row.final_video_asset_id),
+    outputAssetId: toNullableString(row.output_asset_id),
     errorMessage: toNullableString(row.error_message),
     creditReserved: Number(row.credit_reserved ?? 0),
     triggerRunId: toNullableString(row.trigger_run_id),
-    providerStatus: toNullableString(row.provider_status),
-    attemptCount: Number(row.attempt_count ?? 0),
-    providerPollCount: Number(row.provider_poll_count ?? 0),
-    nextProviderPollAt: toNullableDate(row.next_provider_poll_at),
   };
 }
 
@@ -582,10 +561,8 @@ async function createQueuedGenerationJobWithCreditReservation(input: {
         id,
         user_id,
         generation_type,
-        try_on_mode,
         status,
         provider,
-        template_id,
         input_json,
         input_asset_id,
         credit_reserved,
@@ -596,14 +573,8 @@ async function createQueuedGenerationJobWithCreditReservation(input: {
         ${input.jobId},
         ${input.userId},
         ${input.generation.generationType},
-        ${
-          input.generation.generationType === 'try_on'
-            ? input.generation.tryOnMode
-            : null
-        },
         'queued',
         ${DEFAULT_PROVIDER},
-        ${input.templateId},
         ${JSON.stringify(input.inputJson)}::jsonb,
         ${input.generation.inputAssetId},
         ${input.creditReserved},
@@ -789,8 +760,6 @@ async function markQueuedJobFailedAndRefund(input: {
       set
         status = 'failed',
         error_message = ${input.errorMessage.slice(0, 2000)},
-        completed_at = now(),
-        next_provider_poll_at = null,
         updated_at = now()
       where id = ${input.jobId}
         and user_id = ${input.userId}
@@ -917,11 +886,6 @@ function getNextPollMs(job: GenerationJobRecord) {
     return null;
   }
 
-  if (job.nextProviderPollAt) {
-    const delta = job.nextProviderPollAt.getTime() - Date.now();
-    return Math.min(30_000, Math.max(3_000, delta));
-  }
-
   switch (job.status) {
     case 'queued':
       return 2_000;
@@ -938,23 +902,16 @@ async function getGenerationJobRecordForUser(jobId: string, userId: number) {
       id,
       user_id,
       generation_type,
-      try_on_mode,
       status,
       provider,
       provider_task_id,
-      template_id,
       trigger_run_id,
-      provider_status,
       input_json,
       output_json,
       input_asset_id,
-      final_image_asset_id,
-      final_video_asset_id,
+      output_asset_id,
       error_message,
-      credit_reserved,
-      attempt_count,
-      provider_poll_count,
-      next_provider_poll_at
+      credit_reserved
     from generation_jobs
     where id = ${jobId}
       and user_id = ${userId}
@@ -971,23 +928,16 @@ async function getGenerationJobRecord(jobId: string) {
       id,
       user_id,
       generation_type,
-      try_on_mode,
       status,
       provider,
       provider_task_id,
-      template_id,
       trigger_run_id,
-      provider_status,
       input_json,
       output_json,
       input_asset_id,
-      final_image_asset_id,
-      final_video_asset_id,
+      output_asset_id,
       error_message,
-      credit_reserved,
-      attempt_count,
-      provider_poll_count,
-      next_provider_poll_at
+      credit_reserved
     from generation_jobs
     where id = ${jobId}
     limit 1
@@ -1006,9 +956,6 @@ async function markJobSubmitting(input: {
     set
       status = 'submitting',
       trigger_run_id = coalesce(${input.triggerRunId ?? null}, trigger_run_id),
-      attempt_count = attempt_count + 1,
-      started_at = coalesce(started_at, now()),
-      next_provider_poll_at = now() + (${PROVIDER_SUBMIT_LEASE_SECONDS}::text || ' seconds')::interval,
       updated_at = now()
     where id = ${input.jobId}
       and status = 'queued'
@@ -1029,16 +976,13 @@ async function markStaleSubmitLeaseFailedAndRefund(input: {
       update generation_jobs
       set
         status = 'failed',
-        provider_status = 'failed',
         error_message = 'Provider submit lease expired before a task id was recorded; refusing to resubmit.',
-        completed_at = now(),
-        next_provider_poll_at = null,
         updated_at = now()
       where id = ${input.jobId}
         and user_id = ${input.userId}
         and status = 'submitting'
         and provider_task_id is null
-        and coalesce(next_provider_poll_at, updated_at, created_at) <= now()
+        and updated_at <= now() - (${PROVIDER_SUBMIT_LEASE_SECONDS}::text || ' seconds')::interval
       returning id
     `;
 
@@ -1073,14 +1017,11 @@ async function markJobRunningWithProviderTask(input: {
       status = 'running',
       provider = ${input.submitResult.provider ?? DEFAULT_PROVIDER},
       provider_task_id = ${input.submitResult.providerTaskId},
-      provider_status = 'running',
       error_message = null,
       input_json = ${JSON.stringify({
         ...input.job.inputJson,
         providerSubmitRawResponse: input.submitResult.rawResponse,
       })}::jsonb,
-      submitted_at = coalesce(submitted_at, now()),
-      next_provider_poll_at = now() + interval '8 seconds',
       updated_at = now()
     where id = ${input.job.id}
       and status in ('submitting', 'running')
@@ -1105,13 +1046,9 @@ async function markJobProviderStillRunning(input: {
   await client`
     update generation_jobs
     set
-      provider_status = 'running',
       output_json = ${JSON.stringify({
         rawResponse: input.rawResponse,
       })}::jsonb,
-      provider_poll_count = provider_poll_count + 1,
-      last_provider_poll_at = now(),
-      next_provider_poll_at = now() + interval '12 seconds',
       updated_at = now()
     where id = ${input.job.id}
       and status = 'running'
@@ -1126,7 +1063,6 @@ async function markJobWorkerErrorForRetry(input: {
     update generation_jobs
     set
       error_message = ${input.errorMessage.slice(0, 2000)},
-      next_provider_poll_at = now() + interval '30 seconds',
       updated_at = now()
     where id = ${input.jobId}
       and status in ('queued', 'submitting', 'running')
@@ -1372,27 +1308,33 @@ async function createProviderResultAsset(
 async function mapJobStatus(job: GenerationJobRecord): Promise<JobStatusRecord> {
   const rows = await client`
     select
-      final_image.public_url as final_image_url,
-      final_video.public_url as final_video_url
+      output_asset.public_url as output_url,
+      output_asset.type as output_type,
+      output_asset.mime_type as output_mime_type
     from generation_jobs
-    left join assets final_image
-      on final_image.id = generation_jobs.final_image_asset_id
-    left join assets final_video
-      on final_video.id = generation_jobs.final_video_asset_id
+    left join assets output_asset
+      on output_asset.id = generation_jobs.output_asset_id
     where generation_jobs.id = ${job.id}
     limit 1
   `;
   const row = rows[0] as Record<string, unknown> | undefined;
+  const outputUrl = toNullableString(row?.output_url);
+  const outputType = toNullableString(row?.output_type);
+  const outputMimeType = toNullableString(row?.output_mime_type);
+  const outputIsVideo =
+    outputType === 'final_video' || outputMimeType?.startsWith('video/');
+  const outputIsImage =
+    outputType === 'final_image' || outputMimeType?.startsWith('image/');
 
   return {
     id: job.id,
     generationId: job.id,
     generationType: job.generationType,
-    tryOnMode: job.tryOnMode,
+    tryOnMode: getTryOnModeFromInput(job.inputJson),
     status: job.status,
     progressLabel: getProgressLabel(job.status),
-    finalImageUrl: toNullableString(row?.final_image_url),
-    finalVideoUrl: toNullableString(row?.final_video_url),
+    finalImageUrl: outputIsImage ? outputUrl : null,
+    finalVideoUrl: outputIsVideo ? outputUrl : null,
     thumbnailUrl: null,
     outputJson: job.outputJson,
     errorMessage: job.errorMessage,
@@ -1415,11 +1357,8 @@ async function markJobSucceeded(input: {
       update generation_jobs
       set
         status = 'succeeded',
-        provider_status = 'succeeded',
         output_json = ${JSON.stringify(outputJson)}::jsonb,
         error_message = null,
-        completed_at = now(),
-        next_provider_poll_at = null,
         updated_at = now()
       where id = ${input.job.id}
         and user_id = ${input.job.userId}
@@ -1428,27 +1367,30 @@ async function markJobSucceeded(input: {
     `;
 
     if (!transitionRows[0]) {
-      return false;
+      return null;
     }
 
-    const finalImageAssetId = input.queryResult.imageUrl
-      ? await createProviderResultAsset(
-          {
-            userId: input.job.userId,
-            jobId: input.job.id,
-            assetType: 'final_image',
-            publicUrl: input.queryResult.imageUrl,
-          },
-          sql
-        )
-      : null;
-    const finalVideoAssetId = input.queryResult.videoUrl
-      ? await createProviderResultAsset(
-          {
-            userId: input.job.userId,
-            jobId: input.job.id,
-            assetType: 'final_video',
+    const output =
+      input.queryResult.videoUrl
+        ? {
+            assetType: 'final_video' as const,
             publicUrl: input.queryResult.videoUrl,
+            source: 'generated_video' as const,
+          }
+        : input.queryResult.imageUrl
+          ? {
+              assetType: 'final_image' as const,
+              publicUrl: input.queryResult.imageUrl,
+              source: 'generated_image' as const,
+            }
+          : null;
+    const outputAssetId = output
+      ? await createProviderResultAsset(
+          {
+            userId: input.job.userId,
+            jobId: input.job.id,
+            assetType: output.assetType,
+            publicUrl: output.publicUrl,
           },
           sql
         )
@@ -1457,8 +1399,7 @@ async function markJobSucceeded(input: {
     await sql`
       update generation_jobs
       set
-        final_image_asset_id = ${finalImageAssetId},
-        final_video_asset_id = ${finalVideoAssetId},
+        output_asset_id = ${outputAssetId},
         updated_at = now()
       where id = ${input.job.id}
         and user_id = ${input.job.userId}
@@ -1478,11 +1419,31 @@ async function markJobSucceeded(input: {
       sql
     );
 
-    return true;
+    return outputAssetId && output
+      ? {
+          outputAssetId,
+          source: output.source,
+        }
+      : null;
   });
 
   if (!transitioned) {
     return;
+  }
+
+  try {
+    await upsertUserMediaHistory({
+      userId: input.job.userId,
+      assetId: transitioned.outputAssetId,
+      generationJobId: input.job.id,
+      source: transitioned.source,
+      generationType: input.job.generationType,
+      role: 'output',
+      usedCount: 0,
+      lastUsedAt: null,
+    });
+  } catch (error) {
+    console.error('Failed to record generated media history', error);
   }
 }
 
@@ -1498,13 +1459,10 @@ async function markJobFailed(input: {
       update generation_jobs
       set
         status = 'failed',
-        provider_status = 'failed',
         output_json = ${JSON.stringify({
           rawResponse: input.rawResponse,
         })}::jsonb,
         error_message = ${input.errorMessage},
-        completed_at = now(),
-        next_provider_poll_at = null,
         updated_at = now()
       where id = ${input.job.id}
         and user_id = ${input.job.userId}
@@ -1628,8 +1586,6 @@ export async function runWanxiangGenerationJob(
         update generation_jobs
         set
           status = 'running',
-          provider_status = coalesce(provider_status, 'running'),
-          started_at = coalesce(started_at, now()),
           updated_at = now()
         where id = ${job.id}
           and status in ('queued', 'submitting')
@@ -1647,7 +1603,7 @@ export async function runWanxiangGenerationJob(
 
     const queryResult = await queryWanxiangGeneration({
       generationType: job.generationType,
-      tryOnMode: job.tryOnMode,
+      tryOnMode: getTryOnModeFromInput(job.inputJson),
       providerTaskId: job.providerTaskId,
     });
 

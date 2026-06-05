@@ -10,7 +10,7 @@ Updated: 2026-06-03
 | `components/` | UI, marketing, admin, creation workbench components |
 | `lib/` | Auth, DB, generation jobs, providers, payments, templates, storage, observability |
 | `tests/` | Vitest unit tests |
-| `trigger/` | Trigger.dev task entrypoint for older fal/FFmpeg runner |
+| `trigger/` | Trigger.dev task entrypoint for active Wanxiang generation worker |
 | `docs/ecommerce-video-saas/` | Product, deployment, cost, crawler, and audit docs |
 | `project-kb/` | Project-owned KB |
 | `plugins/image-video-studio/` | Project-specific Codex plugin and skill |

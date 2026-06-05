@@ -13,7 +13,6 @@ import {
 import { requireAdmin, requireOpsOrAdmin } from '@/lib/db/queries';
 import {
   getAdminJobDurationSeconds,
-  getAdminJobTemplateId,
   summarizeAdminJobInput,
 } from '@/lib/admin/search';
 import {
@@ -39,12 +38,10 @@ type AdminAssetPreview = {
 type AdminGenerationJobRecord = {
   job: typeof generationJobs.$inferSelect;
   inputAsset: AdminAssetPreviewSource | null;
-  finalImageAsset: AdminAssetPreviewSource | null;
-  finalVideoAsset: AdminAssetPreviewSource | null;
+  outputAsset: AdminAssetPreviewSource | null;
 };
 type AdminGenerationJob = typeof generationJobs.$inferSelect & {
   inputSummary: string | null;
-  templateId: string | null;
   durationSeconds: number | null;
   inputPreviewUrl: string | null;
   inputPreviewMimeType: string | null;
@@ -52,17 +49,10 @@ type AdminGenerationJob = typeof generationJobs.$inferSelect & {
   finalPreviewUrl: string | null;
   finalPreviewMimeType: string | null;
   finalMediaKind: AdminMediaKind | null;
-  finalImagePreviewUrl: string | null;
-  finalImagePreviewMimeType: string | null;
-  finalImageMediaKind: AdminMediaKind | null;
-  finalVideoPreviewUrl: string | null;
-  finalVideoPreviewMimeType: string | null;
-  finalVideoMediaKind: AdminMediaKind | null;
 };
 
 const inputAsset = alias(assets, 'input_asset');
-const finalImageAsset = alias(assets, 'final_image_asset');
-const finalVideoAsset = alias(assets, 'final_video_asset');
+const outputAsset = alias(assets, 'output_asset');
 const MIME_TYPE_BY_EXTENSION: Record<string, string> = {
   avif: 'image/avif',
   gif: 'image/gif',
@@ -158,10 +148,9 @@ function mediaFieldsFromAsset(
 }
 
 function adminGenerationJobToListItem({
-  finalImageAsset,
-  finalVideoAsset,
   inputAsset,
   job,
+  outputAsset,
 }: AdminGenerationJobRecord): AdminGenerationJob {
   const inputJson =
     job.inputJson &&
@@ -171,16 +160,11 @@ function adminGenerationJobToListItem({
       : {};
 
   const inputPreview = mediaFieldsFromAsset(inputAsset);
-  const finalImagePreview = mediaFieldsFromAsset(finalImageAsset);
-  const finalVideoPreview = mediaFieldsFromAsset(finalVideoAsset);
-  const finalPreview = finalImagePreview.url
-    ? finalImagePreview
-    : finalVideoPreview;
+  const finalPreview = mediaFieldsFromAsset(outputAsset);
 
   return {
     ...job,
     inputSummary: summarizeAdminJobInput(inputJson),
-    templateId: job.templateId ?? getAdminJobTemplateId(inputJson),
     durationSeconds: getAdminJobDurationSeconds(inputJson),
     inputPreviewUrl: inputPreview.url,
     inputPreviewMimeType: inputPreview.mimeType,
@@ -188,12 +172,6 @@ function adminGenerationJobToListItem({
     finalPreviewUrl: finalPreview.url,
     finalPreviewMimeType: finalPreview.mimeType,
     finalMediaKind: finalPreview.mediaKind,
-    finalImagePreviewUrl: finalImagePreview.url,
-    finalImagePreviewMimeType: finalImagePreview.mimeType,
-    finalImageMediaKind: finalImagePreview.mediaKind,
-    finalVideoPreviewUrl: finalVideoPreview.url,
-    finalVideoPreviewMimeType: finalVideoPreview.mimeType,
-    finalVideoMediaKind: finalVideoPreview.mediaKind,
   };
 }
 
@@ -202,20 +180,12 @@ function selectJobsWithAssets() {
     .select({
       job: generationJobs,
       inputAsset,
-      finalImageAsset,
-      finalVideoAsset,
+      outputAsset,
     })
     .from(generationJobs)
     .leftJoin(users, eq(generationJobs.userId, users.id))
     .leftJoin(inputAsset, eq(generationJobs.inputAssetId, inputAsset.id))
-    .leftJoin(
-      finalImageAsset,
-      eq(generationJobs.finalImageAssetId, finalImageAsset.id)
-    )
-    .leftJoin(
-      finalVideoAsset,
-      eq(generationJobs.finalVideoAssetId, finalVideoAsset.id)
-    );
+    .leftJoin(outputAsset, eq(generationJobs.outputAssetId, outputAsset.id));
 }
 
 async function getAdminGenerationJobRecord(id: string) {
@@ -243,11 +213,9 @@ export async function listJobs(params: {
         exactCol(generationJobs.id, query),
         exactCol(generationJobs.userId, query),
         exactCol(generationJobs.inputAssetId, query),
-        exactCol(generationJobs.finalImageAssetId, query),
-        exactCol(generationJobs.finalVideoAssetId, query),
+        exactCol(generationJobs.outputAssetId, query),
         exactCol(generationJobs.providerTaskId, query),
         exactCol(generationJobs.triggerRunId, query),
-        exactCol(generationJobs.templateId, query),
         exactJsonTextField(generationJobs.inputJson, 'templateId', query),
         exactJsonTextField(generationJobs.inputJson, 'modelAssetId', query),
         exactJsonTextField(
@@ -261,10 +229,9 @@ export async function listJobs(params: {
         ilikeCol(users.name, query),
         ilikeCol(generationJobs.status, query),
         ilikeCol(generationJobs.generationType, query),
-        ilikeCol(generationJobs.tryOnMode, query),
         ilikeCol(generationJobs.provider, query),
-        ilikeCol(generationJobs.providerStatus, query),
         ilikeCol(generationJobs.errorMessage, query),
+        ilikeJsonTextField(generationJobs.inputJson, 'tryOnMode', query),
         ilikeJsonTextField(generationJobs.inputJson, 'productName', query),
         ilikeJsonTextField(generationJobs.inputJson, 'headline', query),
         ilikeJsonTextField(generationJobs.inputJson, 'prompt', query),
@@ -284,14 +251,7 @@ export async function listJobs(params: {
       .from(generationJobs)
       .leftJoin(users, eq(generationJobs.userId, users.id))
       .leftJoin(inputAsset, eq(generationJobs.inputAssetId, inputAsset.id))
-      .leftJoin(
-        finalImageAsset,
-        eq(generationJobs.finalImageAssetId, finalImageAsset.id)
-      )
-      .leftJoin(
-        finalVideoAsset,
-        eq(generationJobs.finalVideoAssetId, finalVideoAsset.id)
-      )
+      .leftJoin(outputAsset, eq(generationJobs.outputAssetId, outputAsset.id))
       .where(where),
   ]);
 

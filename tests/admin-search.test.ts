@@ -42,7 +42,7 @@ describe('Admin operational search fields', () => {
       expect.arrayContaining(['title', 'category', 'assetId', 'mimeType'])
     );
     expect(ADMIN_OPERATIONAL_SEARCH_FIELDS['generation-jobs']).toEqual(
-      expect.arrayContaining(['inputSummary', 'status', 'templateId'])
+      expect.arrayContaining(['inputSummary', 'status', 'generationType'])
     );
     expect(ADMIN_OPERATIONAL_SEARCH_FIELDS['credit-ledger']).toEqual(
       expect.arrayContaining(['userEmail', 'reason', 'stripeEventId'])

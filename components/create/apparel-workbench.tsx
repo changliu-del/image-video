@@ -52,6 +52,7 @@ import { cn } from '@/lib/utils';
 
 type AspectRatio = '9:16' | '1:1' | '16:9';
 type CreationMode = 'quick' | 'advanced';
+type MaterialPickerSource = 'official' | 'history';
 type ApparelModelType = 'fashion_model' | 'no_model' | 'partial_body' | 'lifestyle_talent';
 type ApparelScene = 'minimal_studio' | 'street_editorial' | 'luxury_boutique' | 'soft_daylight';
 type ApparelStyle = 'clean_commercial' | 'high_fashion' | 'korean_catalog' | 'premium_social_ad';
@@ -102,6 +103,32 @@ const styleValues: ApparelStyle[] = [
   'korean_catalog',
   'premium_social_ad',
 ];
+const materialPickerCopy = {
+  pt: {
+    official: 'Materiais oficiais',
+    history: 'Meu historico',
+    loadingHistory: 'Carregando historico',
+    historyError: 'Nao foi possivel carregar seu historico.',
+    emptyHistory: 'Seu historico ainda nao tem imagens para este fluxo.',
+    retry: 'Tentar novamente',
+  },
+  en: {
+    official: 'Official materials',
+    history: 'My history',
+    loadingHistory: 'Loading history',
+    historyError: 'History could not be loaded.',
+    emptyHistory: 'Your history does not have images for this flow yet.',
+    retry: 'Retry',
+  },
+  zh: {
+    official: '官方素材',
+    history: '我的历史',
+    loadingHistory: '加载历史素材中',
+    historyError: '历史素材加载失败。',
+    emptyHistory: '当前流程还没有可用的历史图片。',
+    retry: '重试',
+  },
+};
 
 async function readResponseError(response: Response, fallback: string) {
   try {
@@ -340,11 +367,18 @@ export function ApparelWorkbench({
   const copy = apparelWorkbenchCopy[locale];
   const commonCopy = commonWorkbenchCopy[locale];
   const banner = bannerCopy[locale];
+  const materialCopy = materialPickerCopy[locale];
   const starterPrompt = initialPrompt.trim();
   const [primaryFile, setPrimaryFile] = useState<File | null>(null);
   const [primaryPreview, setPrimaryPreview] = useState<string | null>(null);
   const [templates, setTemplates] = useState<LibraryItem[]>([]);
   const [assets, setAssets] = useState<LibraryItem[]>([]);
+  const [materialSource, setMaterialSource] =
+    useState<MaterialPickerSource>('official');
+  const [historyItems, setHistoryItems] = useState<LibraryItem[]>([]);
+  const [hasLoadedHistory, setHasLoadedHistory] = useState(false);
+  const [isLoadingHistory, setIsLoadingHistory] = useState(false);
+  const [historyError, setHistoryError] = useState(false);
   const [selectedTemplate, setSelectedTemplate] = useState<LibraryItem | null>(null);
   const [selectedLibraryAsset, setSelectedLibraryAsset] =
     useState<LibraryItem | null>(null);
@@ -401,6 +435,13 @@ export function ApparelWorkbench({
     () => assets.filter((item) => getItemAssetId(item) && getItemImage(item)),
     [assets]
   );
+  const selectableHistoryItems = useMemo(
+    () =>
+      historyItems.filter((item) => getItemAssetId(item) && getItemImage(item)),
+    [historyItems]
+  );
+  const pickerSelectableAssets =
+    materialSource === 'history' ? selectableHistoryItems : selectableAssets;
 
   const canSubmit = useMemo(() => {
     return !isSubmitting && Boolean(primaryFile || selectedLibraryAssetId);
@@ -478,6 +519,49 @@ export function ApparelWorkbench({
       cancelled = true;
     };
   }, [locale, requestedTemplateId]);
+
+  useEffect(() => {
+    if (materialSource !== 'history' || hasLoadedHistory) return;
+
+    let cancelled = false;
+
+    async function loadHistory() {
+      setIsLoadingHistory(true);
+      setHistoryError(false);
+
+      try {
+        const params = new URLSearchParams({
+          generationType: 'apparel_image',
+          pageSize: '12',
+        });
+        const response = await fetch(`/api/user-media?${params.toString()}`);
+
+        if (!response.ok) {
+          throw new Error('history-load-failed');
+        }
+
+        const body = await response.json();
+        if (!cancelled) {
+          setHistoryItems(normalizeItems(body));
+        }
+      } catch {
+        if (!cancelled) {
+          setHistoryItems([]);
+          setHistoryError(true);
+        }
+      } finally {
+        if (!cancelled) {
+          setIsLoadingHistory(false);
+          setHasLoadedHistory(true);
+        }
+      }
+    }
+
+    void loadHistory();
+    return () => {
+      cancelled = true;
+    };
+  }, [hasLoadedHistory, materialSource]);
 
   useEffect(() => {
     if (!jobId || terminalStatus(jobStatus?.status)) return;
@@ -777,43 +861,132 @@ export function ApparelWorkbench({
 
         <PanelSection
           title={copy.library}
-          hint={isLoadingLibrary ? commonCopy.loadingLibrary : commonCopy.materialCount(templates.length + assets.length)}
+          hint={
+            materialSource === 'history'
+              ? isLoadingHistory
+                ? materialCopy.loadingHistory
+                : commonCopy.materialCount(selectableHistoryItems.length)
+              : isLoadingLibrary
+                ? commonCopy.loadingLibrary
+                : commonCopy.materialCount(templates.length + assets.length)
+          }
         >
           <div className="space-y-4">
-            <div>
-              <h3 className="mb-2 text-xs font-bold text-gray-400">{copy.templateMaterials}</h3>
-              <div className="grid grid-cols-2 gap-2">
-                {templates.length === 0 ? (
-                  <p className="col-span-2 rounded-lg border border-dashed border-gray-200 px-3 py-4 text-sm text-gray-400">
-                    {commonCopy.noTemplates}
-                  </p>
-                ) : (
-                  templates.slice(0, 4).map((template) => {
-                    const image = getItemImage(template);
+            <div className="grid grid-cols-2 rounded-lg bg-gray-100 p-1">
+              {(['official', 'history'] as const).map((source) => (
+                <button
+                  key={source}
+                  type="button"
+                  onClick={() => setMaterialSource(source)}
+                  disabled={isSubmitting}
+                  className={cn(
+                    'h-9 rounded-md text-xs font-bold transition disabled:cursor-not-allowed disabled:opacity-60',
+                    materialSource === source
+                      ? 'bg-white text-indigo-600 shadow-sm'
+                      : 'text-gray-500 hover:bg-white hover:text-indigo-600'
+                  )}
+                >
+                  {source === 'official' ? materialCopy.official : materialCopy.history}
+                </button>
+              ))}
+            </div>
+            {materialSource === 'history' ? (
+              isLoadingHistory ? (
+                <div className="flex items-center justify-center gap-2 rounded-lg border border-dashed border-gray-200 px-3 py-4 text-sm font-semibold text-gray-400">
+                  <Loader2 className="size-4 animate-spin" />
+                  {materialCopy.loadingHistory}
+                </div>
+              ) : historyError ? (
+                <div className="rounded-lg border border-red-100 bg-red-50 px-3 py-4 text-sm text-red-700">
+                  <div className="flex items-start gap-2">
+                    <AlertCircle className="mt-0.5 size-4 shrink-0" />
+                    <span>{materialCopy.historyError}</span>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setHistoryError(false);
+                      setHasLoadedHistory(false);
+                    }}
+                    className="mt-2 text-xs font-bold text-red-700 underline underline-offset-2"
+                  >
+                    {materialCopy.retry}
+                  </button>
+                </div>
+              ) : selectableHistoryItems.length ? (
+                <div className="grid grid-cols-2 gap-2">
+                  {selectableHistoryItems.slice(0, 12).map((asset) => {
+                    const image = getItemImage(asset);
                     const active =
-                      String(selectedTemplate?.id) === String(template.id);
+                      selectedLibraryAssetId === getItemAssetId(asset);
 
                     return (
                       <button
-                        key={itemKey(template)}
+                        key={itemKey(asset)}
                         type="button"
-                        onClick={() => setSelectedTemplate(template)}
+                        onClick={() => applyLibraryAsset(asset)}
                         className={cn(
-                          'rounded-lg border bg-white p-2 text-left transition',
-                          active ? 'border-indigo-500 text-indigo-600' : 'border-gray-200 text-gray-600'
+                          'rounded-lg border bg-white p-2 text-left text-gray-600 transition hover:border-indigo-200 hover:text-indigo-600',
+                          active
+                            ? 'border-indigo-500 ring-2 ring-indigo-100'
+                            : 'border-gray-200'
                         )}
                       >
                         <div className="aspect-square overflow-hidden rounded-md bg-gray-100">
-                          {image ? <img src={image} alt="" className="size-full object-cover" /> : null}
+                          <img
+                            src={image}
+                            alt=""
+                            className="size-full object-cover"
+                          />
                         </div>
-                        <p className="mt-2 truncate text-xs font-bold">{getItemLabel(template)}</p>
+                        <p className="mt-2 truncate text-xs font-bold">
+                          {getItemLabel(asset)}
+                        </p>
                       </button>
                     );
-                  })
-                )}
-              </div>
-            </div>
-            {selectableAssets.length > 0 ? (
+                  })}
+                </div>
+              ) : (
+                <div className="rounded-lg border border-dashed border-gray-200 px-3 py-4 text-sm text-gray-400">
+                  {materialCopy.emptyHistory}
+                </div>
+              )
+            ) : (
+              <>
+                <div>
+                  <h3 className="mb-2 text-xs font-bold text-gray-400">{copy.templateMaterials}</h3>
+                  <div className="grid grid-cols-2 gap-2">
+                    {templates.length === 0 ? (
+                      <p className="col-span-2 rounded-lg border border-dashed border-gray-200 px-3 py-4 text-sm text-gray-400">
+                        {commonCopy.noTemplates}
+                      </p>
+                    ) : (
+                      templates.slice(0, 4).map((template) => {
+                        const image = getItemImage(template);
+                        const active =
+                          String(selectedTemplate?.id) === String(template.id);
+
+                        return (
+                          <button
+                            key={itemKey(template)}
+                            type="button"
+                            onClick={() => setSelectedTemplate(template)}
+                            className={cn(
+                              'rounded-lg border bg-white p-2 text-left transition',
+                              active ? 'border-indigo-500 text-indigo-600' : 'border-gray-200 text-gray-600'
+                            )}
+                          >
+                            <div className="aspect-square overflow-hidden rounded-md bg-gray-100">
+                              {image ? <img src={image} alt="" className="size-full object-cover" /> : null}
+                            </div>
+                            <p className="mt-2 truncate text-xs font-bold">{getItemLabel(template)}</p>
+                          </button>
+                        );
+                      })
+                    )}
+                  </div>
+                </div>
+                {selectableAssets.length > 0 ? (
               <div>
                 <h3 className="mb-2 text-xs font-bold text-gray-400">
                   {copy.libraryMaterials}
@@ -853,7 +1026,9 @@ export function ApparelWorkbench({
                   })}
                 </div>
               </div>
-            ) : null}
+                ) : null}
+              </>
+            )}
           </div>
         </PanelSection>
 
@@ -989,9 +1164,9 @@ export function ApparelWorkbench({
                   icon={ImageIcon}
                   label={commonCopy.chooseFromLibrary}
                   onClick={() =>
-                    applyLibraryAsset(selectedLibraryAsset ?? selectableAssets[0])
+                    applyLibraryAsset(selectedLibraryAsset ?? pickerSelectableAssets[0])
                   }
-                  disabled={selectableAssets.length === 0}
+                  disabled={pickerSelectableAssets.length === 0}
                 />
                 <IconButtonCard
                   icon={UploadCloud}

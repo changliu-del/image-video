@@ -113,6 +113,20 @@
       "when": 1780000013000,
       "tag": "0015_remove_users_is_admin",
       "breakpoints": true
+    },
+    {
+      "idx": 16,
+      "version": "7",
+      "when": 1780000014000,
+      "tag": "0017_user_media_history",
+      "breakpoints": true
+    },
+    {
+      "idx": 17,
+      "version": "7",
+      "when": 1780000015000,
+      "tag": "0018_simplify_generation_jobs",
+      "breakpoints": true
     }
   ]
 }

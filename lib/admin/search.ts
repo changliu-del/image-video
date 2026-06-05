@@ -14,10 +14,8 @@ export const ADMIN_OPERATIONAL_SEARCH_FIELDS: Record<
   assets: ['type', 'status', 'mimeType'],
   'generation-jobs': [
     'inputSummary',
-    'templateId',
     'status',
     'generationType',
-    'tryOnMode',
   ],
   templates: ['name', 'category', 'tags'],
   'library-assets': ['title', 'description', 'category', 'assetId', 'mimeType'],

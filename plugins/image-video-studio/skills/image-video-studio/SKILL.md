@@ -1,15 +1,15 @@
 ---
 name: image-video-studio
-description: Use only when the current workspace is /Users/changliu/workspace/src/github.com/image-video, or when the user explicitly asks for this image-video SaaS project, and Codex needs project background, KB navigation, frontend/backend/QA coordination, or implementation across routes, workbenches, APIs, providers, credits, payments, templates, library assets, storage, or deployment docs.
+description: Use only when the current workspace is /Users/changliu/workspace/src/github.com/image-video, or when the user explicitly asks for this image-video SaaS project, and Codex needs project background, KB navigation, frontend/backend/QA work, or implementation across routes, workbenches, APIs, providers, credits, payments, templates, library assets, storage, or deployment docs.
 ---
 
 # Image Video Studio
 
 ## Overview
 
-This is the project-specific working mode for `/Users/changliu/workspace/src/github.com/image-video`. It gives Codex a stable KB entrypoint and a non-corporate, no-token-friction multi-agent development workflow for the personal ecommerce image/video SaaS.
+This is the project-specific working mode for `/Users/changliu/workspace/src/github.com/image-video`. It gives Codex a stable KB entrypoint and a token-conscious single-agent development workflow for the personal ecommerce image/video SaaS.
 
-For substantive development work, default to a lead-agent plus five specialist-agent topology: case-search, reference-code, frontend implementation, backend implementation, and QA implementation. Add Product and KB/doc agents only when the task needs product scope decisions or durable documentation updates.
+For substantive development work, default to one lead agent working locally through discovery, implementation, validation, and concise handoff. Do not launch specialist subagents as the default workflow. Preserve the ability to update project KB and this skill when new durable project facts or workflow preferences are discovered.
 
 ## Canonical Paths
 
@@ -64,7 +64,7 @@ Start with `project-kb/README.md`, then load only the section that matches the t
 - Product/business context: `project-kb/business-kb/image-video/README.md`
 - Architecture and stable project decisions: `project-kb/core-kb/image-video.md`
 - Code modules, API contracts, risky areas: `project-kb/code-kb/image-video/README.md`
-- Feature plans and multi-agent work plans: `project-kb/td-kb/image-video/README.md`
+- Feature plans and execution notes: `project-kb/td-kb/image-video/README.md`
 
 For frontend-visible changes, also load `project-kb/code-kb/image-video/06-frontend-rendering-architecture.md` before editing routes or components.
 
@@ -85,35 +85,29 @@ Use this checklist before and after frontend edits:
 - Add scoped loading, error, empty, and retry states for every async section.
 - Browser-smoke the changed route in the relevant locale after implementation.
 
-## Multi-Agent Mode
+## Agent Mode
 
-Use this mode when the user asks for no-token-limit development, multi-agent work, broad project progress analysis, or any substantive implementation task. This is not `dev-agent`; it is a practical project mode.
+Default to a single-agent workflow. Keep the critical path in the main thread: inspect the relevant KB/code, implement the smallest coherent patch, validate it, update durable docs when needed, and report the result.
 
-The lead agent keeps the critical path local and delegates sidecar tasks with disjoint responsibilities. The standard development topology is:
+Do not spawn multi-agent development workers merely because a task is substantive, broad, or touches frontend/backend/QA. Multi-agent work is opt-in only: use subagents only when the user explicitly asks for multi-agent/delegated work in the current turn, or after asking for confirmation with a clear token/coordination reason.
 
-- Case-search agent: external examples, competitor/product references, UX cases, implementation patterns from reliable sources.
-- Reference-code agent: existing local patterns, CodeGraph structural lookup, adjacent route/API/component/test conventions.
-- Frontend implementation agent: dashboard shell, marketing pages, workbenches, UX states, browser checks.
-- Backend implementation agent: API routes, generation jobs, providers, credits, payments, storage, DB schema.
-- QA implementation agent: Vitest coverage, typecheck/build, route smoke, regression risks, and test fixtures.
+When a task would previously have used specialist agents, fold those responsibilities into the single-agent checklist:
 
-Optional specialist agents:
+- Case/reference pass: gather only the local or external context needed for the current change.
+- Frontend/backend implementation: keep edits scoped to the affected modules and existing project patterns.
+- QA pass: run focused tests, type checks, and browser smoke after implementation when the surface is user-visible.
+- Product/KB pass: update `project-kb/`, `docs/ecommerce-video-saas/`, or this skill when project understanding or workflow rules change.
 
-- Product agent: user flow, pricing/credits, MVP scope, business constraints.
-- KB/doc agent: project-kb updates, docs updates, decision records, open questions.
-
-For tiny one-file fixes, the lead agent may execute directly. For normal feature work, launch or explicitly account for all five standard agents; if a role has no useful work, record it as not applicable with the reason. Do not delegate the immediate blocker. Spawn agents only for independent work that can run while the lead agent implements or integrates another slice. Give each worker an explicit write scope and remind it not to revert other edits.
-
-Read `references/agent-mode.md` for role contracts and handoff templates when the task is substantial.
+Keep `references/agent-mode.md` as historical guidance only. Do not follow it as the default workflow unless the user explicitly revives multi-agent mode.
 
 ## Implementation Workflow
 
 1. Load the relevant KB pages and current git status.
 2. Identify the product goal, affected modules, and validation target.
-3. For substantive work, launch the standard case-search, reference-code, frontend, backend, and QA agents with disjoint scopes; add Product and KB/doc agents when needed.
-4. Implement with the smallest coherent patch; avoid speculative rewrites.
-5. Validate with focused tests, then broader checks when shared code changed.
-6. Update KB/docs when new facts, risks, or decisions were discovered.
+3. Implement with the smallest coherent patch; avoid speculative rewrites.
+4. Validate with focused tests, then broader checks when shared code changed.
+5. Update KB/docs when new facts, risks, decisions, or workflow preferences were discovered.
+6. When this skill itself needs a durable workflow update, edit the source skill under `plugins/image-video-studio/` first and sync the installed cache copy.
 7. Final response should include changed files, validations, and remaining risks.
 
 ## Common Validation
@@ -131,7 +125,7 @@ For frontend-visible changes, verify the relevant route at `http://localhost:301
 
 ## Project References
 
-- `references/agent-mode.md`: detailed multi-agent orchestration mode.
+- `references/agent-mode.md`: historical multi-agent orchestration guidance; use only when the user explicitly asks to revive multi-agent mode.
 - `references/kb-navigation.md`: KB map and update rules.
 - `project-kb/code-kb/image-video/07-library-assets-and-admin.md`: first-party reusable material library and Admin flow.
 - `project-kb/`: project-owned knowledge base.

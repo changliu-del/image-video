@@ -25,7 +25,7 @@ describe('generation job accounting safety', () => {
     expect(source).toContain('PROVIDER_SUBMIT_LEASE_SECONDS');
     expect(source).toContain('acquiredSubmitLease');
     expect(source).toContain("status = 'queued'");
-    expect(source).toContain('next_provider_poll_at');
+    expect(source).toContain('updated_at <= now() -');
     expect(source).toContain('idempotencyKey: `generation:${job.id}`');
   });
 });
@@ -55,7 +55,6 @@ describe('Admin backend safety rails', () => {
     expect(source).toContain('delete from template_tag_relations');
     expect(source).toContain('delete from template_assets');
     expect(source).toContain('update template_source_records');
-    expect(source).toContain('update generation_jobs');
     expect(source).toContain('update template_audit_logs');
     expect(source).toContain('delete from templates');
   });

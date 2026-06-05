@@ -50,6 +50,7 @@ import { cn } from '@/lib/utils';
 
 type TryOnMode = 'single' | 'multi';
 type ModelSource = 'library' | 'custom';
+type MaterialPickerSource = 'official' | 'history';
 type PosePreset = 'auto' | 'front' | 'editorial' | 'runway';
 type BackgroundPreset = 'studio' | 'street' | 'minimal' | 'boutique';
 type FitPreset = 'natural' | 'tailored' | 'relaxed';
@@ -97,6 +98,32 @@ const modeValues: TryOnMode[] = ['single', 'multi'];
 const poseValues: PosePreset[] = ['auto', 'front', 'editorial', 'runway'];
 const backgroundValues: BackgroundPreset[] = ['studio', 'street', 'minimal', 'boutique'];
 const fitValues: FitPreset[] = ['natural', 'tailored', 'relaxed'];
+const materialPickerCopy = {
+  pt: {
+    official: 'Materiais oficiais',
+    history: 'Meu historico',
+    loadingHistory: 'Carregando historico',
+    historyError: 'Nao foi possivel carregar seu historico.',
+    emptyHistory: 'Seu historico ainda nao tem imagens para este fluxo.',
+    retry: 'Tentar novamente',
+  },
+  en: {
+    official: 'Official materials',
+    history: 'My history',
+    loadingHistory: 'Loading history',
+    historyError: 'History could not be loaded.',
+    emptyHistory: 'Your history does not have images for this flow yet.',
+    retry: 'Retry',
+  },
+  zh: {
+    official: '官方素材',
+    history: '我的历史',
+    loadingHistory: '加载历史素材中',
+    historyError: '历史素材加载失败。',
+    emptyHistory: '当前流程还没有可用的历史图片。',
+    retry: '重试',
+  },
+};
 
 function normalizeModelItems(value: unknown): ModelCatalogItem[] {
   if (!value || typeof value !== 'object') return [];
@@ -402,6 +429,7 @@ export function TryOnWorkbench({
   const copy = tryOnWorkbenchCopy[locale];
   const commonCopy = commonWorkbenchCopy[locale];
   const banner = bannerCopy[locale];
+  const materialCopy = materialPickerCopy[locale];
   const starterPrompt = initialPrompt.trim();
   const [modelFile, setModelFile] = useState<File | null>(null);
   const [garmentFiles, setGarmentFiles] = useState<File[]>([]);
@@ -417,10 +445,17 @@ export function TryOnWorkbench({
   const [templates, setTemplates] = useState<LibraryItem[]>([]);
   const [assets, setAssets] = useState<LibraryItem[]>([]);
   const [modelAssets, setModelAssets] = useState<ModelCatalogItem[]>([]);
+  const [materialSource, setMaterialSource] =
+    useState<MaterialPickerSource>('official');
+  const [historyItems, setHistoryItems] = useState<LibraryItem[]>([]);
+  const [hasLoadedHistory, setHasLoadedHistory] = useState(false);
+  const [isLoadingHistory, setIsLoadingHistory] = useState(false);
+  const [historyError, setHistoryError] = useState(false);
   const [selectedModelAsset, setSelectedModelAsset] = useState<ModelCatalogItem | null>(null);
   const [selectedLibraryItem, setSelectedLibraryItem] = useState<LibraryItem | null>(null);
-  const [selectedGarmentAsset, setSelectedGarmentAsset] =
-    useState<LibraryItem | null>(null);
+  const [selectedGarmentAssets, setSelectedGarmentAssets] = useState<
+    LibraryItem[]
+  >([]);
   const [isLoadingLibrary, setIsLoadingLibrary] = useState(true);
   const [exampleOffset, setExampleOffset] = useState(0);
   const [submitLabel, setSubmitLabel] = useState<string | null>(null);
@@ -435,15 +470,32 @@ export function TryOnWorkbench({
     modelSource === 'custom' ? modelPreview : getModelAssetImage(selectedModelAsset);
   const selectedModelLabel =
     modelSource === 'custom' ? modelFile?.name : selectedModelAsset?.title;
-  const selectedGarmentAssetId = selectedGarmentAsset
-    ? getItemAssetId(selectedGarmentAsset)
-    : '';
+  const selectedGarmentAssetIds = useMemo(
+    () => selectedGarmentAssets.map(getItemAssetId).filter(Boolean),
+    [selectedGarmentAssets]
+  );
+  const selectedGarmentAsset = selectedGarmentAssets[0] ?? null;
   const selectedGarmentPreview = selectedGarmentAsset
     ? getItemImage(selectedGarmentAsset)
     : '';
   const selectedGarmentLabel = selectedGarmentAsset
     ? getItemLabel(selectedGarmentAsset)
     : undefined;
+  const selectedGarmentPreviewTiles = selectedGarmentAssets
+    .map((asset) => ({
+      image: getItemImage(asset),
+      title: getItemLabel(asset),
+    }))
+    .filter((item) => item.image);
+  const garmentPreviewTiles = [
+    ...selectedGarmentPreviewTiles,
+    ...garmentPreviews.map((image, index) => ({
+      image,
+      title: garmentFiles[index]?.name,
+    })),
+  ];
+  const garmentInputCount =
+    garmentFiles.length + selectedGarmentAssetIds.length;
   const modeOptions = modeValues.map((value) => ({
     value,
     label: copy.modeOptions[value],
@@ -453,15 +505,14 @@ export function TryOnWorkbench({
     const hasModel = modelSource === 'custom' ? Boolean(modelFile) : Boolean(selectedModelAsset);
     if (isSubmitting || !hasModel) return false;
     return mode === 'single'
-      ? garmentFiles.length >= 1 || Boolean(selectedGarmentAssetId)
-      : garmentFiles.length >= 2;
+      ? garmentInputCount >= 1
+      : garmentInputCount >= 2;
   }, [
-    garmentFiles.length,
+    garmentInputCount,
     isSubmitting,
     mode,
     modelFile,
     modelSource,
-    selectedGarmentAssetId,
     selectedModelAsset,
   ]);
 
@@ -558,6 +609,49 @@ export function TryOnWorkbench({
   }, [locale, requestedTemplateId]);
 
   useEffect(() => {
+    if (materialSource !== 'history' || hasLoadedHistory) return;
+
+    let cancelled = false;
+
+    async function loadHistory() {
+      setIsLoadingHistory(true);
+      setHistoryError(false);
+
+      try {
+        const params = new URLSearchParams({
+          generationType: 'try_on',
+          pageSize: '12',
+        });
+        const response = await fetch(`/api/user-media?${params.toString()}`);
+
+        if (!response.ok) {
+          throw new Error('history-load-failed');
+        }
+
+        const body = await response.json();
+        if (!cancelled) {
+          setHistoryItems(normalizeItems(body));
+        }
+      } catch {
+        if (!cancelled) {
+          setHistoryItems([]);
+          setHistoryError(true);
+        }
+      } finally {
+        if (!cancelled) {
+          setIsLoadingHistory(false);
+          setHasLoadedHistory(true);
+        }
+      }
+    }
+
+    void loadHistory();
+    return () => {
+      cancelled = true;
+    };
+  }, [hasLoadedHistory, materialSource]);
+
+  useEffect(() => {
     if (!jobId || terminalStatus(jobStatus?.status)) return;
 
     let cancelled = false;
@@ -623,7 +717,7 @@ export function TryOnWorkbench({
     }
 
     setGarmentFiles(mode === 'single' ? nextFiles.slice(0, 1) : nextFiles.slice(0, 4));
-    setSelectedGarmentAsset(null);
+    setSelectedGarmentAssets([]);
   }
 
   async function handleSubmit(event: React.FormEvent<HTMLFormElement>) {
@@ -636,12 +730,12 @@ export function TryOnWorkbench({
       return;
     }
 
-    if (mode === 'single' && garmentFiles.length === 0 && !selectedGarmentAssetId) {
+    if (mode === 'single' && garmentInputCount === 0) {
       setError(copy.selectSingleGarmentError);
       return;
     }
 
-    if (mode === 'multi' && garmentFiles.length < 2) {
+    if (mode === 'multi' && garmentInputCount < 2) {
       setError(copy.selectMultiGarmentError);
       return;
     }
@@ -653,15 +747,16 @@ export function TryOnWorkbench({
     try {
       setSubmitLabel(useCustomModel ? copy.uploadingModel : copy.preparingModel);
       const modelAssetId = useCustomModel && modelFile ? await uploadAsset(modelFile, commonCopy) : undefined;
-      const garmentAssetIds =
-        mode === 'single' && selectedGarmentAssetId && garmentFiles.length === 0
-          ? [selectedGarmentAssetId]
-          : await Promise.all(
-              garmentFiles.map(async (file, index) => {
-                setSubmitLabel(copy.uploadingGarment(index + 1));
-                return uploadAsset(file, commonCopy);
-              })
-            );
+      const uploadedGarmentAssetIds = await Promise.all(
+        garmentFiles.map(async (file, index) => {
+          setSubmitLabel(copy.uploadingGarment(index + 1));
+          return uploadAsset(file, commonCopy);
+        })
+      );
+      const garmentAssetIds = [
+        ...selectedGarmentAssetIds,
+        ...uploadedGarmentAssetIds,
+      ];
 
       setSubmitLabel(copy.startingTryOn);
       const selectedTemplateId =
@@ -737,12 +832,42 @@ export function TryOnWorkbench({
   }
 
   function selectLibraryGarment(asset: LibraryItem | null | undefined) {
-    if (!asset || !getItemAssetId(asset) || mode !== 'single') return;
+    if (!asset || !getItemAssetId(asset)) return;
 
     setError(null);
-    setGarmentFiles([]);
-    setSelectedGarmentAsset(asset);
+    setSelectedGarmentAssets([asset]);
+    if (mode === 'single') {
+      setGarmentFiles([]);
+    }
     setSelectedLibraryItem(asset);
+    setPrompt((current) => {
+      const label = getItemLabel(asset);
+      const trimmed = current.trim();
+      return trimmed.includes(label) ? trimmed : `${trimmed} ${label}`.trim();
+    });
+  }
+
+  function toggleLibraryGarment(asset: LibraryItem | null | undefined) {
+    const assetId = getItemAssetId(asset);
+    if (!asset || !assetId) return;
+
+    setError(null);
+    setSelectedLibraryItem(asset);
+    setSelectedGarmentAssets((current) => {
+      const existingIndex = current.findIndex(
+        (item) => getItemAssetId(item) === assetId
+      );
+      if (existingIndex >= 0) {
+        return current.filter((_, index) => index !== existingIndex);
+      }
+
+      const maxSelectedAssets = Math.max(0, 4 - garmentFiles.length);
+      if (current.length >= maxSelectedAssets) {
+        return current;
+      }
+
+      return [...current, asset];
+    });
     setPrompt((current) => {
       const label = getItemLabel(asset);
       const trimmed = current.trim();
@@ -755,12 +880,37 @@ export function TryOnWorkbench({
       selectLibraryModel(modelAssets[0]);
     }
     if (mode === 'single') {
-      const garmentAsset = selectedGarmentAsset ?? selectableGarmentAssets[0];
+      const garmentAsset =
+        selectedGarmentAsset ??
+        (materialSource === 'history'
+          ? selectableHistoryItems[0]
+          : selectableGarmentAssets[0]);
       if (garmentAsset) {
         selectLibraryGarment(garmentAsset);
         return;
       }
     }
+
+    if (mode === 'multi') {
+      const candidates =
+        materialSource === 'history'
+          ? selectableHistoryItems
+          : selectableGarmentAssets;
+      const selectedIds = new Set(selectedGarmentAssetIds);
+      const availableSlots = Math.max(
+        0,
+        4 - garmentFiles.length - selectedGarmentAssets.length
+      );
+      const additions = candidates
+        .filter((asset) => !selectedIds.has(getItemAssetId(asset)))
+        .slice(0, Math.min(availableSlots, Math.max(0, 2 - garmentInputCount)));
+
+      if (additions.length > 0) {
+        setSelectedGarmentAssets((current) => [...current, ...additions]);
+        return;
+      }
+    }
+
     applyLibraryTemplate(selectedLibraryItem ?? templates[0] ?? assets[0]);
   }
 
@@ -772,6 +922,15 @@ export function TryOnWorkbench({
     () => assets.filter((item) => getItemAssetId(item) && getItemImage(item)),
     [assets]
   );
+  const selectableHistoryItems = useMemo(
+    () =>
+      historyItems.filter((item) => getItemAssetId(item) && getItemImage(item)),
+    [historyItems]
+  );
+  const displayedLibraryTiles =
+    materialSource === 'history' ? selectableHistoryItems : libraryTiles;
+  const isChooseFromLibraryDisabled =
+    modelAssets.length === 0 && displayedLibraryTiles.length === 0;
   const baseLibraryImages = [...templates, ...assets].map(getItemImage).filter(Boolean);
   const libraryStart = baseLibraryImages.length ? exampleOffset % baseLibraryImages.length : 0;
   const libraryImages = [
@@ -780,8 +939,8 @@ export function TryOnWorkbench({
   ].slice(0, 6);
   const statusLabel = jobStatus?.progressLabel ?? jobStatus?.status ?? (jobId ? commonCopy.generating : null);
   const garmentLabel =
-    garmentFiles.length > 1
-      ? copy.garmentCount(garmentFiles.length)
+    garmentInputCount > 1
+      ? copy.garmentCount(garmentInputCount)
       : garmentFiles[0]?.name ?? selectedGarmentLabel;
 
   return (
@@ -834,15 +993,15 @@ export function TryOnWorkbench({
               disabled={isSubmitting}
               onChange={selectGarmentFiles}
             >
-              {garmentPreviews.length > 1 ? (
+              {garmentPreviewTiles.length > 1 ? (
                 <div className="mt-3 grid grid-cols-4 gap-2">
-                  {garmentPreviews.map((preview, index) => (
+                  {garmentPreviewTiles.map((item) => (
                     <img
-                      key={preview}
-                      src={preview}
+                      key={item.image}
+                      src={item.image}
                       alt=""
                       className="aspect-square rounded-md border border-gray-200 object-cover"
-                      title={garmentFiles[index]?.name}
+                      title={item.title}
                     />
                   ))}
                 </div>
@@ -858,9 +1017,9 @@ export function TryOnWorkbench({
             onChange={(nextMode) => {
               setMode(nextMode);
               setGarmentFiles((files) => (nextMode === 'single' ? files.slice(0, 1) : files));
-              if (nextMode === 'multi') {
-                setSelectedGarmentAsset(null);
-              }
+              setSelectedGarmentAssets((assets) =>
+                nextMode === 'single' ? assets.slice(0, 1) : assets
+              );
             }}
             disabled={isSubmitting}
             columns={2}
@@ -1030,41 +1189,101 @@ export function TryOnWorkbench({
 
         <PanelSection
           title={copy.library}
-          hint={isLoadingLibrary ? commonCopy.loadingLibrary : commonCopy.materialCount(libraryTiles.length)}
+          hint={
+            materialSource === 'history'
+              ? isLoadingHistory
+                ? materialCopy.loadingHistory
+                : commonCopy.materialCount(selectableHistoryItems.length)
+              : isLoadingLibrary
+                ? commonCopy.loadingLibrary
+                : commonCopy.materialCount(libraryTiles.length)
+          }
         >
-          <div className="grid grid-cols-3 gap-2">
-            {libraryTiles.length === 0 ? (
-              <p className="col-span-3 rounded-lg border border-dashed border-gray-200 px-3 py-4 text-sm text-gray-400">
-                {copy.noTemplates}
-              </p>
-            ) : (
-              libraryTiles.slice(0, 6).map((template) => {
-                const image = getItemImage(template);
-                const assetId = getItemAssetId(template);
-                const active = assetId
-                  ? selectedGarmentAssetId === assetId
-                  : String(selectedLibraryItem?.id) === String(template.id);
-
-                return (
+          <div className="space-y-3">
+            <div className="grid grid-cols-2 rounded-lg bg-gray-100 p-1">
+              {(['official', 'history'] as const).map((source) => (
+                <button
+                  key={source}
+                  type="button"
+                  onClick={() => setMaterialSource(source)}
+                  disabled={isSubmitting}
+                  className={cn(
+                    'h-9 rounded-md text-xs font-bold transition disabled:cursor-not-allowed disabled:opacity-60',
+                    materialSource === source
+                      ? 'bg-white text-indigo-600 shadow-sm'
+                      : 'text-gray-500 hover:bg-white hover:text-indigo-600'
+                  )}
+                >
+                  {source === 'official' ? materialCopy.official : materialCopy.history}
+                </button>
+              ))}
+            </div>
+            <div className="grid grid-cols-3 gap-2">
+              {materialSource === 'history' && isLoadingHistory ? (
+                <div className="col-span-3 flex items-center justify-center gap-2 rounded-lg border border-dashed border-gray-200 px-3 py-4 text-sm font-semibold text-gray-400">
+                  <Loader2 className="size-4 animate-spin" />
+                  {materialCopy.loadingHistory}
+                </div>
+              ) : materialSource === 'history' && historyError ? (
+                <div className="col-span-3 rounded-lg border border-red-100 bg-red-50 px-3 py-4 text-sm text-red-700">
+                  <div className="flex items-start gap-2">
+                    <AlertCircle className="mt-0.5 size-4 shrink-0" />
+                    <span>{materialCopy.historyError}</span>
+                  </div>
                   <button
-                    key={String(template.id ?? image)}
                     type="button"
-                    onClick={() =>
-                      assetId && mode === 'single'
-                        ? selectLibraryGarment(template)
-                        : applyLibraryTemplate(template)
-                    }
-                    className={cn(
-                      'aspect-square overflow-hidden rounded-lg border bg-gray-100',
-                      active ? 'border-indigo-500 ring-2 ring-indigo-100' : 'border-gray-200'
-                    )}
-                    title={getItemLabel(template)}
+                    onClick={() => {
+                      setHistoryError(false);
+                      setHasLoadedHistory(false);
+                    }}
+                    className="mt-2 text-xs font-bold text-red-700 underline underline-offset-2"
                   >
-                    {image ? <img src={image} alt="" className="size-full object-cover" /> : null}
+                    {materialCopy.retry}
                   </button>
-                );
-              })
-            )}
+                </div>
+              ) : displayedLibraryTiles.length === 0 ? (
+                <p className="col-span-3 rounded-lg border border-dashed border-gray-200 px-3 py-4 text-sm text-gray-400">
+                  {materialSource === 'history'
+                    ? materialCopy.emptyHistory
+                    : copy.noTemplates}
+                </p>
+              ) : (
+                displayedLibraryTiles.slice(0, 12).map((template) => {
+                  const image = getItemImage(template);
+                  const assetId = getItemAssetId(template);
+                  const active = assetId
+                    ? selectedGarmentAssetIds.includes(assetId)
+                    : String(selectedLibraryItem?.id) === String(template.id);
+
+                  return (
+                    <button
+                      key={String(template.id ?? image)}
+                      type="button"
+                      onClick={() => {
+                        if (!assetId) {
+                          applyLibraryTemplate(template);
+                          return;
+                        }
+
+                        if (mode === 'single') {
+                          selectLibraryGarment(template);
+                          return;
+                        }
+
+                        toggleLibraryGarment(template);
+                      }}
+                      className={cn(
+                        'aspect-square overflow-hidden rounded-lg border bg-gray-100',
+                        active ? 'border-indigo-500 ring-2 ring-indigo-100' : 'border-gray-200'
+                      )}
+                      title={getItemLabel(template)}
+                    >
+                      {image ? <img src={image} alt="" className="size-full object-cover" /> : null}
+                    </button>
+                  );
+                })
+              )}
+            </div>
           </div>
         </PanelSection>
 
@@ -1121,7 +1340,7 @@ export function TryOnWorkbench({
                   icon={Images}
                   label={commonCopy.chooseFromLibrary}
                   onClick={chooseFromLibrary}
-                  disabled={modelAssets.length === 0 && libraryTiles.length === 0}
+                  disabled={isChooseFromLibraryDisabled}
                 />
                 <IconButtonCard
                   icon={UploadCloud}

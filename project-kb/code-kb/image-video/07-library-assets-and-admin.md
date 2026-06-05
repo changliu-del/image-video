@@ -12,10 +12,11 @@ Use this page when a task mentions materials, material library, example media, w
 
 | Area | Files |
 |---|---|
-| DB schema | `lib/db/schema.ts` (`libraryAssets`, `LIBRARY_ASSET_CATEGORIES`) |
-| Migration | `lib/db/migrations/0009_library_assets.sql`, `lib/db/migrations/0013_simplify_library_assets.sql`, `lib/db/migrations/0014_library_assets_category_unique.sql` |
+| DB schema | `lib/db/schema.ts` (`libraryAssets`, `userMediaHistory`, `LIBRARY_ASSET_CATEGORIES`) |
+| Migration | `lib/db/migrations/0009_library_assets.sql`, `lib/db/migrations/0013_simplify_library_assets.sql`, `lib/db/migrations/0014_library_assets_category_unique.sql`, `lib/db/migrations/0017_user_media_history.sql` |
 | Storage helpers | `lib/storage/r2.ts` (`buildLibraryAssetStorageKey`, `storageKeyMatchesLibraryAsset`) |
 | Public query | `lib/library-assets/query.ts`, `app/api/library-assets/route.ts` |
+| Private user history query | `lib/user-media/service.ts`, `app/api/user-media/route.ts`, `app/api/user-media/[id]/route.ts` |
 | Admin service | `lib/admin/services/library-assets.ts` |
 | Admin API | `app/api/admin/library-assets/**` |
 | Admin UI | `components/admin/library-assets-panel.tsx`, `app/(dashboard)/admin/components/admin-shell.tsx` |
@@ -34,6 +35,24 @@ Use this page when a task mentions materials, material library, example media, w
 Current allowed categories are `image_to_video`, `apparel_image`, and `try_on`.
 The DB uniqueness rule is `(asset_id, category)`, not bare `asset_id`.
 
+## Library vs User History
+
+As of 2026-06-05, first-party materials and personal user history are separate product surfaces:
+
+- `library_assets` is the ops/admin curated official library. It is public catalog data, category-routed, reusable across users, and maintained through Admin.
+- `user_media_history` is the private per-user history layer. It references uploaded/generated rows in `assets`, can optionally point back to a `library_assets` row or `generation_jobs` row, and stores user-specific state such as visibility, favorite, usage count, and last-used time.
+
+Do not merge these two concepts into one public material table. Workbenches should expose them as separate source tabs, for example official materials and my history. Official material APIs can use the shared public catalog cache policy. User history APIs must use current-user auth and `Cache-Control: no-store`.
+
+`user_media_history.source` values:
+
+- `user_upload`: a user's uploaded input media.
+- `generated_image`: a generated image output.
+- `generated_video`: a generated video output.
+- `ops_library_used`: a user-specific record of using an official library asset.
+
+`user_media_history.role` values classify how the media is used in a workflow: `input`, `output`, `reference`, `garment`, or `model`.
+
 ## Lifecycle
 
 1. Ops/admin requests `POST /api/admin/library-assets/presign`.
@@ -50,6 +69,16 @@ Role boundary: ops can create and edit library asset metadata; admin is required
 Frontend visibility requires the underlying `assets` row to be `uploaded` and the
 `library_assets.category` value to match the workbench query.
 
+User history lifecycle:
+
+1. User uploads complete through `POST /api/assets/complete`.
+2. The upload remains stored in `assets`, then a best-effort `user_media_history` row is upserted with `source = user_upload`.
+3. Successful generation jobs write final image/video asset IDs on `generation_jobs`, then best-effort upsert `generated_image` and/or `generated_video` history rows.
+4. Workbenches fetch private history through `/api/user-media?generationType=...`.
+5. Users can update title, favorite state, or visibility through `/api/user-media/[id]`; delete is a soft delete.
+
+The history write path must not fail upload completion, job success, or credit settlement. Keep it best-effort and log failures separately.
+
 ## Workbench Consumption
 
 Workbench libraries combine generated templates with first-party library assets:
@@ -57,6 +86,11 @@ Workbench libraries combine generated templates with first-party library assets:
 - `/create/video`: `/api/templates?category=image_to_video` plus `/api/library-assets?category=image_to_video`.
 - `/create/apparel`: `/api/templates?category=image_to_image` plus `/api/library-assets?category=apparel_image`.
 - `/create/try-on`: `/api/templates?category=try_on`, `/api/model-assets`, plus `/api/library-assets?category=try_on`.
+
+Each workbench should keep official library materials and user history visually separated:
+
+- official tab: fetches the public template/library/model catalogs.
+- history tab: fetches `/api/user-media` for the current user, uses the item's underlying `assetId` for generation payloads, and never relies on public catalog cache headers.
 
 Keep template IDs and library asset IDs separate. Library assets are inspiration/examples unless the generation payload explicitly supports them as template inputs.
 
@@ -117,6 +151,8 @@ This UI is operational, so keep it dense, predictable, and task-first rather tha
 - `completeLibraryAsset` must verify the R2 object with `verifyUploadedObject` before marking the DB row uploaded.
 - Admin "remove" currently removes the library metadata record; it is not a full R2 object deletion flow.
 - The old multi-use field is intentionally removed. `category` is the single workbench routing field; migration keeps old multi-use-case records by copying them into one row per `(assetId, category)`.
+- Apply `0017_user_media_history.sql` before enabling user history in a target database.
+- `/api/user-media` is private account data. It must keep `getUser()` auth, `user_id` filtering, uploaded-asset filtering, and `Cache-Control: no-store`.
 
 ## Validation
 
@@ -124,6 +160,7 @@ For code changes that affect this area, prefer:
 
 ```bash
 pnpm typecheck
+pnpm test tests/user-media-backend.test.ts tests/library-item-utils.test.ts
 pnpm test tests/generations-validation.test.ts
 pnpm test
 pnpm build

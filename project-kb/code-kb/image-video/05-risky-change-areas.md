@@ -5,7 +5,7 @@ Updated: 2026-06-03
 ## P0
 
 - Active Wanxiang generation path is now DB-first and Trigger.dev-backed; deploy/migrate must happen together so queued jobs can be consumed.
-- Legacy Trigger/fal/FFmpeg runner path still disagrees with active schema/statuses and must remain inactive until reconciled or removed.
+- Legacy Trigger/fal/FFmpeg runner is disabled; keep `trigger/generate-video.ts` off the active path unless it is intentionally rebuilt on the simplified job schema.
 
 ## P1
 

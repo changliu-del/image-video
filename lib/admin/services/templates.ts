@@ -419,11 +419,6 @@ export async function removeTemplate(id: string) {
       where template_id = ${templateId}
     `;
     await sqlClient`
-      update generation_jobs
-      set template_id = null, updated_at = now()
-      where template_id = ${templateId}
-    `;
-    await sqlClient`
       update template_audit_logs
       set template_id = null
       where template_id = ${templateId}

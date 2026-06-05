@@ -86,6 +86,32 @@ export const LIBRARY_ASSET_CATEGORIES = [
 ] as const;
 export type LibraryAssetCategory = (typeof LIBRARY_ASSET_CATEGORIES)[number];
 
+export const USER_MEDIA_HISTORY_SOURCES = [
+  'user_upload',
+  'generated_image',
+  'generated_video',
+  'ops_library_used',
+] as const;
+export type UserMediaHistorySource =
+  (typeof USER_MEDIA_HISTORY_SOURCES)[number];
+
+export const USER_MEDIA_HISTORY_ROLES = [
+  'input',
+  'output',
+  'reference',
+  'garment',
+  'model',
+] as const;
+export type UserMediaHistoryRole = (typeof USER_MEDIA_HISTORY_ROLES)[number];
+
+export const USER_MEDIA_HISTORY_VISIBILITIES = [
+  'active',
+  'hidden',
+  'deleted',
+] as const;
+export type UserMediaHistoryVisibility =
+  (typeof USER_MEDIA_HISTORY_VISIBILITIES)[number];
+
 export const CREDIT_LEDGER_REASONS = [
   'purchase',
   'reserve',
@@ -536,19 +562,13 @@ export const generationJobs = pgTable(
     generationType: text('generation_type')
       .$type<GenerationType>()
       .notNull(),
-    tryOnMode: text('try_on_mode').$type<TryOnMode>(),
     inputAssetId: uuid('input_asset_id')
       .notNull()
       .references(() => assets.id),
-    finalImageAssetId: uuid('final_image_asset_id').references(() => assets.id),
-    finalVideoAssetId: uuid('final_video_asset_id').references(() => assets.id),
+    outputAssetId: uuid('output_asset_id').references(() => assets.id),
     provider: text('provider').notNull().default('wanxiang'),
     providerTaskId: text('provider_task_id'),
     triggerRunId: text('trigger_run_id'),
-    providerStatus: varchar('provider_status', { length: 32 }),
-    templateId: uuid('template_id').references(() => templates.id, {
-      onDelete: 'set null',
-    }),
     inputJson: jsonb('input_json')
       .$type<Record<string, unknown>>()
       .notNull()
@@ -557,15 +577,8 @@ export const generationJobs = pgTable(
     errorMessage: text('error_message'),
     creditReserved: integer('credit_reserved').notNull().default(0),
     creditSpent: integer('credit_spent').notNull().default(0),
-    attemptCount: integer('attempt_count').notNull().default(0),
-    providerPollCount: integer('provider_poll_count').notNull().default(0),
     createdAt: timestamp('created_at').notNull().defaultNow(),
     updatedAt: timestamp('updated_at').notNull().defaultNow(),
-    submittedAt: timestamp('submitted_at'),
-    startedAt: timestamp('started_at'),
-    lastProviderPollAt: timestamp('last_provider_poll_at'),
-    nextProviderPollAt: timestamp('next_provider_poll_at'),
-    completedAt: timestamp('completed_at'),
   },
   (table) => [
     index('generation_jobs_user_id_idx').on(table.userId),
@@ -574,12 +587,8 @@ export const generationJobs = pgTable(
       table.generationType,
       table.status
     ),
-    index('generation_jobs_status_next_poll_idx').on(
-      table.status,
-      table.nextProviderPollAt
-    ),
     index('generation_jobs_input_asset_id_idx').on(table.inputAssetId),
-    index('generation_jobs_template_id_idx').on(table.templateId),
+    index('generation_jobs_output_asset_id_idx').on(table.outputAssetId),
     uniqueIndex('generation_jobs_provider_task_id_unique').on(
       table.provider,
       table.providerTaskId
@@ -593,22 +602,90 @@ export const generationJobs = pgTable(
       sql`${table.generationType} in ('image_to_video', 'apparel_image', 'try_on')`
     ),
     check(
-      'generation_jobs_try_on_mode_check',
-      sql`${table.tryOnMode} is null or ${table.tryOnMode} in ('single', 'multi')`
-    ),
-    check(
-      'generation_jobs_try_on_mode_type_check',
-      sql`(${table.generationType} = 'try_on' and ${table.tryOnMode} is not null) or (${table.generationType} <> 'try_on' and ${table.tryOnMode} is null)`
-    ),
-    check(
       'generation_jobs_credit_reserved_check',
       sql`${table.creditReserved} >= 0`
     ),
     check('generation_jobs_credit_spent_check', sql`${table.creditSpent} >= 0`),
-    check('generation_jobs_attempt_count_check', sql`${table.attemptCount} >= 0`),
+  ]
+);
+
+export const userMediaHistory = pgTable(
+  'user_media_history',
+  {
+    id: uuid('id').defaultRandom().primaryKey(),
+    userId: integer('user_id')
+      .notNull()
+      .references(() => users.id),
+    assetId: uuid('asset_id')
+      .notNull()
+      .references(() => assets.id),
+    libraryAssetId: uuid('library_asset_id').references(() => libraryAssets.id, {
+      onDelete: 'set null',
+    }),
+    generationJobId: uuid('generation_job_id').references(() => generationJobs.id, {
+      onDelete: 'set null',
+    }),
+    source: varchar('source', { length: 32 })
+      .$type<UserMediaHistorySource>()
+      .notNull(),
+    generationType: varchar('generation_type', { length: 32 }).$type<GenerationType>(),
+    role: varchar('role', { length: 32 }).$type<UserMediaHistoryRole>(),
+    title: varchar('title', { length: 140 }),
+    description: text('description'),
+    visibility: varchar('visibility', { length: 16 })
+      .$type<UserMediaHistoryVisibility>()
+      .notNull()
+      .default('active'),
+    isFavorite: boolean('is_favorite').notNull().default(false),
+    usedCount: integer('used_count').notNull().default(0),
+    lastUsedAt: timestamp('last_used_at'),
+    createdAt: timestamp('created_at').notNull().defaultNow(),
+    updatedAt: timestamp('updated_at').notNull().defaultNow(),
+  },
+  (table) => [
+    uniqueIndex('user_media_history_user_asset_source_role_unique')
+      .on(table.userId, table.assetId, table.source, table.role)
+      .where(sql`${table.role} is not null`),
+    uniqueIndex('user_media_history_user_asset_source_unique')
+      .on(table.userId, table.assetId, table.source)
+      .where(sql`${table.role} is null`),
+    index('user_media_history_user_visibility_updated_idx').on(
+      table.userId,
+      table.visibility,
+      table.updatedAt
+    ),
+    index('user_media_history_user_source_updated_idx').on(
+      table.userId,
+      table.source,
+      table.updatedAt
+    ),
+    index('user_media_history_user_generation_type_updated_idx').on(
+      table.userId,
+      table.generationType,
+      table.updatedAt
+    ),
+    index('user_media_history_asset_id_idx').on(table.assetId),
+    index('user_media_history_library_asset_id_idx').on(table.libraryAssetId),
+    index('user_media_history_generation_job_id_idx').on(table.generationJobId),
     check(
-      'generation_jobs_provider_poll_count_check',
-      sql`${table.providerPollCount} >= 0`
+      'user_media_history_source_check',
+      sql`${table.source} in ('user_upload', 'generated_image', 'generated_video', 'ops_library_used')`
+    ),
+    check(
+      'user_media_history_generation_type_check',
+      sql`${table.generationType} is null or ${table.generationType} in ('image_to_video', 'apparel_image', 'try_on')`
+    ),
+    check(
+      'user_media_history_role_check',
+      sql`${table.role} is null or ${table.role} in ('input', 'output', 'reference', 'garment', 'model')`
+    ),
+    check(
+      'user_media_history_visibility_check',
+      sql`${table.visibility} in ('active', 'hidden', 'deleted')`
+    ),
+    check(
+      'user_media_history_used_count_check',
+      sql`${table.usedCount} >= 0`
     ),
   ]
 );
@@ -665,6 +742,7 @@ export const creditLedger = pgTable(
 export const usersRelations = relations(users, ({ many }) => ({
   assets: many(assets),
   generationJobs: many(generationJobs),
+  userMediaHistory: many(userMediaHistory),
   creditLedgerEntries: many(creditLedger),
   createdTemplates: many(templates, { relationName: 'templateCreator' }),
   updatedTemplates: many(templates, { relationName: 'templateUpdater' }),
@@ -679,11 +757,11 @@ export const assetsRelations = relations(assets, ({ one, many }) => ({
     references: [users.id],
   }),
   inputForJobs: many(generationJobs, { relationName: 'inputAsset' }),
-  finalImageForJobs: many(generationJobs, { relationName: 'finalImageAsset' }),
-  finalVideoForJobs: many(generationJobs, { relationName: 'finalVideoAsset' }),
+  outputForJobs: many(generationJobs, { relationName: 'outputAsset' }),
   previewForTemplates: many(templates, { relationName: 'templatePreviewAsset' }),
   templateAssets: many(templateAssets),
   libraryAssetRecords: many(libraryAssets),
+  userMediaHistory: many(userMediaHistory),
 }));
 
 export const templatesRelations = relations(templates, ({ one, many }) => ({
@@ -705,7 +783,6 @@ export const templatesRelations = relations(templates, ({ one, many }) => ({
   tagRelations: many(templateTagRelations),
   assetRelations: many(templateAssets),
   auditLogs: many(templateAuditLogs),
-  generationJobs: many(generationJobs),
 }));
 
 export const templateTagsRelations = relations(templateTags, ({ many }) => ({
@@ -780,7 +857,7 @@ export const templateSourceRecordsRelations = relations(
   })
 );
 
-export const libraryAssetsRelations = relations(libraryAssets, ({ one }) => ({
+export const libraryAssetsRelations = relations(libraryAssets, ({ one, many }) => ({
   asset: one(assets, {
     fields: [libraryAssets.assetId],
     references: [assets.id],
@@ -795,11 +872,12 @@ export const libraryAssetsRelations = relations(libraryAssets, ({ one }) => ({
     references: [users.id],
     relationName: 'libraryAssetUpdater',
   }),
+  userMediaHistory: many(userMediaHistory),
 }));
 
 export const generationJobsRelations = relations(
   generationJobs,
-  ({ one }) => ({
+  ({ one, many }) => ({
     user: one(users, {
       fields: [generationJobs.userId],
       references: [users.id],
@@ -809,19 +887,33 @@ export const generationJobsRelations = relations(
       references: [assets.id],
       relationName: 'inputAsset',
     }),
-    finalImageAsset: one(assets, {
-      fields: [generationJobs.finalImageAssetId],
+    outputAsset: one(assets, {
+      fields: [generationJobs.outputAssetId],
       references: [assets.id],
-      relationName: 'finalImageAsset',
+      relationName: 'outputAsset',
     }),
-    finalVideoAsset: one(assets, {
-      fields: [generationJobs.finalVideoAssetId],
+    userMediaHistory: many(userMediaHistory),
+  })
+);
+
+export const userMediaHistoryRelations = relations(
+  userMediaHistory,
+  ({ one }) => ({
+    user: one(users, {
+      fields: [userMediaHistory.userId],
+      references: [users.id],
+    }),
+    asset: one(assets, {
+      fields: [userMediaHistory.assetId],
       references: [assets.id],
-      relationName: 'finalVideoAsset',
     }),
-    template: one(templates, {
-      fields: [generationJobs.templateId],
-      references: [templates.id],
+    libraryAsset: one(libraryAssets, {
+      fields: [userMediaHistory.libraryAssetId],
+      references: [libraryAssets.id],
+    }),
+    generationJob: one(generationJobs, {
+      fields: [userMediaHistory.generationJobId],
+      references: [generationJobs.id],
     }),
   })
 );
@@ -859,5 +951,7 @@ export type LibraryAsset = typeof libraryAssets.$inferSelect;
 export type NewLibraryAsset = typeof libraryAssets.$inferInsert;
 export type GenerationJob = typeof generationJobs.$inferSelect;
 export type NewGenerationJob = typeof generationJobs.$inferInsert;
+export type UserMediaHistory = typeof userMediaHistory.$inferSelect;
+export type NewUserMediaHistory = typeof userMediaHistory.$inferInsert;
 export type CreditLedgerEntry = typeof creditLedger.$inferSelect;
 export type NewCreditLedgerEntry = typeof creditLedger.$inferInsert;

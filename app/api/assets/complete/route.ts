@@ -4,6 +4,7 @@ import {
   markAssetUploaded,
 } from '@/lib/generations/jobs';
 import { completeAssetRequestSchema } from '@/lib/generations/validation';
+import { upsertUserMediaHistory } from '@/lib/user-media/service';
 import {
   storageKeyBelongsToUser,
   storageKeyMatchesUploadAsset,
@@ -116,6 +117,24 @@ export async function POST(request: NextRequest) {
 
   if (!updatedAsset) {
     return NextResponse.json({ error: 'Asset not found' }, { status: 404 });
+  }
+
+  try {
+    await upsertUserMediaHistory({
+      userId: user.id,
+      assetId: updatedAsset.id,
+      source: 'user_upload',
+      role: 'input',
+      usedCount: 0,
+      lastUsedAt: null,
+    });
+  } catch (error) {
+    await captureException(error, {
+      route: 'POST /api/assets/complete',
+      userId: user.id,
+      assetId: updatedAsset.id,
+      phase: 'user_media_history',
+    });
   }
 
   return NextResponse.json({

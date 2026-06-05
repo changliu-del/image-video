@@ -137,14 +137,14 @@ app/api/jobs/[id]/route.ts
 app/api/stripe/webhook/route.ts
 
 lib/storage/r2.ts
-lib/providers/video/types.ts
-lib/providers/video/fal.ts
-lib/render/ffmpeg.ts
+lib/providers/wanxiang/img-to-video.ts
+lib/providers/wanxiang/cloth.ts
+lib/providers/wanxiang/starlink.ts
 lib/credits.ts
 lib/templates/ecommerce.ts
 lib/analytics/events.ts
 
-trigger/generate-video.ts
+trigger/generate-wanxiang.ts
 trigger.config.ts
 ```
 
@@ -255,7 +255,7 @@ storageKey 必须带 userId，避免覆盖其他用户文件
 4. 检查余额
 5. 写入 credit_ledger reserve 记录
 6. 创建 generation_jobs 记录，状态 queued
-7. 触发 Trigger.dev task: generate-video
+7. 触发 Trigger.dev task: generate-wanxiang
 8. 返回 jobId
 ```
 
@@ -311,35 +311,25 @@ updated_at
 
 ### `generation_jobs`
 
-存储一次视频生成任务。
+存储一次生成任务。任务表只保存生命周期、供应商追踪、输入 JSON、单一输出资产和 credits 账务字段；试衣模式、模板来源、prompt 等业务输入保留在 `input_json`。
 
 ```text
 id
 user_id
-status: queued | running | rendering | succeeded | failed
+status: queued | submitting | running | succeeded | failed
+generation_type: image_to_video | apparel_image | try_on
 input_asset_id
-raw_video_asset_id
-final_video_asset_id
-thumbnail_asset_id
+output_asset_id
 provider
-provider_job_id
-prompt
-negative_prompt
-product_name
-headline
-selling_point
-price_text
-cta_text
-aspect_ratio: 9:16 | 1:1 | 16:9
-duration_seconds
-template_slug
+provider_task_id
+trigger_run_id
+input_json
+output_json
 error_message
 credit_reserved
 credit_spent
 created_at
 updated_at
-started_at
-completed_at
 ```
 
 ### `credit_ledger`
@@ -440,12 +430,12 @@ FAL_DEFAULT_MODEL=fal-ai/wan/v2.7/image-to-video
 
 ## 9. Trigger.dev 任务设计
 
-文件：`trigger/generate-video.ts`
+文件：`trigger/generate-wanxiang.ts`
 
 任务名：
 
 ```text
-generate-video
+generate-wanxiang
 ```
 
 payload：
@@ -460,21 +450,15 @@ payload：
 
 ```text
 1. 读取 generation_jobs
-2. 校验状态为 queued
-3. 更新 status = running, started_at = now
-4. 读取 input asset
-5. 构造电商 prompt
-6. 调用 FalVideoProvider.createJob
-7. 调用 waitForResult 等待 videoUrl
-8. 下载 raw video 到临时目录
-9. 上传 raw video 到 R2，创建 raw_video asset
-10. 更新 status = rendering
-11. 调 FFmpeg 生成 final video 和 thumbnail
-12. 上传 final video 和 thumbnail 到 R2
-13. 创建 final_video 和 thumbnail asset
-14. 更新 status = succeeded, completed_at = now
-15. 捕获 credits
-16. 发送生成完成邮件
+2. queued 任务获取本地 submit lease，更新 status = submitting
+3. 从 input_json 还原生成请求，校验输入 asset 和可选模特素材
+4. 调 Wanxiang 对应接口提交任务，写入 provider_task_id 并更新 status = running
+5. 查询 Wanxiang 任务状态
+6. running 时更新 output_json raw response，等待下一次 worker 调度
+7. succeeded 时创建一个输出 asset：优先 final_video，其次 final_image
+8. 把 output_asset_id 写回 generation_jobs
+9. 记录 generated_image/generated_video 到 user_media_history
+10. 捕获 credits
 ```
 
 失败处理：

@@ -18,7 +18,7 @@ Workbench selects file and options
 -> Trigger.dev worker polls Wanxiang until terminal status
 -> frontend polls /api/generations/[id]/status
 -> status route reads generation_jobs only
--> success creates final_image/final_video assets and captures credits
+-> success creates one output asset, stores generation_jobs.output_asset_id, records user media history, and captures credits
 -> failure refunds reserved credits
 ```
 
@@ -45,6 +45,7 @@ Key tables are defined in `lib/db/schema.ts`:
 - `library_assets`
 - `model_catalog_assets`
 - `generation_jobs`
+- `user_media_history`
 - `credit_ledger`
 
 `library_assets` is the first-party reusable material layer. It references
@@ -53,6 +54,11 @@ usage count, and creator/updater audit metadata. The public
 `/api/library-assets` route returns uploaded records filtered by category for
 workbench inspiration and examples.
 
+`generation_jobs` keeps one `output_asset_id` for the final provider result.
+Try-on mode, template id, prompt, duration, and similar request context stay in
+`input_json`; the task table itself keeps only lifecycle, provider tracking,
+credits, and input/output asset references.
+
 ## Architecture Caveat
 
-`lib/generations/runner.ts` and `trigger/generate-video.ts` expect older fal/FFmpeg fields and statuses. Treat them as inactive legacy code until intentionally reconciled or removed.
+`lib/generations/runner.ts` is a disabled legacy stub and `trigger/generate-video.ts` should not be used as the active generation path.
