@@ -30,6 +30,23 @@ export async function getSession() {
   return await verifyToken(session);
 }
 
+export async function getSessionUserId() {
+  try {
+    const session = await getSession();
+    if (!session?.user || typeof session.user.id !== 'number') {
+      return null;
+    }
+
+    if (new Date(session.expires) < new Date()) {
+      return null;
+    }
+
+    return session.user.id;
+  } catch {
+    return null;
+  }
+}
+
 export async function setSession(user: NewUser) {
   const expiresInOneDay = new Date(Date.now() + 24 * 60 * 60 * 1000);
   const session: SessionData = {

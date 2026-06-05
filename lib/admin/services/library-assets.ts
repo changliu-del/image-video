@@ -6,22 +6,17 @@ import { z } from 'zod';
 import { db } from '@/lib/db/drizzle';
 import {
   assets,
-  GENERATION_TYPES,
-  LIBRARY_ASSET_KINDS,
-  LIBRARY_ASSET_STATUSES,
+  LIBRARY_ASSET_CATEGORIES,
   libraryAssets,
   type Asset,
-  type GenerationType,
   type LibraryAsset,
-  type LibraryAssetKind,
-  type LibraryAssetStatus,
+  type LibraryAssetCategory,
 } from '@/lib/db/schema';
 import {
   hasAdminAccess,
   requireAdmin,
   requireOpsOrAdmin,
 } from '@/lib/db/queries';
-import { locales } from '@/lib/marketing/content';
 import {
   buildLibraryAssetStorageKey,
   buildPublicUrl,
@@ -49,16 +44,9 @@ type AdminLibraryAssetRecord = {
 export type AdminLibraryAssetListItem = {
   id: string;
   assetId: string;
-  locale: string;
   title: string;
   description: string | null;
-  kind: LibraryAssetKind;
-  status: LibraryAssetStatus;
-  source: string | null;
-  licenseNote: string | null;
-  tags: string[];
-  useCases: GenerationType[];
-  qualityScore: number;
+  category: LibraryAssetCategory;
   sortWeight: number;
   usageCount: number;
   assetUrl: string | null;
@@ -70,21 +58,13 @@ export type AdminLibraryAssetListItem = {
   storageKey: string | null;
   createdAt: string;
   updatedAt: string;
-  publishedAt: string | null;
 };
 
 const metadataSchema = z
   .object({
-    locale: z.enum(locales).default('pt'),
     title: z.string().trim().min(2).max(140),
     description: z.string().trim().max(1200).optional().nullable(),
-    kind: z.enum(LIBRARY_ASSET_KINDS),
-    status: z.enum(LIBRARY_ASSET_STATUSES).default('draft'),
-    source: z.string().trim().max(80).optional().nullable(),
-    licenseNote: z.string().trim().max(2000).optional().nullable(),
-    tags: z.array(z.string().trim().min(1).max(80)).default([]),
-    useCases: z.array(z.enum(GENERATION_TYPES)).default([]),
-    qualityScore: z.coerce.number().int().min(0).max(100).default(0),
+    category: z.enum(LIBRARY_ASSET_CATEGORIES),
     sortWeight: z.coerce.number().int().min(-9999).max(9999).default(0),
   })
   .strict();
@@ -104,73 +84,13 @@ const completeLibraryAssetSchema = metadataSchema
   })
   .strict();
 
-function defaultUseCases(kind: LibraryAssetKind): GenerationType[] {
-  if (kind === 'model_image' || kind === 'garment_image') {
-    return ['try_on'];
-  }
-
-  if (kind === 'example_video') {
-    return ['image_to_video'];
-  }
-
-  if (kind === 'scene_image') {
-    return ['image_to_video', 'apparel_image', 'try_on'];
-  }
-
-  return ['image_to_video', 'apparel_image'];
-}
-
-function normalizeTags(tags: string[]) {
-  return Array.from(
-    new Set(
-      tags
-        .map((tag) => tag.trim().toLowerCase())
-        .filter((tag) => /^[a-z0-9][a-z0-9_-]*$/.test(tag))
-    )
-  ).slice(0, 24);
-}
-
 function normalizeMetadata(input: unknown) {
   const parsed = metadataSchema.parse(input);
-  const useCases = parsed.useCases.length
-    ? Array.from(new Set(parsed.useCases))
-    : defaultUseCases(parsed.kind);
 
   return {
     ...parsed,
     description: parsed.description?.trim() || null,
-    source: parsed.source?.trim() || null,
-    licenseNote: parsed.licenseNote?.trim() || null,
-    tags: normalizeTags(parsed.tags),
-    useCases,
   };
-}
-
-function statusForUser(
-  user: Awaited<ReturnType<typeof requireOpsOrAdmin>>,
-  requestedStatus: LibraryAssetStatus
-) {
-  if (requestedStatus !== 'draft' && !hasAdminAccess(user)) {
-    return 'draft';
-  }
-
-  return requestedStatus;
-}
-
-function assertCanMutateLibraryAsset(
-  user: Awaited<ReturnType<typeof requireOpsOrAdmin>>,
-  libraryAsset: Pick<LibraryAsset, 'status'>,
-  action: 'edit' | 'upload'
-) {
-  if (!hasAdminAccess(user) && libraryAsset.status !== 'draft') {
-    throw new Error(`Ops can only ${action} draft library assets`);
-  }
-}
-
-function assertPublishableAsset(asset: Asset | null) {
-  if (!asset || asset.status !== 'uploaded') {
-    throw new Error('Cannot publish a library asset without an uploaded file');
-  }
 }
 
 function adminLibraryAssetRecordToListItem({
@@ -180,16 +100,9 @@ function adminLibraryAssetRecordToListItem({
   return {
     id: libraryAsset.id,
     assetId: libraryAsset.assetId,
-    locale: libraryAsset.locale,
     title: libraryAsset.title,
     description: libraryAsset.description,
-    kind: libraryAsset.kind,
-    status: libraryAsset.status,
-    source: libraryAsset.source,
-    licenseNote: libraryAsset.licenseNote,
-    tags: libraryAsset.tagsJson,
-    useCases: libraryAsset.useCasesJson,
-    qualityScore: libraryAsset.qualityScore,
+    category: libraryAsset.category,
     sortWeight: libraryAsset.sortWeight,
     usageCount: libraryAsset.usageCount,
     assetUrl: asset?.publicUrl ?? null,
@@ -201,7 +114,6 @@ function adminLibraryAssetRecordToListItem({
     storageKey: asset?.storageKey ?? null,
     createdAt: libraryAsset.createdAt.toISOString(),
     updatedAt: libraryAsset.updatedAt.toISOString(),
-    publishedAt: libraryAsset.publishedAt?.toISOString() ?? null,
   };
 }
 
@@ -239,14 +151,8 @@ export async function listAdminLibraryAssets(params: {
         exactCol(libraryAssets.assetId, query),
         ilikeCol(libraryAssets.title, query),
         ilikeCol(libraryAssets.description, query),
-        ilikeCol(libraryAssets.kind, query),
-        ilikeCol(libraryAssets.status, query),
-        ilikeCol(libraryAssets.locale, query),
-        ilikeCol(libraryAssets.source, query),
-        ilikeCol(libraryAssets.licenseNote, query),
-        ilikeCol(assets.mimeType, query),
-        sql`${libraryAssets.tagsJson}::text ILIKE ${'%' + query + '%'}`,
-        sql`${libraryAssets.useCasesJson}::text ILIKE ${'%' + query + '%'}`
+        ilikeCol(libraryAssets.category, query),
+        ilikeCol(assets.mimeType, query)
       )
     : undefined;
 
@@ -348,13 +254,6 @@ export async function completeLibraryAsset(input: unknown) {
     throw new Error('Invalid uploaded object metadata');
   }
 
-  const status = statusForUser(user, metadata.status);
-  if (status === 'published') {
-    assertPublishableAsset({ ...asset, status: 'uploaded' });
-  }
-
-  const publishedAt = status === 'published' ? new Date() : null;
-
   const [row] = await db.transaction(async (tx) => {
     await tx
       .update(assets)
@@ -365,21 +264,12 @@ export async function completeLibraryAsset(input: unknown) {
       .insert(libraryAssets)
       .values({
         assetId,
-        locale: metadata.locale,
         title: metadata.title,
         description: metadata.description,
-        kind: metadata.kind,
-        status,
-        source: metadata.source,
-        licenseNote: metadata.licenseNote,
-        tagsJson: metadata.tags,
-        useCasesJson: metadata.useCases,
-        qualityScore: metadata.qualityScore,
+        category: metadata.category,
         sortWeight: metadata.sortWeight,
         createdBy: user.id,
         updatedBy: user.id,
-        publishedBy: status === 'published' ? user.id : null,
-        publishedAt,
       })
       .returning();
   });
@@ -396,35 +286,15 @@ export async function updateLibraryAsset(id: string, input: unknown) {
   const metadata = normalizeMetadata(input);
   const existing = await getAdminLibraryAssetRecord(libraryAssetId);
 
-  assertCanMutateLibraryAsset(user, existing.libraryAsset, 'edit');
-
-  const status = statusForUser(user, metadata.status);
-  if (status === 'published') {
-    assertPublishableAsset(existing.asset);
-  }
-
-  const shouldMarkPublished =
-    status === 'published' && existing.libraryAsset.status !== 'published';
-
   const [row] = await db
     .update(libraryAssets)
     .set({
-      locale: metadata.locale,
       title: metadata.title,
       description: metadata.description,
-      kind: metadata.kind,
-      status,
-      source: metadata.source,
-      licenseNote: metadata.licenseNote,
-      tagsJson: metadata.tags,
-      useCasesJson: metadata.useCases,
-      qualityScore: metadata.qualityScore,
+      category: metadata.category,
       sortWeight: metadata.sortWeight,
       updatedBy: user.id,
       updatedAt: new Date(),
-      ...(shouldMarkPublished
-        ? { publishedBy: user.id, publishedAt: new Date() }
-        : {}),
     })
     .where(eq(libraryAssets.id, libraryAssetId))
     .returning();
@@ -433,56 +303,6 @@ export async function updateLibraryAsset(id: string, input: unknown) {
     libraryAsset: row,
     asset: existing.asset,
   });
-}
-
-export async function publishLibraryAsset(id: string) {
-  const user = await requireAdmin();
-  const libraryAssetId = libraryAssetIdSchema.parse(id);
-  const existing = await getAdminLibraryAssetRecord(libraryAssetId);
-
-  assertPublishableAsset(existing.asset);
-
-  const [row] = await db
-    .update(libraryAssets)
-    .set({
-      status: 'published',
-      publishedBy: user.id,
-      publishedAt: new Date(),
-      updatedBy: user.id,
-      updatedAt: new Date(),
-    })
-    .where(eq(libraryAssets.id, libraryAssetId))
-    .returning();
-
-  if (!row) {
-    throw new Error('Library asset not found');
-  }
-
-  return adminLibraryAssetRecordToListItem({
-    libraryAsset: row,
-    asset: existing.asset,
-  });
-}
-
-export async function archiveLibraryAsset(id: string) {
-  const user = await requireAdmin();
-  const libraryAssetId = libraryAssetIdSchema.parse(id);
-  const [row] = await db
-    .update(libraryAssets)
-    .set({
-      status: 'archived',
-      updatedBy: user.id,
-      updatedAt: new Date(),
-    })
-    .where(eq(libraryAssets.id, libraryAssetId))
-    .returning();
-
-  if (!row) {
-    throw new Error('Library asset not found');
-  }
-
-  const existing = await getAdminLibraryAssetRecord(row.id);
-  return adminLibraryAssetRecordToListItem(existing);
 }
 
 export async function removeLibraryAsset(id: string) {

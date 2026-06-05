@@ -1,188 +1,315 @@
 'use client';
 
-import { useMemo, useState } from 'react';
-import type { ComponentType } from 'react';
-import {
-  AlertTriangle,
-  BookOpenText,
-  CheckCircle2,
-  ClipboardList,
-  ListChecks,
-  Target,
-  Upload,
-} from 'lucide-react';
+import { Fragment, useMemo } from 'react';
+import type { ReactNode } from 'react';
 import type { AdminContent, AdminTabKey } from '@/lib/admin/content';
-import { cn } from '@/lib/utils';
 
-type HelpLabelKey = keyof AdminContent['help']['labels'];
+function splitTableRow(row: string) {
+  return row
+    .trim()
+    .replace(/^\|/, '')
+    .replace(/\|$/, '')
+    .split('|')
+    .map((cell) => cell.trim());
+}
 
-const FIELD_CONFIG: Array<{
-  key: HelpLabelKey;
-  icon: ComponentType<{ className?: string }>;
-  tone: string;
-}> = [
-  {
-    key: 'purpose',
-    icon: Target,
-    tone: 'bg-orange-50 text-orange-700 ring-orange-100',
-  },
-  {
-    key: 'dailyActions',
-    icon: ClipboardList,
-    tone: 'bg-sky-50 text-sky-700 ring-sky-100',
-  },
-  {
-    key: 'keyFields',
-    icon: ListChecks,
-    tone: 'bg-emerald-50 text-emerald-700 ring-emerald-100',
-  },
-  {
-    key: 'riskSignals',
-    icon: AlertTriangle,
-    tone: 'bg-rose-50 text-rose-700 ring-rose-100',
-  },
-];
+function isTableSeparator(row: string) {
+  return /^\s*\|?\s*:?-{3,}:?\s*(\|\s*:?-{3,}:?\s*)+\|?\s*$/.test(row);
+}
 
-function HelpCell({
-  children,
-  icon: Icon,
-  title,
-  tone,
-}: {
-  children: string | string[];
-  icon: ComponentType<{ className?: string }>;
-  title: string;
-  tone: string;
-}) {
-  return (
-    <section className="min-w-0 rounded-lg border border-gray-200 bg-white p-4 shadow-sm">
-      <div className="mb-3 flex items-center gap-2">
-        <span
-          className={cn(
-            'inline-flex size-7 flex-shrink-0 items-center justify-center rounded-md ring-1',
-            tone
-          )}
+function renderInline(text: string, keyPrefix: string): ReactNode[] {
+  const nodes: ReactNode[] = [];
+  const pattern = /(`[^`]+`|\*\*[^*]+\*\*|\[[^\]]+\]\([^)]+\))/g;
+  let lastIndex = 0;
+  let match: RegExpExecArray | null;
+
+  while ((match = pattern.exec(text))) {
+    const [token] = match;
+    if (match.index > lastIndex) {
+      nodes.push(text.slice(lastIndex, match.index));
+    }
+
+    const key = `${keyPrefix}-${match.index}`;
+
+    if (token.startsWith('`')) {
+      nodes.push(
+        <code
+          key={key}
+          className="rounded bg-gray-100 px-1 py-0.5 font-mono text-xs text-gray-800"
         >
-          <Icon className="size-4" />
-        </span>
-        <h3 className="text-xs font-semibold uppercase text-gray-500">
-          {title}
+          {token.slice(1, -1)}
+        </code>
+      );
+    } else if (token.startsWith('**')) {
+      nodes.push(
+        <strong key={key} className="font-semibold text-gray-950">
+          {token.slice(2, -2)}
+        </strong>
+      );
+    } else {
+      const linkMatch = /^\[([^\]]+)\]\(([^)]+)\)$/.exec(token);
+      if (linkMatch) {
+        nodes.push(
+          <a
+            key={key}
+            href={linkMatch[2]}
+            className="font-medium text-orange-700 underline-offset-4 hover:underline"
+          >
+            {linkMatch[1]}
+          </a>
+        );
+      } else {
+        nodes.push(token);
+      }
+    }
+
+    lastIndex = match.index + token.length;
+  }
+
+  if (lastIndex < text.length) {
+    nodes.push(text.slice(lastIndex));
+  }
+
+  return nodes;
+}
+
+function renderMarkdown(markdown: string) {
+  const lines = markdown.trim().split(/\r?\n/);
+  const blocks: ReactNode[] = [];
+  let index = 0;
+
+  while (index < lines.length) {
+    const line = lines[index];
+    const trimmed = line.trim();
+
+    if (!trimmed) {
+      index += 1;
+      continue;
+    }
+
+    const imageMatch = /^!\[([^\]]*)\]\(([^)]+)\)$/.exec(trimmed);
+    if (imageMatch) {
+      blocks.push(
+        <figure
+          key={`image-${index}`}
+          className="overflow-hidden rounded-lg border border-gray-200 bg-white shadow-sm"
+        >
+          <img
+            src={imageMatch[2]}
+            alt={imageMatch[1]}
+            className="max-h-[320px] max-w-full object-contain"
+          />
+          {imageMatch[1] ? (
+            <figcaption className="border-t border-gray-100 px-4 py-2 text-xs text-gray-500">
+              {imageMatch[1]}
+            </figcaption>
+          ) : null}
+        </figure>
+      );
+      index += 1;
+      continue;
+    }
+
+    if (trimmed.startsWith('### ')) {
+      blocks.push(
+        <h3
+          key={`h3-${index}`}
+          className="pt-2 text-sm font-semibold text-gray-950"
+        >
+          {renderInline(trimmed.slice(4), `h3-${index}`)}
         </h3>
-      </div>
-      {Array.isArray(children) ? (
-        <ul className="space-y-2">
-          {children.map((item) => (
-            <li key={item} className="flex gap-2 text-sm leading-6 text-gray-700">
-              <CheckCircle2 className="mt-1 size-3.5 flex-shrink-0 text-gray-400" />
-              <span className="min-w-0 break-words">{item}</span>
-            </li>
-          ))}
-        </ul>
-      ) : (
-        <p className="text-sm leading-6 text-gray-700">{children}</p>
-      )}
-    </section>
-  );
-}
+      );
+      index += 1;
+      continue;
+    }
 
-function UploadFieldMap({ content }: { content: AdminContent }) {
-  const copy = content.libraryAssets;
-  const fieldGroups = [
-    [copy.fields.title, copy.fields.locale],
-    [copy.fields.kind, copy.fields.status],
-    [copy.fields.description],
-    [copy.useCases],
-    [copy.fields.tags],
-  ];
-  const advancedFields = [
-    copy.fields.qualityScore,
-    copy.fields.sortWeight,
-    copy.fields.source,
-    copy.fields.licenseNote,
-  ];
-
-  return (
-    <section className="overflow-hidden rounded-lg border border-gray-200 bg-white shadow-sm">
-      <div className="flex items-center gap-2 border-b border-gray-100 px-4 py-3">
-        <span className="inline-flex size-7 flex-shrink-0 items-center justify-center rounded-md bg-orange-50 text-orange-700 ring-1 ring-orange-100">
-          <Upload className="size-4" />
-        </span>
-        <h2 className="text-sm font-semibold text-gray-950">
-          {copy.title} / {copy.modalCreate}
+    if (trimmed.startsWith('## ')) {
+      blocks.push(
+        <h2
+          key={`h2-${index}`}
+          className="pt-3 text-base font-semibold text-gray-950"
+        >
+          {renderInline(trimmed.slice(3), `h2-${index}`)}
         </h2>
-      </div>
-      <div className="grid gap-4 bg-gray-50 p-4 lg:grid-cols-[240px_1fr]">
-        <div className="space-y-3">
-          <div className="grid aspect-square place-items-center rounded-lg border border-dashed border-gray-300 bg-white text-center text-xs font-medium text-gray-400">
-            {copy.columns.assetUrl}
-          </div>
-          <div className="rounded-md border border-gray-200 bg-white p-3">
-            <div className="text-xs font-semibold uppercase text-gray-500">
-              {copy.uploadFile}
-            </div>
-            <div className="mt-2 rounded border border-gray-200 bg-gray-50 px-3 py-2 text-xs text-gray-500">
-              PNG / JPG / WEBP / MP4 / WEBM
-            </div>
-            <p className="mt-2 text-xs leading-5 text-gray-500">
-              {copy.noFileSelected}
-            </p>
-          </div>
-        </div>
-        <div className="space-y-3">
-          {fieldGroups.map((group) => (
-            <div
-              key={group.join('-')}
-              className={cn(
-                'grid gap-3',
-                group.length > 1 && 'md:grid-cols-2',
-                group.length > 2 && 'lg:grid-cols-4'
-              )}
-            >
-              {group.map((label) => (
-                <div
-                  key={label}
-                  className="rounded-md border border-gray-200 bg-white px-3 py-2"
-                >
-                  <div className="text-xs font-semibold uppercase text-gray-500">
-                    {label}
-                  </div>
-                  <div className="mt-2 h-8 rounded border border-gray-100 bg-gray-50" />
-                </div>
+      );
+      index += 1;
+      continue;
+    }
+
+    if (trimmed.startsWith('# ')) {
+      blocks.push(
+        <h1 key={`h1-${index}`} className="text-xl font-semibold text-gray-950">
+          {renderInline(trimmed.slice(2), `h1-${index}`)}
+        </h1>
+      );
+      index += 1;
+      continue;
+    }
+
+    if (
+      trimmed.includes('|') &&
+      lines[index + 1] &&
+      isTableSeparator(lines[index + 1])
+    ) {
+      const headers = splitTableRow(trimmed);
+      const rows: string[][] = [];
+      index += 2;
+      while (index < lines.length && lines[index].trim().includes('|')) {
+        rows.push(splitTableRow(lines[index]));
+        index += 1;
+      }
+
+      blocks.push(
+        <div
+          key={`table-${index}`}
+          className="overflow-x-auto rounded-lg border border-gray-200 bg-white shadow-sm"
+        >
+          <table className="min-w-[760px] w-full border-collapse text-left text-sm">
+            <thead className="bg-gray-50 text-xs font-semibold uppercase text-gray-500">
+              <tr>
+                {headers.map((header) => (
+                  <th key={header} className="px-4 py-3">
+                    {renderInline(header, `th-${header}`)}
+                  </th>
+                ))}
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-gray-100">
+              {rows.map((row, rowIndex) => (
+                <tr key={`${row.join('-')}-${rowIndex}`}>
+                  {headers.map((header, cellIndex) => (
+                    <td
+                      key={`${header}-${cellIndex}`}
+                      className="px-4 py-3 align-top leading-6 text-gray-700"
+                    >
+                      {renderInline(
+                        row[cellIndex] ?? '',
+                        `td-${rowIndex}-${cellIndex}`
+                      )}
+                    </td>
+                  ))}
+                </tr>
               ))}
-            </div>
+            </tbody>
+          </table>
+        </div>
+      );
+      continue;
+    }
+
+    if (/^[-*]\s+/.test(trimmed) || /^\d+\.\s+/.test(trimmed)) {
+      const ordered = /^\d+\.\s+/.test(trimmed);
+      const items: string[] = [];
+      while (
+        index < lines.length &&
+        (/^[-*]\s+/.test(lines[index].trim()) ||
+          /^\d+\.\s+/.test(lines[index].trim()))
+      ) {
+        items.push(lines[index].trim().replace(/^([-*]|\d+\.)\s+/, ''));
+        index += 1;
+      }
+
+      const ListTag = ordered ? 'ol' : 'ul';
+      blocks.push(
+        <ListTag
+          key={`list-${index}`}
+          className={
+            ordered
+              ? 'list-decimal space-y-2 pl-5 text-sm leading-6 text-gray-700'
+              : 'list-disc space-y-2 pl-5 text-sm leading-6 text-gray-700'
+          }
+        >
+          {items.map((item) => (
+            <li key={item}>{renderInline(item, `li-${item}`)}</li>
           ))}
-          <div className="rounded-md border border-gray-200 bg-white px-3 py-2">
-            <div className="text-xs font-semibold uppercase text-gray-500">
-              {copy.advancedFields}
-            </div>
-            <div className="mt-3 grid gap-3 md:grid-cols-2 lg:grid-cols-4">
-              {advancedFields.map((label) => (
-                <div
-                  key={label}
-                  className="rounded-md border border-gray-100 bg-gray-50 px-3 py-2"
-                >
-                  <div className="text-xs font-semibold uppercase text-gray-500">
-                    {label}
-                  </div>
-                  <div className="mt-2 h-8 rounded border border-gray-100 bg-white" />
-                </div>
-              ))}
-            </div>
-          </div>
-        </div>
-      </div>
-    </section>
-  );
+        </ListTag>
+      );
+      continue;
+    }
+
+    const paragraphLines = [trimmed];
+    index += 1;
+    while (index < lines.length) {
+      const next = lines[index].trim();
+      if (
+        !next ||
+        next.startsWith('# ') ||
+        next.startsWith('## ') ||
+        next.startsWith('### ') ||
+        next.startsWith('![') ||
+        /^[-*]\s+/.test(next) ||
+        /^\d+\.\s+/.test(next) ||
+        /^\d+\)\s+/.test(next) ||
+        (next.includes('|') && lines[index + 1] && isTableSeparator(lines[index + 1]))
+      ) {
+        break;
+      }
+      paragraphLines.push(next);
+      index += 1;
+    }
+
+    blocks.push(
+      <p key={`p-${index}`} className="text-sm leading-7 text-gray-700">
+        {renderInline(paragraphLines.join(' '), `p-${index}`)}
+      </p>
+    );
+  }
+
+  return blocks.map((block, blockIndex) => (
+    <Fragment key={blockIndex}>{block}</Fragment>
+  ));
 }
 
-export function AdminHelpPanel({ content }: { content: AdminContent }) {
+function buildFallbackMarkdown(
+  item: AdminContent['help']['items'][number],
+  labels: AdminContent['help']['labels']
+) {
+  const sections = [`# ${item.title}`];
+
+  if (item.purpose) {
+    sections.push(`## ${labels.purpose}`, item.purpose);
+  }
+  if (item.dailyActions?.length) {
+    sections.push(
+      `## ${labels.dailyActions}`,
+      item.dailyActions.map((entry) => `- ${entry}`).join('\n')
+    );
+  }
+  if (item.keyFields?.length) {
+    sections.push(
+      `## ${labels.keyFields}`,
+      item.keyFields.map((entry) => `- ${entry}`).join('\n')
+    );
+  }
+  if (item.riskSignals?.length) {
+    sections.push(
+      `## ${labels.riskSignals}`,
+      item.riskSignals.map((entry) => `- ${entry}`).join('\n')
+    );
+  }
+
+  return sections.join('\n\n');
+}
+
+export function AdminHelpPanel({
+  content,
+  selectedKey = 'overview',
+}: {
+  content: AdminContent;
+  selectedKey?: AdminTabKey;
+}) {
   const copy = content.help;
-  const [selectedKey, setSelectedKey] = useState<AdminTabKey>(
-    copy.items[0]?.key ?? 'overview'
-  );
   const selectedItem = useMemo(
     () => copy.items.find((item) => item.key === selectedKey) ?? copy.items[0],
     [copy.items, selectedKey]
+  );
+  const markdown = useMemo(
+    () =>
+      selectedItem
+        ? selectedItem.markdown ??
+          buildFallbackMarkdown(selectedItem, copy.labels)
+        : '',
+    [copy.labels, selectedItem]
   );
 
   if (!selectedItem) {
@@ -190,62 +317,9 @@ export function AdminHelpPanel({ content }: { content: AdminContent }) {
   }
 
   return (
-    <div className="mx-auto max-w-7xl space-y-4">
-      <header className="rounded-lg border border-gray-200 bg-white p-4 shadow-sm">
-        <div className="flex flex-wrap items-start justify-between gap-3">
-          <div className="min-w-0">
-            <div className="flex items-center gap-2">
-              <BookOpenText className="size-5 text-orange-600" />
-              <h1 className="text-xl font-semibold text-gray-950">
-                {copy.title}
-              </h1>
-            </div>
-            <p className="mt-2 max-w-4xl text-sm leading-6 text-gray-600">
-              {copy.description}
-            </p>
-          </div>
-          <select
-            value={selectedItem.key}
-            onChange={(event) =>
-              setSelectedKey(event.target.value as AdminTabKey)
-            }
-            aria-label={copy.title}
-            className="h-10 min-w-56 rounded-md border border-gray-200 bg-white px-3 text-sm font-medium text-gray-800 shadow-sm outline-none transition focus:border-orange-300 focus:ring-2 focus:ring-orange-100"
-          >
-            {copy.items.map((item) => (
-              <option key={item.key} value={item.key}>
-                {content.tabs[item.key]}
-              </option>
-            ))}
-          </select>
-        </div>
-      </header>
-
-      {selectedItem.key === 'library-assets' ? (
-        <UploadFieldMap content={content} />
-      ) : null}
-
-      <article className="space-y-3">
-        <div className="flex flex-wrap items-center gap-3">
-          <span className="inline-flex h-7 min-w-7 items-center justify-center rounded-md bg-gray-100 px-2 text-xs font-semibold text-gray-500">
-            {content.tabs[selectedItem.key]}
-          </span>
-          <h2 className="text-base font-semibold text-gray-950">
-            {selectedItem.title}
-          </h2>
-        </div>
-        <div className="grid gap-3 lg:grid-cols-2">
-          {FIELD_CONFIG.map((field) => (
-            <HelpCell
-              key={field.key}
-              icon={field.icon}
-              title={copy.labels[field.key]}
-              tone={field.tone}
-            >
-              {selectedItem[field.key]}
-            </HelpCell>
-          ))}
-        </div>
+    <div className="w-full">
+      <article className="space-y-5 rounded-lg border border-gray-200 bg-white p-5 shadow-sm sm:p-6 lg:p-8">
+        {renderMarkdown(markdown)}
       </article>
     </div>
   );

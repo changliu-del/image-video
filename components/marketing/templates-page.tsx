@@ -29,6 +29,13 @@ import {
 import { cn } from '@/lib/utils';
 
 type SortKey = 'featured' | 'newest' | 'lowCost';
+type TemplateCategory = TemplateCatalogItem['category'];
+
+const templateCategories: TemplateCategory[] = [
+  'image_to_image',
+  'image_to_video',
+  'try_on',
+];
 
 type TemplatesApiResponse = {
   list?: TemplateCatalogItem[];
@@ -38,16 +45,22 @@ type TemplatesApiResponse = {
   hasMore?: boolean;
 };
 
-function uniqueBySlug(items: TemplateCatalogItem[]) {
+function uniqueById(items: TemplateCatalogItem[]) {
   const seen = new Set<string>();
   return items.filter((item) => {
-    const key = `${item.locale}:${item.slug}`;
+    const key = item.id;
     if (seen.has(key)) {
       return false;
     }
     seen.add(key);
     return true;
   });
+}
+
+function normalizeTemplateCategory(value: string | null): TemplateCategory | null {
+  return templateCategories.includes(value as TemplateCategory)
+    ? (value as TemplateCategory)
+    : null;
 }
 
 function TemplateMedia({ template }: { template: TemplateCatalogItem }) {
@@ -81,6 +94,24 @@ function TemplateMedia({ template }: { template: TemplateCatalogItem }) {
   );
 }
 
+function getTemplateWorkbenchPath(template: TemplateCatalogItem) {
+  const basePath =
+    template.category === 'image_to_video'
+      ? '/create/video'
+      : template.category === 'try_on'
+        ? '/create/try-on'
+        : '/create/apparel';
+  const params = new URLSearchParams();
+
+  if (template.source === 'starter') {
+    params.set('prompt', template.prompt);
+  } else {
+    params.set('templateId', template.id);
+  }
+
+  return `${basePath}?${params.toString()}`;
+}
+
 function TemplateCard({
   content,
   locale,
@@ -99,7 +130,7 @@ function TemplateCard({
         <div>
           <div className="mb-3 flex items-center justify-between gap-3">
             <span className="rounded-md bg-gray-100 px-2.5 py-1 text-xs font-semibold text-gray-700">
-              {content.typeLabels[template.type]}
+              {content.categoryLabels[template.category]}
             </span>
             <span className="text-xs font-medium text-gray-500">
               {template.costCredits} {content.costSuffix}
@@ -107,13 +138,10 @@ function TemplateCard({
             </span>
           </div>
           <h2 className="text-lg font-semibold tracking-tight text-gray-950">
-            {template.title}
+            {template.name}
           </h2>
           <p className="mt-2 text-sm leading-6 text-gray-600">
             {template.description}
-          </p>
-          <p className="mt-4 rounded-lg border border-gray-200 bg-gray-50 p-3 text-sm font-medium leading-6 text-gray-900">
-            "{template.hook}"
           </p>
           <div className="mt-4 flex flex-wrap gap-2">
             {visibleTags.map((tag) => (
@@ -131,7 +159,7 @@ function TemplateCard({
           <Link
             href={getLocalizedHref(
               locale,
-              `/login?redirect=${encodeURIComponent(`/generate?template=${template.slug}`)}`
+              `/login?redirect=${encodeURIComponent(getTemplateWorkbenchPath(template))}`
             )}
             className="inline-flex h-10 w-full items-center justify-center gap-2 rounded-md bg-gray-950 px-4 text-sm font-semibold text-white transition hover:bg-gray-800"
           >
@@ -227,6 +255,8 @@ export function MarketingTemplatesPage({ locale }: { locale: Locale }) {
   const content = templatesPageContent[locale];
   const starterTemplates = useMemo(() => getStarterTemplates(locale), [locale]);
   const [templates, setTemplates] = useState<TemplateCatalogItem[]>([]);
+  const [activeCategory, setActiveCategory] =
+    useState<TemplateCategory | null>(null);
   const [activeTags, setActiveTags] = useState<Set<string>>(new Set());
   const [search, setSearch] = useState('');
   const [sort, setSort] = useState<SortKey>('featured');
@@ -241,18 +271,10 @@ export function MarketingTemplatesPage({ locale }: { locale: Locale }) {
 
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
-    const type = params.get('type');
-    const initialTag =
-      type === 'image'
-        ? 'image'
-        : type === 'video'
-          ? 'video'
-          : type === 'image_to_video'
-            ? 'image-to-video'
-            : null;
+    const initialCategory = normalizeTemplateCategory(params.get('category'));
 
-    if (initialTag) {
-      setActiveTags(new Set([initialTag]));
+    if (initialCategory) {
+      setActiveCategory(initialCategory);
     }
   }, []);
 
@@ -263,7 +285,6 @@ export function MarketingTemplatesPage({ locale }: { locale: Locale }) {
       setIsLoading(true);
       try {
         const params = new URLSearchParams({
-          locale,
           page: String(page),
           pageSize: '12',
           sort,
@@ -271,6 +292,9 @@ export function MarketingTemplatesPage({ locale }: { locale: Locale }) {
         const query = search.trim();
         if (query) {
           params.set('search', query);
+        }
+        if (activeCategory) {
+          params.set('category', activeCategory);
         }
         for (const tag of activeTagKey.split(',').filter(Boolean)) {
           params.append('tag', tag);
@@ -289,6 +313,11 @@ export function MarketingTemplatesPage({ locale }: { locale: Locale }) {
             ...template,
             source: 'admin' as const,
           }));
+          const starterFallbackTemplates = activeCategory
+            ? starterTemplates.filter(
+                (template) => template.category === activeCategory
+              )
+            : starterTemplates;
           const shouldUseStarterFallback =
             page === 1 &&
             normalizedRemoteTemplates.length === 0 &&
@@ -297,21 +326,29 @@ export function MarketingTemplatesPage({ locale }: { locale: Locale }) {
 
           setTemplates((current) =>
             page === 1
-              ? uniqueBySlug(
+              ? uniqueById(
                   shouldUseStarterFallback
-                    ? starterTemplates
+                    ? starterFallbackTemplates
                     : normalizedRemoteTemplates
                 )
-              : uniqueBySlug([...current, ...normalizedRemoteTemplates])
+              : uniqueById([...current, ...normalizedRemoteTemplates])
           );
-          setTotal(data.total ?? normalizedRemoteTemplates.length);
-          setHasMore(Boolean(data.hasMore));
+          setTotal(
+            shouldUseStarterFallback
+              ? starterFallbackTemplates.length
+              : data.total ?? normalizedRemoteTemplates.length
+          );
+          setHasMore(shouldUseStarterFallback ? false : Boolean(data.hasMore));
         }
       } catch {
-        // The static starter gallery should still work when the DB/API is absent.
-        if (!ignore && page === 1) {
-          setTemplates(starterTemplates);
-          setTotal(starterTemplates.length);
+        if (!ignore && page === 1 && !search.trim() && !activeTagKey) {
+          const starterFallbackTemplates = activeCategory
+            ? starterTemplates.filter(
+                (template) => template.category === activeCategory
+              )
+            : starterTemplates;
+          setTemplates(starterFallbackTemplates);
+          setTotal(starterFallbackTemplates.length);
           setHasMore(false);
         }
       } finally {
@@ -326,7 +363,7 @@ export function MarketingTemplatesPage({ locale }: { locale: Locale }) {
     return () => {
       ignore = true;
     };
-  }, [activeTagKey, locale, page, search, sort, starterTemplates]);
+  }, [activeCategory, activeTagKey, locale, page, search, sort, starterTemplates]);
 
   const tagCounts = useMemo(() => {
     const counts = new Map<string, number>();
@@ -353,7 +390,13 @@ export function MarketingTemplatesPage({ locale }: { locale: Locale }) {
     setPage(1);
   }
 
+  function toggleCategory(category: TemplateCategory) {
+    setActiveCategory((current) => (current === category ? null : category));
+    setPage(1);
+  }
+
   function clearFilters() {
+    setActiveCategory(null);
     setActiveTags(new Set());
     setSearch('');
     setSort('featured');
@@ -411,6 +454,29 @@ export function MarketingTemplatesPage({ locale }: { locale: Locale }) {
             >
               {content.clearFilters}
             </button>
+          </div>
+          <div className="border-b border-gray-200 pb-5">
+            <div className="mb-3 flex items-center gap-2 text-sm font-semibold text-gray-950">
+              <Filter className="size-4 text-orange-600" />
+              {content.categoryFilterLabel}
+            </div>
+            <div className="flex flex-wrap gap-2">
+              {templateCategories.map((category) => (
+                <button
+                  key={category}
+                  type="button"
+                  onClick={() => toggleCategory(category)}
+                  className={cn(
+                    'inline-flex h-9 items-center rounded-md border px-3 text-sm font-medium transition',
+                    activeCategory === category
+                      ? 'border-gray-950 bg-gray-950 text-white'
+                      : 'border-gray-200 bg-white text-gray-700 hover:border-gray-300 hover:bg-gray-50'
+                  )}
+                >
+                  {content.categoryLabels[category]}
+                </button>
+              ))}
+            </div>
           </div>
           {templateTagGroups.map(({ group }) => (
             <FilterGroup
@@ -476,6 +542,16 @@ export function MarketingTemplatesPage({ locale }: { locale: Locale }) {
               {total || templates.length}
             </span>
             <span>{content.results}</span>
+            {activeCategory ? (
+              <button
+                type="button"
+                onClick={() => toggleCategory(activeCategory)}
+                className="inline-flex h-7 items-center gap-1 rounded-md bg-gray-100 px-2 text-xs font-medium text-gray-700 hover:bg-gray-200"
+              >
+                {content.categoryLabels[activeCategory]}
+                <X className="size-3" />
+              </button>
+            ) : null}
             {Array.from(activeTags).map((tag) => (
               <button
                 key={tag}
@@ -493,7 +569,7 @@ export function MarketingTemplatesPage({ locale }: { locale: Locale }) {
             <div className="grid gap-5 sm:grid-cols-2 xl:grid-cols-3">
               {templates.map((template) => (
                 <TemplateCard
-                  key={`${template.source}-${template.slug}`}
+                  key={`${template.source}-${template.id}`}
                   content={content}
                   locale={locale}
                   template={template}

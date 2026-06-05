@@ -4,6 +4,7 @@ export type WorkbenchLibraryItem = {
   name?: string;
   title?: string;
   slug?: string;
+  prompt?: string | null;
   imageUrl?: string | null;
   thumbnailUrl?: string | null;
   previewUrl?: string | null;

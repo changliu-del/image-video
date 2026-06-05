@@ -79,6 +79,11 @@ type MarketingContent = {
     passwordLabel: string;
     emailPlaceholder: string;
     passwordPlaceholder: string;
+    verificationCodeLabel: string;
+    verificationCodePlaceholder: string;
+    sendVerificationCode: string;
+    sendingVerificationCode: string;
+    verificationCodeSent: string;
     showPassword: string;
     hidePassword: string;
     signIn: string;
@@ -92,6 +97,8 @@ type MarketingContent = {
     errors: {
       invalidCredentials: string;
       registerFailed: string;
+      invalidVerificationCode: string;
+      rateLimited: string;
       invalidEmail: string;
       weakPassword: string;
       fallback: string;
@@ -760,6 +767,12 @@ const pt: MarketingContent = {
     passwordLabel: 'Senha',
     emailPlaceholder: 'voce@exemplo.com',
     passwordPlaceholder: 'Pelo menos 8 caracteres',
+    verificationCodeLabel: 'Código de verificação',
+    verificationCodePlaceholder: '6 dígitos',
+    sendVerificationCode: 'Enviar código',
+    sendingVerificationCode: 'Enviando',
+    verificationCodeSent:
+      'Se este e-mail puder criar uma conta, enviamos um código de verificação.',
     showPassword: 'Mostrar senha',
     hidePassword: 'Ocultar senha',
     signIn: 'Entrar',
@@ -778,6 +791,9 @@ const pt: MarketingContent = {
     errors: {
       invalidCredentials: 'E-mail ou senha incorretos. Tente novamente.',
       registerFailed: 'Falha ao criar a conta. Tente novamente.',
+      invalidVerificationCode:
+        'Código de verificação inválido ou expirado.',
+      rateLimited: 'Muitas tentativas. Aguarde e tente novamente.',
       invalidEmail: 'Digite um e-mail válido.',
       weakPassword: 'A senha deve ter pelo menos 8 caracteres.',
       fallback: 'Não foi possível concluir. Tente novamente.',
@@ -1227,6 +1243,12 @@ const en: MarketingContent = {
     passwordLabel: 'Password',
     emailPlaceholder: 'you@example.com',
     passwordPlaceholder: 'At least 8 characters',
+    verificationCodeLabel: 'Verification code',
+    verificationCodePlaceholder: '6 digits',
+    sendVerificationCode: 'Send code',
+    sendingVerificationCode: 'Sending',
+    verificationCodeSent:
+      'If this email can create an account, we sent a verification code.',
     showPassword: 'Show password',
     hidePassword: 'Hide password',
     signIn: 'Sign in',
@@ -1245,6 +1267,9 @@ const en: MarketingContent = {
     errors: {
       invalidCredentials: 'Invalid email or password. Please try again.',
       registerFailed: 'Failed to create your account. Please try again.',
+      invalidVerificationCode:
+        'Verification code is invalid or expired.',
+      rateLimited: 'Too many attempts. Please wait and try again.',
       invalidEmail: 'Enter a valid email address.',
       weakPassword: 'Password must be at least 8 characters.',
       fallback: 'Something went wrong. Please try again.',
@@ -1577,6 +1602,11 @@ const zh: MarketingContent = {
     passwordLabel: '密码',
     emailPlaceholder: 'you@example.com',
     passwordPlaceholder: '至少 8 个字符',
+    verificationCodeLabel: '验证码',
+    verificationCodePlaceholder: '6 位数字',
+    sendVerificationCode: '发送验证码',
+    sendingVerificationCode: '发送中',
+    verificationCodeSent: '如果该邮箱可以创建账号，我们已发送验证码。',
     showPassword: '显示密码',
     hidePassword: '隐藏密码',
     signIn: '登录',
@@ -1590,6 +1620,8 @@ const zh: MarketingContent = {
     errors: {
       invalidCredentials: '邮箱或密码不正确，请重试。',
       registerFailed: '账号创建失败，请重试。',
+      invalidVerificationCode: '验证码无效或已过期。',
+      rateLimited: '尝试次数过多，请稍后再试。',
       invalidEmail: '请输入有效邮箱。',
       weakPassword: '密码至少需要 8 个字符。',
       fallback: '暂时无法完成操作，请重试。',

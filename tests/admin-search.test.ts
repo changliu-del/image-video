@@ -5,7 +5,7 @@ import {
   adminSearchMatches,
   getAdminJobDurationSeconds,
   getAdminJobInputSearchValues,
-  getAdminJobTemplateSlug,
+  getAdminJobTemplateId,
   summarizeAdminJobInput,
 } from '../lib/admin/search';
 
@@ -36,13 +36,13 @@ describe('Admin operational search fields', () => {
       expect.arrayContaining(['email'])
     );
     expect(ADMIN_OPERATIONAL_SEARCH_FIELDS.templates).toEqual(
-      expect.arrayContaining(['title', 'slug', 'status'])
+      expect.arrayContaining(['name', 'category', 'tags'])
     );
     expect(ADMIN_OPERATIONAL_SEARCH_FIELDS['library-assets']).toEqual(
-      expect.arrayContaining(['title', 'kind', 'status', 'tags', 'useCases'])
+      expect.arrayContaining(['title', 'category', 'assetId', 'mimeType'])
     );
     expect(ADMIN_OPERATIONAL_SEARCH_FIELDS['generation-jobs']).toEqual(
-      expect.arrayContaining(['inputSummary', 'status', 'templateSlug'])
+      expect.arrayContaining(['inputSummary', 'status', 'templateId'])
     );
     expect(ADMIN_OPERATIONAL_SEARCH_FIELDS['credit-ledger']).toEqual(
       expect.arrayContaining(['userEmail', 'reason', 'stripeEventId'])
@@ -57,30 +57,29 @@ describe('adminSearchMatches', () => {
     ).toBe(true);
   });
 
-  it('matches template title, slug, and status searches', () => {
+  it('matches template name, category, and tag searches', () => {
     const values = [
       'Flash sale product hero',
-      'flash-sale-product-hero',
-      'published',
+      'image_to_video',
+      ['sale', 'ratio-9-16'],
     ];
 
     expect(adminSearchMatches(values, 'flash sale')).toBe(true);
-    expect(adminSearchMatches(values, 'flash-sale-product')).toBe(true);
-    expect(adminSearchMatches(values, 'published')).toBe(true);
+    expect(adminSearchMatches(values, 'image_to_video')).toBe(true);
+    expect(adminSearchMatches(values, 'ratio-9-16')).toBe(true);
   });
 
-  it('matches library asset kind, tags, and use cases', () => {
+  it('matches library asset title, category, and asset metadata', () => {
     const values = [
       'Lookbook model',
-      'model_image',
-      'published',
-      ['fashion', 'studio-light'],
-      ['try_on'],
+      'try_on',
+      '2e8f4c55-a4f7-48d2-b546-55a41e31f31a',
+      'image/webp',
     ];
 
-    expect(adminSearchMatches(values, 'model_image')).toBe(true);
-    expect(adminSearchMatches(values, 'studio-light')).toBe(true);
+    expect(adminSearchMatches(values, 'lookbook')).toBe(true);
     expect(adminSearchMatches(values, 'try_on')).toBe(true);
+    expect(adminSearchMatches(values, 'image/webp')).toBe(true);
   });
 
   it('does not treat arbitrary objects as broad raw search text', () => {
@@ -109,17 +108,14 @@ describe('Admin generation job input search', () => {
       })
     ).toBe('New season landing hero');
 
-    expect(summarizeAdminJobInput({ templateSlug: 'lookbook' })).toBe(
+    expect(summarizeAdminJobInput({ templateId: 'lookbook' })).toBe(
       'lookbook'
     );
   });
 
   it('exposes template and duration fields for Admin job rows', () => {
-    expect(getAdminJobTemplateSlug({ templateSlug: 'try-on-default' })).toBe(
+    expect(getAdminJobTemplateId({ templateId: 'try-on-default' })).toBe(
       'try-on-default'
-    );
-    expect(getAdminJobTemplateSlug({ templateId: 'template-123' })).toBe(
-      'template-123'
     );
     expect(getAdminJobDurationSeconds({ durationSeconds: '8' })).toBe(8);
   });
@@ -128,7 +124,7 @@ describe('Admin generation job input search', () => {
     const values = getAdminJobInputSearchValues({
       productName: 'Pearl handbag',
       prompt: 'Show a premium retail counter',
-      templateSlug: 'luxury-accessory-video',
+      templateId: 'luxury-accessory-video',
       id: 'meaningless-job-id',
     });
 

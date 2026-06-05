@@ -13,7 +13,7 @@ import {
 import { requireAdmin, requireOpsOrAdmin } from '@/lib/db/queries';
 import {
   getAdminJobDurationSeconds,
-  getAdminJobTemplateSlug,
+  getAdminJobTemplateId,
   summarizeAdminJobInput,
 } from '@/lib/admin/search';
 import {
@@ -44,7 +44,7 @@ type AdminGenerationJobRecord = {
 };
 type AdminGenerationJob = typeof generationJobs.$inferSelect & {
   inputSummary: string | null;
-  templateSlug: string | null;
+  templateId: string | null;
   durationSeconds: number | null;
   inputPreviewUrl: string | null;
   inputPreviewMimeType: string | null;
@@ -180,7 +180,7 @@ function adminGenerationJobToListItem({
   return {
     ...job,
     inputSummary: summarizeAdminJobInput(inputJson),
-    templateSlug: getAdminJobTemplateSlug(inputJson),
+    templateId: job.templateId ?? getAdminJobTemplateId(inputJson),
     durationSeconds: getAdminJobDurationSeconds(inputJson),
     inputPreviewUrl: inputPreview.url,
     inputPreviewMimeType: inputPreview.mimeType,
@@ -247,6 +247,7 @@ export async function listJobs(params: {
         exactCol(generationJobs.finalVideoAssetId, query),
         exactCol(generationJobs.providerTaskId, query),
         exactCol(generationJobs.triggerRunId, query),
+        exactCol(generationJobs.templateId, query),
         exactJsonTextField(generationJobs.inputJson, 'templateId', query),
         exactJsonTextField(generationJobs.inputJson, 'modelAssetId', query),
         exactJsonTextField(
@@ -267,7 +268,6 @@ export async function listJobs(params: {
         ilikeJsonTextField(generationJobs.inputJson, 'productName', query),
         ilikeJsonTextField(generationJobs.inputJson, 'headline', query),
         ilikeJsonTextField(generationJobs.inputJson, 'prompt', query),
-        ilikeJsonTextField(generationJobs.inputJson, 'templateSlug', query),
         ilikeJsonTextField(generationJobs.inputJson, 'aspectRatio', query)
       )
     : undefined;

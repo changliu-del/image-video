@@ -105,12 +105,10 @@ describe('imageToVideoGenerationRequestSchema', () => {
       ...validImageToVideoRequest,
       prompt: '',
       templateId: 'template_123',
-      templateSlug: 'flash_sale',
     });
 
     expect(parsed.prompt).toBeUndefined();
     expect(parsed.templateId).toBe('template_123');
-    expect(parsed.templateSlug).toBe('flash_sale');
   });
 
   it('requires an input asset id and supports the inputAsset alias', () => {
@@ -158,14 +156,12 @@ describe('apparelImageGenerationRequestSchema', () => {
       inputAssetId: 'asset_123',
       prompt: 'Generate a clean studio apparel image.',
       templateId: 'template_123',
-      templateSlug: 'catalog_style',
       aspectRatio: '1:1',
       strength: '64',
       variants: 4,
     });
 
     expect(parsed.templateId).toBe('template_123');
-    expect(parsed.templateSlug).toBe('catalog_style');
     expect(parsed.strength).toBe(64);
     expect(parsed.variants).toBe(4);
   });
@@ -229,13 +225,11 @@ describe('tryOnGenerationRequestSchema', () => {
       prompt: '',
       aspectRatio: '9:16',
       templateId: 'template_123',
-      templateSlug: 'try_on_default',
     });
 
     expect(parsed.prompt).toBeUndefined();
     expect(parsed.aspectRatio).toBe('9:16');
     expect(parsed.templateId).toBe('template_123');
-    expect(parsed.templateSlug).toBe('try_on_default');
   });
 });
 

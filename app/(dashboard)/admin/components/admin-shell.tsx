@@ -1,14 +1,18 @@
 'use client';
 
+import Link from 'next/link';
 import { useSearchParams } from 'next/navigation';
 import { useEffect, useMemo, useState } from 'react';
 import {
   BookOpenText,
+  ChevronDown,
   Film,
   Gauge,
+  Home,
   Image,
   LayoutTemplate,
   Library,
+  Loader2,
   ReceiptText,
   Users,
 } from 'lucide-react';
@@ -23,7 +27,9 @@ import {
 import {
   getAdminContent,
   type AdminContent,
+  type AdminTabKey,
 } from '@/lib/admin/content';
+import { getDashboardContent } from '@/lib/dashboard/content';
 import {
   useDashboardLocale,
   withDashboardLocale,
@@ -71,6 +77,11 @@ type ManagementTableKey = Exclude<
   TableKey,
   'overview' | 'templates' | 'library-assets' | 'help'
 >;
+type AdminShellUser = {
+  id: number;
+  isAdmin?: boolean;
+  role?: string | null;
+};
 
 const MANAGEMENT_TABLE_KEYS = [
   'users',
@@ -90,8 +101,27 @@ function normalizeAdminTab(
   return 'overview';
 }
 
+function normalizeHelpTab(
+  value: string | null,
+  helpItems: readonly { key: AdminTabKey }[]
+): AdminTabKey {
+  if (value && helpItems.some((item) => item.key === value)) {
+    return value as AdminTabKey;
+  }
+
+  return helpItems[0]?.key ?? 'overview';
+}
+
 function rememberVisitedTab(tabs: TableKey[], tab: TableKey) {
   return tabs.includes(tab) ? tabs : [...tabs, tab];
+}
+
+function canManageAdminUsers(user: AdminShellUser | null) {
+  return Boolean(user?.isAdmin || user?.role === 'admin');
+}
+
+function canAccessAdminShell(user: AdminShellUser | null) {
+  return canManageAdminUsers(user) || user?.role === 'ops';
 }
 
 function buildManagementConfigs(
@@ -255,7 +285,7 @@ function buildManagementConfigs(
         'generationType',
         'status',
         'inputSummary',
-        'templateSlug',
+        'templateId',
         'creditReserved',
         'createdAt',
         'updatedAt',
@@ -271,7 +301,7 @@ function buildManagementConfigs(
         generationType: 150,
         status: 128,
         inputSummary: 260,
-        templateSlug: 220,
+        templateId: 220,
         creditReserved: 136,
         createdAt: 178,
         updatedAt: 178,
@@ -282,7 +312,7 @@ function buildManagementConfigs(
         'generationType',
         'status',
         'inputSummary',
-        'templateSlug',
+        'templateId',
         'durationSeconds',
         'creditReserved',
         'errorMessage',
@@ -346,7 +376,7 @@ function buildManagementConfigs(
         'jobId',
         'generationType',
         'jobStatus',
-        'jobTemplateSlug',
+        'jobTemplateId',
         'jobInputSummary',
         'stripeEventId',
         'metadataJson',
@@ -397,9 +427,118 @@ function buildManagementConfigs(
   };
 }
 
-export function AdminShell({ canManageUsers }: { canManageUsers: boolean }) {
+function AdminNavButton({
+  active,
+  label,
+  onClick,
+  table,
+}: {
+  active: boolean;
+  label: string;
+  onClick: () => void;
+  table: VisibleTable;
+}) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      className={cn(
+        'flex w-full items-center gap-3 px-4 py-2.5 text-left text-sm transition-colors',
+        active
+          ? 'bg-orange-50 font-medium text-orange-700'
+          : 'text-gray-600 hover:bg-gray-100 hover:text-gray-950'
+      )}
+      aria-current={active ? 'page' : undefined}
+      title={label}
+    >
+      <table.icon className="size-5 flex-shrink-0" />
+      <span>{label}</span>
+    </button>
+  );
+}
+
+function AdminHelpDropdown({
+  activeKey,
+  content,
+  helpItems,
+  onSelect,
+  onShowCurrent,
+  open,
+}: {
+  activeKey: AdminTabKey;
+  content: AdminContent;
+  helpItems: readonly { key: AdminTabKey }[];
+  onSelect: (key: AdminTabKey) => void;
+  onShowCurrent: () => void;
+  open: boolean;
+}) {
+  return (
+    <div>
+      <button
+        type="button"
+        onClick={onShowCurrent}
+        className={cn(
+          'flex w-full items-center gap-3 px-4 py-2.5 text-left text-sm transition-colors',
+          open
+            ? 'bg-orange-50 font-medium text-orange-700'
+            : 'text-gray-600 hover:bg-gray-100 hover:text-gray-950'
+        )}
+        aria-current={open ? 'page' : undefined}
+        aria-expanded={open}
+        title={content.tabs.help}
+      >
+        <BookOpenText className="size-5 flex-shrink-0" />
+        <span className="min-w-0 flex-1 truncate">{content.tabs.help}</span>
+        <ChevronDown
+          className={cn(
+            'size-4 flex-shrink-0 transition-transform',
+            open && 'rotate-180'
+          )}
+        />
+      </button>
+      {open ? (
+        <div className="border-y border-gray-100 bg-gray-50 py-1">
+          {helpItems.map((item) => {
+            const table = TABLES.find(
+              (candidate) => candidate.key === item.key
+            );
+            const Icon = table?.icon ?? BookOpenText;
+            const active = activeKey === item.key;
+            const label = content.help.topicOptionLabel(content.tabs[item.key]);
+
+            return (
+              <button
+                key={item.key}
+                type="button"
+                onClick={() => onSelect(item.key)}
+                className={cn(
+                  'flex w-full items-center gap-2 px-5 py-2 text-left text-xs transition-colors',
+                  active
+                    ? 'bg-white font-medium text-orange-700'
+                    : 'text-gray-600 hover:bg-white hover:text-gray-950'
+                )}
+                aria-current={active ? 'page' : undefined}
+                title={label}
+              >
+                <Icon className="size-4 flex-shrink-0" />
+                <span className="truncate">{label}</span>
+              </button>
+            );
+          })}
+        </div>
+      ) : null}
+    </div>
+  );
+}
+
+export function AdminShell() {
   const locale = useDashboardLocale();
   const content = getAdminContent(locale);
+  const dashboardContent = getDashboardContent(locale);
+  const [user, setUser] = useState<AdminShellUser | null>(null);
+  const [isUserLoading, setIsUserLoading] = useState(true);
+  const [userError, setUserError] = useState<string | null>(null);
+  const canManageUsers = canManageAdminUsers(user);
   const managementConfigs = useMemo(
     () => buildManagementConfigs(content),
     [content]
@@ -408,20 +547,74 @@ export function AdminShell({ canManageUsers }: { canManageUsers: boolean }) {
     () => TABLES.filter((table) => canManageUsers || !table.adminOnly),
     [canManageUsers]
   );
+  const helpItems = useMemo(
+    () =>
+      content.help.items.filter(
+        (item) =>
+          item.key !== 'help' &&
+          visibleTables.some((table) => table.key === item.key)
+      ),
+    [content.help.items, visibleTables]
+  );
   const searchParams = useSearchParams();
   const activeTabFromUrl = normalizeAdminTab(
     searchParams.get('tab'),
     visibleTables
   );
+  const activeHelpKeyFromUrl = normalizeHelpTab(
+    searchParams.get('help'),
+    helpItems
+  );
   const [activeTab, setActiveTab] = useState<TableKey>(activeTabFromUrl);
+  const [activeHelpKey, setActiveHelpKey] =
+    useState<AdminTabKey>(activeHelpKeyFromUrl);
   const [visitedTabs, setVisitedTabs] = useState<TableKey[]>([
     activeTabFromUrl,
   ]);
 
   useEffect(() => {
+    let ignore = false;
+
+    async function loadUser() {
+      setIsUserLoading(true);
+      setUserError(null);
+      try {
+        const response = await fetch('/api/user');
+        if (!response.ok) {
+          throw new Error(content.common.loadFailed);
+        }
+        const nextUser = (await response.json()) as AdminShellUser | null;
+        if (!ignore) {
+          setUser(nextUser?.id ? nextUser : null);
+        }
+      } catch (error) {
+        if (!ignore) {
+          setUser(null);
+          setUserError(
+            error instanceof Error ? error.message : content.common.loadFailed
+          );
+        }
+      } finally {
+        if (!ignore) {
+          setIsUserLoading(false);
+        }
+      }
+    }
+
+    loadUser();
+
+    return () => {
+      ignore = true;
+    };
+  }, [content.common.loadFailed]);
+
+  useEffect(() => {
     setActiveTab(activeTabFromUrl);
     setVisitedTabs((current) => rememberVisitedTab(current, activeTabFromUrl));
-  }, [activeTabFromUrl]);
+    if (activeTabFromUrl === 'help') {
+      setActiveHelpKey(activeHelpKeyFromUrl);
+    }
+  }, [activeHelpKeyFromUrl, activeTabFromUrl]);
 
   useEffect(() => {
     function handlePopState() {
@@ -429,54 +622,108 @@ export function AdminShell({ canManageUsers }: { canManageUsers: boolean }) {
         new URLSearchParams(window.location.search).get('tab'),
         visibleTables
       );
+      const nextHelpKey = normalizeHelpTab(
+        new URLSearchParams(window.location.search).get('help'),
+        helpItems
+      );
       setActiveTab(nextTab);
+      setActiveHelpKey(nextHelpKey);
       setVisitedTabs((current) => rememberVisitedTab(current, nextTab));
     }
 
     window.addEventListener('popstate', handlePopState);
     return () => window.removeEventListener('popstate', handlePopState);
-  }, [visibleTables]);
+  }, [helpItems, visibleTables]);
 
   function selectTab(tab: TableKey) {
     setActiveTab(tab);
     setVisitedTabs((current) => rememberVisitedTab(current, tab));
+    const adminHref =
+      tab === 'overview'
+        ? '/admin'
+        : tab === 'help'
+          ? `/admin?tab=help&help=${activeHelpKey}`
+          : `/admin?tab=${tab}`;
+
     window.history.pushState(
       null,
       '',
-      withDashboardLocale(
-        tab === 'overview' ? '/admin' : `/admin?tab=${tab}`,
-        locale
-      )
+      withDashboardLocale(adminHref, locale)
+    );
+  }
+
+  function selectHelpTab(tab: AdminTabKey) {
+    setActiveTab('help');
+    setActiveHelpKey(tab);
+    setVisitedTabs((current) => rememberVisitedTab(current, 'help'));
+    window.history.pushState(
+      null,
+      '',
+      withDashboardLocale(`/admin?tab=help&help=${tab}`, locale)
+    );
+  }
+
+  if (isUserLoading) {
+    return (
+      <main className="flex h-[calc(100vh-64px)] items-center justify-center bg-gray-50 px-4">
+        <div className="flex items-center gap-3 rounded-lg border border-gray-200 bg-white px-4 py-3 text-sm font-medium text-gray-600 shadow-sm">
+          <Loader2 className="size-4 animate-spin text-orange-600" />
+          {content.shell.title}
+        </div>
+      </main>
+    );
+  }
+
+  if (!canAccessAdminShell(user)) {
+    return (
+      <main className="mx-auto w-full max-w-5xl px-4 py-12">
+        <h1 className="text-2xl font-semibold text-gray-950">
+          {content.shell.forbiddenTitle}
+        </h1>
+        <p className="mt-2 text-gray-600">
+          {userError ?? content.shell.forbiddenDescription}
+        </p>
+      </main>
     );
   }
 
   return (
     <div className="flex h-[calc(100vh-64px)] bg-gray-50">
       <aside className="flex w-56 flex-col border-r border-gray-200 bg-white">
-        <div className="border-b border-gray-200 px-4 py-3">
+        <div className="border-b border-gray-200 px-3 py-3">
+          <Link
+            href={withDashboardLocale('/dashboard', locale)}
+            className="mb-3 flex h-9 w-full items-center gap-2 rounded-lg border border-gray-200 bg-white px-3 text-sm font-semibold text-gray-700 shadow-sm transition hover:border-orange-200 hover:bg-orange-50 hover:text-orange-700"
+          >
+            <Home className="size-4 flex-shrink-0" />
+            <span className="truncate">{dashboardContent.nav.tools}</span>
+          </Link>
           <span className="text-sm font-semibold uppercase text-gray-500">
             {content.shell.title}
           </span>
         </div>
         <nav className="flex-1 overflow-y-auto py-1.5">
-          {visibleTables.map((table) => (
-            <button
-              key={table.key}
-              type="button"
-              onClick={() => selectTab(table.key)}
-              className={cn(
-                'flex w-full items-center gap-3 px-4 py-2.5 text-left text-sm transition-colors',
-                activeTab === table.key
-                  ? 'bg-orange-50 font-medium text-orange-700'
-                  : 'text-gray-600 hover:bg-gray-100 hover:text-gray-950'
-              )}
-              aria-current={activeTab === table.key ? 'page' : undefined}
-              title={content.tabs[table.key]}
-            >
-              <table.icon className="size-5 flex-shrink-0" />
-              <span>{content.tabs[table.key]}</span>
-            </button>
-          ))}
+          {visibleTables.map((table) =>
+            table.key === 'help' ? (
+              <AdminHelpDropdown
+                key={table.key}
+                activeKey={activeHelpKey}
+                content={content}
+                helpItems={helpItems}
+                onSelect={selectHelpTab}
+                onShowCurrent={() => selectTab('help')}
+                open={activeTab === 'help'}
+              />
+            ) : (
+              <AdminNavButton
+                key={table.key}
+                onClick={() => selectTab(table.key)}
+                active={activeTab === table.key}
+                label={content.tabs[table.key]}
+                table={table}
+              />
+            )
+          )}
         </nav>
       </aside>
 
@@ -497,12 +744,12 @@ export function AdminShell({ canManageUsers }: { canManageUsers: boolean }) {
         ) : null}
         {visitedTabs.includes('library-assets') ? (
           <div hidden={activeTab !== 'library-assets'}>
-            <LibraryAssetsPanel canPublish={canManageUsers} content={content} />
+            <LibraryAssetsPanel canDelete={canManageUsers} content={content} />
           </div>
         ) : null}
         {visitedTabs.includes('help') ? (
           <div hidden={activeTab !== 'help'}>
-            <AdminHelpPanel content={content} />
+            <AdminHelpPanel content={content} selectedKey={activeHelpKey} />
           </div>
         ) : null}
         {MANAGEMENT_TABLE_KEYS.map((tableKey) =>

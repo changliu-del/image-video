@@ -4,10 +4,15 @@ import { firstDashboardParam, withDashboardLocale } from '@/lib/dashboard/locale
 type GeneratePageProps = {
   searchParams?: Promise<{
     locale?: string | string[];
+    templateId?: string | string[];
   }>;
 };
 
 export default async function GeneratePage({ searchParams }: GeneratePageProps) {
   const params = await searchParams;
-  redirect(withDashboardLocale('/create/video', firstDashboardParam(params?.locale)));
+  const templateId = firstDashboardParam(params?.templateId);
+  const path = templateId
+    ? `/create/video?templateId=${encodeURIComponent(templateId)}`
+    : '/create/video';
+  redirect(withDashboardLocale(path, firstDashboardParam(params?.locale)));
 }

@@ -1,20 +1,14 @@
 import { type NextRequest, NextResponse } from 'next/server';
 import { publicCatalogReadHeaders } from '@/lib/http/cache-control';
 import {
-  GENERATION_TYPES,
-  LIBRARY_ASSET_KINDS,
-  type GenerationType,
-  type LibraryAssetKind,
+  LIBRARY_ASSET_CATEGORIES,
+  type LibraryAssetCategory,
 } from '@/lib/db/schema';
-import {
-  listPublishedLibraryAssets,
-} from '@/lib/library-assets/query';
-import { isLocale } from '@/lib/marketing/content';
+import { listLibraryAssets } from '@/lib/library-assets/query';
 
 export const runtime = 'nodejs';
 
-const libraryAssetKinds = new Set<string>(LIBRARY_ASSET_KINDS);
-const generationTypes = new Set<string>(GENERATION_TYPES);
+const libraryAssetCategories = new Set<string>(LIBRARY_ASSET_CATEGORIES);
 
 function parsePositiveInteger(value: string | null, fallback: number) {
   const parsed = Number.parseInt(value ?? '', 10);
@@ -23,30 +17,16 @@ function parsePositiveInteger(value: string | null, fallback: number) {
 
 export async function GET(request: NextRequest) {
   const { searchParams } = request.nextUrl;
-  const localeParam = searchParams.get('locale') ?? 'pt';
-  const locale = isLocale(localeParam) ? localeParam : 'pt';
-  const kindParam = searchParams.get('kind');
-  const useCaseParam = searchParams.get('useCase');
-  const tags = searchParams
-    .getAll('tag')
-    .concat(searchParams.get('tags')?.split(',') ?? [])
-    .map((tag) => tag.trim())
-    .filter(Boolean);
+  const categoryParam = searchParams.get('category');
 
   try {
-    const result = await listPublishedLibraryAssets({
-      locale,
+    const result = await listLibraryAssets({
       page: parsePositiveInteger(searchParams.get('page'), 1),
       pageSize: parsePositiveInteger(searchParams.get('pageSize'), 12),
-      kind:
-        kindParam && libraryAssetKinds.has(kindParam)
-          ? (kindParam as LibraryAssetKind)
+      category:
+        categoryParam && libraryAssetCategories.has(categoryParam)
+          ? (categoryParam as LibraryAssetCategory)
           : undefined,
-      useCase:
-        useCaseParam && generationTypes.has(useCaseParam)
-          ? (useCaseParam as GenerationType)
-          : undefined,
-      tags,
     });
 
     return NextResponse.json(result, { headers: publicCatalogReadHeaders });

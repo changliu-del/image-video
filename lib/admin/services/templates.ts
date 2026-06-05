@@ -3,7 +3,7 @@ import 'server-only';
 import { randomUUID } from 'crypto';
 import { and, desc, eq, inArray, sql } from 'drizzle-orm';
 import { z } from 'zod';
-import { db } from '@/lib/db/drizzle';
+import { client, db } from '@/lib/db/drizzle';
 import {
   assets,
   templateAssets,
@@ -17,10 +17,9 @@ import {
 } from '@/lib/db/schema';
 import {
   hasAdminAccess,
-  requireAdmin,
   requireOpsOrAdmin,
+  requireAdmin,
 } from '@/lib/db/queries';
-import { locales } from '@/lib/marketing/content';
 import {
   templateTagOptions,
   type TemplateCatalogItem,
@@ -46,7 +45,6 @@ const templateIdSchema = z.string().uuid();
 
 type AdminTemplateRecord = Template & {
   previewAsset: typeof assets.$inferSelect | null;
-  thumbnailAsset: typeof assets.$inferSelect | null;
   tagRelations: Array<{ tag: TemplateTag }>;
 };
 
@@ -56,15 +54,10 @@ type AdminTemplateAssetRecord = typeof templateAssets.$inferSelect & {
 };
 
 export type AdminTemplateListItem = TemplateCatalogItem & {
-  status: Template['status'];
   negativePrompt: string | null;
-  promptJson: Record<string, unknown>;
-  defaultInputsJson: Record<string, unknown>;
   previewAssetId: string | null;
-  thumbnailAssetId: string | null;
   createdAt: string;
   updatedAt: string;
-  publishedAt: string | null;
   sortWeight: number;
   usageCount: number;
 };
@@ -74,17 +67,11 @@ export type AdminTemplateAssetListItem = AdminTemplateAssetRecord;
 const templatePayloadSchema = z
   .object({
     id: z.string().uuid().optional(),
-    slug: z.string().trim().max(120).optional(),
-    locale: z.enum(locales).default('pt'),
-    title: z.string().trim().min(2).max(140),
+    name: z.string().trim().min(2).max(140),
     description: z.string().trim().min(2).max(1200),
-    type: z.enum(['image', 'image_to_video', 'video']),
-    hook: z.string().trim().min(2).max(220),
-    cta: z.string().trim().max(80).optional().nullable(),
+    category: z.enum(['image_to_video', 'image_to_image', 'try_on']),
     prompt: z.string().trim().min(4).max(5000),
     negativePrompt: z.string().trim().max(2000).optional().nullable(),
-    promptJson: z.record(z.unknown()).optional().default({}),
-    defaultInputsJson: z.record(z.unknown()).optional().default({}),
     costCredits: z.coerce.number().int().min(0).max(999).default(1),
     aspectRatios: z
       .array(z.enum(['9:16', '1:1', '16:9']))
@@ -113,7 +100,7 @@ const completeTemplateAssetSchema = z
     templateId: z.string().uuid(),
     assetId: z.string().uuid(),
     storageKey: z.string().trim().min(1).max(512),
-    role: z.enum(['thumbnail', 'preview', 'source', 'example']),
+    role: z.enum(['preview', 'source', 'example']),
   })
   .strict();
 
@@ -121,39 +108,15 @@ function matchesAdminExactId(value: string | null | undefined, query: string) {
   return Boolean(value && query && value.toLowerCase() === query);
 }
 
-function slugify(value: string) {
-  return (
-    value
-      .normalize('NFD')
-      .replace(/[\u0300-\u036f]/g, '')
-      .toLowerCase()
-      .replace(/[^a-z0-9]+/g, '-')
-      .replace(/^-+|-+$/g, '')
-      .slice(0, 110) || `template-${Date.now()}`
-  );
-}
-
 function normalizeTemplatePayload(input: unknown) {
   const parsed = templatePayloadSchema.parse(input);
   return {
     ...parsed,
-    slug: slugify(parsed.slug || parsed.title),
-    cta: parsed.cta?.trim() || null,
     negativePrompt: parsed.negativePrompt?.trim() || null,
     durationSeconds:
-      parsed.type === 'image' ? null : parsed.durationSeconds ?? 5,
+      parsed.category === 'image_to_video' ? parsed.durationSeconds ?? 5 : null,
     tagSlugs: Array.from(new Set(parsed.tagSlugs)),
   };
-}
-
-function assertCanMutateTemplate(
-  user: Awaited<ReturnType<typeof requireOpsOrAdmin>>,
-  template: Pick<Template, 'status'>,
-  action: 'edit' | 'upload assets to'
-) {
-  if (!hasAdminAccess(user) && template.status !== 'draft') {
-    throw new Error(`Ops can only ${action} draft templates`);
-  }
 }
 
 function adminTemplateRecordToListItem(
@@ -163,15 +126,10 @@ function adminTemplateRecordToListItem(
 
   return {
     ...catalogItem,
-    status: row.status,
     negativePrompt: row.negativePrompt,
-    promptJson: row.promptJson,
-    defaultInputsJson: row.defaultInputsJson,
     previewAssetId: row.previewAssetId,
-    thumbnailAssetId: row.thumbnailAssetId,
     createdAt: row.createdAt.toISOString(),
     updatedAt: row.updatedAt.toISOString(),
-    publishedAt: row.publishedAt?.toISOString() ?? null,
     sortWeight: row.sortWeight,
     usageCount: row.usageCount,
   };
@@ -246,7 +204,6 @@ export async function listAdminTemplates(params: {
   const rows = (await db.query.templates.findMany({
     with: {
       previewAsset: true,
-      thumbnailAsset: true,
       tagRelations: {
         with: {
           tag: true,
@@ -261,14 +218,9 @@ export async function listAdminTemplates(params: {
         matchesAdminExactId(row.id, query) ||
         adminSearchMatches(
           [
-            row.title,
+            row.name,
             row.description,
-            row.hook,
-            row.cta,
-            row.slug,
-            row.locale,
-            row.type,
-            row.status,
+            row.category,
             ...row.tagRelations.flatMap((relation) => [
               relation.tag.slug,
               relation.tag.group,
@@ -321,11 +273,8 @@ export async function listTemplateAssets(params: {
             row.asset?.type,
             row.asset?.status,
             row.asset?.mimeType,
-            row.template?.slug,
-            row.template?.title,
-            row.template?.locale,
-            row.template?.type,
-            row.template?.status,
+            row.template?.name,
+            row.template?.category,
           ],
           query
         )
@@ -347,18 +296,11 @@ export async function createTemplate(input: unknown) {
   const [row] = await db
     .insert(templates)
     .values({
-      slug: payload.slug,
-      locale: payload.locale,
-      title: payload.title,
+      name: payload.name,
       description: payload.description,
-      type: payload.type,
-      status: 'draft',
-      hook: payload.hook,
-      cta: payload.cta,
+      category: payload.category,
       prompt: payload.prompt,
       negativePrompt: payload.negativePrompt,
-      promptJson: payload.promptJson,
-      defaultInputsJson: payload.defaultInputsJson,
       costCredits: payload.costCredits,
       aspectRatiosJson: payload.aspectRatios,
       durationSeconds: payload.durationSeconds,
@@ -373,7 +315,7 @@ export async function createTemplate(input: unknown) {
     templateId: row.id,
     actorId: user.id,
     action: 'template_created',
-    after: { slug: row.slug, title: row.title },
+    after: { id: row.id, name: row.name },
   });
 
   return row;
@@ -393,22 +335,14 @@ export async function updateTemplate(id: string, input: unknown) {
     throw new Error('Template not found');
   }
 
-  assertCanMutateTemplate(user, existing, 'edit');
-
   const [row] = await db
     .update(templates)
     .set({
-      slug: payload.slug,
-      locale: payload.locale,
-      title: payload.title,
+      name: payload.name,
       description: payload.description,
-      type: payload.type,
-      hook: payload.hook,
-      cta: payload.cta,
+      category: payload.category,
       prompt: payload.prompt,
       negativePrompt: payload.negativePrompt,
-      promptJson: payload.promptJson,
-      defaultInputsJson: payload.defaultInputsJson,
       costCredits: payload.costCredits,
       aspectRatiosJson: payload.aspectRatios,
       durationSeconds: payload.durationSeconds,
@@ -424,64 +358,8 @@ export async function updateTemplate(id: string, input: unknown) {
     templateId: row.id,
     actorId: user.id,
     action: 'template_updated',
-    before: { title: existing.title, status: existing.status },
-    after: { title: row.title, status: row.status },
-  });
-
-  return row;
-}
-
-export async function publishTemplate(id: string) {
-  const user = await requireAdmin();
-  const templateId = templateIdSchema.parse(id);
-  const [row] = await db
-    .update(templates)
-    .set({
-      status: 'published',
-      publishedBy: user.id,
-      publishedAt: new Date(),
-      updatedBy: user.id,
-      updatedAt: new Date(),
-    })
-    .where(eq(templates.id, templateId))
-    .returning();
-
-  if (!row) {
-    throw new Error('Template not found');
-  }
-
-  await writeTemplateAudit({
-    templateId: row.id,
-    actorId: user.id,
-    action: 'template_published',
-    after: { status: row.status },
-  });
-
-  return row;
-}
-
-export async function archiveTemplate(id: string) {
-  const user = await requireAdmin();
-  const templateId = templateIdSchema.parse(id);
-  const [row] = await db
-    .update(templates)
-    .set({
-      status: 'archived',
-      updatedBy: user.id,
-      updatedAt: new Date(),
-    })
-    .where(eq(templates.id, templateId))
-    .returning();
-
-  if (!row) {
-    throw new Error('Template not found');
-  }
-
-  await writeTemplateAudit({
-    templateId: row.id,
-    actorId: user.id,
-    action: 'template_archived',
-    after: { status: row.status },
+    before: { name: existing.name, category: existing.category },
+    after: { name: row.name, category: row.category },
   });
 
   return row;
@@ -491,7 +369,11 @@ export async function removeTemplate(id: string) {
   const user = await requireAdmin();
   const templateId = templateIdSchema.parse(id);
   const [existing] = await db
-    .select({ id: templates.id })
+    .select({
+      id: templates.id,
+      name: templates.name,
+      category: templates.category,
+    })
     .from(templates)
     .where(eq(templates.id, templateId))
     .limit(1);
@@ -500,12 +382,57 @@ export async function removeTemplate(id: string) {
     throw new Error('Template not found');
   }
 
-  await writeTemplateAudit({
-    templateId,
-    actorId: user.id,
-    action: 'template_deleted',
+  await client.begin(async (sqlClient) => {
+    await sqlClient`
+      insert into template_audit_logs (
+        template_id,
+        actor_id,
+        action,
+        before_json,
+        after_json,
+        created_at
+      )
+      values (
+        null,
+        ${user.id},
+        'template_deleted',
+        ${JSON.stringify({
+          id: existing.id,
+          name: existing.name,
+          category: existing.category,
+        })}::jsonb,
+        '{}'::jsonb,
+        now()
+      )
+    `;
+    await sqlClient`
+      delete from template_tag_relations
+      where template_id = ${templateId}
+    `;
+    await sqlClient`
+      delete from template_assets
+      where template_id = ${templateId}
+    `;
+    await sqlClient`
+      update template_source_records
+      set template_id = null, updated_at = now()
+      where template_id = ${templateId}
+    `;
+    await sqlClient`
+      update generation_jobs
+      set template_id = null, updated_at = now()
+      where template_id = ${templateId}
+    `;
+    await sqlClient`
+      update template_audit_logs
+      set template_id = null
+      where template_id = ${templateId}
+    `;
+    await sqlClient`
+      delete from templates
+      where id = ${templateId}
+    `;
   });
-  await db.delete(templates).where(eq(templates.id, templateId));
 }
 
 export async function createTemplateAssetPresign(input: unknown) {
@@ -517,7 +444,7 @@ export async function createTemplateAssetPresign(input: unknown) {
   }
 
   const [template] = await db
-    .select({ id: templates.id, status: templates.status })
+    .select({ id: templates.id })
     .from(templates)
     .where(eq(templates.id, payload.templateId))
     .limit(1);
@@ -525,8 +452,6 @@ export async function createTemplateAssetPresign(input: unknown) {
   if (!template) {
     throw new Error('Template not found');
   }
-
-  assertCanMutateTemplate(user, template, 'upload assets to');
 
   const assetId = randomUUID();
   const mimeType = payload.mimeType as TemplateAssetMimeType;
@@ -562,7 +487,7 @@ export async function completeTemplateAsset(input: unknown) {
   const role = payload.role as TemplateAssetRole;
 
   const [template] = await db
-    .select({ id: templates.id, status: templates.status })
+    .select({ id: templates.id })
     .from(templates)
     .where(eq(templates.id, payload.templateId))
     .limit(1);
@@ -570,8 +495,6 @@ export async function completeTemplateAsset(input: unknown) {
   if (!template) {
     throw new Error('Template not found');
   }
-
-  assertCanMutateTemplate(user, template, 'upload assets to');
 
   const [asset] = await db
     .select()
@@ -627,16 +550,11 @@ export async function completeTemplateAsset(input: unknown) {
     })
     .onConflictDoNothing();
 
-  if (role === 'preview' || role === 'thumbnail') {
-    const assetUpdate =
-      role === 'preview'
-        ? { previewAssetId: payload.assetId }
-        : { thumbnailAssetId: payload.assetId };
-
+  if (role === 'preview') {
     await db
       .update(templates)
       .set({
-        ...assetUpdate,
+        previewAssetId: payload.assetId,
         updatedBy: user.id,
         updatedAt: new Date(),
       })

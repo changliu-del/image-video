@@ -45,6 +45,7 @@ import {
   normalizeLibraryItems as normalizeItems,
   type WorkbenchLibraryItem as LibraryItem,
 } from '@/components/create/library-item-utils';
+import { refreshDashboardUser } from '@/lib/dashboard/user-cache';
 import { useDashboardLocale } from '@/lib/dashboard/use-dashboard-locale';
 import { getApparelImageCreditCost } from '@/lib/generations/credit-costs';
 import { cn } from '@/lib/utils';
@@ -328,11 +329,18 @@ function LibraryTile({
   );
 }
 
-export function ApparelWorkbench() {
+export function ApparelWorkbench({
+  initialTemplateId = '',
+  initialPrompt = '',
+}: {
+  initialTemplateId?: string;
+  initialPrompt?: string;
+}) {
   const locale = useDashboardLocale();
   const copy = apparelWorkbenchCopy[locale];
   const commonCopy = commonWorkbenchCopy[locale];
   const banner = bannerCopy[locale];
+  const starterPrompt = initialPrompt.trim();
   const [primaryFile, setPrimaryFile] = useState<File | null>(null);
   const [primaryPreview, setPrimaryPreview] = useState<string | null>(null);
   const [templates, setTemplates] = useState<LibraryItem[]>([]);
@@ -346,7 +354,9 @@ export function ApparelWorkbench() {
   const [modelType, setModelType] = useState<ApparelModelType>('fashion_model');
   const [scene, setScene] = useState<ApparelScene>('minimal_studio');
   const [style, setStyle] = useState<ApparelStyle>('clean_commercial');
-  const [prompt, setPrompt] = useState(() => copy.defaultPrompt);
+  const [prompt, setPrompt] = useState(
+    () => starterPrompt || copy.defaultPrompt
+  );
   const [negativePrompt, setNegativePrompt] = useState(() => copy.defaultNegativePrompt);
   const [aspectRatio, setAspectRatio] = useState<AspectRatio>('9:16');
   const [strength, setStrength] = useState(64);
@@ -356,10 +366,12 @@ export function ApparelWorkbench() {
   const [jobId, setJobId] = useState<string | null>(null);
   const [jobStatus, setJobStatus] = useState<JobStatusResponse | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const requestedTemplateId = initialTemplateId;
 
   const isSubmitting = Boolean(submitLabel);
   const selectedResultUrl = resultUrl(jobStatus);
-  const selectedTemplateId = selectedTemplate?.id ?? selectedTemplate?.slug;
+  const selectedTemplateId =
+    selectedTemplate?.id == null ? '' : String(selectedTemplate.id);
   const selectedLibraryAssetId = selectedLibraryAsset
     ? getItemAssetId(selectedLibraryAsset)
     : '';
@@ -412,14 +424,12 @@ export function ApparelWorkbench() {
       setIsLoadingLibrary(true);
       try {
         const params = new URLSearchParams({
-          locale,
           pageSize: '12',
-          type: 'image',
+          category: 'image_to_image',
         });
         const assetParams = new URLSearchParams({
-          locale,
           pageSize: '12',
-          useCase: 'apparel_image',
+          category: 'apparel_image',
         });
         const [templateResponse, assetResponse] = await Promise.all([
           fetch(`/api/templates?${params.toString()}`),
@@ -433,9 +443,30 @@ export function ApparelWorkbench() {
         if (!cancelled) {
           const nextTemplates = normalizeItems(templateBody);
           const nextAssets = normalizeItems(assetBody);
+          const requestedTemplate = nextTemplates.find(
+            (template) => String(template.id) === requestedTemplateId
+          );
           setTemplates(nextTemplates);
           setAssets(nextAssets);
-          setSelectedTemplate((current) => current ?? nextTemplates[0] ?? null);
+          setSelectedTemplate((current) => {
+            if (requestedTemplate) {
+              return requestedTemplate;
+            }
+
+            if (!requestedTemplateId) {
+              return current &&
+                nextTemplates.some(
+                  (template) => String(template.id) === String(current.id)
+                )
+                ? current
+                : null;
+            }
+
+            return null;
+          });
+          if (requestedTemplate?.prompt) {
+            setPrompt(String(requestedTemplate.prompt));
+          }
         }
       } finally {
         if (!cancelled) setIsLoadingLibrary(false);
@@ -446,7 +477,7 @@ export function ApparelWorkbench() {
     return () => {
       cancelled = true;
     };
-  }, [locale]);
+  }, [locale, requestedTemplateId]);
 
   useEffect(() => {
     if (!jobId || terminalStatus(jobStatus?.status)) return;
@@ -455,7 +486,12 @@ export function ApparelWorkbench() {
     const poll = async () => {
       try {
         const nextStatus = await fetchJobStatus(jobId, commonCopy);
-        if (!cancelled) setJobStatus(nextStatus);
+        if (!cancelled) {
+          setJobStatus(nextStatus);
+          if (terminalStatus(nextStatus.status)) {
+            void refreshDashboardUser();
+          }
+        }
       } catch (statusError) {
         if (!cancelled) {
           setError(
@@ -520,8 +556,7 @@ export function ApparelWorkbench() {
         {
           generationType: 'apparel_image',
           inputAssetId,
-          templateId: selectedTemplateId,
-          templateSlug: selectedTemplate?.slug ?? selectedTemplateId,
+          ...(selectedTemplateId ? { templateId: selectedTemplateId } : {}),
           prompt: [
             prompt.trim(),
             `${copy.modelType}: ${selectedModelTypeLabel}.`,
@@ -543,6 +578,7 @@ export function ApparelWorkbench() {
         throw new Error(commonCopy.missingJobError);
       }
 
+      void refreshDashboardUser();
       setJobId(nextJobId);
       setJobStatus({
         id: nextJobId,
@@ -755,8 +791,7 @@ export function ApparelWorkbench() {
                   templates.slice(0, 4).map((template) => {
                     const image = getItemImage(template);
                     const active =
-                      String(selectedTemplate?.id ?? selectedTemplate?.slug) ===
-                      String(template.id ?? template.slug);
+                      String(selectedTemplate?.id) === String(template.id);
 
                     return (
                       <button

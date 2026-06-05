@@ -9,26 +9,23 @@ import {
   templateTags,
   templates,
 } from '@/lib/db/schema';
-import type { Locale } from '@/lib/marketing/content';
 import type {
   TemplateCatalogItem,
-  TemplateType,
+  TemplateCategory,
 } from '@/lib/templates/catalog';
 
 type TemplateRecord = Template & {
   previewAsset: Asset | null;
-  thumbnailAsset: Asset | null;
   tagRelations: Array<{ tag: TemplateTag }>;
 };
 
 export type PublishedTemplateSort = 'featured' | 'newest' | 'lowCost';
 
 export type ListPublishedTemplatesInput = {
-  locale: Locale;
   page?: number;
   pageSize?: number;
   search?: string;
-  type?: TemplateType;
+  category?: TemplateCategory;
   tags?: string[];
   sort?: PublishedTemplateSort;
 };
@@ -41,18 +38,22 @@ export type PublishedTemplatesResult = {
   hasMore: boolean;
 };
 
-const fallbackAssetByType: Record<TemplateType, string> = {
-  image: '/resources/example4.png',
+const fallbackAssetByCategory: Record<TemplateCategory, string> = {
+  image_to_image: '/resources/example4.png',
   image_to_video: '/resources/example2.mp4',
-  video: '/resources/example1.mp4',
+  try_on: '/resources/example3.png',
 };
 
-function typeToTag(type: TemplateType) {
-  if (type === 'image_to_video') {
+function categoryToTag(category: TemplateCategory) {
+  if (category === 'image_to_video') {
     return 'image-to-video';
   }
 
-  return type;
+  if (category === 'image_to_image') {
+    return 'image';
+  }
+
+  return 'try-on';
 }
 
 function ratioToTag(ratio: string) {
@@ -61,7 +62,7 @@ function ratioToTag(ratio: string) {
 
 function resolveMediaType(input: {
   asset: Asset | null;
-  templateType: TemplateType;
+  category: TemplateCategory;
 }): TemplateCatalogItem['mediaType'] {
   if (input.asset?.mimeType?.startsWith('video/')) {
     return 'video';
@@ -71,15 +72,15 @@ function resolveMediaType(input: {
     return 'image';
   }
 
-  return input.templateType === 'image' ? 'image' : 'video';
+  return input.category === 'image_to_video' ? 'video' : 'image';
 }
 
 export function mapTemplateRecordToCatalogItem(
   row: TemplateRecord
 ): TemplateCatalogItem {
-  const previewAsset = row.previewAsset ?? row.thumbnailAsset;
+  const previewAsset = row.previewAsset;
   const tags = new Set(row.tagRelations.map((relation) => relation.tag.slug));
-  tags.add(typeToTag(row.type));
+  tags.add(categoryToTag(row.category));
 
   for (const ratio of row.aspectRatiosJson) {
     tags.add(ratioToTag(ratio));
@@ -87,21 +88,17 @@ export function mapTemplateRecordToCatalogItem(
 
   return {
     id: row.id,
-    slug: row.slug,
-    locale: row.locale as Locale,
-    title: row.title,
+    name: row.name,
     description: row.description,
-    type: row.type,
-    hook: row.hook,
-    cta: row.cta,
+    category: row.category,
     prompt: row.prompt,
     costCredits: row.costCredits,
     aspectRatios: row.aspectRatiosJson,
     durationSeconds: row.durationSeconds,
-    asset: previewAsset?.publicUrl ?? fallbackAssetByType[row.type],
+    asset: previewAsset?.publicUrl ?? fallbackAssetByCategory[row.category],
     mediaType: resolveMediaType({
       asset: previewAsset,
-      templateType: row.type,
+      category: row.category,
     }),
     tags: Array.from(tags),
     source: 'admin',
@@ -134,29 +131,25 @@ function normalizeTags(tags: string[] | undefined) {
   ).slice(0, 12);
 }
 
-function buildWhere(input: Required<Pick<ListPublishedTemplatesInput, 'locale'>> & {
+function buildWhere(input: {
   search: string;
   tags: string[];
-  type?: TemplateType;
+  category?: TemplateCategory;
 }) {
-  const conditions = [
-    eq(templates.locale, input.locale),
-    eq(templates.status, 'published' as const),
-  ];
+  const conditions = [];
 
-  if (input.type) {
-    conditions.push(eq(templates.type, input.type));
+  if (input.category) {
+    conditions.push(eq(templates.category, input.category));
   }
 
   if (input.search) {
     const search = `%${input.search}%`;
     conditions.push(
       or(
-        ilike(templates.title, search),
+        ilike(templates.name, search),
         ilike(templates.description, search),
-        ilike(templates.hook, search),
         ilike(templates.prompt, search),
-        ilike(templates.slug, search)
+        sql`${templates.id}::text ilike ${search}`
       )!
     );
   }
@@ -171,36 +164,31 @@ function buildWhere(input: Required<Pick<ListPublishedTemplatesInput, 'locale'>>
     )`);
   }
 
-  return sql.join(conditions, sql` and `);
+  return conditions.length ? sql.join(conditions, sql` and `) : undefined;
 }
 
 function getOrderBy(sort: PublishedTemplateSort) {
   if (sort === 'newest') {
-    return [desc(templates.publishedAt), desc(templates.updatedAt), asc(templates.title)];
+    return [desc(templates.updatedAt), asc(templates.name)];
   }
 
   if (sort === 'lowCost') {
-    return [asc(templates.costCredits), desc(templates.sortWeight), asc(templates.title)];
+    return [asc(templates.costCredits), desc(templates.sortWeight), asc(templates.name)];
   }
 
-  return [desc(templates.sortWeight), desc(templates.updatedAt), asc(templates.title)];
+  return [desc(templates.sortWeight), desc(templates.updatedAt), asc(templates.name)];
 }
 
 export async function listPublishedTemplates(
-  input: Locale | ListPublishedTemplatesInput
+  params: ListPublishedTemplatesInput
 ): Promise<PublishedTemplatesResult> {
-  const params =
-    typeof input === 'string'
-      ? { locale: input }
-      : input;
   const page = normalizePage(params.page);
   const pageSize = normalizePageSize(params.pageSize);
   const search = params.search?.trim() ?? '';
   const tags = normalizeTags(params.tags);
   const sort = params.sort ?? 'featured';
   const where = buildWhere({
-    locale: params.locale,
-    type: params.type,
+    category: params.category,
     search,
     tags,
   });
@@ -210,7 +198,6 @@ export async function listPublishedTemplates(
       where,
       with: {
         previewAsset: true,
-        thumbnailAsset: true,
         tagRelations: {
           with: {
             tag: true,
@@ -240,20 +227,17 @@ export async function listPublishedTemplates(
   };
 }
 
-export async function listAllPublishedTemplates(locale: Locale) {
+export async function listAllTemplates() {
   const rows = await db.query.templates.findMany({
-    where: (table, { and }) =>
-      and(eq(table.locale, locale), eq(table.status, 'published')),
     with: {
       previewAsset: true,
-      thumbnailAsset: true,
       tagRelations: {
         with: {
           tag: true,
         },
       },
     },
-    orderBy: [desc(templates.sortWeight), desc(templates.updatedAt), asc(templates.title)],
+    orderBy: [desc(templates.sortWeight), desc(templates.updatedAt), asc(templates.name)],
   });
 
   return rows.map((row) =>

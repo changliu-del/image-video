@@ -1,15 +1,18 @@
 import { type NextRequest, NextResponse } from 'next/server';
 import { publicCatalogReadHeaders } from '@/lib/http/cache-control';
-import { isLocale } from '@/lib/marketing/content';
 import {
   listPublishedTemplates,
   type PublishedTemplateSort,
 } from '@/lib/templates/query';
-import type { TemplateType } from '@/lib/templates/catalog';
+import type { TemplateCategory } from '@/lib/templates/catalog';
 
 export const runtime = 'nodejs';
 
-const templateTypes = new Set<TemplateType>(['image', 'image_to_video', 'video']);
+const templateCategories = new Set<TemplateCategory>([
+  'image_to_video',
+  'image_to_image',
+  'try_on',
+]);
 const sortKeys = new Set<PublishedTemplateSort>([
   'featured',
   'newest',
@@ -23,9 +26,7 @@ function parsePositiveInteger(value: string | null, fallback: number) {
 
 export async function GET(request: NextRequest) {
   const { searchParams } = request.nextUrl;
-  const localeParam = searchParams.get('locale') ?? 'pt';
-  const locale = isLocale(localeParam) ? localeParam : 'pt';
-  const rawType = searchParams.get('type');
+  const rawCategory = searchParams.get('category');
   const rawSort = searchParams.get('sort');
   const tags = searchParams
     .getAll('tag')
@@ -35,13 +36,12 @@ export async function GET(request: NextRequest) {
 
   try {
     const result = await listPublishedTemplates({
-      locale,
       page: parsePositiveInteger(searchParams.get('page'), 1),
       pageSize: parsePositiveInteger(searchParams.get('pageSize'), 12),
       search: searchParams.get('search') ?? '',
-      type:
-        rawType && templateTypes.has(rawType as TemplateType)
-          ? (rawType as TemplateType)
+      category:
+        rawCategory && templateCategories.has(rawCategory as TemplateCategory)
+          ? (rawCategory as TemplateCategory)
           : undefined,
       tags,
       sort:

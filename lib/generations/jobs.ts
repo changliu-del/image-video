@@ -30,7 +30,20 @@ import {
 
 const DEFAULT_PROVIDER = 'wanxiang';
 const PROVIDER_SUBMIT_LEASE_SECONDS = 120;
+const UUID_PATTERN =
+  /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 type QueryableSql = postgres.Sql;
+
+type TemplateCategory = 'image_to_video' | 'image_to_image' | 'try_on';
+
+const TEMPLATE_CATEGORY_BY_GENERATION_TYPE: Record<
+  GenerationType,
+  TemplateCategory
+> = {
+  image_to_video: 'image_to_video',
+  apparel_image: 'image_to_image',
+  try_on: 'try_on',
+};
 
 type AssetRecord = {
   id: string;
@@ -56,6 +69,7 @@ type GenerationJobRecord = {
   status: 'queued' | 'submitting' | 'running' | 'succeeded' | 'failed';
   provider: string;
   providerTaskId: string | null;
+  templateId: string | null;
   inputJson: Record<string, unknown>;
   outputJson: Record<string, unknown> | null;
   inputAssetId: string;
@@ -205,6 +219,7 @@ function mapGenerationJobRow(row: Record<string, unknown>): GenerationJobRecord 
     status: toStringValue(row.status) as GenerationJobRecord['status'],
     provider: toStringValue(row.provider),
     providerTaskId: toNullableString(row.provider_task_id),
+    templateId: toNullableString(row.template_id),
     inputJson: toJsonObject(row.input_json),
     outputJson: row.output_json == null ? null : toJsonObject(row.output_json),
     inputAssetId: toStringValue(row.input_asset_id),
@@ -288,7 +303,7 @@ export async function getAssetForUser(assetId: string, userId: number) {
   return row ? mapAssetRow(row) : null;
 }
 
-async function getPublishedLibraryAssetForGeneration(
+async function getLibraryAssetForGeneration(
   assetId: string,
   generationType: GenerationType
 ) {
@@ -305,9 +320,8 @@ async function getPublishedLibraryAssetForGeneration(
     from library_assets la
     inner join assets a on a.id = la.asset_id
     where la.asset_id = ${assetId}
-      and la.status = 'published'
       and a.status = 'uploaded'
-      and la.use_cases_json ? ${generationType}
+      and la.category = ${generationType}
     limit 1
   `;
 
@@ -322,7 +336,7 @@ async function getGenerationInputAsset(
 ) {
   return (
     (await getAssetForUser(assetId, userId)) ??
-    (await getPublishedLibraryAssetForGeneration(assetId, generationType))
+    (await getLibraryAssetForGeneration(assetId, generationType))
   );
 }
 
@@ -413,6 +427,50 @@ function buildInputJson(generation: GenerationRequest) {
   return JSON.parse(JSON.stringify(generation)) as Record<string, unknown>;
 }
 
+async function assertTemplateForGeneration(generation: GenerationRequest) {
+  if (!generation.templateId) {
+    return null;
+  }
+
+  if (!UUID_PATTERN.test(generation.templateId)) {
+    throw new GenerationApiError(
+      400,
+      'invalid_template_id',
+      'Template ID must be a valid UUID'
+    );
+  }
+
+  const rows = await client`
+    select id, category
+    from templates
+    where id = ${generation.templateId}
+    limit 1
+  `;
+  const row = rows[0] as Record<string, unknown> | undefined;
+
+  if (!row) {
+    throw new GenerationApiError(
+      404,
+      'template_not_found',
+      'Template was not found'
+    );
+  }
+
+  const expectedCategory =
+    TEMPLATE_CATEGORY_BY_GENERATION_TYPE[generation.generationType];
+  const actualCategory = toStringValue(row.category) as TemplateCategory;
+
+  if (actualCategory !== expectedCategory) {
+    throw new GenerationApiError(
+      400,
+      'template_category_mismatch',
+      'Template category does not match this generation type'
+    );
+  }
+
+  return toStringValue(row.id);
+}
+
 async function assertInputAssetsForUser(
   generation: GenerationRequest,
   userId: number
@@ -452,6 +510,7 @@ async function createQueuedGenerationJobWithCreditReservation(input: {
   jobId: string;
   userId: number;
   generation: GenerationRequest;
+  templateId: string | null;
   inputJson: Record<string, unknown>;
   creditReserved: number;
 }) {
@@ -526,6 +585,7 @@ async function createQueuedGenerationJobWithCreditReservation(input: {
         try_on_mode,
         status,
         provider,
+        template_id,
         input_json,
         input_asset_id,
         credit_reserved,
@@ -543,6 +603,7 @@ async function createQueuedGenerationJobWithCreditReservation(input: {
         },
         'queued',
         ${DEFAULT_PROVIDER},
+        ${input.templateId},
         ${JSON.stringify(input.inputJson)}::jsonb,
         ${input.generation.inputAssetId},
         ${input.creditReserved},
@@ -553,6 +614,14 @@ async function createQueuedGenerationJobWithCreditReservation(input: {
     `;
     const createdJob = mapJobRow(jobRows[0] as Record<string, unknown>);
     const balanceAfter = currentBalance - input.creditReserved;
+
+    if (input.templateId) {
+      await sql`
+        update templates
+        set usage_count = usage_count + 1
+        where id = ${input.templateId}
+      `;
+    }
 
     await sql`
       update users
@@ -585,6 +654,7 @@ async function createQueuedGenerationJobWithCreditReservation(input: {
               ? input.generation.tryOnMode
               : undefined,
           inputAssetId: input.generation.inputAssetId,
+          templateId: input.templateId,
           provider: DEFAULT_PROVIDER,
           source: 'generation_create',
         })}::jsonb,
@@ -752,6 +822,7 @@ export async function createGenerationForUser(
 ) {
   const creditReserved = getCreditCostForGeneration(generation);
   await assertInputAssetsForUser(generation, userId);
+  const templateId = await assertTemplateForGeneration(generation);
   const modelCatalogAsset =
     generation.generationType === 'try_on' && generation.modelCatalogAssetId
       ? await getModelCatalogAsset({ id: generation.modelCatalogAssetId })
@@ -775,6 +846,7 @@ export async function createGenerationForUser(
     jobId,
     userId,
     generation,
+    templateId,
     inputJson,
     creditReserved,
   });
@@ -870,6 +942,7 @@ async function getGenerationJobRecordForUser(jobId: string, userId: number) {
       status,
       provider,
       provider_task_id,
+      template_id,
       trigger_run_id,
       provider_status,
       input_json,
@@ -902,6 +975,7 @@ async function getGenerationJobRecord(jobId: string) {
       status,
       provider,
       provider_task_id,
+      template_id,
       trigger_run_id,
       provider_status,
       input_json,
@@ -937,17 +1011,56 @@ async function markJobSubmitting(input: {
       next_provider_poll_at = now() + (${PROVIDER_SUBMIT_LEASE_SECONDS}::text || ' seconds')::interval,
       updated_at = now()
     where id = ${input.jobId}
-      and (
-        status = 'queued'
-        or (
-          status = 'submitting'
-          and coalesce(next_provider_poll_at, updated_at, created_at) <= now()
-        )
-      )
+      and status = 'queued'
     returning id
   `;
 
   return Boolean(rows[0]);
+}
+
+async function markStaleSubmitLeaseFailedAndRefund(input: {
+  jobId: string;
+  userId: number;
+}) {
+  return client.begin(async (sql) => {
+    await sql`select pg_advisory_xact_lock(${input.userId})`;
+
+    const rows = await sql`
+      update generation_jobs
+      set
+        status = 'failed',
+        provider_status = 'failed',
+        error_message = 'Provider submit lease expired before a task id was recorded; refusing to resubmit.',
+        completed_at = now(),
+        next_provider_poll_at = null,
+        updated_at = now()
+      where id = ${input.jobId}
+        and user_id = ${input.userId}
+        and status = 'submitting'
+        and provider_task_id is null
+        and coalesce(next_provider_poll_at, updated_at, created_at) <= now()
+      returning id
+    `;
+
+    if (!rows[0]) {
+      return false;
+    }
+
+    await refundReservedCreditsInTransaction(
+      {
+        userId: input.userId,
+        jobId: input.jobId,
+        metadata: {
+          reason:
+            'Provider submit lease expired before a task id was recorded; refusing to resubmit.',
+          source: 'generation_submit_lease_expired',
+        },
+      },
+      sql
+    );
+
+    return true;
+  });
 }
 
 async function markJobRunningWithProviderTask(input: {
@@ -1455,6 +1568,18 @@ export async function runWanxiangGenerationJob(
       });
 
       if (!acquiredSubmitLease) {
+        const failedStaleSubmit = await markStaleSubmitLeaseFailedAndRefund({
+          jobId: job.id,
+          userId: job.userId,
+        });
+
+        if (failedStaleSubmit) {
+          return {
+            jobId: job.id,
+            status: 'failed' as const,
+          };
+        }
+
         return {
           jobId: job.id,
           status: 'running' as const,

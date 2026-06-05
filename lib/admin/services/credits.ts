@@ -6,7 +6,7 @@ import { db } from '@/lib/db/drizzle';
 import { creditLedger, generationJobs, users } from '@/lib/db/schema';
 import { requireAdmin } from '@/lib/db/queries';
 import {
-  getAdminJobTemplateSlug,
+  getAdminJobTemplateId,
   summarizeAdminJobInput,
 } from '@/lib/admin/search';
 import {
@@ -24,7 +24,7 @@ type AdminCreditLedgerRecord = {
   user: Pick<typeof users.$inferSelect, 'email' | 'name'> | null;
   job: Pick<
     typeof generationJobs.$inferSelect,
-    'generationType' | 'inputJson' | 'status'
+    'generationType' | 'inputJson' | 'status' | 'templateId'
   > | null;
 };
 type AdminCreditLedgerListItem = typeof creditLedger.$inferSelect & {
@@ -33,7 +33,7 @@ type AdminCreditLedgerListItem = typeof creditLedger.$inferSelect & {
   generationType: string | null;
   jobStatus: string | null;
   jobInputSummary: string | null;
-  jobTemplateSlug: string | null;
+  jobTemplateId: string | null;
 };
 
 const updateCreditLedgerSchema = z
@@ -54,6 +54,7 @@ function selectCreditsWithContext() {
         generationType: generationJobs.generationType,
         inputJson: generationJobs.inputJson,
         status: generationJobs.status,
+        templateId: generationJobs.templateId,
       },
     })
     .from(creditLedger)
@@ -73,7 +74,7 @@ function adminCreditLedgerRecordToListItem({
     generationType: job?.generationType ?? null,
     jobStatus: job?.status ?? null,
     jobInputSummary: summarizeAdminJobInput(job?.inputJson),
-    jobTemplateSlug: getAdminJobTemplateSlug(job?.inputJson),
+    jobTemplateId: job?.templateId ?? getAdminJobTemplateId(job?.inputJson),
   };
 }
 
@@ -123,9 +124,10 @@ export async function listCredits(params: {
       ilikeCol(users.name, query),
       ilikeCol(generationJobs.status, query),
       ilikeCol(generationJobs.generationType, query),
+      ilikeCol(generationJobs.templateId, query),
       ilikeJsonTextField(generationJobs.inputJson, 'productName', query),
       ilikeJsonTextField(generationJobs.inputJson, 'prompt', query),
-      ilikeJsonTextField(generationJobs.inputJson, 'templateSlug', query),
+      ilikeJsonTextField(generationJobs.inputJson, 'templateId', query),
       ilikeCol(creditLedger.reason, query),
       ilikeCol(creditLedger.createdAt, query),
       ilikeJsonTextField(creditLedger.metadataJson, 'note', query),

@@ -1,16 +1,16 @@
 # Frontend Rendering Architecture
 
-Updated: 2026-06-03
+Updated: 2026-06-04
 
 This note captures the default frontend architecture for the image-video SaaS after the dashboard billing/credits review. It should be loaded before broad frontend changes, dashboard route changes, workbench changes, pricing/auth flows, or any UI that mixes static controls with account/API data.
 
 ## Default Contract
 
-- Keep the dashboard shell persistent. `app/(dashboard)/layout.tsx` owns authentication and header/sidebar account state. Child pages must not repeat `getUser()` unless they need page-specific privileged data.
+- Keep the dashboard shell persistent. `app/(dashboard)/layout.tsx` owns session-token access control, not full account hydration. Header/sidebar account details should load through focused client fetches such as `/api/user`.
 - Render the primary UI immediately. Plans, credit packages, workbench controls, marketing cards, and static copy should come from local catalogs/copy modules and should not wait on account/API calls.
-- Load dynamic account data through focused API routes or client fetches. Use small surfaces such as `/api/account/billing`, `/api/account/credits`, and `/api/user`; add skeleton, error, empty, and retry states where the data appears.
+- Load dynamic account data through focused API routes or client fetches. Use small surfaces such as `/api/account/billing`, `/api/account/credits`, and `/api/user`; add skeleton, error, empty, and retry states where the data appears. Account balance, plan, and admin-link visibility should not block workspace first paint.
 - Preserve locale everywhere. Use `lib/dashboard/locale-url.ts` for server redirects and shared dashboard URLs, `useDashboardLocale()` for client components, and hidden `locale` fields for server-action forms.
-- Do not put broad data fetches in root layout. Public marketing pages should not trigger user/account DB calls. Dashboard layout may fetch the current user because it protects the workspace.
+- Do not put broad data fetches in root layout. Public marketing pages should not trigger user/account DB calls. Dashboard layout should verify the session token and let account-specific DB data hydrate asynchronously.
 - Keep business numbers shared. Subscription prices live in `lib/payments/catalog.ts`; generation credit costs live in `lib/generations/credit-costs.ts`. Frontend labels must read those helpers instead of hardcoding display costs.
 - Marketing pricing is acquisition UI. It should route users into workspace billing/credits. Workspace plans are the functional source of truth.
 
@@ -19,7 +19,7 @@ This note captures the default frontend architecture for the image-video SaaS af
 ```text
 server page wrapper
   - parse searchParams only
-  - no redundant user/db fetch if layout already protects the route
+  - no redundant user/db fetch if session-gated layout already protects the route
   - render a client surface
 
 client surface
@@ -29,7 +29,16 @@ client surface
   - keep buttons and core actions available when optional account data is still loading
 ```
 
-Use this pattern for account, billing, credits, settings, and operational dashboard pages. Admin-only pages may fetch on the server when access control or first paint depends on privileged data.
+Use this pattern for account, billing, credits, settings, and operational dashboard pages. Admin surfaces should render a lightweight loading/forbidden shell and fetch `/api/user` client-side for role gating; Admin APIs still enforce ops/admin permissions server-side.
+
+## 2026-06-04 Workspace Loading Update
+
+Fixed in this pass:
+
+- `/dashboard` no longer waits on a DB `getUser()` call before rendering the workspace shell. `app/(dashboard)/layout.tsx` verifies the session token through `getSessionUserId()`, then the header fetches `/api/user` for balance, plan, user menu, and admin-link state.
+- `/admin` also uses session-first rendering. `app/(dashboard)/admin/page.tsx` only redirects unauthenticated sessions; `AdminShell` fetches `/api/user` client-side before showing ops/admin tabs or the forbidden state. Admin data APIs remain server-authorized.
+- Marketing home template catalog refresh is deferred with `IntersectionObserver`, so users who click into the workspace immediately are not competing with `/api/templates`.
+- Dashboard demo video loading now triggers closer to viewport entry to reduce first-navigation media contention.
 
 ## 2026-06-03 Frontend Review Results
 

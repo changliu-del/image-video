@@ -12,18 +12,19 @@ import {
   templateTagRelations,
   templateTags,
   templates,
-  type TemplateType,
+  type TemplateCategory,
 } from '@/lib/db/schema';
-import { locales, type Locale } from '@/lib/marketing/content';
 import { templateTagOptions } from '@/lib/templates/catalog';
 import { uploadObjectToR2 } from '@/lib/storage/r2';
+
+type LegacyTemplateCrawlerCategory = TemplateCategory | 'image' | 'video';
 
 type SourceConfig = {
   name: string;
   url: string;
-  locale?: Locale;
   tags?: string[];
-  type?: TemplateType;
+  category?: TemplateCategory;
+  type?: LegacyTemplateCrawlerCategory;
   costCredits?: number;
   aspectRatios?: Array<'9:16' | '1:1' | '16:9'>;
   durationSeconds?: 5 | 8 | 10;
@@ -34,13 +35,12 @@ type CrawlCandidate = {
   source: string;
   sourceUrl: string;
   assetUrl: string;
-  title: string;
+  name: string;
   description: string;
   prompt: string;
   promptSource: 'source' | 'generated';
-  locale: Locale;
   tags: string[];
-  type: TemplateType;
+  category: TemplateCategory;
   costCredits: number;
   aspectRatios: Array<'9:16' | '1:1' | '16:9'>;
   durationSeconds: 5 | 8 | 10;
@@ -96,10 +96,6 @@ async function loadSources(options: CliOptions): Promise<SourceConfig[]> {
   }
 
   return JSON.parse(raw);
-}
-
-function normalizeLocale(value: string | undefined): Locale {
-  return value && locales.includes(value as Locale) ? (value as Locale) : 'en';
 }
 
 function absolutizeUrl(url: string, baseUrl: string) {
@@ -165,21 +161,23 @@ function generatePrompt(input: { title: string; description: string }) {
     `Product scene: ${input.title || 'a hero product in an online store'}.`,
     input.description
       ? `Creative direction: ${input.description}.`
-      : 'Creative direction: show the product clearly, add premium lighting, smooth camera motion, and a direct shopping CTA.',
-    'Format: short social commerce video, clean composition, realistic product motion, strong first-second hook, marketplace-ready visual hierarchy.',
+      : 'Creative direction: show the product clearly, add premium lighting, smooth camera motion, and a direct shopping action cue.',
+    'Format: short social commerce video, clean composition, realistic product motion, strong first-second opening, marketplace-ready visual hierarchy.',
   ].join(' ');
 }
 
-function slugify(value: string) {
-  return (
-    value
-      .normalize('NFD')
-      .replace(/[\u0300-\u036f]/g, '')
-      .toLowerCase()
-      .replace(/[^a-z0-9]+/g, '-')
-      .replace(/^-+|-+$/g, '')
-      .slice(0, 100) || `crawled-template-${Date.now()}`
-  );
+function normalizeCategory(
+  value: LegacyTemplateCrawlerCategory | undefined
+): TemplateCategory {
+  if (value === 'image_to_image' || value === 'image') {
+    return 'image_to_image';
+  }
+
+  if (value === 'try_on') {
+    return 'try_on';
+  }
+
+  return 'image_to_video';
 }
 
 function mimeTypeFromUrl(url: string) {
@@ -221,13 +219,12 @@ async function crawlSource(source: SourceConfig): Promise<CrawlCandidate[]> {
     source: source.name,
     sourceUrl: source.url,
     assetUrl,
-    title: videoUrls.length > 1 ? `${title} ${index + 1}` : title,
+    name: videoUrls.length > 1 ? `${title} ${index + 1}` : title,
     description,
     prompt,
     promptSource: sourcePrompt ? 'source' : 'generated',
-    locale: normalizeLocale(source.locale),
     tags: source.tags?.length ? source.tags : DEFAULT_TAGS,
-    type: source.type ?? 'video',
+    category: normalizeCategory(source.category ?? source.type),
     costCredits: source.costCredits ?? 10,
     aspectRatios: source.aspectRatios?.length ? source.aspectRatios : ['9:16'],
     durationSeconds: source.durationSeconds ?? 5,
@@ -303,7 +300,6 @@ async function upsertCandidate(input: {
     body: bytes,
     mimeType,
   });
-  const slug = slugify(`${input.candidate.source}-${input.candidate.title}`);
   const tagRows = await ensureTemplateTags(input.candidate.tags);
 
   return db.transaction(async (tx) => {
@@ -321,48 +317,22 @@ async function upsertCandidate(input: {
     const [template] = await tx
       .insert(templates)
       .values({
-        slug,
-        locale: input.candidate.locale,
-        title: input.candidate.title.slice(0, 140),
+        name: input.candidate.name.slice(0, 140),
         description:
           input.candidate.description ||
           'Crawled ecommerce AI video template ready for product campaigns.',
-        type: input.candidate.type,
-        status: 'draft',
-        hook: input.candidate.title.slice(0, 220),
-        cta: 'Shop now',
+        category: input.candidate.category,
         prompt: input.candidate.prompt,
-        promptJson: {
-          source: input.candidate.source,
-          sourceUrl: input.candidate.sourceUrl,
-          promptSource: input.candidate.promptSource,
-        },
-        defaultInputsJson: {},
         previewAssetId: assetId,
-        thumbnailAssetId: null,
         costCredits: input.candidate.costCredits,
         aspectRatiosJson: input.candidate.aspectRatios,
-        durationSeconds: input.candidate.durationSeconds,
+        durationSeconds:
+          input.candidate.category === 'image_to_video'
+            ? input.candidate.durationSeconds
+            : null,
         sortWeight: 0,
         createdBy: input.actorUserId,
         updatedBy: input.actorUserId,
-      })
-      .onConflictDoUpdate({
-        target: [templates.locale, templates.slug],
-        set: {
-          description:
-            input.candidate.description ||
-            'Crawled ecommerce AI video template ready for product campaigns.',
-          prompt: input.candidate.prompt,
-          promptJson: {
-            source: input.candidate.source,
-            sourceUrl: input.candidate.sourceUrl,
-            promptSource: input.candidate.promptSource,
-          },
-          previewAssetId: assetId,
-          updatedBy: input.actorUserId,
-          updatedAt: new Date(),
-        },
       })
       .returning();
 
@@ -399,10 +369,14 @@ async function upsertCandidate(input: {
         promptSource: input.candidate.promptSource,
         licenseNote: input.candidate.licenseNote,
         metadataJson: {
-          title: input.candidate.title,
+          name: input.candidate.name,
+          category: input.candidate.category,
           tags: input.candidate.tags,
           mimeType,
           storageKey,
+          source: input.candidate.source,
+          sourceUrl: input.candidate.sourceUrl,
+          promptSource: input.candidate.promptSource,
         },
       })
       .onConflictDoUpdate({

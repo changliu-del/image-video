@@ -1,28 +1,15 @@
 import type { ReactNode } from 'react';
 import { redirect } from 'next/navigation';
-import { getCachedUser } from '@/lib/db/queries';
+import { getSessionUserId } from '@/lib/auth/session';
 import {
   DashboardHeader,
   type DashboardHeaderUser,
 } from './dashboard-header';
 import { AppShell } from './app-shell';
 
-function toHeaderUser(user: Awaited<ReturnType<typeof getCachedUser>>) {
-  if (!user) return null;
-
-  const userId = user?.id;
-
-  if (typeof userId !== 'number') return null;
-
+function toHeaderUser(userId: number) {
   return {
     id: userId,
-    email: user.email,
-    name: user.name,
-    isAdmin: user.isAdmin,
-    role: user.role,
-    creditBalance: user.creditBalance,
-    planName: user.planName,
-    subscriptionStatus: user.subscriptionStatus,
   } satisfies DashboardHeaderUser;
 }
 
@@ -31,13 +18,14 @@ export default async function Layout({
 }: {
   children: ReactNode;
 }) {
-  const user = await getCachedUser();
-  const headerUser = toHeaderUser(user);
+  const userId = await getSessionUserId();
   const templateAdminUrl = process.env.TEMPLATE_ADMIN_URL ?? null;
 
-  if (!headerUser) {
+  if (!userId) {
     redirect('/sign-in');
   }
+
+  const headerUser = toHeaderUser(userId);
 
   return (
     <section className="flex flex-col min-h-screen">
@@ -45,7 +33,7 @@ export default async function Layout({
         user={headerUser}
         templateAdminUrl={templateAdminUrl}
       />
-      <AppShell user={headerUser} templateAdminUrl={templateAdminUrl}>
+      <AppShell user={null} templateAdminUrl={templateAdminUrl}>
         {children}
       </AppShell>
     </section>

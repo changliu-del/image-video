@@ -1,8 +1,9 @@
 'use client';
 
 import Link from 'next/link';
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { usePathname, useRouter, useSearchParams } from 'next/navigation';
+import useSWR from 'swr';
 import { Button } from '@/components/ui/button';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import {
@@ -29,6 +30,7 @@ import {
   getDashboardContent,
   type DashboardLocale,
 } from '@/lib/dashboard/content';
+import { DASHBOARD_USER_CACHE_KEY } from '@/lib/dashboard/user-cache';
 import { useDashboardLocale, withDashboardLocale } from '@/lib/dashboard/use-dashboard-locale';
 import { cn } from '@/lib/utils';
 
@@ -45,6 +47,15 @@ export type DashboardHeaderUser = {
 
 function canAccessAdmin(user: DashboardHeaderUser) {
   return user.isAdmin || user.role === 'admin' || user.role === 'ops';
+}
+
+async function fetchHeaderUser(url: string) {
+  const response = await fetch(url, { cache: 'no-store' });
+  if (!response.ok) {
+    throw new Error('Failed to load dashboard user');
+  }
+
+  return (await response.json()) as DashboardHeaderUser | null;
 }
 
 function UserMenu({
@@ -203,17 +214,38 @@ function DashboardLanguageMenu({
 }
 
 export function DashboardHeader({
-  user,
+  user: initialUser,
   templateAdminUrl,
 }: {
   user: DashboardHeaderUser | null;
   templateAdminUrl?: string | null;
 }) {
   const pathname = usePathname();
+  const previousPathname = useRef(pathname);
   const isAdminPage = pathname === '/admin' || pathname.startsWith('/admin/');
   const locale = useDashboardLocale();
   const content = getDashboardContent(locale);
   const homeHref = isAdminPage ? withDashboardLocale('/dashboard', locale) : `/${locale}`;
+  const { data: loadedUser, mutate: refreshUser } = useSWR<DashboardHeaderUser | null>(
+    initialUser?.id ? DASHBOARD_USER_CACHE_KEY : null,
+    fetchHeaderUser,
+    {
+      fallbackData: initialUser,
+      revalidateOnMount: true,
+      revalidateOnFocus: true,
+      errorRetryCount: 6,
+      errorRetryInterval: 1500,
+      refreshInterval: (latestUser) =>
+        initialUser?.id && typeof latestUser?.creditBalance !== 'number' ? 3000 : 0,
+    }
+  );
+  const user = loadedUser?.id ? loadedUser : initialUser;
+
+  useEffect(() => {
+    if (!initialUser?.id || previousPathname.current === pathname) return;
+    previousPathname.current = pathname;
+    void refreshUser();
+  }, [initialUser?.id, pathname, refreshUser]);
 
   return (
     <header
@@ -265,7 +297,7 @@ export function DashboardHeader({
               className="hidden h-9 items-center gap-2 rounded-full border border-indigo-100 bg-indigo-50 px-3 text-sm font-semibold text-indigo-600 shadow-sm transition hover:border-indigo-200 hover:bg-indigo-100 md:flex"
             >
               <Gem className="size-4 fill-indigo-300 text-indigo-500" />
-              {user?.creditBalance ?? 0}
+              {typeof user?.creditBalance === 'number' ? user.creditBalance : '...'}
               <span className="text-xs text-gray-500">{content.header.credits}</span>
             </Link>
             <Link

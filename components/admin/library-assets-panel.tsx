@@ -3,25 +3,21 @@
 import { useEffect, useMemo, useState } from 'react';
 import type { ReactNode } from 'react';
 import {
-  Archive,
   Edit3,
   Eye,
   ImagePlus,
   Loader2,
   Plus,
   Save,
-  Send,
   Trash2,
   Upload,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
 import {
   AdminManagementTable,
   AdminModal,
   AdminRecordDetails,
-  AdminStatusBadge,
   formatAdminDate,
   type AdminTableAction,
   type AdminTableColumn,
@@ -29,30 +25,15 @@ import {
 import type { AdminContent } from '@/lib/admin/content';
 import { cn } from '@/lib/utils';
 
-type LibraryAssetKind =
-  | 'product_image'
-  | 'model_image'
-  | 'garment_image'
-  | 'scene_image'
-  | 'example_image'
-  | 'example_video';
-type LibraryAssetStatus = 'draft' | 'published' | 'archived';
-type LibraryAssetUseCase = 'image_to_video' | 'apparel_image' | 'try_on';
+type LibraryAssetCategory = 'image_to_video' | 'apparel_image' | 'try_on';
 type ModalMode = 'create' | 'view' | 'edit';
 
 type AdminLibraryAsset = {
   id: string;
   assetId: string;
-  locale: 'pt' | 'en' | 'zh';
   title: string;
   description: string | null;
-  kind: LibraryAssetKind;
-  status: LibraryAssetStatus;
-  source: string | null;
-  licenseNote: string | null;
-  tags: string[];
-  useCases: LibraryAssetUseCase[];
-  qualityScore: number;
+  category: LibraryAssetCategory;
   sortWeight: number;
   usageCount: number;
   assetUrl: string | null;
@@ -64,21 +45,13 @@ type AdminLibraryAsset = {
   storageKey: string | null;
   createdAt: string;
   updatedAt: string;
-  publishedAt: string | null;
 };
 
 type LibraryAssetFormState = {
   id?: string;
-  locale: 'pt' | 'en' | 'zh';
   title: string;
   description: string;
-  kind: LibraryAssetKind;
-  status: LibraryAssetStatus;
-  source: string;
-  licenseNote: string;
-  tagsText: string;
-  useCases: LibraryAssetUseCase[];
-  qualityScore: number;
+  category: LibraryAssetCategory;
   sortWeight: number;
 };
 
@@ -96,83 +69,39 @@ type PresignResponse = {
   publicUrl: string;
 };
 
-const kindOptions: LibraryAssetKind[] = [
-  'product_image',
-  'model_image',
-  'garment_image',
-  'scene_image',
-  'example_image',
-  'example_video',
-];
-
-const useCaseOptions: LibraryAssetUseCase[] = [
+const categoryOptions: LibraryAssetCategory[] = [
   'image_to_video',
   'apparel_image',
   'try_on',
 ];
 
 const emptyForm: LibraryAssetFormState = {
-  locale: 'pt',
   title: '',
   description: '',
-  kind: 'product_image',
-  status: 'draft',
-  source: 'manual',
-  licenseNote: '',
-  tagsText: 'product-image,image-to-video',
-  useCases: ['image_to_video', 'apparel_image'],
-  qualityScore: 70,
+  category: 'apparel_image',
   sortWeight: 0,
 };
 
 function freshEmptyForm(): LibraryAssetFormState {
-  return {
-    ...emptyForm,
-    useCases: [...emptyForm.useCases],
-  };
+  return { ...emptyForm };
 }
 
-function defaultUseCases(kind: LibraryAssetKind): LibraryAssetUseCase[] {
-  if (kind === 'model_image' || kind === 'garment_image') {
-    return ['try_on'];
-  }
-  if (kind === 'example_video') {
-    return ['image_to_video'];
-  }
-  if (kind === 'scene_image') {
-    return ['image_to_video', 'apparel_image', 'try_on'];
-  }
-  return ['image_to_video', 'apparel_image'];
-}
-
-function defaultTags(kind: LibraryAssetKind) {
-  return kind.replace(/_/g, '-');
-}
-
-function inferKindFromFile(file: File): LibraryAssetKind {
+function inferCategoryFromFile(file: File): LibraryAssetCategory {
   const name = file.name.toLowerCase();
 
   if (file.type.startsWith('video/')) {
-    return 'example_video';
+    return 'image_to_video';
   }
 
-  if (/(model|modelo|mannequin|person|模特)/.test(name)) {
-    return 'model_image';
+  if (/(model|modelo|mannequin|person|模特|garment|cloth|dress|shirt|pants|服装|衣服|试衣)/.test(name)) {
+    return 'try_on';
   }
 
-  if (/(garment|cloth|dress|shirt|pants|服装|衣服)/.test(name)) {
-    return 'garment_image';
+  if (/(video|motion|clip|short|视频)/.test(name)) {
+    return 'image_to_video';
   }
 
-  if (/(scene|background|bg|场景|背景)/.test(name)) {
-    return 'scene_image';
-  }
-
-  if (/(example|demo|sample|示例)/.test(name)) {
-    return 'example_image';
-  }
-
-  return 'product_image';
+  return 'apparel_image';
 }
 
 function titleFromFileName(fileName: string) {
@@ -193,43 +122,18 @@ function formatFileSize(sizeBytes: number) {
 function assetToForm(asset: AdminLibraryAsset): LibraryAssetFormState {
   return {
     id: asset.id,
-    locale: asset.locale,
     title: asset.title,
     description: asset.description ?? '',
-    kind: asset.kind,
-    status: asset.status,
-    source: asset.source ?? '',
-    licenseNote: asset.licenseNote ?? '',
-    tagsText: asset.tags.join(','),
-    useCases: asset.useCases,
-    qualityScore: asset.qualityScore,
+    category: asset.category,
     sortWeight: asset.sortWeight,
   };
 }
 
-function parseTags(value: string) {
-  return Array.from(
-    new Set(
-      value
-        .split(',')
-        .map((tag) => tag.trim().toLowerCase())
-        .filter(Boolean)
-    )
-  );
-}
-
-function buildPayload(form: LibraryAssetFormState, canPublish: boolean) {
+function buildPayload(form: LibraryAssetFormState) {
   return {
-    locale: form.locale,
     title: form.title.trim(),
     description: form.description.trim() || null,
-    kind: form.kind,
-    status: canPublish ? form.status : 'draft',
-    source: form.source.trim() || null,
-    licenseNote: form.licenseNote.trim() || null,
-    tags: parseTags(form.tagsText),
-    useCases: form.useCases,
-    qualityScore: form.qualityScore,
+    category: form.category,
     sortWeight: form.sortWeight,
   };
 }
@@ -331,10 +235,10 @@ function Field({
 }
 
 export function LibraryAssetsPanel({
-  canPublish,
+  canDelete,
   content,
 }: {
-  canPublish: boolean;
+  canDelete: boolean;
   content: AdminContent;
 }) {
   const copy = content.libraryAssets;
@@ -382,66 +286,32 @@ export function LibraryAssetsPanel({
               {asset.title}
             </div>
             <div className="mt-1 break-words font-mono text-xs text-gray-500">
-              {asset.locale} / {copy.kindOptions[asset.kind] ?? asset.kind}
+              {copy.categoryOptions[asset.category] ?? asset.category}
             </div>
           </div>
         ),
       },
       {
-        key: 'status',
-        label: copy.columns.status,
-        width: 120,
+        key: 'category',
+        label: copy.columns.category,
+        width: 170,
         render: (asset) => (
-          <AdminStatusBadge
-            labels={content.statusLabels}
-            value={asset.status}
-          />
+          <span className="rounded bg-indigo-50 px-2 py-1 text-xs font-semibold text-indigo-600">
+            {copy.categoryOptions[asset.category] ?? asset.category}
+          </span>
         ),
       },
       {
-        key: 'useCases',
-        label: copy.columns.useCases,
-        width: 260,
-        render: (asset) => (
-          <div className="flex flex-wrap gap-1">
-            {asset.useCases.map((useCase) => (
-              <span
-                key={useCase}
-                className="rounded bg-indigo-50 px-1.5 py-0.5 text-[11px] font-medium text-indigo-600"
-              >
-                {copy.useCaseOptions[useCase] ?? useCase}
-              </span>
-            ))}
-          </div>
-        ),
-      },
-      {
-        key: 'qualityScore',
-        label: copy.columns.qualityScore,
+        key: 'sortWeight',
+        label: copy.columns.sortWeight,
         kind: 'number',
-        width: 96,
+        width: 110,
       },
       {
-        key: 'tags',
-        label: copy.columns.tags,
-        width: 260,
-        render: (asset) => (
-          <div className="flex flex-wrap gap-1">
-            {asset.tags.slice(0, 4).map((tag) => (
-              <span
-                key={tag}
-                className="rounded bg-gray-100 px-1.5 py-0.5 text-[11px] text-gray-600"
-              >
-                {tag}
-              </span>
-            ))}
-            {asset.tags.length > 4 ? (
-              <span className="text-xs text-gray-400">
-                +{asset.tags.length - 4}
-              </span>
-            ) : null}
-          </div>
-        ),
+        key: 'usageCount',
+        label: copy.columns.usageCount,
+        kind: 'number',
+        width: 110,
       },
       {
         key: 'updatedAt',
@@ -454,7 +324,7 @@ export function LibraryAssetsPanel({
         ),
       },
     ],
-    [content.statusLabels, copy]
+    [copy]
   );
 
   useEffect(() => {
@@ -536,53 +406,20 @@ export function LibraryAssetsPanel({
     setForm((current) => ({ ...current, [key]: value }));
   }
 
-  function updateKind(kind: LibraryAssetKind) {
-    setForm((current) => ({
-      ...current,
-      kind,
-      tagsText:
-        !current.tagsText.trim() ||
-        current.tagsText === defaultTags(current.kind) ||
-        current.tagsText === emptyForm.tagsText
-          ? defaultTags(kind)
-          : current.tagsText,
-      useCases: defaultUseCases(kind),
-    }));
-  }
-
   function handleUploadFileChange(file: File | null) {
     setUploadFile(file);
 
     if (!file) return;
 
-    const inferredKind = inferKindFromFile(file);
+    const inferredCategory = inferCategoryFromFile(file);
     setForm((current) => ({
       ...current,
       title: current.title.trim() ? current.title : titleFromFileName(file.name),
-      kind: inferredKind,
-      tagsText:
-        current.tagsText === emptyForm.tagsText || !current.tagsText.trim()
-          ? defaultTags(inferredKind)
-          : current.tagsText,
-      useCases:
-        current.useCases.length === 0 ||
-        current.useCases.join(',') === emptyForm.useCases.join(',')
-          ? defaultUseCases(inferredKind)
-          : current.useCases,
+      category:
+        current.category === emptyForm.category
+          ? inferredCategory
+          : current.category,
     }));
-  }
-
-  function toggleUseCase(useCase: LibraryAssetUseCase) {
-    setForm((current) => {
-      const next = new Set(current.useCases);
-      if (next.has(useCase) && next.size > 1) {
-        next.delete(useCase);
-      } else {
-        next.add(useCase);
-      }
-
-      return { ...current, useCases: Array.from(next) };
-    });
   }
 
   async function uploadAndCreateAsset() {
@@ -618,7 +455,7 @@ export function LibraryAssetsPanel({
       {
         method: 'POST',
         body: JSON.stringify({
-          ...buildPayload(form, canPublish),
+          ...buildPayload(form),
           assetId: presign.assetId,
           storageKey: presign.storageKey,
         }),
@@ -643,7 +480,7 @@ export function LibraryAssetsPanel({
           `/api/admin/library-assets/${form.id}`,
           {
             method: 'PUT',
-            body: JSON.stringify(buildPayload(form, canPublish)),
+            body: JSON.stringify(buildPayload(form)),
           },
           copy.errors.save
         );
@@ -654,32 +491,6 @@ export function LibraryAssetsPanel({
       }
     } catch (saveError) {
       setError(saveError instanceof Error ? saveError.message : copy.errors.save);
-    } finally {
-      setSaving(false);
-    }
-  }
-
-  async function runStatusAction(action: 'publish' | 'archive') {
-    if (!selectedAsset?.id) return;
-    setSaving(true);
-    setError(null);
-    try {
-      const updated = await requestJson<AdminLibraryAsset>(
-        `/api/admin/library-assets/${selectedAsset.id}`,
-        {
-          method: 'POST',
-          body: JSON.stringify({ action }),
-        },
-        copy.errors[action]
-      );
-      setSelectedAsset(updated);
-      setForm(assetToForm(updated));
-      setModalMode('view');
-      await loadAssets(data.page);
-    } catch (statusError) {
-      setError(
-        statusError instanceof Error ? statusError.message : copy.errors[action]
-      );
     } finally {
       setSaving(false);
     }
@@ -731,7 +542,7 @@ export function LibraryAssetsPanel({
       },
     ];
 
-    if (canPublish) {
+    if (canDelete) {
       actions.push({
         key: 'delete',
         label: common.delete,
@@ -830,30 +641,6 @@ export function LibraryAssetsPanel({
               >
                 {common.cancel}
               </Button>
-              {canPublish && form.id ? (
-                <>
-                  <Button
-                    type="button"
-                    variant="outline"
-                    onClick={() => runStatusAction('publish')}
-                    disabled={saving}
-                    title={common.publish}
-                  >
-                    <Send className="size-4" />
-                    {common.publish}
-                  </Button>
-                  <Button
-                    type="button"
-                    variant="outline"
-                    onClick={() => runStatusAction('archive')}
-                    disabled={saving}
-                    title={common.archive}
-                  >
-                    <Archive className="size-4" />
-                    {common.archive}
-                  </Button>
-                </>
-              ) : null}
               <Button type="button" onClick={saveLibraryAsset} disabled={saving}>
                 {saving ? (
                   <Loader2 className="size-4 animate-spin" />
@@ -881,21 +668,14 @@ export function LibraryAssetsPanel({
               statusLabels={content.statusLabels}
               columns={[
                 'title',
-                'locale',
-                'kind',
-                'status',
+                'category',
                 'description',
-                'tags',
-                'useCases',
-                'qualityScore',
+                'sortWeight',
                 'usageCount',
-                'source',
-                'licenseNote',
                 'mimeType',
                 'sizeBytes',
                 'createdAt',
                 'updatedAt',
-                'publishedAt',
               ]}
             />
           </div>
@@ -945,56 +725,22 @@ export function LibraryAssetsPanel({
                     onChange={(event) => updateForm('title', event.target.value)}
                   />
                 </Field>
-                <Field label={copy.fields.locale}>
+                <Field label={copy.fields.category}>
                   <select
-                    value={form.locale}
+                    value={form.category}
                     onChange={(event) =>
                       updateForm(
-                        'locale',
-                        event.target.value as LibraryAssetFormState['locale']
+                        'category',
+                        event.target.value as LibraryAssetCategory
                       )
                     }
                     className="h-9 rounded-md border border-gray-200 bg-white px-3 text-sm"
                   >
-                    <option value="pt">pt</option>
-                    <option value="en">en</option>
-                    <option value="zh">zh</option>
-                  </select>
-                </Field>
-                <Field label={copy.fields.kind}>
-                  <select
-                    value={form.kind}
-                    onChange={(event) =>
-                      updateKind(event.target.value as LibraryAssetKind)
-                    }
-                    className="h-9 rounded-md border border-gray-200 bg-white px-3 text-sm"
-                  >
-                    {kindOptions.map((option) => (
+                    {categoryOptions.map((option) => (
                       <option key={option} value={option}>
-                        {copy.kindOptions[option] ?? option}
+                        {copy.categoryOptions[option] ?? option}
                       </option>
                     ))}
-                  </select>
-                </Field>
-                <Field label={copy.fields.status}>
-                  <select
-                    value={canPublish ? form.status : 'draft'}
-                    disabled={!canPublish}
-                    onChange={(event) =>
-                      updateForm(
-                        'status',
-                        event.target.value as LibraryAssetStatus
-                      )
-                    }
-                    className="h-9 rounded-md border border-gray-200 bg-white px-3 text-sm disabled:bg-gray-50 disabled:text-gray-500"
-                  >
-                    <option value="draft">{content.statusLabels.draft}</option>
-                    <option value="published">
-                      {content.statusLabels.published}
-                    </option>
-                    <option value="archived">
-                      {content.statusLabels.archived}
-                    </option>
                   </select>
                 </Field>
               </div>
@@ -1010,55 +756,11 @@ export function LibraryAssetsPanel({
                 />
               </Field>
 
-              <div>
-                <Label className="mb-2 block text-xs font-semibold uppercase text-gray-500">
-                  {copy.useCases}
-                </Label>
-                <div className="flex flex-wrap gap-2">
-                  {useCaseOptions.map((option) => (
-                    <button
-                      key={option}
-                      type="button"
-                      onClick={() => toggleUseCase(option)}
-                      className={cn(
-                        'rounded-md border px-3 py-2 text-sm font-medium transition',
-                        form.useCases.includes(option)
-                          ? 'border-indigo-300 bg-indigo-50 text-indigo-600'
-                          : 'border-gray-200 bg-white text-gray-600 hover:border-indigo-200'
-                      )}
-                    >
-                      {copy.useCaseOptions[option] ?? option}
-                    </button>
-                  ))}
-                </div>
-              </div>
-
-              <Field label={copy.fields.tags}>
-                <Input
-                  value={form.tagsText}
-                  onChange={(event) =>
-                    updateForm('tagsText', event.target.value)
-                  }
-                  placeholder={copy.placeholders.tags}
-                />
-              </Field>
-
               <details className="group">
                 <summary className="cursor-pointer text-sm font-semibold text-gray-700 marker:text-gray-400">
                   {copy.advancedFields}
                 </summary>
-                <div className="mt-3 grid gap-4 md:grid-cols-2">
-                  <Field label={copy.fields.qualityScore}>
-                    <Input
-                      type="number"
-                      min={0}
-                      max={100}
-                      value={form.qualityScore}
-                      onChange={(event) =>
-                        updateForm('qualityScore', Number(event.target.value))
-                      }
-                    />
-                  </Field>
+                <div className="mt-3 max-w-sm">
                   <Field label={copy.fields.sortWeight}>
                     <Input
                       type="number"
@@ -1066,24 +768,6 @@ export function LibraryAssetsPanel({
                       onChange={(event) =>
                         updateForm('sortWeight', Number(event.target.value))
                       }
-                    />
-                  </Field>
-                  <Field label={copy.fields.source}>
-                    <Input
-                      value={form.source}
-                      onChange={(event) =>
-                        updateForm('source', event.target.value)
-                      }
-                      placeholder={copy.placeholders.source}
-                    />
-                  </Field>
-                  <Field label={copy.fields.licenseNote}>
-                    <Input
-                      value={form.licenseNote}
-                      onChange={(event) =>
-                        updateForm('licenseNote', event.target.value)
-                      }
-                      placeholder={copy.placeholders.licenseNote}
                     />
                   </Field>
                 </div>

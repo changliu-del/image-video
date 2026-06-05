@@ -18,12 +18,12 @@ describe('getLegacyLoginHref', () => {
     );
   });
 
-  it('keeps sign-up mode while preserving the resolved locale', () => {
+  it('keeps sign-up mode while dropping legacy invite params', () => {
     const href = getLegacyLoginHref('signup', {
       locale: 'en',
       invite: 'invite-123',
     });
 
-    expect(href).toBe('/en/login?locale=en&invite=invite-123&mode=signup');
+    expect(href).toBe('/en/login?locale=en&mode=signup');
   });
 });

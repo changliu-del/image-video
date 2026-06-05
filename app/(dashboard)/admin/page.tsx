@@ -1,10 +1,5 @@
 import { redirect } from 'next/navigation';
-import {
-  getCachedUser,
-  hasAdminAccess,
-  hasOpsAccess,
-} from '@/lib/db/queries';
-import { getAdminContent } from '@/lib/admin/content';
+import { getSessionUserId } from '@/lib/auth/session';
 import {
   firstDashboardParam,
   withDashboardLocale,
@@ -22,20 +17,7 @@ type AdminPageProps = {
 export default async function AdminPage({ searchParams }: AdminPageProps) {
   const params = await searchParams;
   const locale = firstDashboardParam(params?.locale);
-  const content = getAdminContent(locale);
-  const user = await getCachedUser();
-  if (!user) redirect(withDashboardLocale('/sign-in', locale));
-  if (!hasOpsAccess(user)) {
-    return (
-      <main className="mx-auto w-full max-w-5xl px-4 py-12">
-        <h1 className="text-2xl font-semibold text-gray-950">
-          {content.shell.forbiddenTitle}
-        </h1>
-        <p className="mt-2 text-gray-600">
-          {content.shell.forbiddenDescription}
-        </p>
-      </main>
-    );
-  }
-  return <AdminShell canManageUsers={hasAdminAccess(user)} />;
+  const userId = await getSessionUserId();
+  if (!userId) redirect(withDashboardLocale('/sign-in', locale));
+  return <AdminShell />;
 }

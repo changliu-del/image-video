@@ -99,7 +99,7 @@
 本次修复了创作台 payload 与后端 strict schema 不一致导致的 400 问题：
 
 - `lib/generations/validation.ts`
-  - 支持 `templateId`、`templateSlug` 透传到 generation input。
+  - 支持 `templateId` 透传到 generation input。
   - 空字符串 `prompt` 会被视为未填写，避免表单默认空值导致失败。
   - `try_on` 接受 `aspectRatio`，兼容旧共享 workbench。
   - `apparel_image` 接受 `strength` 和 `variants`，兼容新版商品图 workbench。

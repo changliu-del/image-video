@@ -42,6 +42,7 @@ import {
   normalizeLibraryItems as normalizeItems,
   type WorkbenchLibraryItem as LibraryItem,
 } from '@/components/create/library-item-utils';
+import { refreshDashboardUser } from '@/lib/dashboard/user-cache';
 import { useDashboardLocale } from '@/lib/dashboard/use-dashboard-locale';
 import { getCreditCostForDuration } from '@/lib/generations/credit-costs';
 import { cn } from '@/lib/utils';
@@ -232,30 +233,44 @@ function EmptyMedia({ label }: { label: string }) {
   );
 }
 
-export function ImageVideoWorkbench() {
+export function ImageVideoWorkbench({
+  initialTemplateId = '',
+  initialPrompt = '',
+}: {
+  initialTemplateId?: string;
+  initialPrompt?: string;
+}) {
   const locale = useDashboardLocale();
   const copy = imageVideoWorkbenchCopy[locale];
   const commonCopy = commonWorkbenchCopy[locale];
+  const starterPrompt = initialPrompt.trim();
   const [sourceFile, setSourceFile] = useState<File | null>(null);
   const [sourcePreview, setSourcePreview] = useState<string | null>(null);
-  const [prompt, setPrompt] = useState(() => copy.promptPresets[0]);
+  const [prompt, setPrompt] = useState(
+    () => starterPrompt || copy.promptPresets[0]
+  );
   const [aspectRatio, setAspectRatio] = useState<AspectRatio>('9:16');
   const [durationSeconds, setDurationSeconds] = useState<DurationSeconds>(5);
   const [exampleOffset, setExampleOffset] = useState(0);
   const [templates, setTemplates] = useState<LibraryItem[]>([]);
   const [assets, setAssets] = useState<LibraryItem[]>([]);
+  const [selectedTemplate, setSelectedTemplate] =
+    useState<LibraryItem | null>(null);
   const [selectedAsset, setSelectedAsset] = useState<LibraryItem | null>(null);
   const [isLoadingLibrary, setIsLoadingLibrary] = useState(true);
   const [submitLabel, setSubmitLabel] = useState<string | null>(null);
   const [jobId, setJobId] = useState<string | null>(null);
   const [jobStatus, setJobStatus] = useState<JobStatusResponse | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const requestedTemplateId = initialTemplateId;
 
   const isSubmitting = Boolean(submitLabel);
   const trimmedPrompt = prompt.trim();
   const selectedResultUrl = resultUrl(jobStatus);
   const selectedAssetImage = selectedAsset ? getItemImage(selectedAsset) : '';
   const selectedAssetId = selectedAsset ? getItemAssetId(selectedAsset) : '';
+  const selectedTemplateId =
+    selectedTemplate?.id == null ? '' : String(selectedTemplate.id);
   const libraryItems = useMemo(
     () => [...assets, ...templates].filter((item) => getItemImage(item)),
     [assets, templates]
@@ -286,14 +301,12 @@ export function ImageVideoWorkbench() {
       setIsLoadingLibrary(true);
       try {
         const params = new URLSearchParams({
-          locale,
           pageSize: '12',
-          type: 'image_to_video',
+          category: 'image_to_video',
         });
         const assetParams = new URLSearchParams({
-          locale,
           pageSize: '12',
-          useCase: 'image_to_video',
+          category: 'image_to_video',
         });
         const [templateResponse, assetResponse] = await Promise.all([
           fetch(`/api/templates?${params.toString()}`),
@@ -308,11 +321,33 @@ export function ImageVideoWorkbench() {
         if (!cancelled) {
           const nextTemplates = normalizeItems(templateBody);
           const nextAssets = normalizeItems(assetBody);
+          const requestedTemplate = nextTemplates.find(
+            (template) => String(template.id) === requestedTemplateId
+          );
           const defaultAsset = nextAssets.find(
             (asset) => getItemAssetId(asset) && getItemImage(asset)
           );
           setTemplates(nextTemplates);
           setAssets(nextAssets);
+          setSelectedTemplate((current) => {
+            if (requestedTemplate) {
+              return requestedTemplate;
+            }
+
+            if (!requestedTemplateId) {
+              return current &&
+                nextTemplates.some(
+                  (template) => String(template.id) === String(current.id)
+                )
+                ? current
+                : null;
+            }
+
+            return null;
+          });
+          if (requestedTemplate?.prompt) {
+            setPrompt(String(requestedTemplate.prompt));
+          }
           setSelectedAsset((current) =>
             current && getItemAssetId(current) ? current : defaultAsset ?? null
           );
@@ -326,7 +361,7 @@ export function ImageVideoWorkbench() {
     return () => {
       cancelled = true;
     };
-  }, [locale]);
+  }, [locale, requestedTemplateId]);
 
   useEffect(() => {
     setPrompt((current) => current || copy.promptPresets[0]);
@@ -339,7 +374,12 @@ export function ImageVideoWorkbench() {
     const poll = async () => {
       try {
         const nextStatus = await fetchJobStatus(jobId, commonCopy);
-        if (!cancelled) setJobStatus(nextStatus);
+        if (!cancelled) {
+          setJobStatus(nextStatus);
+          if (terminalStatus(nextStatus.status)) {
+            void refreshDashboardUser();
+          }
+        }
       } catch (statusError) {
         if (!cancelled) {
           setError(
@@ -415,6 +455,7 @@ export function ImageVideoWorkbench() {
         {
           generationType: 'image_to_video',
           inputAssetId,
+          ...(selectedTemplateId ? { templateId: selectedTemplateId } : {}),
           prompt: trimmedPrompt,
           aspectRatio,
           durationSeconds,
@@ -427,6 +468,7 @@ export function ImageVideoWorkbench() {
         throw new Error(commonCopy.missingJobError);
       }
 
+      void refreshDashboardUser();
       setJobId(nextJobId);
       setJobStatus({
         id: nextJobId,

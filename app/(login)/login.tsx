@@ -8,14 +8,16 @@ import {
   Eye,
   EyeOff,
   Gift,
+  KeyRound,
   Loader2,
   Lock,
   Mail,
+  Send,
   ShieldCheck,
   Sparkles,
   Video,
 } from 'lucide-react';
-import { signIn, signUp } from './actions';
+import { sendSignupVerificationCode, signIn, signUp } from './actions';
 import type { ActionState } from '@/lib/auth/middleware';
 import {
   getLocalizedHref,
@@ -52,6 +54,9 @@ function getModeHref(
   mode: AuthMode
 ) {
   const params = new URLSearchParams(searchParams.toString());
+  params.delete('invite');
+  params.delete('inviteId');
+  params.delete('inviteCode');
 
   if (mode === 'signup') {
     params.set('mode', 'signup');
@@ -76,6 +81,17 @@ function getAuthError(content: AuthContent, error?: string) {
 
   if (normalizedError.includes('failed to create user')) {
     return content.errors.registerFailed;
+  }
+
+  if (
+    normalizedError.includes('verification code') ||
+    normalizedError.includes('verification email')
+  ) {
+    return content.errors.invalidVerificationCode;
+  }
+
+  if (normalizedError.includes('too many attempts')) {
+    return content.errors.rateLimited;
   }
 
   if (normalizedError.includes('invalid email')) {
@@ -164,7 +180,6 @@ export function Login({
   const activeMode = getModeFromSearch(searchParams, mode);
   const redirect = searchParams.get('redirect');
   const priceId = searchParams.get('priceId');
-  const inviteId = searchParams.get('inviteId');
   const [passwordVisible, setPasswordVisible] = useState(false);
   const [signInState, signInAction, signInPending] = useActionState<
     ActionState,
@@ -174,10 +189,22 @@ export function Login({
     ActionState,
     FormData
   >(signUp, { error: '' });
+  const [sendCodeState, sendCodeAction, sendCodePending] = useActionState<
+    ActionState,
+    FormData
+  >(sendSignupVerificationCode, { error: '' });
   const state = activeMode === 'signin' ? signInState : signUpState;
   const pending = activeMode === 'signin' ? signInPending : signUpPending;
   const formAction = activeMode === 'signin' ? signInAction : signUpAction;
-  const authError = getAuthError(content, state.error);
+  const authError =
+    getAuthError(content, state.error) ||
+    (activeMode === 'signup'
+      ? getAuthError(content, sendCodeState.error)
+      : null);
+  const emailDefaultValue =
+    activeMode === 'signup'
+      ? signUpState.email ?? sendCodeState.email
+      : signInState.email;
   const switchMode = activeMode === 'signin' ? 'signup' : 'signin';
 
   return (
@@ -243,7 +270,6 @@ export function Login({
             <form className="mt-7 space-y-5" action={formAction}>
               <input type="hidden" name="redirect" value={redirect || ''} />
               <input type="hidden" name="priceId" value={priceId || ''} />
-              <input type="hidden" name="inviteId" value={inviteId || ''} />
               <input type="hidden" name="locale" value={locale} />
 
               <label className="block" htmlFor="email">
@@ -257,7 +283,7 @@ export function Login({
                     name="email"
                     type="email"
                     autoComplete="email"
-                    defaultValue={state.email}
+                    defaultValue={emailDefaultValue}
                     required
                     maxLength={255}
                     className="h-full min-w-0 flex-1 bg-transparent text-sm text-white outline-none placeholder:text-white/30"
@@ -306,12 +332,64 @@ export function Login({
                 </span>
               </label>
 
+              {activeMode === 'signup' ? (
+                <label className="block" htmlFor="verificationCode">
+                  <span className="mb-2 block text-xs font-medium uppercase tracking-wider text-white/45">
+                    {content.verificationCodeLabel}
+                  </span>
+                  <span className="flex h-12 items-center rounded-xl border border-white/10 bg-white/[0.07] px-3 transition-colors focus-within:border-white/55 focus-within:ring-2 focus-within:ring-white/10">
+                    <KeyRound className="mr-3 size-4 flex-shrink-0 text-white/38" />
+                    <input
+                      id="verificationCode"
+                      name="verificationCode"
+                      type="text"
+                      autoComplete="one-time-code"
+                      inputMode="numeric"
+                      pattern="[0-9]*"
+                      maxLength={6}
+                      required
+                      className="h-full min-w-0 flex-1 bg-transparent text-sm text-white outline-none placeholder:text-white/30"
+                      placeholder={content.verificationCodePlaceholder}
+                    />
+                    <button
+                      type="submit"
+                      formAction={sendCodeAction}
+                      formNoValidate
+                      disabled={sendCodePending}
+                      className="ml-2 inline-flex h-8 shrink-0 items-center justify-center gap-1 rounded-md bg-white/12 px-2 text-xs font-semibold text-white transition hover:bg-white/18 disabled:cursor-not-allowed disabled:opacity-60 sm:px-3"
+                    >
+                      {sendCodePending ? (
+                        <Loader2 className="size-3.5 animate-spin" />
+                      ) : (
+                        <Send className="size-3.5" />
+                      )}
+                      <span className="hidden sm:inline">
+                        {sendCodePending
+                          ? content.sendingVerificationCode
+                          : content.sendVerificationCode}
+                      </span>
+                    </button>
+                  </span>
+                </label>
+              ) : null}
+
               {authError ? (
                 <div
                   className="rounded-xl border border-red-400/25 bg-red-500/10 px-3 py-2 text-sm text-red-100"
                   role="alert"
                 >
                   {authError}
+                </div>
+              ) : null}
+
+              {activeMode === 'signup' &&
+              sendCodeState.success &&
+              !authError ? (
+                <div
+                  className="rounded-xl border border-emerald-400/25 bg-emerald-500/10 px-3 py-2 text-sm text-emerald-100"
+                  role="status"
+                >
+                  {content.verificationCodeSent}
                 </div>
               ) : null}
 

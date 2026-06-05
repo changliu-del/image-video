@@ -1,6 +1,6 @@
 # API, Generation, and Credits
 
-Updated: 2026-06-03
+Updated: 2026-06-04
 
 ## Request Validation
 
@@ -9,7 +9,7 @@ Updated: 2026-06-03
 - Upload validation for png/jpeg/webp up to 10 MB.
 - Generation types: `image_to_video`, `apparel_image`, `try_on`.
 - Legacy `image-to-video` alias.
-- Optional workbench fields: `templateId`, `templateSlug`.
+- Optional workbench field: `templateId`.
 - Empty prompt strings as omitted prompt.
 - Apparel controls: `strength`, `variants`.
 - Try-on modes: `single`, `multi`.
@@ -35,7 +35,7 @@ Updated: 2026-06-03
 - `lib/payments/stripe.ts` routes mock subscription checkout through the same local grant/update flow for monthly and annual plans.
 - `/dashboard/billing` is the primary workspace Plans page; `/dashboard/credits` is the credit wallet and ledger page.
 - The unlocalized `/pricing` dashboard route redirects to `/dashboard/billing`; localized marketing pricing pages remain public ads and link into workspace Plans/Credits.
-- `app/(dashboard)/layout.tsx` fetches the DB user so the header can display the real credit balance instead of demo data.
+- `app/(dashboard)/layout.tsx` verifies the session token only. `app/(dashboard)/dashboard-header.tsx` fetches `/api/user` on the client to hydrate the real credit balance, plan/admin state, and user menu after the workspace shell renders.
 
 Generation credit cost is currently:
 

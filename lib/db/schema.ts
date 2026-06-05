@@ -50,17 +50,16 @@ export type VideoAspectRatio = (typeof VIDEO_ASPECT_RATIOS)[number];
 export const USER_ROLES = ['member', 'ops', 'admin'] as const;
 export type UserRole = (typeof USER_ROLES)[number];
 
-export type TemplateSlug = string;
+export const EMAIL_VERIFICATION_PURPOSES = ['signup'] as const;
+export type EmailVerificationPurpose =
+  (typeof EMAIL_VERIFICATION_PURPOSES)[number];
 
-export const TEMPLATE_TYPES = [
-  'image',
+export const TEMPLATE_CATEGORIES = [
   'image_to_video',
-  'video',
+  'image_to_image',
+  'try_on',
 ] as const;
-export type TemplateType = (typeof TEMPLATE_TYPES)[number];
-
-export const TEMPLATE_STATUSES = ['draft', 'published', 'archived'] as const;
-export type TemplateStatus = (typeof TEMPLATE_STATUSES)[number];
+export type TemplateCategory = (typeof TEMPLATE_CATEGORIES)[number];
 
 export const TEMPLATE_TAG_GROUPS = [
   'goal',
@@ -74,29 +73,18 @@ export const TEMPLATE_TAG_GROUPS = [
 export type TemplateTagGroup = (typeof TEMPLATE_TAG_GROUPS)[number];
 
 export const TEMPLATE_ASSET_ROLES = [
-  'thumbnail',
   'preview',
   'source',
   'example',
 ] as const;
 export type TemplateAssetRole = (typeof TEMPLATE_ASSET_ROLES)[number];
 
-export const LIBRARY_ASSET_KINDS = [
-  'product_image',
-  'model_image',
-  'garment_image',
-  'scene_image',
-  'example_image',
-  'example_video',
+export const LIBRARY_ASSET_CATEGORIES = [
+  'image_to_video',
+  'apparel_image',
+  'try_on',
 ] as const;
-export type LibraryAssetKind = (typeof LIBRARY_ASSET_KINDS)[number];
-
-export const LIBRARY_ASSET_STATUSES = [
-  'draft',
-  'published',
-  'archived',
-] as const;
-export type LibraryAssetStatus = (typeof LIBRARY_ASSET_STATUSES)[number];
+export type LibraryAssetCategory = (typeof LIBRARY_ASSET_CATEGORIES)[number];
 
 export const CREDIT_LEDGER_REASONS = [
   'purchase',
@@ -134,6 +122,40 @@ export const users = pgTable(
     check(
       'users_role_check',
       sql`${table.role} in ('member', 'ops', 'admin')`
+    ),
+  ]
+);
+
+export const emailVerificationCodes = pgTable(
+  'email_verification_codes',
+  {
+    id: uuid('id').defaultRandom().primaryKey(),
+    email: varchar('email', { length: 255 }).notNull(),
+    purpose: varchar('purpose', { length: 32 })
+      .$type<EmailVerificationPurpose>()
+      .notNull(),
+    codeHash: text('code_hash').notNull(),
+    attempts: integer('attempts').notNull().default(0),
+    expiresAt: timestamp('expires_at').notNull(),
+    consumedAt: timestamp('consumed_at'),
+    lastSentAt: timestamp('last_sent_at').notNull().defaultNow(),
+    createdAt: timestamp('created_at').notNull().defaultNow(),
+    updatedAt: timestamp('updated_at').notNull().defaultNow(),
+  },
+  (table) => [
+    index('email_verification_codes_email_purpose_created_idx').on(
+      table.email,
+      table.purpose,
+      table.createdAt
+    ),
+    index('email_verification_codes_expires_at_idx').on(table.expiresAt),
+    check(
+      'email_verification_codes_purpose_check',
+      sql`${table.purpose} in ('signup')`
+    ),
+    check(
+      'email_verification_codes_attempts_check',
+      sql`${table.attempts} >= 0`
     ),
   ]
 );
@@ -199,32 +221,15 @@ export const templates = pgTable(
   'templates',
   {
     id: uuid('id').defaultRandom().primaryKey(),
-    slug: varchar('slug', { length: 120 }).notNull(),
-    locale: varchar('locale', { length: 8 }).notNull().default('pt'),
-    title: varchar('title', { length: 140 }).notNull(),
+    name: varchar('name', { length: 140 }).notNull(),
     description: text('description').notNull(),
-    type: text('type')
-      .$type<TemplateType>()
+    category: text('category')
+      .$type<TemplateCategory>()
       .notNull()
-      .default('image_to_video'),
-    status: text('status')
-      .$type<TemplateStatus>()
-      .notNull()
-      .default('draft'),
-    hook: varchar('hook', { length: 220 }).notNull(),
-    cta: varchar('cta', { length: 80 }),
+      .default('image_to_image'),
     prompt: text('prompt').notNull(),
     negativePrompt: text('negative_prompt'),
-    promptJson: jsonb('prompt_json')
-      .$type<Record<string, unknown>>()
-      .notNull()
-      .default(sql`'{}'::jsonb`),
-    defaultInputsJson: jsonb('default_inputs_json')
-      .$type<Record<string, unknown>>()
-      .notNull()
-      .default(sql`'{}'::jsonb`),
     previewAssetId: uuid('preview_asset_id').references(() => assets.id),
-    thumbnailAssetId: uuid('thumbnail_asset_id').references(() => assets.id),
     costCredits: integer('cost_credits').notNull().default(1),
     aspectRatiosJson: jsonb('aspect_ratios_json')
       .$type<VideoAspectRatio[]>()
@@ -235,27 +240,15 @@ export const templates = pgTable(
     usageCount: integer('usage_count').notNull().default(0),
     createdBy: integer('created_by').references(() => users.id),
     updatedBy: integer('updated_by').references(() => users.id),
-    publishedBy: integer('published_by').references(() => users.id),
-    publishedAt: timestamp('published_at'),
     createdAt: timestamp('created_at').notNull().defaultNow(),
     updatedAt: timestamp('updated_at').notNull().defaultNow(),
   },
   (table) => [
-    uniqueIndex('templates_locale_slug_unique').on(table.locale, table.slug),
-    index('templates_locale_status_idx').on(table.locale, table.status),
-    index('templates_type_status_idx').on(table.type, table.status),
+    index('templates_category_idx').on(table.category),
     index('templates_sort_weight_idx').on(table.sortWeight),
     check(
-      'templates_slug_check',
-      sql`${table.slug} ~ '^[a-z0-9][a-z0-9_-]*$'`
-    ),
-    check(
-      'templates_type_check',
-      sql`${table.type} in ('image', 'image_to_video', 'video')`
-    ),
-    check(
-      'templates_status_check',
-      sql`${table.status} in ('draft', 'published', 'archived')`
+      'templates_category_check',
+      sql`${table.category} in ('image_to_video', 'image_to_image', 'try_on')`
     ),
     check('templates_cost_credits_check', sql`${table.costCredits} >= 0`),
     check('templates_usage_count_check', sql`${table.usageCount} >= 0`),
@@ -293,7 +286,7 @@ export const templateTagRelations = pgTable(
   {
     templateId: uuid('template_id')
       .notNull()
-      .references(() => templates.id),
+      .references(() => templates.id, { onDelete: 'cascade' }),
     tagId: integer('tag_id')
       .notNull()
       .references(() => templateTags.id),
@@ -310,7 +303,7 @@ export const templateAssets = pgTable(
     id: uuid('id').defaultRandom().primaryKey(),
     templateId: uuid('template_id')
       .notNull()
-      .references(() => templates.id),
+      .references(() => templates.id, { onDelete: 'cascade' }),
     assetId: uuid('asset_id')
       .notNull()
       .references(() => assets.id),
@@ -327,7 +320,7 @@ export const templateAssets = pgTable(
     index('template_assets_asset_id_idx').on(table.assetId),
     check(
       'template_assets_role_check',
-      sql`${table.role} in ('thumbnail', 'preview', 'source', 'example')`
+      sql`${table.role} in ('preview', 'source', 'example')`
     ),
   ]
 );
@@ -336,7 +329,9 @@ export const templateAuditLogs = pgTable(
   'template_audit_logs',
   {
     id: uuid('id').defaultRandom().primaryKey(),
-    templateId: uuid('template_id').references(() => templates.id),
+    templateId: uuid('template_id').references(() => templates.id, {
+      onDelete: 'set null',
+    }),
     actorId: integer('actor_id').references(() => users.id),
     action: varchar('action', { length: 60 }).notNull(),
     beforeJson: jsonb('before_json')
@@ -441,67 +436,29 @@ export const libraryAssets = pgTable(
     assetId: uuid('asset_id')
       .notNull()
       .references(() => assets.id),
-    locale: varchar('locale', { length: 8 }).notNull().default('pt'),
     title: varchar('title', { length: 140 }).notNull(),
     description: text('description'),
-    kind: varchar('kind', { length: 32 })
-      .$type<LibraryAssetKind>()
+    category: varchar('category', { length: 32 })
+      .$type<LibraryAssetCategory>()
       .notNull(),
-    status: varchar('status', { length: 24 })
-      .$type<LibraryAssetStatus>()
-      .notNull()
-      .default('draft'),
-    source: varchar('source', { length: 80 }),
-    licenseNote: text('license_note'),
-    tagsJson: jsonb('tags_json')
-      .$type<string[]>()
-      .notNull()
-      .default(sql`'[]'::jsonb`),
-    useCasesJson: jsonb('use_cases_json')
-      .$type<GenerationType[]>()
-      .notNull()
-      .default(sql`'[]'::jsonb`),
-    qualityScore: integer('quality_score').notNull().default(0),
     sortWeight: integer('sort_weight').notNull().default(0),
     usageCount: integer('usage_count').notNull().default(0),
     createdBy: integer('created_by').references(() => users.id),
     updatedBy: integer('updated_by').references(() => users.id),
-    publishedBy: integer('published_by').references(() => users.id),
-    publishedAt: timestamp('published_at'),
     createdAt: timestamp('created_at').notNull().defaultNow(),
     updatedAt: timestamp('updated_at').notNull().defaultNow(),
   },
   (table) => [
     uniqueIndex('library_assets_asset_id_unique').on(table.assetId),
-    index('library_assets_locale_status_idx').on(table.locale, table.status),
-    index('library_assets_kind_status_idx').on(table.kind, table.status),
-    index('library_assets_sort_quality_idx').on(
-      table.sortWeight,
-      table.qualityScore
-    ),
+    index('library_assets_category_idx').on(table.category),
+    index('library_assets_sort_weight_idx').on(table.sortWeight),
     check(
-      'library_assets_kind_check',
-      sql`${table.kind} in ('product_image', 'model_image', 'garment_image', 'scene_image', 'example_image', 'example_video')`
-    ),
-    check(
-      'library_assets_status_check',
-      sql`${table.status} in ('draft', 'published', 'archived')`
-    ),
-    check(
-      'library_assets_quality_score_check',
-      sql`${table.qualityScore} between 0 and 100`
+      'library_assets_category_check',
+      sql`${table.category} in ('image_to_video', 'apparel_image', 'try_on')`
     ),
     check(
       'library_assets_usage_count_check',
       sql`${table.usageCount} >= 0`
-    ),
-    check(
-      'library_assets_tags_json_check',
-      sql`jsonb_typeof(${table.tagsJson}) = 'array'`
-    ),
-    check(
-      'library_assets_use_cases_json_check',
-      sql`jsonb_typeof(${table.useCasesJson}) = 'array' and ${table.useCasesJson} <@ '["image_to_video", "apparel_image", "try_on"]'::jsonb`
     ),
   ]
 );
@@ -587,6 +544,9 @@ export const generationJobs = pgTable(
     providerTaskId: text('provider_task_id'),
     triggerRunId: text('trigger_run_id'),
     providerStatus: varchar('provider_status', { length: 32 }),
+    templateId: uuid('template_id').references(() => templates.id, {
+      onDelete: 'set null',
+    }),
     inputJson: jsonb('input_json')
       .$type<Record<string, unknown>>()
       .notNull()
@@ -617,6 +577,7 @@ export const generationJobs = pgTable(
       table.nextProviderPollAt
     ),
     index('generation_jobs_input_asset_id_idx').on(table.inputAssetId),
+    index('generation_jobs_template_id_idx').on(table.templateId),
     uniqueIndex('generation_jobs_provider_task_id_unique').on(
       table.provider,
       table.providerTaskId
@@ -705,10 +666,8 @@ export const usersRelations = relations(users, ({ many }) => ({
   creditLedgerEntries: many(creditLedger),
   createdTemplates: many(templates, { relationName: 'templateCreator' }),
   updatedTemplates: many(templates, { relationName: 'templateUpdater' }),
-  publishedTemplates: many(templates, { relationName: 'templatePublisher' }),
   createdLibraryAssets: many(libraryAssets, { relationName: 'libraryAssetCreator' }),
   updatedLibraryAssets: many(libraryAssets, { relationName: 'libraryAssetUpdater' }),
-  publishedLibraryAssets: many(libraryAssets, { relationName: 'libraryAssetPublisher' }),
   templateAuditLogs: many(templateAuditLogs),
 }));
 
@@ -721,7 +680,6 @@ export const assetsRelations = relations(assets, ({ one, many }) => ({
   finalImageForJobs: many(generationJobs, { relationName: 'finalImageAsset' }),
   finalVideoForJobs: many(generationJobs, { relationName: 'finalVideoAsset' }),
   previewForTemplates: many(templates, { relationName: 'templatePreviewAsset' }),
-  thumbnailForTemplates: many(templates, { relationName: 'templateThumbnailAsset' }),
   templateAssets: many(templateAssets),
   libraryAssetRecords: many(libraryAssets),
 }));
@@ -731,11 +689,6 @@ export const templatesRelations = relations(templates, ({ one, many }) => ({
     fields: [templates.previewAssetId],
     references: [assets.id],
     relationName: 'templatePreviewAsset',
-  }),
-  thumbnailAsset: one(assets, {
-    fields: [templates.thumbnailAssetId],
-    references: [assets.id],
-    relationName: 'templateThumbnailAsset',
   }),
   creator: one(users, {
     fields: [templates.createdBy],
@@ -747,14 +700,10 @@ export const templatesRelations = relations(templates, ({ one, many }) => ({
     references: [users.id],
     relationName: 'templateUpdater',
   }),
-  publisher: one(users, {
-    fields: [templates.publishedBy],
-    references: [users.id],
-    relationName: 'templatePublisher',
-  }),
   tagRelations: many(templateTagRelations),
   assetRelations: many(templateAssets),
   auditLogs: many(templateAuditLogs),
+  generationJobs: many(generationJobs),
 }));
 
 export const templateTagsRelations = relations(templateTags, ({ many }) => ({
@@ -844,11 +793,6 @@ export const libraryAssetsRelations = relations(libraryAssets, ({ one }) => ({
     references: [users.id],
     relationName: 'libraryAssetUpdater',
   }),
-  publisher: one(users, {
-    fields: [libraryAssets.publishedBy],
-    references: [users.id],
-    relationName: 'libraryAssetPublisher',
-  }),
 }));
 
 export const generationJobsRelations = relations(
@@ -872,6 +816,10 @@ export const generationJobsRelations = relations(
       fields: [generationJobs.finalVideoAssetId],
       references: [assets.id],
       relationName: 'finalVideoAsset',
+    }),
+    template: one(templates, {
+      fields: [generationJobs.templateId],
+      references: [templates.id],
     }),
   })
 );

@@ -6,42 +6,33 @@ import {
   assets,
   libraryAssets,
   type Asset,
-  type GenerationType,
   type LibraryAsset,
-  type LibraryAssetKind,
+  type LibraryAssetCategory,
 } from '@/lib/db/schema';
-import type { Locale } from '@/lib/marketing/content';
 
 export type LibraryAssetCatalogItem = {
   id: string;
   assetId: string;
-  locale: Locale;
   title: string;
   description: string | null;
-  kind: LibraryAssetKind;
+  category: LibraryAssetCategory;
   assetUrl: string;
   imageUrl: string | null;
   videoUrl: string | null;
   thumbnailUrl: string | null;
   publicUrl: string;
   mimeType: string | null;
-  tags: string[];
-  useCases: GenerationType[];
-  qualityScore: number;
   sortWeight: number;
   usageCount: number;
 };
 
-export type ListPublishedLibraryAssetsInput = {
-  locale: Locale;
+export type ListLibraryAssetsInput = {
   page?: number;
   pageSize?: number;
-  kind?: LibraryAssetKind;
-  useCase?: GenerationType;
-  tags?: string[];
+  category?: LibraryAssetCategory;
 };
 
-export type PublishedLibraryAssetsResult = {
+export type LibraryAssetsResult = {
   items: LibraryAssetCatalogItem[];
   total: number;
   page: number;
@@ -65,16 +56,6 @@ function normalizePageSize(value: number | undefined) {
   return Math.min(48, Math.max(1, value));
 }
 
-function normalizeTags(tags: string[] | undefined) {
-  return Array.from(
-    new Set(
-      (tags ?? [])
-        .map((tag) => tag.trim().toLowerCase())
-        .filter((tag) => /^[a-z0-9][a-z0-9_-]*$/.test(tag))
-    )
-  ).slice(0, 12);
-}
-
 function mapLibraryAssetRecord(input: {
   asset: Asset;
   libraryAsset: LibraryAsset;
@@ -85,61 +66,39 @@ function mapLibraryAssetRecord(input: {
   return {
     id: libraryAsset.id,
     assetId: libraryAsset.assetId,
-    locale: libraryAsset.locale as Locale,
     title: libraryAsset.title,
     description: libraryAsset.description,
-    kind: libraryAsset.kind,
+    category: libraryAsset.category,
     assetUrl: asset.publicUrl,
     imageUrl: isVideo ? null : asset.publicUrl,
     videoUrl: isVideo ? asset.publicUrl : null,
     thumbnailUrl: isVideo ? null : asset.publicUrl,
     publicUrl: asset.publicUrl,
     mimeType: asset.mimeType,
-    tags: libraryAsset.tagsJson,
-    useCases: libraryAsset.useCasesJson,
-    qualityScore: libraryAsset.qualityScore,
     sortWeight: libraryAsset.sortWeight,
     usageCount: libraryAsset.usageCount,
   };
 }
 
 function buildWhere(input: {
-  kind?: LibraryAssetKind;
-  locale: Locale;
-  tags: string[];
-  useCase?: GenerationType;
+  category?: LibraryAssetCategory;
 }) {
-  const conditions = [
-    eq(libraryAssets.locale, input.locale),
-    eq(libraryAssets.status, 'published' as const),
-    eq(assets.status, 'uploaded' as const),
-  ];
+  const conditions = [eq(assets.status, 'uploaded' as const)];
 
-  if (input.kind) {
-    conditions.push(eq(libraryAssets.kind, input.kind));
-  }
-
-  if (input.useCase) {
-    conditions.push(sql`${libraryAssets.useCasesJson} ? ${input.useCase}`);
-  }
-
-  for (const tag of input.tags) {
-    conditions.push(sql`${libraryAssets.tagsJson} ? ${tag}`);
+  if (input.category) {
+    conditions.push(eq(libraryAssets.category, input.category));
   }
 
   return sql.join(conditions, sql` and `);
 }
 
-export async function listPublishedLibraryAssets(
-  input: ListPublishedLibraryAssetsInput
-): Promise<PublishedLibraryAssetsResult> {
+export async function listLibraryAssets(
+  input: ListLibraryAssetsInput
+): Promise<LibraryAssetsResult> {
   const page = normalizePage(input.page);
   const pageSize = normalizePageSize(input.pageSize);
   const where = buildWhere({
-    locale: input.locale,
-    kind: input.kind,
-    useCase: input.useCase,
-    tags: normalizeTags(input.tags),
+    category: input.category,
   });
 
   const [rows, totalRows] = await Promise.all([
@@ -150,7 +109,6 @@ export async function listPublishedLibraryAssets(
       .where(where)
       .orderBy(
         desc(libraryAssets.sortWeight),
-        desc(libraryAssets.qualityScore),
         desc(libraryAssets.updatedAt)
       )
       .limit(pageSize)

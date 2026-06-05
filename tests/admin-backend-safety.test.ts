@@ -47,6 +47,26 @@ describe('Admin backend safety rails', () => {
     expect(updateIndex).toBeGreaterThan(verifyIndex);
   });
 
+  it('detaches template dependents before deleting a template', () => {
+    const source = readSource('lib/admin/services/templates.ts');
+
+    expect(source).toContain('await client.begin');
+    expect(source).toContain('template_deleted');
+    expect(source).toContain('delete from template_tag_relations');
+    expect(source).toContain('delete from template_assets');
+    expect(source).toContain('update template_source_records');
+    expect(source).toContain('update generation_jobs');
+    expect(source).toContain('update template_audit_logs');
+    expect(source).toContain('delete from templates');
+  });
+
+  it('keeps template usage counts tied to generation job creation', () => {
+    const source = readSource('lib/generations/jobs.ts');
+
+    expect(source).toContain('if (input.templateId)');
+    expect(source).toContain('set usage_count = usage_count + 1');
+  });
+
   it('keeps dashboard activity estimates scoped to user behavior', () => {
     const source = readSource('lib/admin/services/dashboard.ts');
 

@@ -71,6 +71,34 @@
       "when": 1780000007000,
       "tag": "0009_library_assets",
       "breakpoints": true
+    },
+    {
+      "idx": 10,
+      "version": "7",
+      "when": 1780000008000,
+      "tag": "0010_email_verification_codes",
+      "breakpoints": true
+    },
+    {
+      "idx": 11,
+      "version": "7",
+      "when": 1780000009000,
+      "tag": "0011_template_catalog_simplification",
+      "breakpoints": true
+    },
+    {
+      "idx": 12,
+      "version": "7",
+      "when": 1780000010000,
+      "tag": "0012_template_delete_constraints",
+      "breakpoints": true
+    },
+    {
+      "idx": 13,
+      "version": "7",
+      "when": 1780000011000,
+      "tag": "0013_simplify_library_assets",
+      "breakpoints": true
     }
   ]
 }

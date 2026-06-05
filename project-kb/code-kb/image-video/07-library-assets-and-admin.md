@@ -55,9 +55,9 @@ Publishing requires the underlying `assets` row to be `uploaded`. Do not allow
 
 Workbench libraries combine generated templates with first-party library assets:
 
-- `/create/video`: `/api/templates?type=image_to_video` plus `/api/library-assets?useCase=image_to_video`.
-- `/create/apparel`: `/api/templates?type=image` plus `/api/library-assets?useCase=apparel_image`.
-- `/create/try-on`: `/api/templates?type=image`, `/api/model-assets`, plus `/api/library-assets?useCase=try_on`.
+- `/create/video`: `/api/templates?category=image_to_video` plus `/api/library-assets?useCase=image_to_video`.
+- `/create/apparel`: `/api/templates?category=image_to_image` plus `/api/library-assets?useCase=apparel_image`.
+- `/create/try-on`: `/api/templates?category=try_on`, `/api/model-assets`, plus `/api/library-assets?useCase=try_on`.
 
 Keep template IDs and library asset IDs separate. Library assets are inspiration/examples unless the generation payload explicitly supports them as template inputs.
 
@@ -99,14 +99,15 @@ This UI is operational, so keep it dense, predictable, and task-first rather tha
 - Credit ledger defaults to amount, reason, resulting balance, and creation time. User ID, job ID, Stripe event ID, and metadata remain detail/filter fields.
 - Library asset upload should give immediate file feedback, infer a sensible material kind from the file, auto-fill a readable title when empty, and fold low-frequency fields such as sort weight, source, and license note behind advanced editing.
 - Library asset details should not expose R2 `storageKey` or long asset URLs as primary operational content; use the preview and open-link affordance instead.
-- Admin Help is a practical tab-level guide, not a generic handbook. It should use a tab selector, explain the selected tab's operating steps, field meanings, publish/check rules, and for Library Assets show the upload form layout plus where each published `useCase` appears in the workbenches.
+- Admin Help is a practical tab-level operation manual rendered from Markdown. The Help dropdown chooses one page guide, and the renderer only displays that guide's Markdown plus referenced static images from `public/admin-help/`.
+- Keep Template Help and Library Asset Help as separate Markdown documents for operators. Chinese operation manuals should follow the four-part structure: introduction, system/interface overview, feature introduction, and business operation guide. Template Help should use real UI screenshots for the Admin template list, Admin edit form, frontend templates page, and matching workbench; avoid abstract field-card/SVG explanations. It should give detailed operator-facing field meanings: why each field is filled, what frontend or generation behavior it affects, and what risk it creates when wrong. Library Asset Help should explain asset fields with cropped workbench material-entry screenshots. Do not add template explanations to the Library Asset page or library asset explanations to the Template page.
 
 2026-06-04 Admin operational search:
 
-- Templates and library assets serve different jobs. Templates are generation recipes: prompt, hook, CTA, type, cost, duration, aspect ratio, tags, and preview media. Library assets are reusable media inventory: product/model/garment/scene/example images or videos that can feed workbenches.
-- Admin keyword search should be anchored on operator-facing fields. Templates search title, slug, hook, type, status, locale, CTA, and tag labels/slugs. Library assets search title, description, kind, status, locale, source, tags, use cases, and MIME format.
+- Templates and library assets serve different jobs. Templates are generation recipes: name, description, category, prompt, cost, duration, aspect ratio, tags, and preview media. Library assets are reusable media inventory: product/model/garment/scene/example images or videos that can feed workbenches.
+- Admin keyword search should be anchored on operator-facing fields. Templates search name, category, and tag labels/slugs, with ID available for exact lookup. Library assets search title, description, kind, status, locale, source, tags, use cases, and MIME format.
 - Generic assets search upload type, status, MIME format, user/file ID, and keeps storage keys or public URLs out of default keyword search.
-- Generation jobs search product/prompt summary, template, status, generation type, provider/status, user email/name, error text, and whitelisted input fields such as product name, headline, prompt, template slug, and aspect ratio. Do not search whole raw JSON or media URLs by default.
+- Generation jobs search product/prompt summary, template ID, status, generation type, provider/status, user email/name, error text, and whitelisted input fields such as product name, headline, prompt, template ID, and aspect ratio. Do not search whole raw JSON or media URLs by default.
 - Credit ledger search supports user email/name, credit reason, Stripe event/payment identifiers, job status/type, package/source metadata, and admin notes; user ID, job ID, and date remain explicit filters for reconciliation.
 
 ## Operational Notes

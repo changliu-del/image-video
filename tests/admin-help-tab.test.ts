@@ -276,4 +276,160 @@ describe('Admin Help tab coverage', () => {
       }
     }
   });
+
+  it('keeps Template and Library Asset Help as separate Markdown documents', () => {
+    for (const [locale, content] of Object.entries(adminContent)) {
+      const templates = content.help.items.find(
+        (item) => item.key === 'templates'
+      );
+      const libraryAssets = content.help.items.find(
+        (item) => item.key === 'library-assets'
+      );
+
+      expect(templates?.markdown, `${locale}.templates.markdown`).toContain(
+        '/admin-help/placements/template-admin-list.png'
+      );
+      expect(templates?.markdown, `${locale}.templates.markdown`).toContain(
+        '/admin-help/placements/template-admin-form.png'
+      );
+      expect(templates?.markdown, `${locale}.templates.markdown`).toContain(
+        '/admin-help/placements/templates-page.png'
+      );
+      expect(templates?.markdown, `${locale}.templates.markdown`).toContain(
+        '/admin-help/placements/video-workbench.png'
+      );
+      expect(templates?.markdown, `${locale}.templates.markdown`).not.toContain(
+        '/api/'
+      );
+      expect(templates?.markdown, `${locale}.templates.markdown`).not.toContain(
+        '/admin-help/placements/template-library-fields.svg'
+      );
+      expect(templates?.markdown, `${locale}.templates.markdown`).not.toContain(
+        '/admin-help/placements/template-workbench-fields.svg'
+      );
+      expect(templates?.markdown, `${locale}.templates.markdown`).not.toContain(
+        '/admin-help/templates-form.svg'
+      );
+      expect(templates?.markdown, `${locale}.templates.markdown`).not.toContain(
+        'numbered screenshots'
+      );
+      expect(templates?.markdown, `${locale}.templates.markdown`).not.toContain(
+        'numeros das imagens'
+      );
+
+      if (locale === 'zh') {
+        expect(templates?.markdown, `${locale}.templates.markdown`).toContain(
+          '模板保存后要按用户路径检查'
+        );
+        expect(templates?.markdown, `${locale}.templates.markdown`).toContain(
+          '### 字段说明'
+        );
+        expect(templates?.markdown, `${locale}.templates.markdown`).toContain(
+          '上传素材：preview 用于展示结果预期'
+        );
+        expect(templates?.markdown, `${locale}.templates.markdown`).toContain(
+          '模板管理列表页'
+        );
+        expect(templates?.markdown, `${locale}.templates.markdown`).toContain(
+          '模板编辑表单'
+        );
+        expect(templates?.markdown, `${locale}.templates.markdown`).not.toContain(
+          '模板没有被拆成两份'
+        );
+        expect(templates?.markdown, `${locale}.templates.markdown`).not.toContain(
+          '同一条模板记录'
+        );
+        expect(templates?.markdown, `${locale}.templates.markdown`).not.toContain(
+          '模板库卡片参数对应'
+        );
+        expect(templates?.markdown, `${locale}.templates.markdown`).not.toContain(
+          '模板库卡片'
+        );
+        expect(templates?.markdown, `${locale}.templates.markdown`).not.toContain(
+          '创作工作台参数对应'
+        );
+        expect(templates?.markdown, `${locale}.templates.markdown`).toContain(
+          '## 一、引言'
+        );
+        expect(templates?.markdown, `${locale}.templates.markdown`).toContain(
+          '## 二、系统整体界面介绍'
+        );
+        expect(templates?.markdown, `${locale}.templates.markdown`).toContain(
+          '## 三、功能介绍'
+        );
+        expect(templates?.markdown, `${locale}.templates.markdown`).toContain(
+          '## 四、业务操作指引'
+        );
+        expect(templates?.markdown, `${locale}.templates.markdown`).not.toContain(
+          '### #1'
+        );
+        expect(templates?.markdown, `${locale}.templates.markdown`).not.toContain(
+          '1) status'
+        );
+        expect(templates?.markdown, `${locale}.templates.markdown`).not.toContain(
+          'thumbnail 用于缩略图'
+        );
+        expect(templates?.markdown, `${locale}.templates.markdown`).not.toContain(
+          '提示词 JSON'
+        );
+        expect(templates?.markdown, `${locale}.templates.markdown`).not.toContain(
+          '草稿和归档'
+        );
+        expect(libraryAssets?.markdown, `${locale}.library-assets.markdown`).toContain(
+          '## 一、引言'
+        );
+        expect(libraryAssets?.markdown, `${locale}.library-assets.markdown`).toContain(
+          '## 二、系统整体界面介绍'
+        );
+        expect(libraryAssets?.markdown, `${locale}.library-assets.markdown`).toContain(
+          '## 三、功能介绍'
+        );
+        expect(libraryAssets?.markdown, `${locale}.library-assets.markdown`).toContain(
+          '## 四、业务操作指引'
+        );
+      }
+
+      expect(
+        libraryAssets?.markdown,
+        `${locale}.library-assets.markdown`
+      ).toContain('/admin-help/placements/library-apparel-key.png');
+      expect(
+        libraryAssets?.markdown,
+        `${locale}.library-assets.markdown`
+      ).toContain('/admin-help/placements/library-try-on-key.png');
+      expect(
+        libraryAssets?.markdown,
+        `${locale}.library-assets.markdown`
+      ).not.toContain('/api/');
+      expect(
+        libraryAssets?.markdown,
+        `${locale}.library-assets.markdown`
+      ).not.toContain('/admin-help/placements/apparel-workbench.png');
+      expect(
+        libraryAssets?.markdown,
+        `${locale}.library-assets.markdown`
+      ).not.toContain('/admin-help/library-assets-form.svg');
+    }
+
+    const zhTemplates = adminContent.zh.help.items.find(
+      (item) => item.key === 'templates'
+    );
+    const zhLibraryAssets = adminContent.zh.help.items.find(
+      (item) => item.key === 'library-assets'
+    );
+
+    expect(zhTemplates?.markdown).not.toContain(
+      '/admin-help/placements/library-video-key.png'
+    );
+    expect(zhTemplates?.markdown).not.toContain('如何管理素材库');
+    expect(zhTemplates?.markdown).not.toContain('新增素材');
+    expect(zhLibraryAssets?.markdown).not.toContain(
+      '/admin-help/placements/template-library-fields.svg'
+    );
+    expect(zhLibraryAssets?.markdown).not.toContain(
+      '/admin-help/placements/template-admin-list.png'
+    );
+    expect(zhLibraryAssets?.markdown).not.toContain('如何管理模板');
+    expect(zhLibraryAssets?.markdown).not.toContain('模板没有被拆成两份');
+  });
 });

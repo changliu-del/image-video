@@ -14,21 +14,13 @@ export const ADMIN_OPERATIONAL_SEARCH_FIELDS: Record<
   assets: ['type', 'status', 'mimeType'],
   'generation-jobs': [
     'inputSummary',
-    'templateSlug',
+    'templateId',
     'status',
     'generationType',
     'tryOnMode',
   ],
-  templates: ['title', 'slug', 'status', 'type', 'hook', 'tags'],
-  'library-assets': [
-    'title',
-    'description',
-    'kind',
-    'status',
-    'source',
-    'tags',
-    'useCases',
-  ],
+  templates: ['name', 'category', 'tags'],
+  'library-assets': ['title', 'description', 'category', 'assetId', 'mimeType'],
   'credit-ledger': [
     'userEmail',
     'userName',
@@ -102,21 +94,17 @@ export function summarizeAdminJobInput(input: unknown) {
     stringFromRecord(input, 'productName') ??
     stringFromRecord(input, 'prompt') ??
     stringFromRecord(input, 'headline') ??
-    stringFromRecord(input, 'templateSlug') ??
     stringFromRecord(input, 'templateId') ??
     null
   );
 }
 
-export function getAdminJobTemplateSlug(input: unknown) {
+export function getAdminJobTemplateId(input: unknown) {
   if (!isRecord(input)) {
     return null;
   }
 
-  return (
-    stringFromRecord(input, 'templateSlug') ??
-    stringFromRecord(input, 'templateId')
-  );
+  return stringFromRecord(input, 'templateId');
 }
 
 export function getAdminJobDurationSeconds(input: unknown) {
@@ -136,7 +124,6 @@ export function getAdminJobInputSearchValues(input: unknown) {
 
   return uniqueValues([
     summarizeAdminJobInput(input),
-    stringFromRecord(input, 'templateSlug'),
     stringFromRecord(input, 'templateId'),
     stringFromRecord(input, 'productName'),
     stringFromRecord(input, 'prompt'),

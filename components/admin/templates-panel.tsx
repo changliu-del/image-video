@@ -3,14 +3,12 @@
 import { useEffect, useMemo, useState } from 'react';
 import type { ReactNode } from 'react';
 import {
-  Archive,
   Edit3,
   Eye,
   ImagePlus,
   Loader2,
   Plus,
   Save,
-  Send,
   Trash2,
   Upload,
 } from 'lucide-react';
@@ -21,7 +19,6 @@ import {
   AdminManagementTable,
   AdminModal,
   AdminRecordDetails,
-  AdminStatusBadge,
   formatAdminDate,
   type AdminTableAction,
   type AdminTableColumn,
@@ -31,35 +28,25 @@ import {
   templateTagGroups,
   templateTagOptions,
   type TemplateCatalogItem,
-  type TemplateType,
+  type TemplateCategory,
 } from '@/lib/templates/catalog';
 import { cn } from '@/lib/utils';
 
 type AdminTemplate = TemplateCatalogItem & {
-  status: 'draft' | 'published' | 'archived';
   negativePrompt: string | null;
-  promptJson: Record<string, unknown>;
-  defaultInputsJson: Record<string, unknown>;
   createdAt: string;
   updatedAt: string;
-  publishedAt: string | null;
   sortWeight: number;
   usageCount: number;
 };
 
 type TemplateFormState = {
   id?: string;
-  slug: string;
-  locale: 'pt' | 'en' | 'zh';
-  title: string;
+  name: string;
   description: string;
-  type: TemplateType;
-  hook: string;
-  cta: string;
+  category: TemplateCategory;
   prompt: string;
   negativePrompt: string;
-  promptJson: string;
-  defaultInputsJson: string;
   costCredits: number;
   aspectRatios: Array<'9:16' | '1:1' | '16:9'>;
   durationSeconds: 5 | 8 | 10;
@@ -67,7 +54,7 @@ type TemplateFormState = {
   tagSlugs: string[];
 };
 
-type UploadRole = 'thumbnail' | 'preview' | 'source' | 'example';
+type UploadRole = 'preview' | 'source' | 'example';
 type ModalMode = 'create' | 'view' | 'edit';
 
 type PaginatedTemplates = {
@@ -78,17 +65,11 @@ type PaginatedTemplates = {
 };
 
 const emptyForm: TemplateFormState = {
-  slug: '',
-  locale: 'pt',
-  title: '',
+  name: '',
   description: '',
-  type: 'image',
-  hook: '',
-  cta: '',
+  category: 'image_to_image',
   prompt: '',
   negativePrompt: '',
-  promptJson: '{}',
-  defaultInputsJson: '{}',
   costCredits: 1,
   aspectRatios: ['9:16'],
   durationSeconds: 5,
@@ -107,17 +88,11 @@ function freshEmptyForm(): TemplateFormState {
 function templateToForm(template: AdminTemplate): TemplateFormState {
   return {
     id: template.id,
-    slug: template.slug,
-    locale: template.locale,
-    title: template.title,
+    name: template.name,
     description: template.description,
-    type: template.type,
-    hook: template.hook,
-    cta: template.cta ?? '',
+    category: template.category,
     prompt: template.prompt,
     negativePrompt: template.negativePrompt ?? '',
-    promptJson: JSON.stringify(template.promptJson ?? {}, null, 2),
-    defaultInputsJson: JSON.stringify(template.defaultInputsJson ?? {}, null, 2),
     costCredits: template.costCredits,
     aspectRatios: template.aspectRatios as Array<'9:16' | '1:1' | '16:9'>,
     durationSeconds: (template.durationSeconds ?? 5) as 5 | 8 | 10,
@@ -205,38 +180,28 @@ export function TemplatesPanel({
   const columns = useMemo<AdminTableColumn<AdminTemplate>[]>(
     () => [
       {
-        key: 'title',
-        label: copy.columns.title,
+        key: 'name',
+        label: copy.columns.name,
         kind: 'primary',
         width: 280,
         render: (template) => (
           <div>
             <div className="break-words text-sm font-medium text-gray-950">
-              {template.title}
+              {template.name}
             </div>
             <div className="mt-1 break-words font-mono text-xs text-gray-500">
-              {template.locale} / {template.slug}
+              {template.id}
             </div>
           </div>
         ),
       },
       {
-        key: 'status',
-        label: copy.columns.status,
-        width: 120,
-        render: (template) => (
-          <AdminStatusBadge
-            labels={content.statusLabels}
-            value={template.status}
-          />
-        ),
-      },
-      {
-        key: 'type',
-        label: copy.columns.type,
+        key: 'category',
+        label: copy.columns.category,
         kind: 'status',
         width: 150,
-        render: (template) => copy.typeOptions[template.type] ?? template.type,
+        render: (template) =>
+          copy.categoryOptions[template.category] ?? template.category,
       },
       {
         key: 'costCredits',
@@ -290,7 +255,7 @@ export function TemplatesPanel({
         ),
       },
     ],
-    [content.statusLabels, copy]
+    [copy]
   );
 
   async function loadTemplates(page = 1) {
@@ -394,26 +359,10 @@ export function TemplatesPanel({
     setSaving(true);
     setError(null);
     try {
-      let promptJson: Record<string, unknown>;
-      let defaultInputsJson: Record<string, unknown>;
-
-      try {
-        promptJson = JSON.parse(form.promptJson || '{}') as Record<
-          string,
-          unknown
-        >;
-        defaultInputsJson = JSON.parse(
-          form.defaultInputsJson || '{}'
-        ) as Record<string, unknown>;
-      } catch {
-        throw new Error(copy.invalidJson);
-      }
-
       const payload = {
         ...form,
-        promptJson,
-        defaultInputsJson,
-        durationSeconds: form.type === 'image' ? null : form.durationSeconds,
+        durationSeconds:
+          form.category === 'image_to_video' ? form.durationSeconds : null,
       };
       const url = form.id
         ? `/api/admin/templates/${form.id}`
@@ -437,29 +386,9 @@ export function TemplatesPanel({
     }
   }
 
-  async function runStatusAction(action: 'publish' | 'archive') {
-    if (!selectedTemplate?.id) return;
-    setSaving(true);
-    setError(null);
-    try {
-      await requestJson(`/api/admin/templates/${selectedTemplate.id}`, {
-        method: 'POST',
-        body: JSON.stringify({ action }),
-      }, copy.errors[action]);
-      await loadTemplates(data.page);
-      setModalMode('view');
-    } catch (statusError) {
-      setError(
-        statusError instanceof Error ? statusError.message : copy.errors[action]
-      );
-    } finally {
-      setSaving(false);
-    }
-  }
-
   async function deleteTemplate(template = selectedTemplate) {
     if (!template?.id) return;
-    if (!window.confirm(copy.confirmDelete(template.slug))) return;
+    if (!window.confirm(copy.confirmDelete(template.name))) return;
 
     setSaving(true);
     setError(null);
@@ -572,7 +501,7 @@ export function TemplatesPanel({
   }
 
   const selectedKey = selectedTemplate
-    ? String(selectedTemplate.id ?? selectedTemplate.slug)
+    ? String(selectedTemplate.id)
     : null;
 
   const modalTitle =
@@ -614,15 +543,13 @@ export function TemplatesPanel({
             {copy.create}
           </Button>
         }
-        rowKey={(template, index) =>
-          String(template.id ?? template.slug ?? index)
-        }
+        rowKey={(template, index) => String(template.id ?? index)}
         rows={data.list}
         searchPlaceholder={copy.searchPlaceholder}
         searchValue={search}
         selectedRowKey={selectedKey}
         statusLabels={content.statusLabels}
-        tableMinWidth={1320}
+        tableMinWidth={1100}
         title={copy.title}
       />
 
@@ -658,30 +585,6 @@ export function TemplatesPanel({
               >
                 {common.cancel}
               </Button>
-              {canPublish && form.id ? (
-                <>
-                  <Button
-                    type="button"
-                    variant="outline"
-                    onClick={() => runStatusAction('publish')}
-                    disabled={saving}
-                    title={common.publish}
-                  >
-                    <Send className="size-4" />
-                    {common.publish}
-                  </Button>
-                  <Button
-                    type="button"
-                    variant="outline"
-                    onClick={() => runStatusAction('archive')}
-                    disabled={saving}
-                    title={common.archive}
-                  >
-                    <Archive className="size-4" />
-                    {common.archive}
-                  </Button>
-                </>
-              ) : null}
               <Button type="button" onClick={saveTemplate} disabled={saving}>
                 {saving ? (
                   <Loader2 className="size-4 animate-spin" />
@@ -700,18 +603,12 @@ export function TemplatesPanel({
             fieldLabels={{ ...copy.fields, ...copy.columns }}
             statusLabels={content.statusLabels}
             columns={[
-              'title',
-              'slug',
-              'locale',
-              'status',
-              'type',
-              'hook',
-              'cta',
+              'name',
+              'id',
+              'category',
               'description',
               'prompt',
               'negativePrompt',
-              'promptJson',
-              'defaultInputsJson',
               'tags',
               'costCredits',
               'aspectRatios',
@@ -719,67 +616,38 @@ export function TemplatesPanel({
               'usageCount',
               'createdAt',
               'updatedAt',
-              'publishedAt',
             ]}
           />
         ) : (
           <div className="grid gap-5">
             <div className="grid gap-4 md:grid-cols-2">
-              <Field label={copy.fields.title}>
+              <Field label={copy.fields.name}>
                 <Input
-                  value={form.title}
-                  onChange={(event) => updateForm('title', event.target.value)}
+                  value={form.name}
+                  onChange={(event) => updateForm('name', event.target.value)}
                 />
               </Field>
-              <Field label={copy.fields.slug}>
-                <Input
-                  value={form.slug}
-                  onChange={(event) => updateForm('slug', event.target.value)}
-                  placeholder={copy.placeholders.slug}
-                />
-              </Field>
-              <Field label={copy.fields.locale}>
+              <Field label={copy.fields.category}>
                 <select
-                  value={form.locale}
+                  value={form.category}
                   onChange={(event) =>
                     updateForm(
-                      'locale',
-                      event.target.value as TemplateFormState['locale']
+                      'category',
+                      event.target.value as TemplateCategory
                     )
                   }
                   className="h-9 rounded-md border border-gray-200 bg-white px-3 text-sm"
                 >
-                  <option value="pt">pt</option>
-                  <option value="en">en</option>
-                  <option value="zh">zh</option>
-                </select>
-              </Field>
-              <Field label={copy.fields.type}>
-                <select
-                  value={form.type}
-                  onChange={(event) =>
-                    updateForm('type', event.target.value as TemplateType)
-                  }
-                  className="h-9 rounded-md border border-gray-200 bg-white px-3 text-sm"
-                >
-                  <option value="image">{copy.typeOptions.image}</option>
-                  <option value="image_to_video">
-                    {copy.typeOptions.image_to_video}
+                  <option value="image_to_image">
+                    {copy.categoryOptions.image_to_image}
                   </option>
-                  <option value="video">{copy.typeOptions.video}</option>
+                  <option value="image_to_video">
+                    {copy.categoryOptions.image_to_video}
+                  </option>
+                  <option value="try_on">
+                    {copy.categoryOptions.try_on}
+                  </option>
                 </select>
-              </Field>
-              <Field label={copy.fields.hook}>
-                <Input
-                  value={form.hook}
-                  onChange={(event) => updateForm('hook', event.target.value)}
-                />
-              </Field>
-              <Field label={copy.fields.cta}>
-                <Input
-                  value={form.cta}
-                  onChange={(event) => updateForm('cta', event.target.value)}
-                />
               </Field>
             </div>
 
@@ -812,26 +680,6 @@ export function TemplatesPanel({
                   className="min-h-28 rounded-md border border-gray-200 bg-white px-3 py-2 text-sm outline-none focus:border-gray-400"
                 />
               </Field>
-              <Field label={copy.fields.promptJson}>
-                <textarea
-                  value={form.promptJson}
-                  onChange={(event) =>
-                    updateForm('promptJson', event.target.value)
-                  }
-                  rows={4}
-                  className="min-h-28 rounded-md border border-gray-200 bg-white px-3 py-2 font-mono text-xs outline-none focus:border-gray-400"
-                />
-              </Field>
-              <Field label={copy.fields.defaultInputsJson}>
-                <textarea
-                  value={form.defaultInputsJson}
-                  onChange={(event) =>
-                    updateForm('defaultInputsJson', event.target.value)
-                  }
-                  rows={4}
-                  className="min-h-28 rounded-md border border-gray-200 bg-white px-3 py-2 font-mono text-xs outline-none focus:border-gray-400"
-                />
-              </Field>
               <div className="grid gap-4 sm:grid-cols-3">
                 <Field label={copy.fields.costCredits}>
                   <Input
@@ -846,7 +694,7 @@ export function TemplatesPanel({
                 <Field label={copy.fields.durationSeconds}>
                   <select
                     value={form.durationSeconds}
-                    disabled={form.type === 'image'}
+                    disabled={form.category !== 'image_to_video'}
                     onChange={(event) =>
                       updateForm(
                         'durationSeconds',
@@ -955,9 +803,6 @@ export function TemplatesPanel({
                 >
                   <option value="preview">
                     {copy.uploadRoleOptions.preview}
-                  </option>
-                  <option value="thumbnail">
-                    {copy.uploadRoleOptions.thumbnail}
                   </option>
                   <option value="source">{copy.uploadRoleOptions.source}</option>
                   <option value="example">

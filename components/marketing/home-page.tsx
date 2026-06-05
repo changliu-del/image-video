@@ -1,7 +1,7 @@
 'use client';
 
 import Link from 'next/link';
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import {
   ArrowRight,
   BadgeCheck,
@@ -25,8 +25,8 @@ type MarketingContent = ReturnType<typeof getMarketingContent>;
 type HomeContent = MarketingContent['home'];
 type StaticTemplateItem = HomeContent['templates']['items'][number];
 type TemplateItem = {
-  slug: string;
-  title: string;
+  id: string;
+  name: string;
   asset: string;
   mediaType: 'image' | 'video';
   category: string;
@@ -103,7 +103,7 @@ function TemplateHero({
               <ArrowRight className="size-4" />
             </Link>
             <Link
-              href={getLocalizedHref(locale, '/templates?type=image')}
+              href={getLocalizedHref(locale, '/templates?category=image_to_image')}
               className="inline-flex h-12 items-center justify-center gap-2 rounded-lg border border-white/20 bg-white/[0.06] px-5 text-sm font-semibold text-white transition hover:bg-white/10"
             >
               {content.hero.secondaryAction}
@@ -205,7 +205,7 @@ function TemplateCard({
       </div>
       <div className="p-5">
         <div className="flex items-start justify-between gap-3">
-          <h3 className="text-lg font-semibold text-gray-950">{item.title}</h3>
+          <h3 className="text-lg font-semibold text-gray-950">{item.name}</h3>
           <span className="rounded-md bg-emerald-50 px-2.5 py-1 text-xs font-semibold text-emerald-700">
             {item.cost}
           </span>
@@ -235,26 +235,57 @@ function TemplateGallery({
   content: HomeContent['templates'];
   locale: Locale;
 }) {
+  const sectionRef = useRef<HTMLElement>(null);
   const [items, setItems] = useState<TemplateItem[]>(
     content.items.map(mapStaticTemplateItem)
   );
   const [page, setPage] = useState(1);
   const [hasMore, setHasMore] = useState(false);
-  const [isLoading, setIsLoading] = useState(true);
+  const [isLoading, setIsLoading] = useState(false);
+  const [shouldLoadRemote, setShouldLoadRemote] = useState(false);
 
   useEffect(() => {
+    const section = sectionRef.current;
+    if (!section) return;
+
+    if (!('IntersectionObserver' in window)) {
+      setShouldLoadRemote(true);
+      return;
+    }
+
+    const observer = new IntersectionObserver(
+      ([entry]) => {
+        if (entry?.isIntersecting) {
+          setShouldLoadRemote(true);
+          observer.disconnect();
+        }
+      },
+      {
+        rootMargin: '420px 0px',
+      }
+    );
+
+    observer.observe(section);
+    return () => observer.disconnect();
+  }, []);
+
+  useEffect(() => {
+    if (!shouldLoadRemote) return;
+
     let ignore = false;
+    const controller = new AbortController();
 
     async function loadTemplates() {
       setIsLoading(true);
       try {
         const params = new URLSearchParams({
-          locale,
           page: String(page),
           pageSize: '6',
           sort: 'featured',
         });
-        const response = await fetch(`/api/templates?${params.toString()}`);
+        const response = await fetch(`/api/templates?${params.toString()}`, {
+          signal: controller.signal,
+        });
         if (!response.ok) {
           return;
         }
@@ -290,11 +321,16 @@ function TemplateGallery({
 
     return () => {
       ignore = true;
+      controller.abort();
     };
-  }, [content.items, locale, page]);
+  }, [content.items, locale, page, shouldLoadRemote]);
 
   return (
-    <section id="templates" className="scroll-mt-24 bg-slate-50 py-20 md:py-28">
+    <section
+      ref={sectionRef}
+      id="templates"
+      className="scroll-mt-24 bg-slate-50 py-20 md:py-28"
+    >
       <div className="mx-auto max-w-7xl px-4 md:px-8">
         <div className="mb-10 flex flex-col justify-between gap-5 md:flex-row md:items-end">
           <div>
@@ -313,7 +349,7 @@ function TemplateGallery({
         <div className="grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-3">
           {items.map((item) => (
             <TemplateCard
-              key={item.slug}
+              key={item.id}
               item={item}
               actionLabel={content.actionLabel}
               locale={locale}
@@ -345,8 +381,8 @@ function TemplateGallery({
 
 function mapStaticTemplateItem(item: StaticTemplateItem): TemplateItem {
   return {
-    slug: item.title,
-    title: item.title,
+    id: item.title,
+    name: item.title,
     asset: item.asset,
     mediaType: item.mediaType,
     category: item.category,
@@ -358,13 +394,18 @@ function mapStaticTemplateItem(item: StaticTemplateItem): TemplateItem {
 
 function mapCatalogTemplateItem(template: TemplateCatalogItem): TemplateItem {
   return {
-    slug: template.slug,
-    title: template.title,
+    id: template.id,
+    name: template.name,
     asset: template.asset,
     mediaType: template.mediaType,
-    category: template.type === 'image_to_video' ? 'Image to video' : template.type,
+    category:
+      template.category === 'image_to_video'
+        ? 'Image to video'
+        : template.category === 'try_on'
+          ? 'Try-on'
+          : 'Image to image',
     cost: `${template.costCredits} ${template.costCredits === 1 ? 'credit' : 'credits'}`,
-    hook: template.hook,
+    hook: template.description,
     useCase: template.description,
   };
 }
@@ -372,10 +413,10 @@ function mapCatalogTemplateItem(template: TemplateCatalogItem): TemplateItem {
 function uniqueHomeItems(items: TemplateItem[]) {
   const seen = new Set<string>();
   return items.filter((item) => {
-    if (seen.has(item.slug)) {
+    if (seen.has(item.id)) {
       return false;
     }
-    seen.add(item.slug);
+    seen.add(item.id);
     return true;
   });
 }

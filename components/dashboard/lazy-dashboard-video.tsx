@@ -33,7 +33,7 @@ export function LazyDashboardVideo({
         }
       },
       {
-        rootMargin: '320px 0px',
+        rootMargin: '96px 0px',
       }
     );
 

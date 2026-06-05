@@ -152,12 +152,10 @@ type AdminTemplatesCopy = {
   uploadAsset: string;
   tags: string;
   selectSavedTemplate: string;
-  invalidJson: string;
-  confirmDelete: (slug: string) => string;
+  confirmDelete: (name: string) => string;
   columns: Record<string, string>;
   fields: Record<string, string>;
-  placeholders: Record<string, string>;
-  typeOptions: Record<string, string>;
+  categoryOptions: Record<string, string>;
   uploadRoleOptions: Record<string, string>;
   errors: Record<string, string>;
 };
@@ -177,13 +175,11 @@ type AdminLibraryCopy = {
   selectedFile: string;
   uploadFile: string;
   openAssetUrl: string;
-  useCases: string;
   confirmRemove: (title: string) => string;
   columns: Record<string, string>;
   fields: Record<string, string>;
   placeholders: Record<string, string>;
-  kindOptions: Record<string, string>;
-  useCaseOptions: Record<string, string>;
+  categoryOptions: Record<string, string>;
   errors: Record<string, string>;
 };
 
@@ -278,6 +274,7 @@ export type AdminTabKey = (typeof ADMIN_TAB_KEYS)[number];
 type AdminHelpItem = {
   key: AdminTabKey;
   title: string;
+  markdown?: string;
   purpose: string;
   dailyActions: string[];
   keyFields: string[];
@@ -292,6 +289,7 @@ type AdminHelpSection = {
 type AdminHelpCopy = {
   title: string;
   description: string;
+  topicOptionLabel: (tabTitle: string) => string;
   principlesTitle: string;
   principles: string[];
   rhythmTitle: string;
@@ -573,7 +571,7 @@ export const adminContent: Record<AdminLocale, AdminContent> = {
           finalPreview: 'Resultado',
           generationType: 'Tipo',
           inputSummary: 'Resumo',
-          templateSlug: 'Template',
+          templateId: 'Template ID',
           durationSeconds: 'Duração',
           creditReserved: 'Créditos reservados',
           createdAt: 'Criado em',
@@ -620,7 +618,7 @@ export const adminContent: Record<AdminLocale, AdminContent> = {
           userName: 'Nome do usuário',
           generationType: 'Tipo de geração',
           jobStatus: 'Status do job',
-          jobTemplateSlug: 'Template do job',
+          jobTemplateId: 'Template ID do job',
           jobInputSummary: 'Resumo do job',
           metadataJson: 'Metadata JSON',
         },
@@ -635,7 +633,7 @@ export const adminContent: Record<AdminLocale, AdminContent> = {
       title: 'Templates',
       description: 'Gerencie registros do catálogo e mídias de preview.',
       emptyText: 'Nenhum template.',
-      searchPlaceholder: 'Título, slug, status...',
+      searchPlaceholder: 'Nome, categoria, tag...',
       create: 'Criar',
       modalCreate: 'Criar template',
       modalEdit: 'Editar template',
@@ -644,12 +642,10 @@ export const adminContent: Record<AdminLocale, AdminContent> = {
       uploadAsset: 'Enviar ativo',
       tags: 'Tags',
       selectSavedTemplate: 'Selecione um template salvo e um arquivo primeiro.',
-      invalidJson: 'Prompt JSON e entradas padrão devem ser JSON válido.',
-      confirmDelete: (slug) => `Excluir template ${slug}?`,
+      confirmDelete: (name) => `Excluir template ${name}?`,
       columns: {
-        title: 'Template',
-        status: 'Status',
-        type: 'Tipo',
+        name: 'Template',
+        category: 'Categoria',
         costCredits: 'Créditos',
         durationSeconds: 'Duração',
         tags: 'Tags',
@@ -657,33 +653,24 @@ export const adminContent: Record<AdminLocale, AdminContent> = {
         updatedAt: 'Atualizado em',
       },
       fields: {
-        title: 'Título',
-        slug: 'Slug',
-        locale: 'Idioma',
-        type: 'Tipo',
-        hook: 'Hook',
-        cta: 'CTA',
+        name: 'Nome',
+        id: 'ID',
+        category: 'Categoria',
         description: 'Descrição',
         prompt: 'Prompt',
         negativePrompt: 'Prompt negativo',
-        promptJson: 'Prompt JSON',
-        defaultInputsJson: 'Entradas padrão JSON',
         costCredits: 'Custo',
         durationSeconds: 'Duração',
         sortWeight: 'Peso',
         aspectRatios: 'Proporções',
       },
-      placeholders: {
-        slug: 'automático pelo título',
-      },
-      typeOptions: {
-        image: 'Imagem',
+      categoryOptions: {
+        image_to_image: 'Imagem',
         image_to_video: 'Imagem para vídeo',
-        video: 'Vídeo',
+        try_on: 'Provador',
       },
       uploadRoleOptions: {
         preview: 'Preview',
-        thumbnail: 'Miniatura',
         source: 'Fonte',
         example: 'Exemplo',
       },
@@ -692,8 +679,6 @@ export const adminContent: Record<AdminLocale, AdminContent> = {
         save: 'Falha ao salvar',
         upload: 'Falha no envio',
         delete: 'Falha ao excluir',
-        publish: 'Falha ao publicar',
-        archive: 'Falha ao arquivar',
         prepareUpload: 'Não foi possível preparar o envio',
         completeUpload: 'Não foi possível concluir o envio',
       },
@@ -701,9 +686,9 @@ export const adminContent: Record<AdminLocale, AdminContent> = {
     libraryAssets: {
       title: 'Biblioteca',
       description:
-        'Gerencie mídias reutilizáveis de produto, modelo, peça, cena e exemplos.',
+        'Gerencie mídias reutilizáveis por workbench.',
       emptyText: 'Nenhum ativo na biblioteca.',
-      searchPlaceholder: 'Título, tipo, tag...',
+      searchPlaceholder: 'Título, categoria, MIME...',
       addAsset: 'Adicionar ativo',
       createAction: 'Enviar para biblioteca',
       modalCreate: 'Adicionar ativo da biblioteca',
@@ -714,43 +699,28 @@ export const adminContent: Record<AdminLocale, AdminContent> = {
       selectedFile: 'Arquivo selecionado',
       uploadFile: 'Enviar arquivo',
       openAssetUrl: 'Abrir URL do ativo',
-      useCases: 'Casos de uso',
       confirmRemove: (title) => `Remover ${title} da biblioteca?`,
       columns: {
         assetUrl: 'Preview',
         title: 'Material',
-        status: 'Status',
-        useCases: 'Casos de uso',
-        qualityScore: 'Qualidade',
-        tags: 'Tags',
+        category: 'Categoria',
+        sortWeight: 'Peso',
+        usageCount: 'Uso',
         updatedAt: 'Atualizado em',
       },
       fields: {
         title: 'Título',
-        locale: 'Idioma',
-        kind: 'Tipo',
-        status: 'Status',
+        category: 'Categoria',
         description: 'Descrição',
-        tags: 'Tags',
-        qualityScore: 'Qualidade',
         sortWeight: 'Peso',
-        source: 'Origem',
-        licenseNote: 'Nota de licença',
+        usageCount: 'Uso',
+        mimeType: 'MIME',
+        sizeBytes: 'Tamanho',
+        createdAt: 'Criado em',
+        updatedAt: 'Atualizado em',
       },
-      placeholders: {
-        tags: 'product-image,fashion,ratio-9-16',
-        source: 'manual / wanxiang / crawler',
-        licenseNote: 'Interno, licenciado, gerado, etc.',
-      },
-      kindOptions: {
-        product_image: 'Imagem de produto',
-        model_image: 'Imagem de modelo',
-        garment_image: 'Imagem de peça',
-        scene_image: 'Imagem de cena',
-        example_image: 'Imagem de exemplo',
-        example_video: 'Vídeo de exemplo',
-      },
-      useCaseOptions: {
+      placeholders: {},
+      categoryOptions: {
         image_to_video: 'Imagem para vídeo',
         apparel_image: 'Imagem de produto',
         try_on: 'Provador virtual',
@@ -768,9 +738,10 @@ export const adminContent: Record<AdminLocale, AdminContent> = {
       },
     },
     help: {
-      title: 'Ajuda operacional',
+      title: 'Ajuda',
       description:
         'Guia rápido para ler cada aba do Admin, decidir a rotina diária e evitar interpretações erradas dos dados.',
+      topicOptionLabel: (tabTitle) => `Guia de ${tabTitle}`,
       principlesTitle: 'Como usar este manual',
       principles: [
         'Abra Ajuda antes de operar uma área nova e leia a aba como processo, não como tabela técnica.',
@@ -790,7 +761,7 @@ export const adminContent: Record<AdminLocale, AdminContent> = {
         {
           title: 'Durante campanhas',
           items: [
-            'Confirme se templates publicados têm preview, CTA, custo e tags alinhados com a campanha.',
+            'Confirme se templates têm categoria, preview, custo e tags alinhados com a campanha.',
             'Use a Biblioteca para deixar materiais aprovados visíveis e arquivar duplicados.',
           ],
         },
@@ -840,27 +811,130 @@ export const adminContent: Record<AdminLocale, AdminContent> = {
         {
           key: 'templates',
           title: 'Templates',
+          markdown: `# Templates
+
+## Uso
+
+Templates sao receitas de criacao. Operacao usa esta pagina para manter nome, categoria, descricao, prompt, custo, tags e midias de preview que aparecem nos workbenches.
+
+## Onde operar e conferir
+
+### Lista no Admin
+
+![Admin template list](/admin-help/placements/template-admin-list.png)
+
+- Use a busca para encontrar por nome, categoria ou tag antes de criar outro template parecido.
+- A tabela mostra categoria, custo, duracao, tags, uso e ultima atualizacao para decidir o que revisar primeiro.
+- O botao Criar abre o formulario. Upload de preview, source ou example fica dentro do detalhe ou edicao.
+
+### Formulario de criacao e edicao
+
+![Admin template form](/admin-help/placements/template-admin-form.png)
+
+- Preencha primeiro nome, categoria e descricao.
+- Depois revise prompt, prompt negativo, custo, duracao, proporcoes, tags e sortWeight.
+- Em templates ja salvos, envie preview, source ou example para explicar o resultado esperado.
+
+### Biblioteca de templates no frontend
+
+![Frontend templates page](/admin-help/placements/templates-page.png)
+
+- O usuario encontra templates por busca, categoria, tags e ordenacao.
+- Nome, descricao e preview precisam explicar rapidamente o uso.
+- Tags e sortWeight definem a navegacao e a prioridade dentro da biblioteca.
+
+### Workbench de criacao
+
+![Creation workbench template placement](/admin-help/placements/video-workbench.png)
+
+- A categoria decide em qual fluxo o template e validado: imagem, imagem para video ou provador.
+- Prompt e negativePrompt precisam bater com a experiencia real de geracao.
+- CostCredits, aspectRatios e durationSeconds precisam bater com a cobranca e com a promessa feita ao usuario.
+
+## Campos que a operacao precisa revisar
+
+- Nome: texto claro para Admin, busca e frontend.
+- ID: identificador tecnico usado por links, tarefas e busca. O sistema gera e usa esse valor; operacao nao precisa criar slug.
+- Categoria: define o fluxo de criacao em que o template deve ser conferido.
+- Descricao: explica cenario de uso, limite e resultado esperado; tambem substitui o antigo hook.
+- Prompt e prompt negativo: instrucoes reais para geracao; nao publique texto temporario.
+- Custo, duracao e proporcoes: expectativa de credito, tempo de video e formato visual.
+- Tags e sortWeight: busca, filtro, organizacao e prioridade.
+- Preview, source e example: midias que ajudam o usuario e a operacao a reconhecer o template.
+
+## Checklist
+
+- Nao crie duplicado sem buscar por nome, categoria e tags.
+- Nao deixe template sem preview compreensivel quando ele for importante para navegacao.
+- Prompt, custo, duracao e proporcao precisam bater com a geracao real.
+- Depois de salvar, confira a biblioteca de templates e o workbench correspondente.`,
           purpose:
             'Manter receitas de geração e mídias de preview que viram entradas visíveis nos workbenches.',
           dailyActions: [
-            'Criar ou editar rascunhos antes de publicar.',
-            'Enviar preview, miniatura, fonte ou exemplo para explicar o resultado.',
-            'Revisar custo, duração, proporção e tags antes de arquivar ou publicar.',
+            'Criar ou editar templates com nome, categoria, descrição e prompt completos.',
+            'Enviar preview, fonte ou exemplo para explicar o resultado.',
+            'Revisar custo, duração, proporção e tags antes de usar em campanhas.',
           ],
           keyFields: [
-            'Slug, idioma, tipo, status, hook, CTA e descrição.',
-            'Prompt, prompt JSON, entradas padrão JSON e prompt negativo.',
+            'ID, nome, categoria, descrição e tags.',
+            'Prompt e prompt negativo.',
             'Créditos, duração, proporções, tags, peso e uso.',
           ],
           riskSignals: [
-            'JSON inválido quebra salvamento e pode esconder erro de payload.',
-            'Template publicado sem preview claro reduz confiança do usuário.',
+            'Categoria errada faz o template aparecer no workbench errado.',
+            'Template sem preview claro reduz confiança do usuário.',
             'Custo de créditos deve acompanhar a regra real de geração.',
           ],
         },
         {
           key: 'library-assets',
           title: 'Biblioteca',
+          markdown: `# Biblioteca
+
+## Uso
+
+Ativos da biblioteca sao midias reutilizaveis. O upload cria o registro no Admin; depois de publicado com o caso de uso correto, o material aparece no workbench certo.
+
+## Fluxo de operacao
+
+- Envie PNG, JPG, WEBP, MP4 ou WEBM.
+- Confira o preview antes de salvar.
+- Revise titulo, idioma, tipo, descricao, casos de uso e tags.
+- Preencha qualidade, peso, origem e licenca quando necessario.
+- Publique somente depois de confirmar qualidade, autorizacao e posicao no frontend.
+
+## Onde o usuario ve
+
+### Workbench de video
+
+![Video workbench material placement](/admin-help/placements/library-video-key.png)
+
+- Caminho: workspace de criacao, aba de video.
+- O usuario ve: botoes de referencia e material para compor o video.
+- O operador confere: use case de video, preview claro e midia pronta para ser usada.
+
+### Workbench de produto
+
+![Apparel workbench material placement](/admin-help/placements/library-apparel-key.png)
+
+- Caminho: workspace de produto, botao de escolher da biblioteca.
+- O usuario ve: materiais de produto reutilizaveis para iniciar a composicao.
+- O operador confere: clareza, proporcao, qualidade e tags.
+
+### Workbench de prova virtual
+
+![Try-on workbench material placement](/admin-help/placements/library-try-on-key.png)
+
+- Caminho: workspace de prova virtual, area de modelo, roupa e material.
+- O usuario ve: modelos, roupas ou exemplos disponiveis para selecionar.
+- O operador confere: se o material esta na categoria correta e se a licenca esta clara.
+
+## Checklist
+
+- Upload concluido nao significa visivel no frontend; status ainda importa.
+- useCase errado coloca midia na pagina errada.
+- Video precisa de poster ou thumbnail real antes de entrar em grid de imagem.
+- Qualidade, origem e licenca precisam estar resolvidas antes de publicar.`,
           purpose:
             'Gerenciar mídias reutilizáveis de produto, modelo, peça, cena e exemplos que alimentam os workbenches.',
           dailyActions: [
@@ -874,9 +948,9 @@ export const adminContent: Record<AdminLocale, AdminContent> = {
             'URL do ativo e metadados de mídia nos detalhes.',
           ],
           riskSignals: [
-            'Templates são receitas; biblioteca é inventário de mídia. Não misture IDs.',
             'Vídeos precisam de tratamento próprio e não devem virar imagem quebrada.',
             'Material sem licença ou baixa qualidade não deve ser publicado.',
+            'Caso de uso incorreto coloca material aprovado no workbench errado.',
           ],
         },
         {
@@ -1236,7 +1310,7 @@ export const adminContent: Record<AdminLocale, AdminContent> = {
           finalPreview: 'Result',
           generationType: 'Type',
           inputSummary: 'Input Summary',
-          templateSlug: 'Template',
+          templateId: 'Template ID',
           durationSeconds: 'Duration',
           creditReserved: 'Reserved Credits',
           createdAt: 'Created At',
@@ -1283,7 +1357,7 @@ export const adminContent: Record<AdminLocale, AdminContent> = {
           userName: 'User name',
           generationType: 'Generation type',
           jobStatus: 'Job status',
-          jobTemplateSlug: 'Job template',
+          jobTemplateId: 'Job template ID',
           jobInputSummary: 'Job summary',
           metadataJson: 'Metadata JSON',
         },
@@ -1298,7 +1372,7 @@ export const adminContent: Record<AdminLocale, AdminContent> = {
       title: 'Templates',
       description: 'Manage template catalog records and preview media.',
       emptyText: 'No templates.',
-      searchPlaceholder: 'Title, slug, status...',
+      searchPlaceholder: 'Name, category, tag...',
       create: 'Create',
       modalCreate: 'Create template',
       modalEdit: 'Edit template',
@@ -1307,12 +1381,10 @@ export const adminContent: Record<AdminLocale, AdminContent> = {
       uploadAsset: 'Upload asset',
       tags: 'Tags',
       selectSavedTemplate: 'Select a saved template and a file first.',
-      invalidJson: 'Prompt JSON and default inputs must be valid JSON.',
-      confirmDelete: (slug) => `Delete template ${slug}?`,
+      confirmDelete: (name) => `Delete template ${name}?`,
       columns: {
-        title: 'Template',
-        status: 'Status',
-        type: 'Type',
+        name: 'Template',
+        category: 'Category',
         costCredits: 'Credits',
         durationSeconds: 'Duration',
         tags: 'Tags',
@@ -1320,33 +1392,24 @@ export const adminContent: Record<AdminLocale, AdminContent> = {
         updatedAt: 'Updated At',
       },
       fields: {
-        title: 'Title',
-        slug: 'Slug',
-        locale: 'Locale',
-        type: 'Type',
-        hook: 'Hook',
-        cta: 'CTA',
+        name: 'Name',
+        id: 'ID',
+        category: 'Category',
         description: 'Description',
         prompt: 'Prompt',
         negativePrompt: 'Negative prompt',
-        promptJson: 'Prompt JSON',
-        defaultInputsJson: 'Default inputs JSON',
         costCredits: 'Cost',
         durationSeconds: 'Duration',
         sortWeight: 'Weight',
         aspectRatios: 'Aspect ratios',
       },
-      placeholders: {
-        slug: 'auto from title',
-      },
-      typeOptions: {
-        image: 'Image',
+      categoryOptions: {
+        image_to_image: 'Image',
         image_to_video: 'Image to video',
-        video: 'Video',
+        try_on: 'Try-on',
       },
       uploadRoleOptions: {
         preview: 'Preview',
-        thumbnail: 'Thumbnail',
         source: 'Source',
         example: 'Example',
       },
@@ -1355,8 +1418,6 @@ export const adminContent: Record<AdminLocale, AdminContent> = {
         save: 'Save failed',
         upload: 'Upload failed',
         delete: 'Delete failed',
-        publish: 'Publish failed',
-        archive: 'Archive failed',
         prepareUpload: 'Upload could not be prepared',
         completeUpload: 'Upload could not be completed',
       },
@@ -1364,9 +1425,9 @@ export const adminContent: Record<AdminLocale, AdminContent> = {
     libraryAssets: {
       title: 'Library Assets',
       description:
-        'Manage reusable product, model, garment, scene, and example media for workbenches.',
+        'Manage reusable media by workbench.',
       emptyText: 'No library assets.',
-      searchPlaceholder: 'Title, kind, tag...',
+      searchPlaceholder: 'Title, category, MIME...',
       addAsset: 'Add asset',
       createAction: 'Upload to library',
       modalCreate: 'Add library asset',
@@ -1377,43 +1438,28 @@ export const adminContent: Record<AdminLocale, AdminContent> = {
       selectedFile: 'Selected file',
       uploadFile: 'Upload file',
       openAssetUrl: 'Open asset URL',
-      useCases: 'Use cases',
       confirmRemove: (title) => `Remove ${title} from the library?`,
       columns: {
         assetUrl: 'Preview',
         title: 'Material',
-        status: 'Status',
-        useCases: 'Use Cases',
-        qualityScore: 'Quality',
-        tags: 'Tags',
+        category: 'Category',
+        sortWeight: 'Weight',
+        usageCount: 'Usage',
         updatedAt: 'Updated At',
       },
       fields: {
         title: 'Title',
-        locale: 'Locale',
-        kind: 'Kind',
-        status: 'Status',
+        category: 'Category',
         description: 'Description',
-        tags: 'Tags',
-        qualityScore: 'Quality Score',
         sortWeight: 'Sort Weight',
-        source: 'Source',
-        licenseNote: 'License Note',
+        usageCount: 'Usage',
+        mimeType: 'MIME',
+        sizeBytes: 'Size',
+        createdAt: 'Created At',
+        updatedAt: 'Updated At',
       },
-      placeholders: {
-        tags: 'product-image,fashion,ratio-9-16',
-        source: 'manual / wanxiang / crawler',
-        licenseNote: 'Internal, licensed, generated, etc.',
-      },
-      kindOptions: {
-        product_image: 'Product image',
-        model_image: 'Model image',
-        garment_image: 'Garment image',
-        scene_image: 'Scene image',
-        example_image: 'Example image',
-        example_video: 'Example video',
-      },
-      useCaseOptions: {
+      placeholders: {},
+      categoryOptions: {
         image_to_video: 'Image to video',
         apparel_image: 'Apparel image',
         try_on: 'Try-on',
@@ -1431,9 +1477,10 @@ export const adminContent: Record<AdminLocale, AdminContent> = {
       },
     },
     help: {
-      title: 'Operations help',
+      title: 'Help',
       description:
         'A compact guide for reading each Admin tab, choosing daily actions, and avoiding common data mistakes.',
+      topicOptionLabel: (tabTitle) => `${tabTitle} guide`,
       principlesTitle: 'How to use this handbook',
       principles: [
         'Open Help before operating an unfamiliar area and read each tab as a workflow, not a raw table.',
@@ -1453,7 +1500,7 @@ export const adminContent: Record<AdminLocale, AdminContent> = {
         {
           title: 'Campaign work',
           items: [
-            'Confirm published templates have preview media, CTA, cost, and tags aligned with the campaign.',
+            'Confirm templates have category, preview media, cost, and tags aligned with the campaign.',
             'Use Library Assets to surface approved media and archive duplicates.',
           ],
         },
@@ -1503,27 +1550,130 @@ export const adminContent: Record<AdminLocale, AdminContent> = {
         {
           key: 'templates',
           title: 'Templates',
+          markdown: `# Templates
+
+## Purpose
+
+Templates are creation recipes. Operators use this page to maintain the name, category, description, prompt, cost, tags, and preview media that appear in workbenches.
+
+## Where to operate and verify
+
+### Admin list
+
+![Admin template list](/admin-help/placements/template-admin-list.png)
+
+- Search by name, category, or tag before creating another similar template.
+- The table shows category, credit cost, duration, tags, usage, and last update so operators can decide what to review first.
+- Create opens the form. Preview, source, or example uploads happen from detail or edit views.
+
+### Create and edit form
+
+![Admin template form](/admin-help/placements/template-admin-form.png)
+
+- Fill name, category, and description first.
+- Then review prompt, negative prompt, cost, duration, aspect ratios, tags, and sortWeight.
+- For saved templates, upload preview, source, or example media to explain the expected result.
+
+### Frontend template library
+
+![Frontend templates page](/admin-help/placements/templates-page.png)
+
+- Users find templates through search, category, tags, and sorting.
+- Name, description, and preview must explain the use case quickly.
+- Tags and sortWeight decide browsing organization and priority.
+
+### Creation workbench
+
+![Creation workbench template placement](/admin-help/placements/video-workbench.png)
+
+- Category decides which creation flow must be checked: image, image to video, or try-on.
+- Prompt and negativePrompt must match the real generation experience.
+- CostCredits, aspectRatios, and durationSeconds must match billing and the promise shown to users.
+
+## Fields operators need to review
+
+- Name: clear text for Admin, search, and frontend.
+- ID: technical identifier used by links, tasks, and search. The system generates and uses this value; operations does not need to create a slug.
+- Category: creation flow where the template should be verified.
+- Description: scenario, limitation, and expected result; it also replaces the old hook.
+- Prompt and negative prompt: real generation instructions; do not publish placeholder text.
+- Cost, duration, and aspect ratios: credit expectation, video length, and visual format.
+- Tags and sortWeight: search, filtering, organization, and priority.
+- Preview, source, and example: media that helps users and operators recognize the template.
+
+## Checklist
+
+- Do not create a duplicate without searching by name, category, and tags.
+- Do not leave important browsing templates without understandable preview media.
+- Prompt, cost, duration, and aspect ratio must match the real generation flow.
+- After saving, check the frontend template library and the matching workbench.`,
           purpose:
             'Maintain generation recipes and preview media that become visible workbench entry points.',
           dailyActions: [
-            'Create or edit drafts before publishing.',
-            'Upload preview, thumbnail, source, or example media to explain the result.',
-            'Review cost, duration, aspect ratio, and tags before archive or publish.',
+            'Create or edit templates with complete name, category, description, and prompt.',
+            'Upload preview, source, or example media to explain the result.',
+            'Review cost, duration, aspect ratio, and tags before using templates in campaigns.',
           ],
           keyFields: [
-            'Slug, locale, type, status, hook, CTA, and description.',
-            'Prompt, prompt JSON, default inputs JSON, and negative prompt.',
+            'ID, name, category, description, and tags.',
+            'Prompt and negative prompt.',
             'Credits, duration, aspect ratios, tags, sort weight, and usage.',
           ],
           riskSignals: [
-            'Invalid JSON blocks saving and can hide payload mistakes.',
-            'A published template without clear preview media lowers user confidence.',
+            'Wrong category makes the template appear in the wrong workbench.',
+            'A template without clear preview media lowers user confidence.',
             'Credit cost should match the real generation reservation rule.',
           ],
         },
         {
           key: 'library-assets',
           title: 'Library Assets',
+          markdown: `# Library Assets
+
+## Purpose
+
+Library assets are reusable media. Uploading creates the Admin record; publishing it with the right use case makes the material appear in the matching workbench.
+
+## Operating flow
+
+- Upload a PNG, JPG, WEBP, MP4, or WEBM file.
+- Check the preview before saving.
+- Review title, locale, kind, description, use cases, and tags.
+- Fill quality, sort weight, source, and license note when needed.
+- Publish only after quality, rights, and frontend placement are clear.
+
+## Where users see it
+
+### Video workbench
+
+![Video workbench material placement](/admin-help/placements/library-video-key.png)
+
+- Path: creation workspace, video tab.
+- Users see: reference buttons and reusable material for composing a video.
+- Operators check: video use case, clear preview, and usable media.
+
+### Product image workbench
+
+![Apparel workbench material placement](/admin-help/placements/library-apparel-key.png)
+
+- Path: product image workspace, choose-from-library entry.
+- Users see: reusable product materials for starting a composition.
+- Operators check: clarity, ratio, quality, and tags.
+
+### Try-on workbench
+
+![Try-on workbench material placement](/admin-help/placements/library-try-on-key.png)
+
+- Path: try-on workspace, model, garment, and material areas.
+- Users see: selectable models, garments, or examples.
+- Operators check: correct category and clear rights notes.
+
+## Checklist
+
+- A completed upload is not automatically frontend-visible; status still matters.
+- A wrong useCase places media on the wrong page.
+- Video needs a real poster or thumbnail before entering image grids.
+- Quality, source, and license should be resolved before publishing.`,
           purpose:
             'Manage reusable product, model, garment, scene, and example media that feed the workbenches.',
           dailyActions: [
@@ -1537,9 +1687,9 @@ export const adminContent: Record<AdminLocale, AdminContent> = {
             'Asset URL and media metadata in the detail view.',
           ],
           riskSignals: [
-            'Templates are recipes; library assets are media inventory. Keep IDs separate.',
             'Videos need their own handling and should not render as broken images.',
             'Unlicensed or low-quality material should stay out of published inventory.',
+            'A wrong use case places approved material on the wrong workbench.',
           ],
         },
         {
@@ -1896,7 +2046,7 @@ export const adminContent: Record<AdminLocale, AdminContent> = {
           finalPreview: '成品',
           generationType: '类型',
           inputSummary: '输入摘要',
-          templateSlug: '模板',
+          templateId: '模板 ID',
           durationSeconds: '时长',
           creditReserved: '预留算力',
           createdAt: '创建时间',
@@ -1943,7 +2093,7 @@ export const adminContent: Record<AdminLocale, AdminContent> = {
           userName: '用户姓名',
           generationType: '生成类型',
           jobStatus: '任务状态',
-          jobTemplateSlug: '任务模板',
+          jobTemplateId: '任务模板 ID',
           jobInputSummary: '任务摘要',
           metadataJson: '元数据 JSON',
         },
@@ -1958,7 +2108,7 @@ export const adminContent: Record<AdminLocale, AdminContent> = {
       title: '模板',
       description: '管理模板目录记录和预览媒体。',
       emptyText: '暂无模板。',
-      searchPlaceholder: '搜索标题、slug 或状态...',
+      searchPlaceholder: '搜索名称、类别或标签...',
       create: '创建',
       modalCreate: '创建模板',
       modalEdit: '编辑模板',
@@ -1967,12 +2117,10 @@ export const adminContent: Record<AdminLocale, AdminContent> = {
       uploadAsset: '上传素材',
       tags: '标签',
       selectSavedTemplate: '请先选择已保存的模板和文件。',
-      invalidJson: '提示词 JSON 和默认输入必须是有效 JSON。',
-      confirmDelete: (slug) => `确认删除模板 ${slug}？`,
+      confirmDelete: (name) => `确认删除模板 ${name}？`,
       columns: {
-        title: '模板',
-        status: '状态',
-        type: '类型',
+        name: '模板',
+        category: '类别',
         costCredits: '消耗算力',
         durationSeconds: '时长',
         tags: '标签',
@@ -1980,33 +2128,24 @@ export const adminContent: Record<AdminLocale, AdminContent> = {
         updatedAt: '更新时间',
       },
       fields: {
-        title: '标题',
-        slug: 'Slug',
-        locale: '语言',
-        type: '类型',
-        hook: '卖点 Hook',
-        cta: 'CTA',
+        name: '名称',
+        id: 'ID',
+        category: '类别',
         description: '描述',
         prompt: '提示词',
         negativePrompt: '负向提示词',
-        promptJson: '提示词 JSON',
-        defaultInputsJson: '默认输入 JSON',
         costCredits: '成本',
         durationSeconds: '时长',
         sortWeight: '排序权重',
         aspectRatios: '画幅比例',
       },
-      placeholders: {
-        slug: '根据标题自动生成',
-      },
-      typeOptions: {
-        image: '图片',
+      categoryOptions: {
+        image_to_image: '图片',
         image_to_video: '图生视频',
-        video: '视频',
+        try_on: '智能试衣',
       },
       uploadRoleOptions: {
         preview: '预览',
-        thumbnail: '缩略图',
         source: '源文件',
         example: '示例',
       },
@@ -2015,17 +2154,15 @@ export const adminContent: Record<AdminLocale, AdminContent> = {
         save: '保存失败',
         upload: '上传失败',
         delete: '删除失败',
-        publish: '发布失败',
-        archive: '归档失败',
         prepareUpload: '无法准备上传',
         completeUpload: '无法完成上传',
       },
     },
     libraryAssets: {
       title: '素材库',
-      description: '管理工作台可复用的产品、模特、服装、场景和示例媒体。',
+      description: '按工作台管理可复用媒体。',
       emptyText: '暂无素材。',
-      searchPlaceholder: '搜索标题、类型或标签...',
+      searchPlaceholder: '搜索标题、类别或 MIME...',
       addAsset: '添加素材',
       createAction: '上传入库',
       modalCreate: '添加素材',
@@ -2036,43 +2173,28 @@ export const adminContent: Record<AdminLocale, AdminContent> = {
       selectedFile: '已选文件',
       uploadFile: '上传文件',
       openAssetUrl: '打开素材链接',
-      useCases: '使用场景',
       confirmRemove: (title) => `确认从素材库移除 ${title}？`,
       columns: {
         assetUrl: '预览',
         title: '素材',
-        status: '状态',
-        useCases: '使用场景',
-        qualityScore: '质量分',
-        tags: '标签',
+        category: '类别',
+        sortWeight: '排序权重',
+        usageCount: '使用量',
         updatedAt: '更新时间',
       },
       fields: {
         title: '标题',
-        locale: '语言',
-        kind: '类型',
-        status: '状态',
+        category: '类别',
         description: '描述',
-        tags: '标签',
-        qualityScore: '质量分',
         sortWeight: '排序权重',
-        source: '来源',
-        licenseNote: '授权备注',
+        usageCount: '使用量',
+        mimeType: 'MIME',
+        sizeBytes: '大小',
+        createdAt: '创建时间',
+        updatedAt: '更新时间',
       },
-      placeholders: {
-        tags: 'product-image,fashion,ratio-9-16',
-        source: 'manual / wanxiang / crawler',
-        licenseNote: '内部、授权、生成等',
-      },
-      kindOptions: {
-        product_image: '产品图',
-        model_image: '模特图',
-        garment_image: '服装图',
-        scene_image: '场景图',
-        example_image: '示例图',
-        example_video: '示例视频',
-      },
-      useCaseOptions: {
+      placeholders: {},
+      categoryOptions: {
         image_to_video: '图生视频',
         apparel_image: '商品图',
         try_on: '智能试衣',
@@ -2090,14 +2212,15 @@ export const adminContent: Record<AdminLocale, AdminContent> = {
       },
     },
     help: {
-      title: '运营帮助',
+      title: '帮助',
       description:
-        '选择一个后台栏目，按真实操作顺序查看入口、字段含义、保存后会出现在哪里，以及发布前要检查什么。',
+        '选择一个后台栏目，按真实操作顺序查看入口、字段含义、保存后会出现在哪里，以及上线前要检查什么。',
+      topicOptionLabel: (tabTitle) => `${tabTitle}页面讲解`,
       principlesTitle: '这份手册怎么用',
       principles: [
-        '先在右上角下拉框选择要操作的 tab，再照着“实操步骤”做，不要把帮助当成数据字典。',
+        '先在左侧“帮助”下拉里选择要操作的页面讲解，再照着“实操步骤”做，不要把帮助当成数据字典。',
         '字段说明只写运营必须知道的含义：为什么要填、填错会影响哪里、最终会被哪个前台页面读取。',
-        '保存之前先确认状态。草稿通常只在 Admin 可见，发布后才会进入工作台或前台列表。',
+        '模板保存后按类别进入对应工作台；有状态的表如素材库，才需要额外确认草稿、发布和归档状态。',
         '遇到问题时按链路排查：模板决定创作入口，素材库提供可复用媒体，媒体文件确认上传状态，生成任务确认执行结果，算力流水解释余额。',
       ],
       rhythmTitle: '推荐运营节奏',
@@ -2105,8 +2228,8 @@ export const adminContent: Record<AdminLocale, AdminContent> = {
         {
           title: '上新前',
           items: [
-            '先准备模板或素材的预览，再补字段，最后发布。',
-            '发布前用对应工作台确认用户能看到正确入口或素材。',
+            '先准备模板或素材的预览，再补字段；模板保存后验证，素材发布前验证。',
+            '用对应工作台确认用户能看到正确入口或素材。',
           ],
         },
         {
@@ -2119,7 +2242,7 @@ export const adminContent: Record<AdminLocale, AdminContent> = {
         {
           title: '下架和复盘',
           items: [
-            '过期模板和素材先归档，避免直接删除造成排查断点。',
+            '过期模板先降低排序或删除前确认历史排查需求；过期素材优先归档。',
             '把重复踩坑补进对应 tab 的风险信号。',
           ],
         },
@@ -2165,36 +2288,226 @@ export const adminContent: Record<AdminLocale, AdminContent> = {
         {
           key: 'templates',
           title: '模板',
+          markdown: `# 模板操作手册
+
+## 一、引言
+
+### 编写目的
+
+本文用于指导运营在管理后台维护模板。模板是一套生成配方，会按类别作为用户的一键创作入口出现在模板库或对应创作工作台里。
+
+### 注意事项
+
+- 模板不是素材。模板控制生成配方、提示词、画幅、时长和算力成本；素材库管理可复用图片或视频。
+- 模板保存后要按用户路径检查：先看前台模板库页面是否方便发现和理解，再看对应创作工作台能否正确选择并生成。
+- 一张模板表维护名称、描述、类别、提示词、成本、画幅、时长、标签和预览素材，不再维护 slug、语言、状态、hook、CTA 或 JSON 预设。
+- 类别控制模板进入哪个工作台，标签主要服务用户浏览和运营筛选。
+- 算力成本、时长和画幅比例必须和真实生成规则一致，不能只为了展示好看而随意填写。
+
+## 二、系统整体界面介绍
+
+### 系统登录与入口
+
+- 系统 URL：使用管理员提供的后台域名进入系统。
+- 登录方式：使用管理员账号登录后进入管理后台。
+- 功能入口：左侧菜单选择“管理后台 > 模板”。
+- 前台验证位置：前台模板库页面，以及图生视频、商品图、智能试衣等创作工作台。
+
+### 模板管理列表页面介绍
+
+![模板管理列表页](/admin-help/placements/template-admin-list.png)
+
+模板管理列表是运营每天查找、创建和复核模板的入口。截图里本地环境暂无模板，但页面结构就是线上运营要看的结构：搜索框用于按名称、ID、类别或标签定位模板；“创建”用于新增模板；列表列位用于快速判断模板类别、消耗算力、时长、标签、使用量和更新时间；操作列用于查看、编辑、上传素材或删除。
+
+运营在列表页先看三件事：是否已经有相似模板、模板类别是否符合工作台入口、更新时间和使用量是否需要复核。不要只凭名称判断模板能不能上线，必须进详情或编辑表单看提示词、成本和预览素材。
+
+### 模板编辑表单页面介绍
+
+![模板编辑表单](/admin-help/placements/template-admin-form.png)
+
+模板编辑表单是补齐字段和生成配置的地方。顶部字段负责前台展示和基础归类：名称、类别、描述。继续向下滚动后会看到提示词、负向提示词、成本、时长、排序权重、画幅比例、标签和上传素材。只有已保存模板才能上传 preview、source 或 example。
+
+### 前台模板库页面介绍
+
+![前台模板库页面](/admin-help/placements/templates-page.png)
+
+前台模板库是用户浏览和筛选模板的页面。运营保存后要检查名称是否能说明用途、预览是否看得懂、标签是否能被筛选到、排序是否符合活动优先级。这里主要验证“用户能不能发现并理解模板”。
+
+### 创作工作台页面介绍
+
+![创作工作台模板入口](/admin-help/placements/video-workbench.png)
+
+创作工作台验证模板是否真的能用于生成。运营要按 category 进入对应工作台：image_to_video 看图生视频，image_to_image 看图片生成，try_on 看智能试衣。这里重点检查默认提示词、上传要求、画幅、时长、算力说明和生成按钮是否符合模板承诺。
+
+## 三、功能介绍
+
+### 创建和编辑模板
+
+- 新建模板时先填写名称、类别和描述。
+- 再填写提示词、负向提示词、成本、画幅、时长、排序权重和标签。
+- 需要解释效果时，上传 preview、source 或 example。
+- 保存后检查预览和字段是否完整，再到对应工作台验证。
+
+### 字段说明
+
+- 名称：运营和用户都能看到的模板名称。要写成可理解的结果或用途，不要只写内部代号。
+- ID：系统生成的模板唯一标识，用于跳转、任务记录和定位。运营不需要额外维护 slug。
+- 类别：决定模板要去哪个工作台验证。image_to_video 看图生视频；image_to_image 看图片生成；try_on 看智能试衣。类别填错时，运营会在错误页面找模板。
+- 描述：解释适合的商品、渠道、活动目标或限制条件，也承担原来 hook 的浏览说明作用。描述太泛会影响用户选择。
+- 提示词：正向生成要求，是模板效果的核心。不能只写展示文案，必须能指导真实生成。
+- 负向提示词：用于排除不想要的画面、风格或错误结果。常见问题可以沉淀在这里。
+- 成本：用户生成时看到和预留的算力成本说明，必须和后端真实扣费规则一致。
+- 时长：视频模板的默认时长。图片模板通常不需要时长；视频时长要和 provider 支持能力一致。
+- 画幅比例：用户可选或默认生成比例。保存前要确认预览素材和生成结果都适配这些比例。
+- 标签：用于搜索、筛选、活动分组和运营排查。用短标签，不要写成长句。
+- 排序权重：同类模板的人工排序加权。活动主推可以临时调高，活动结束后要调回。
+- 上传素材：preview 用于展示结果预期，source 用于源素材，example 用于示例结果。重要模板没有清晰预览时不要放到活动入口。
+- 使用量和更新时间：用于判断模板是否还在被用户使用，以及最近是否有人改动。高使用模板修改前要更谨慎。
+
+### 保存和验证模板
+
+- 保存前先检查展示字段，再检查生成配置。
+- 保存后到模板库和对应工作台验证是否出现。
+- 过期或错误模板可以删除；删除前确认没有还需要排查的历史任务。
+
+## 四、业务操作指引
+
+### 如何管理模板
+
+新增模板：进入“模板”页面，点击创建，填写名称、类别、描述、提示词、画幅、时长、标签和算力成本，再补齐 preview、source 或 example。
+
+查询模板：通过名称、ID、类别或标签查找模板。找不到时先确认是否在正确工作台类别下查询。
+
+修改模板：先判断要改的是展示效果还是生成配置。展示效果通常修改名称、描述、预览、标签和排序；生成配置通常修改提示词、画幅、时长和算力成本。
+
+删除模板：删除前确认模板不是当前活动入口，也不会影响历史任务排查。只是临时不想主推时，优先调低排序权重或移除相关标签。
+
+保存后验证：保存后先看前台模板库是否能被搜索和筛选到，再进入对应创作工作台检查模板入口、默认提示词、画幅时长和算力说明是否正确。`,
           purpose:
-            '维护用户在工作台看到的创作入口和生成配方。发布后的模板会进入对应创作页面的模板/灵感列表，影响标题、预览、提示词、画幅、时长和消耗算力。',
+            '维护用户在工作台看到的创作入口和生成配方。模板会按类别进入对应创作页面的模板/灵感列表，影响名称、预览、提示词、画幅、时长和消耗算力。',
           dailyActions: [
-            '点击“创建”先保存草稿，确认 slug、语言、类型、标题和描述。',
-            '编辑提示词和 JSON 后先保存，不要直接发布。',
-            '进入已保存模板，上传 preview、thumbnail、source 或 example，让用户能看懂结果预期。',
-            '复核成本、时长、画幅比例和标签后再发布。',
-            '发布后到对应工作台查看模板是否出现，过期模板用归档。',
+            '点击“创建”维护名称、类别、描述和提示词。',
+            '进入已保存模板，上传 preview、source 或 example，让用户能看懂结果预期。',
+            '复核成本、时长、画幅比例和标签后再用于活动入口。',
+            '保存后到对应工作台查看模板是否出现，过期模板降低排序或删除。',
           ],
           keyFields: [
-            'Slug：模板唯一标识，会被搜索、任务记录和链接引用，创建后不要随意改。',
-            '语言：决定模板主要服务哪个语言版本的工作台。',
-            '类型：决定模板出现在图片、视频或对应工作台入口。',
-            '状态：draft 只在 Admin，published 前台可见，archived 下架。',
-            'Hook、CTA、标题、描述：用户在工作台看到的营销文案。',
-            'Prompt、Prompt JSON、默认输入 JSON：真正给生成服务的配置，JSON 必须合法。',
+            'ID：系统生成的模板唯一标识，用于跳转、任务记录和定位。',
+            '名称、描述、类别：用户看到的浏览信息，以及模板进入哪个工作台。',
+            'Prompt 和负向 Prompt：真正给生成服务的配置。',
             '算力成本：用户点击生成时会按这个成本展示和预留，必须和后端真实规则一致。',
             '时长和画幅比例：影响视频长度和生成尺寸，也影响用户预期。',
             '标签和排序权重：决定前台分类、搜索和展示顺序。',
           ],
           riskSignals: [
-            '没有清晰预览的模板不要发布，用户不知道会生成什么。',
-            'JSON 保存失败时先修 JSON，不要绕过字段。',
+            '类别填错会让模板进入错误工作台。',
+            '没有清晰预览的模板不要作为主推入口，用户不知道会生成什么。',
             '算力成本填错会直接影响扣费解释和客服处理。',
-            '归档比删除安全，删除会让历史任务排查更难。',
+            '删除模板前确认没有历史排查需求。',
           ],
         },
         {
           key: 'library-assets',
           title: '素材库',
+          markdown: `# 素材库操作手册
+
+## 一、引言
+
+### 编写目的
+
+本文用于指导运营在管理后台维护可复用媒体素材。素材库里的图片和视频会被创作工作台调用，帮助用户更快选择商品、模特、服饰、参考素材或示例素材。
+
+### 注意事项
+
+- 素材不是模板。素材是可复用媒体文件，模板是生成配方。
+- 文件上传成功不等于前台可见。只有 status 为发布，并且使用场景选对，用户才会在对应工作台看到它。
+- 视频素材进入图片格子前需要真实封面或缩略图。
+- 质量、来源和授权备注没有确认清楚时，不要发布。
+
+## 二、系统整体界面介绍
+
+### 系统登录与入口
+
+- 系统 URL：使用管理员提供的后台域名进入系统。
+- 登录方式：使用管理员账号登录后进入管理后台。
+- 功能入口：左侧菜单选择“管理后台 > 素材库”。
+- 前台验证位置：图生视频、商品图、智能试衣等创作工作台。
+
+### 素材库页面介绍
+
+素材库页面用于上传、编辑、发布和归档媒体素材。运营在这里维护文件预览、基础信息、使用场景、质量排序、来源和授权备注。
+
+- 上传与预览：上传 PNG、JPG、WEBP、MP4 或 WEBM 后，先确认预览是否正常。
+- 基础信息：标题、语言、类型、状态、描述。
+- 使用场景：决定素材会进入图生视频、商品图还是智能试衣。
+- 运营管理：标签、质量分、排序权重、来源、授权备注。
+
+### 图生视频工作台页面介绍
+
+![图生视频工作台素材位置](/admin-help/placements/library-video-key.png)
+
+- 打开位置：创作工作台里的“图生视频”。
+- 用户看到：出镜商品、出镜模特、参考素材等可选入口。
+- 运营检查：使用场景适合视频，预览清楚，素材可以直接用于生成。
+
+### 商品图工作台页面介绍
+
+![商品图工作台素材位置](/admin-help/placements/library-apparel-key.png)
+
+- 打开位置：创作工作台里的“商品图”。
+- 用户看到：“从素材库选择”入口，用已有商品素材开始制作。
+- 运营检查：图片清晰，比例适合商品图，标题、标签和质量分能帮助筛选。
+
+### 智能试衣工作台页面介绍
+
+![智能试衣工作台素材位置](/admin-help/placements/library-try-on-key.png)
+
+- 打开位置：创作工作台里的“智能试衣”。
+- 用户看到：模特、服饰和参考素材的选择入口。
+- 运营检查：素材类型放对，模特图和服饰图不要混，来源和授权备注清楚。
+
+## 三、功能介绍
+
+### 上传素材
+
+- 点击新增素材，选择 PNG、JPG、WEBP、MP4 或 WEBM 文件。
+- 上传后先看预览。预览打不开、主体被裁切、清晰度不足时，不要发布。
+- 系统可能根据文件名自动猜标题、类型、标签和使用场景，运营需要逐项复核。
+
+### 编辑素材信息
+
+- 标题：使用运营能看懂的名称，不要只保留乱码文件名。
+- 语言：选择素材服务的语言版本。
+- 类型：标明产品图、模特图、服装图、场景图、示例图或示例视频。
+- 描述：说明适合什么商品、场景、风格或限制。
+- 标签：用于搜索、分类和后续推荐，不要写成长句。
+
+### 设置使用场景
+
+- image_to_video：素材会用于图生视频相关入口。
+- apparel_image：素材会用于商品图相关入口。
+- try_on：素材会用于智能试衣相关入口。
+- 使用场景选错会让素材出现在错误页面，尤其模特图和服饰图不要混。
+
+### 管理质量、排序和授权
+
+- 质量分：0 到 100，越高越适合优先展示。低质素材不要靠排序权重硬推。
+- 排序权重：同类素材的人工排序加权，活动主推可以调高，活动结束后要复原或归档。
+- 来源和授权备注：记录 manual、crawler、wanxiang、内部授权、生成素材等来源，避免版权不清的素材上线。
+
+## 四、业务操作指引
+
+### 如何管理素材库
+
+新增素材：进入“素材库”页面，点击新增素材，上传文件，确认预览正常，再填写标题、语言、类型、描述、使用场景和标签。
+
+查询素材：通过标题、类型、状态、语言、标签或使用场景查找素材。前台找不到素材时，先检查是否发布、语言是否正确、使用场景是否选对。
+
+修改素材：需要调整展示时，修改标题、描述、标签、质量分和排序权重；需要调整出现位置时，修改使用场景；需要处理版权问题时，补来源和授权备注。
+
+删除或下架素材：不建议直接删除已上线素材。需要下架时改为归档，归档后前台不可见，但仍保留后台记录。
+
+发布后验证：发布后进入对应工作台检查素材是否出现。图生视频看视频素材入口，商品图看“从素材库选择”，智能试衣看模特、服饰和参考素材入口。`,
           purpose:
             '上传和管理可复用媒体素材。新上传保存后先是 Admin 里的素材记录；状态发布后，才会按“使用场景”出现在对应工作台：图生视频、商品图或智能试衣。',
           dailyActions: [
@@ -2224,7 +2537,7 @@ export const adminContent: Record<AdminLocale, AdminContent> = {
             '使用场景选错会让素材出现在错误工作台，尤其模特图和服装图通常应该给 try_on。',
             '视频素材不要当图片素材使用，否则前台可能没有图片缩略图。',
             '版权不清、低清晰度、主体被裁切、商品和模特不适配的素材不要发布。',
-            '素材库是媒体资产，模板是生成配方，历史任务里看到的 template id 和 library asset id 不能混用。',
+            '素材标题、类型、使用场景和授权备注不清楚时，不要发布。',
           ],
         },
         {
@@ -2293,7 +2606,7 @@ export const adminContent: Record<AdminLocale, AdminContent> = {
             '成品预览：生成成功后用户看到的结果。',
             '生成类型：图生视频、商品图、智能试衣等，用来定位对应工作台。',
             '状态：queued、submitting、running 是处理中，succeeded 成功，failed 失败。',
-            '输入摘要：快速看商品名、提示词、模板 slug、画幅等，不替代原始素材。',
+            '输入摘要：快速看商品名、提示词、模板 ID、画幅等，不替代原始素材。',
             '模板：关联生成配方，模板问题要回到模板 tab 修改。',
             '预留算力：这次生成占用的算力，余额争议要去算力流水核对。',
             '错误信息：provider 或系统返回的失败原因。',
@@ -2336,12 +2649,12 @@ export const adminContent: Record<AdminLocale, AdminContent> = {
           purpose:
             '帮助本身是后台使用说明，不是业务数据页。它应该告诉运营怎么填、怎么查、保存后去哪里验证。',
           dailyActions: [
-            '进入帮助后先用下拉框选择要操作的 tab。',
+            '进入帮助后先用左侧“帮助”下拉选择要操作的页面讲解。',
             '如果字段、按钮、权限或前台展示位置变了，同步更新对应说明。',
             '每次复盘把“踩坑点”写进发布前检查，不要只写在聊天记录里。',
           ],
           keyFields: [
-            '下拉框：选择总览、模板、素材库、用户、媒体文件、生成任务或算力流水说明。',
+            '帮助下拉：选择总览、模板、素材库、用户、媒体文件、生成任务或算力流水页面讲解。',
             '实操步骤：按真实后台动作排序。',
             '字段含义：说明字段为什么填、怎么填、影响哪里。',
             '发布前检查：记录容易误操作的地方。',

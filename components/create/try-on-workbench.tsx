@@ -43,6 +43,7 @@ import {
   normalizeLibraryItems as normalizeItems,
   type WorkbenchLibraryItem as LibraryItem,
 } from '@/components/create/library-item-utils';
+import { refreshDashboardUser } from '@/lib/dashboard/user-cache';
 import { useDashboardLocale } from '@/lib/dashboard/use-dashboard-locale';
 import { getTryOnCreditCost } from '@/lib/generations/credit-costs';
 import { cn } from '@/lib/utils';
@@ -390,11 +391,18 @@ function LibraryTile({
   );
 }
 
-export function TryOnWorkbench() {
+export function TryOnWorkbench({
+  initialTemplateId = '',
+  initialPrompt = '',
+}: {
+  initialTemplateId?: string;
+  initialPrompt?: string;
+}) {
   const locale = useDashboardLocale();
   const copy = tryOnWorkbenchCopy[locale];
   const commonCopy = commonWorkbenchCopy[locale];
   const banner = bannerCopy[locale];
+  const starterPrompt = initialPrompt.trim();
   const [modelFile, setModelFile] = useState<File | null>(null);
   const [garmentFiles, setGarmentFiles] = useState<File[]>([]);
   const [modelPreview, setModelPreview] = useState<string | null>(null);
@@ -405,7 +413,7 @@ export function TryOnWorkbench() {
   const [background, setBackground] = useState<BackgroundPreset>('studio');
   const [fit, setFit] = useState<FitPreset>('natural');
   const [preserveFace, setPreserveFace] = useState(true);
-  const [prompt, setPrompt] = useState('');
+  const [prompt, setPrompt] = useState(() => starterPrompt);
   const [templates, setTemplates] = useState<LibraryItem[]>([]);
   const [assets, setAssets] = useState<LibraryItem[]>([]);
   const [modelAssets, setModelAssets] = useState<ModelCatalogItem[]>([]);
@@ -419,6 +427,7 @@ export function TryOnWorkbench() {
   const [jobId, setJobId] = useState<string | null>(null);
   const [jobStatus, setJobStatus] = useState<JobStatusResponse | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const requestedTemplateId = initialTemplateId;
 
   const isSubmitting = Boolean(submitLabel);
   const selectedResultUrl = resultUrl(jobStatus);
@@ -480,18 +489,16 @@ export function TryOnWorkbench() {
       setIsLoadingLibrary(true);
       try {
         const templateParams = new URLSearchParams({
-          locale,
           pageSize: '12',
-          type: 'image',
+          category: 'try_on',
         });
         const modelParams = new URLSearchParams({
           locale,
           limit: '24',
         });
         const assetParams = new URLSearchParams({
-          locale,
           pageSize: '12',
-          useCase: 'try_on',
+          category: 'try_on',
         });
         const [templateResponse, modelResponse, assetResponse] = await Promise.all([
           fetch(`/api/templates?${templateParams.toString()}`),
@@ -509,10 +516,31 @@ export function TryOnWorkbench() {
           const nextTemplates = normalizeItems(templateBody);
           const nextModelAssets = normalizeModelItems(modelBody);
           const nextAssets = normalizeItems(assetBody);
+          const requestedTemplate = nextTemplates.find(
+            (template) => String(template.id) === requestedTemplateId
+          );
           setTemplates(nextTemplates);
           setAssets(nextAssets);
           setModelAssets(nextModelAssets);
-          setSelectedLibraryItem((current) => current ?? nextTemplates[0] ?? nextAssets[0] ?? null);
+          setSelectedLibraryItem((current) => {
+            if (requestedTemplate) {
+              return requestedTemplate;
+            }
+
+            if (!requestedTemplateId) {
+              return current &&
+                [...nextTemplates, ...nextAssets].some(
+                  (item) => String(item.id) === String(current.id)
+                )
+                ? current
+                : null;
+            }
+
+            return null;
+          });
+          if (requestedTemplate?.prompt) {
+            setPrompt(String(requestedTemplate.prompt));
+          }
           setSelectedModelAsset((current) => current ?? nextModelAssets[0] ?? null);
           if (nextModelAssets.length === 0) {
             setModelSource('custom');
@@ -527,7 +555,7 @@ export function TryOnWorkbench() {
     return () => {
       cancelled = true;
     };
-  }, [locale]);
+  }, [locale, requestedTemplateId]);
 
   useEffect(() => {
     if (!jobId || terminalStatus(jobStatus?.status)) return;
@@ -536,7 +564,12 @@ export function TryOnWorkbench() {
     const poll = async () => {
       try {
         const nextStatus = await fetchJobStatus(jobId, commonCopy);
-        if (!cancelled) setJobStatus(nextStatus);
+        if (!cancelled) {
+          setJobStatus(nextStatus);
+          if (terminalStatus(nextStatus.status)) {
+            void refreshDashboardUser();
+          }
+        }
       } catch (statusError) {
         if (!cancelled) {
           setError(
@@ -631,11 +664,16 @@ export function TryOnWorkbench() {
             );
 
       setSubmitLabel(copy.startingTryOn);
+      const selectedTemplateId =
+        selectedLibraryItem && !getItemAssetId(selectedLibraryItem)
+          ? selectedLibraryItem.id
+          : null;
       const generation = await postJson<GenerationResponse>(
         '/api/generations',
         {
           generationType: 'try_on',
           tryOnMode: mode,
+          ...(selectedTemplateId ? { templateId: String(selectedTemplateId) } : {}),
           ...(modelAssetId
             ? { modelAssetId }
             : { modelCatalogAssetId: selectedModelAsset?.id }),
@@ -657,6 +695,7 @@ export function TryOnWorkbench() {
         throw new Error(commonCopy.missingJobError);
       }
 
+      void refreshDashboardUser();
       setJobId(nextJobId);
       setJobStatus({
         id: nextJobId,
@@ -1004,12 +1043,11 @@ export function TryOnWorkbench() {
                 const assetId = getItemAssetId(template);
                 const active = assetId
                   ? selectedGarmentAssetId === assetId
-                  : String(selectedLibraryItem?.id ?? selectedLibraryItem?.slug) ===
-                    String(template.id ?? template.slug);
+                  : String(selectedLibraryItem?.id) === String(template.id);
 
                 return (
                   <button
-                    key={String(template.id ?? template.slug ?? image)}
+                    key={String(template.id ?? image)}
                     type="button"
                     onClick={() =>
                       assetId && mode === 'single'

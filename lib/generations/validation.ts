@@ -77,18 +77,6 @@ const optionalCleanPromptField = z.preprocess(
   cleanPromptField.optional()
 );
 
-const optionalTemplateSlugSchema = z.preprocess(
-  (value) =>
-    typeof value === 'string' && value.trim() === '' ? undefined : value,
-  z
-    .string()
-    .trim()
-    .min(1)
-    .max(120)
-    .regex(/^[A-Za-z0-9_-]+$/)
-    .optional()
-);
-
 const durationSecondsSchema = z.preprocess(
   (value) => {
     if (typeof value === 'string' && /^\d+$/.test(value)) {
@@ -145,7 +133,6 @@ const baseGenerationFields = {
   generationType: generationTypeInputSchema.optional(),
   mode: generationModeInputSchema.optional(),
   templateId: idStringSchema.optional(),
-  templateSlug: optionalTemplateSlugSchema,
 };
 
 function assertMatchingGenerationMode(

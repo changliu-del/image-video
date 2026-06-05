@@ -1,6 +1,9 @@
 import type { Locale } from '@/lib/marketing/content';
 
-export type TemplateType = 'image' | 'image_to_video' | 'video';
+export type TemplateCategory =
+  | 'image_to_video'
+  | 'image_to_image'
+  | 'try_on';
 
 export type TemplateTagGroup =
   | 'goal'
@@ -14,14 +17,10 @@ export type TemplateTagGroup =
 export type TemplateMediaType = 'image' | 'video';
 
 export type TemplateCatalogItem = {
-  id?: string;
-  slug: string;
-  locale: Locale;
-  title: string;
+  id: string;
+  name: string;
   description: string;
-  type: TemplateType;
-  hook: string;
-  cta?: string | null;
+  category: TemplateCategory;
   prompt: string;
   costCredits: number;
   aspectRatios: string[];
@@ -38,6 +37,20 @@ export type TemplateTagOption = {
   slug: string;
   group: TemplateTagGroup;
   labels: LocalizedText;
+};
+
+type StarterTemplateSeed = {
+  id: string;
+  name: string;
+  description: string;
+  category: TemplateCategory;
+  prompt: string;
+  costCredits: number;
+  aspectRatios: string[];
+  durationSeconds?: number | null;
+  asset: string;
+  mediaType: TemplateMediaType;
+  tags: string[];
 };
 
 export const templateTagGroups: Array<{
@@ -225,7 +238,8 @@ export const templatesPageContent: Record<
     costSuffix: string;
     sortLabel: string;
     sortOptions: Record<'featured' | 'newest' | 'lowCost', string>;
-    typeLabels: Record<TemplateType, string>;
+    categoryFilterLabel: string;
+    categoryLabels: Record<TemplateCategory, string>;
   }
 > = {
   pt: {
@@ -243,7 +257,7 @@ export const templatesPageContent: Record<
     all: 'Todos',
     results: 'templates encontrados',
     useTemplate: 'Usar modelo',
-    loginHint: 'Entre para editar prompt, produto e CTA.',
+    loginHint: 'Entre para editar prompt, produto e detalhes.',
     emptyTitle: 'Nenhum template encontrado',
     emptyText: 'Remova alguns filtros ou busque por outro objetivo de venda.',
     costSuffix: 'credito',
@@ -253,10 +267,11 @@ export const templatesPageContent: Record<
       newest: 'Mais recentes',
       lowCost: 'Menor custo',
     },
-    typeLabels: {
-      image: 'Imagem',
+    categoryFilterLabel: 'Workbench',
+    categoryLabels: {
+      image_to_image: 'Imagem',
       image_to_video: 'Imagem -> video',
-      video: 'Video',
+      try_on: 'Provador',
     },
   },
   en: {
@@ -274,7 +289,7 @@ export const templatesPageContent: Record<
     all: 'All',
     results: 'templates found',
     useTemplate: 'Use template',
-    loginHint: 'Sign in to edit prompt, product, and CTA.',
+    loginHint: 'Sign in to edit prompt, product, and details.',
     emptyTitle: 'No templates found',
     emptyText: 'Remove some filters or search for another sales goal.',
     costSuffix: 'credit',
@@ -284,10 +299,11 @@ export const templatesPageContent: Record<
       newest: 'Newest',
       lowCost: 'Lowest cost',
     },
-    typeLabels: {
-      image: 'Image',
+    categoryFilterLabel: 'Workbench',
+    categoryLabels: {
+      image_to_image: 'Image',
       image_to_video: 'Image -> video',
-      video: 'Video',
+      try_on: 'Try-on',
     },
   },
   zh: {
@@ -305,7 +321,7 @@ export const templatesPageContent: Record<
     all: '全部',
     results: '个模板',
     useTemplate: '使用模板',
-    loginHint: '登录后可编辑提示词、商品和 CTA。',
+    loginHint: '登录后可编辑提示词、商品和细节。',
     emptyTitle: '没有找到模板',
     emptyText: '减少筛选条件，或换一个卖货目标搜索。',
     costSuffix: '算力值',
@@ -315,10 +331,11 @@ export const templatesPageContent: Record<
       newest: '最新',
       lowCost: '低成本优先',
     },
-    typeLabels: {
-      image: '图片',
+    categoryFilterLabel: '工作台',
+    categoryLabels: {
+      image_to_image: '图片',
       image_to_video: '图生视频',
-      video: '视频',
+      try_on: '智能试衣',
     },
   },
 };
@@ -332,14 +349,12 @@ const assets = [
   '/resources/example5.png',
 ] as const;
 
-const ptStarterTemplates: Omit<TemplateCatalogItem, 'locale' | 'source'>[] = [
+const ptStarterTemplates: StarterTemplateSeed[] = [
   {
-    slug: 'promocao-pix-relampago',
-    title: 'Promocao Pix Relampago',
-    description: 'Oferta direta com preco forte, urgencia e CTA para Pix.',
-    type: 'image',
-    hook: 'So hoje com desconto no Pix',
-    cta: 'Comprar com Pix',
+    id: 'promocao-pix-relampago',
+    name: 'Promocao Pix Relampago',
+    description: 'Oferta direta com preco forte, urgencia e chamada para Pix.',
+    category: 'image_to_image',
     prompt:
       'Crie uma imagem promocional para ecommerce brasileiro com o produto em destaque, composicao limpa, preco em evidencia e chamada para Pix.',
     costCredits: 1,
@@ -356,12 +371,10 @@ const ptStarterTemplates: Omit<TemplateCatalogItem, 'locale' | 'source'>[] = [
     ],
   },
   {
-    slug: 'produto-em-uso-reels',
-    title: 'Produto em Uso',
+    id: 'produto-em-uso-reels',
+    name: 'Produto em Uso',
     description: 'Mostre o produto no contexto de uso com ritmo social.',
-    type: 'image_to_video',
-    hook: 'Veja como fica na pratica',
-    cta: 'Ver oferta',
+    category: 'image_to_video',
     prompt:
       'Transforme a imagem do produto em um video curto de ecommerce, com movimento suave, ambiente realista e foco nos beneficios de uso.',
     costCredits: 10,
@@ -379,12 +392,10 @@ const ptStarterTemplates: Omit<TemplateCatalogItem, 'locale' | 'source'>[] = [
     ],
   },
   {
-    slug: 'antes-e-depois-beneficio',
-    title: 'Antes e Depois',
+    id: 'antes-e-depois-beneficio',
+    name: 'Antes e Depois',
     description: 'Estrutura visual para comparar problema, solucao e ganho.',
-    type: 'image',
-    hook: 'Antes comum. Depois irresistivel.',
-    cta: 'Testar agora',
+    category: 'image_to_image',
     prompt:
       'Crie um criativo antes e depois para ecommerce, com divisao clara da cena, produto como solucao e visual limpo para anuncio.',
     costCredits: 1,
@@ -401,12 +412,10 @@ const ptStarterTemplates: Omit<TemplateCatalogItem, 'locale' | 'source'>[] = [
     ],
   },
   {
-    slug: 'review-cliente-whatsapp',
-    title: 'Review de Cliente',
+    id: 'review-cliente-whatsapp',
+    name: 'Review de Cliente',
     description: 'Prova social com texto curto e visual de conversa.',
-    type: 'image_to_video',
-    hook: 'Quem comprou recomenda',
-    cta: 'Chamar no WhatsApp',
+    category: 'image_to_video',
     prompt:
       'Crie um video curto com clima de review de cliente, produto em destaque, prova social visual e espaco para depoimento em PT-BR.',
     costCredits: 10,
@@ -424,12 +433,10 @@ const ptStarterTemplates: Omit<TemplateCatalogItem, 'locale' | 'source'>[] = [
     ],
   },
   {
-    slug: 'detalhe-pdp-textura',
-    title: 'Detalhe PDP',
+    id: 'detalhe-pdp-textura',
+    name: 'Detalhe PDP',
     description: 'Destaque textura, embalagem, material e beneficio.',
-    type: 'image',
-    hook: 'Detalhes que fazem diferenca',
-    cta: 'Ver detalhes',
+    category: 'image_to_image',
     prompt:
       'Crie uma imagem PDP premium com close-up do produto, textura visivel, fundo limpo e espaco para beneficios curtos.',
     costCredits: 1,
@@ -447,12 +454,10 @@ const ptStarterTemplates: Omit<TemplateCatalogItem, 'locale' | 'source'>[] = [
     ],
   },
   {
-    slug: 'banner-cupom-marketplace',
-    title: 'Banner Promocional',
+    id: 'banner-cupom-marketplace',
+    name: 'Banner Promocional',
     description: 'Base visual para cupom, frete gratis e calendario comercial.',
-    type: 'image',
-    hook: 'Cupom liberado por tempo limitado',
-    cta: 'Usar cupom',
+    category: 'image_to_image',
     prompt:
       'Crie um banner promocional para marketplace brasileiro, com produto em destaque, area para cupom e visual comercial moderno.',
     costCredits: 1,
@@ -469,12 +474,10 @@ const ptStarterTemplates: Omit<TemplateCatalogItem, 'locale' | 'source'>[] = [
     ],
   },
   {
-    slug: 'lancamento-tiktok',
-    title: 'Lancamento TikTok',
+    id: 'lancamento-tiktok',
+    name: 'Lancamento TikTok',
     description: 'Gancho rapido para apresentar novidade em video vertical.',
-    type: 'image_to_video',
-    hook: 'Chegou o novo queridinho',
-    cta: 'Conhecer agora',
+    category: 'image_to_video',
     prompt:
       'Crie um video vertical de lancamento para TikTok, com movimento dinamico, produto centralizado e visual moderno para ecommerce.',
     costCredits: 10,
@@ -493,12 +496,10 @@ const ptStarterTemplates: Omit<TemplateCatalogItem, 'locale' | 'source'>[] = [
     ],
   },
   {
-    slug: 'combo-kits-recompra',
-    title: 'Combo para Recompra',
+    id: 'combo-kits-recompra',
+    name: 'Combo para Recompra',
     description: 'Apresente kits, bundles e recompra com valor percebido.',
-    type: 'image',
-    hook: 'Leve o kit completo e economize',
-    cta: 'Montar kit',
+    category: 'image_to_image',
     prompt:
       'Crie um criativo de kit promocional para ecommerce, com composicao organizada, varios itens do produto e beneficio de economia.',
     costCredits: 1,
@@ -516,12 +517,10 @@ const ptStarterTemplates: Omit<TemplateCatalogItem, 'locale' | 'source'>[] = [
     ],
   },
   {
-    slug: 'food-delivery-oferta',
-    title: 'Oferta de Alimentos',
+    id: 'food-delivery-oferta',
+    name: 'Oferta de Alimentos',
     description: 'Criativo apetitoso para preco, combo e urgencia.',
-    type: 'image',
-    hook: 'Combo especial para hoje',
-    cta: 'Pedir agora',
+    category: 'image_to_image',
     prompt:
       'Crie uma imagem de oferta para produto alimenticio, com composicao apetitosa, luz natural e destaque para combo promocional.',
     costCredits: 1,
@@ -539,12 +538,10 @@ const ptStarterTemplates: Omit<TemplateCatalogItem, 'locale' | 'source'>[] = [
     ],
   },
   {
-    slug: 'eletronico-demo-curta',
-    title: 'Demo Curta de Eletronico',
+    id: 'eletronico-demo-curta',
+    name: 'Demo Curta de Eletronico',
     description: 'Mostre funcao, detalhe e beneficio em poucos segundos.',
-    type: 'image_to_video',
-    hook: 'Um detalhe que muda tudo',
-    cta: 'Ver especificacoes',
+    category: 'image_to_video',
     prompt:
       'Transforme a imagem do eletronico em um video de produto com camera lenta, brilho controlado, close-up tecnico e fundo limpo.',
     costCredits: 10,
@@ -563,12 +560,10 @@ const ptStarterTemplates: Omit<TemplateCatalogItem, 'locale' | 'source'>[] = [
     ],
   },
   {
-    slug: 'moda-lookbook-marketplace',
-    title: 'Lookbook Marketplace',
+    id: 'moda-lookbook-marketplace',
+    name: 'Lookbook Marketplace',
     description: 'Imagem comercial para look, variacao e catalogo.',
-    type: 'image',
-    hook: 'Combine do seu jeito',
-    cta: 'Ver variacoes',
+    category: 'image_to_image',
     prompt:
       'Crie uma imagem estilo lookbook para ecommerce de moda, com produto em composicao elegante, fundo neutro e foco em combinacoes.',
     costCredits: 1,
@@ -586,12 +581,10 @@ const ptStarterTemplates: Omit<TemplateCatalogItem, 'locale' | 'source'>[] = [
     ],
   },
   {
-    slug: 'whatsapp-consulta-rapida',
-    title: 'Consulta pelo WhatsApp',
+    id: 'whatsapp-consulta-rapida',
+    name: 'Consulta pelo WhatsApp',
     description: 'Criativo para levar compradores a uma conversa direta.',
-    type: 'image',
-    hook: 'Tire sua duvida antes de comprar',
-    cta: 'Falar no WhatsApp',
+    category: 'image_to_image',
     prompt:
       'Crie um criativo para ecommerce com chamada para WhatsApp, produto claro, visual confiavel e espaco para perguntas frequentes.',
     costCredits: 1,
@@ -610,164 +603,134 @@ const ptStarterTemplates: Omit<TemplateCatalogItem, 'locale' | 'source'>[] = [
   },
 ];
 
-const translations: Record<Exclude<Locale, 'pt'>, Record<string, Partial<TemplateCatalogItem>>> = {
+const translations: Record<
+  Exclude<Locale, 'pt'>,
+  Record<
+    string,
+    Partial<Pick<StarterTemplateSeed, 'name' | 'description'>>
+  >
+> = {
   en: {
     'promocao-pix-relampago': {
-      title: 'Pix Flash Promotion',
-      description: 'Direct offer with strong price, urgency, and Pix CTA.',
-      hook: 'Today only with Pix discount',
-      cta: 'Buy with Pix',
+      name: 'Pix Flash Promotion',
+      description: 'Direct offer with strong price, urgency, and Pix action cue.',
     },
     'produto-em-uso-reels': {
-      title: 'Product in Use',
+      name: 'Product in Use',
       description: 'Show the product in context with social pacing.',
-      hook: 'See how it works in real life',
-      cta: 'See offer',
     },
     'antes-e-depois-beneficio': {
-      title: 'Before and After',
+      name: 'Before and After',
       description: 'Visual structure to compare problem, solution, and gain.',
-      hook: 'Before ordinary. After irresistible.',
-      cta: 'Try now',
     },
     'review-cliente-whatsapp': {
-      title: 'Customer Review',
+      name: 'Customer Review',
       description: 'Social proof with short copy and conversation-style visual.',
-      hook: 'People who bought recommend it',
-      cta: 'Message on WhatsApp',
     },
     'detalhe-pdp-textura': {
-      title: 'PDP Detail',
+      name: 'PDP Detail',
       description: 'Highlight texture, packaging, material, and benefit.',
-      hook: 'Details that make a difference',
-      cta: 'See details',
     },
     'banner-cupom-marketplace': {
-      title: 'Promo Banner',
+      name: 'Promo Banner',
       description: 'Visual base for coupons, free shipping, and retail dates.',
-      hook: 'Coupon unlocked for a limited time',
-      cta: 'Use coupon',
     },
     'lancamento-tiktok': {
-      title: 'TikTok Launch',
-      description: 'Fast hook to introduce a new item in vertical video.',
-      hook: 'The new favorite just arrived',
-      cta: 'Discover now',
+      name: 'TikTok Launch',
+      description: 'Fast opening to introduce a new item in vertical video.',
     },
     'combo-kits-recompra': {
-      title: 'Repurchase Bundle',
+      name: 'Repurchase Bundle',
       description: 'Present kits, bundles, and repeat purchase value.',
-      hook: 'Take the full kit and save',
-      cta: 'Build kit',
     },
     'food-delivery-oferta': {
-      title: 'Food Offer',
+      name: 'Food Offer',
       description: 'Appetizing creative for price, combo, and urgency.',
-      hook: 'Special combo for today',
-      cta: 'Order now',
     },
     'eletronico-demo-curta': {
-      title: 'Short Electronics Demo',
+      name: 'Short Electronics Demo',
       description: 'Show function, detail, and benefit in seconds.',
-      hook: 'One detail that changes everything',
-      cta: 'See specs',
     },
     'moda-lookbook-marketplace': {
-      title: 'Marketplace Lookbook',
+      name: 'Marketplace Lookbook',
       description: 'Commercial image for looks, variants, and catalog.',
-      hook: 'Combine it your way',
-      cta: 'See variants',
     },
     'whatsapp-consulta-rapida': {
-      title: 'WhatsApp Consultation',
+      name: 'WhatsApp Consultation',
       description: 'Creative to move shoppers into a direct conversation.',
-      hook: 'Ask before you buy',
-      cta: 'Talk on WhatsApp',
     },
   },
   zh: {
     'promocao-pix-relampago': {
-      title: 'Pix 限时促销',
-      description: '突出价格、紧迫感和 Pix CTA 的转化模板。',
-      hook: '仅今天享 Pix 折扣',
-      cta: '用 Pix 购买',
+      name: 'Pix 限时促销',
+      description: '突出价格、紧迫感和 Pix 行动提示的转化模板。',
     },
     'produto-em-uso-reels': {
-      title: '商品使用场景',
+      name: '商品使用场景',
       description: '用社媒节奏展示商品真实使用场景。',
-      hook: '看看真实使用效果',
-      cta: '查看优惠',
     },
     'antes-e-depois-beneficio': {
-      title: '前后对比',
+      name: '前后对比',
       description: '对比问题、解决方案和收益的视觉结构。',
-      hook: '之前普通，之后心动',
-      cta: '立即试试',
     },
     'review-cliente-whatsapp': {
-      title: '客户评价',
+      name: '客户评价',
       description: '适合短评价和聊天截图风格的用户口碑模板。',
-      hook: '买过的人都推荐',
-      cta: 'WhatsApp 咨询',
     },
     'detalhe-pdp-textura': {
-      title: '详情页细节',
+      name: '详情页细节',
       description: '突出纹理、包装、材质和核心利益点。',
-      hook: '细节决定购买',
-      cta: '查看细节',
     },
     'banner-cupom-marketplace': {
-      title: '促销横幅',
+      name: '促销横幅',
       description: '适合优惠券、免运和大促节点的视觉基础。',
-      hook: '限时优惠券已解锁',
-      cta: '使用优惠券',
     },
     'lancamento-tiktok': {
-      title: 'TikTok 上新',
+      name: 'TikTok 上新',
       description: '用竖版短视频快速介绍新品。',
-      hook: '新宠来了',
-      cta: '立即了解',
     },
     'combo-kits-recompra': {
-      title: '复购组合装',
+      name: '复购组合装',
       description: '展示套装、组合和复购价值。',
-      hook: '买完整套更划算',
-      cta: '搭配套装',
     },
     'food-delivery-oferta': {
-      title: '食品优惠',
+      name: '食品优惠',
       description: '适合价格、套餐和限时活动的食品促销素材。',
-      hook: '今日限定套餐',
-      cta: '立即下单',
     },
     'eletronico-demo-curta': {
-      title: '电子产品短演示',
+      name: '电子产品短演示',
       description: '几秒内展示功能、细节和利益点。',
-      hook: '一个细节改变体验',
-      cta: '查看参数',
     },
     'moda-lookbook-marketplace': {
-      title: '电商平台穿搭图',
+      name: '电商平台穿搭图',
       description: '适合穿搭、变体和商品目录的商业图片。',
-      hook: '按你的风格搭配',
-      cta: '查看变体',
     },
     'whatsapp-consulta-rapida': {
-      title: 'WhatsApp 快速咨询',
+      name: 'WhatsApp 快速咨询',
       description: '把买家引导到一对一咨询的图片模板。',
-      hook: '购买前先问清楚',
-      cta: 'WhatsApp 咨询',
     },
   },
 };
 
 export function getStarterTemplates(locale: Locale): TemplateCatalogItem[] {
-  return ptStarterTemplates.map((template) => ({
-    ...template,
-    ...translations[locale as Exclude<Locale, 'pt'>]?.[template.slug],
-    locale,
-    source: 'starter',
-  }));
+  return ptStarterTemplates.map((template) => {
+    const translated =
+      translations[locale as Exclude<Locale, 'pt'>]?.[template.id] ?? {};
+    return {
+      id: template.id,
+      name: translated.name ?? template.name,
+      description: translated.description ?? template.description,
+      category: template.category,
+      prompt: template.prompt,
+      costCredits: template.costCredits,
+      aspectRatios: template.aspectRatios,
+      durationSeconds: template.durationSeconds,
+      asset: template.asset,
+      mediaType: template.mediaType,
+      tags: template.tags,
+      source: 'starter',
+    };
+  });
 }
 
 export function getTemplateTagLabel(slug: string, locale: Locale) {

@@ -21,8 +21,13 @@ export function getLegacyLoginHref(
 ) {
   const params = new URLSearchParams();
   const resolvedLocale = getSearchLocale(searchParams) ?? locale;
+  const ignoredParams = new Set(['invite', 'inviteId', 'inviteCode']);
 
   Object.entries(searchParams).forEach(([key, value]) => {
+    if (ignoredParams.has(key)) {
+      return;
+    }
+
     if (typeof value === 'string') {
       params.set(key, value);
       return;
