@@ -22,7 +22,6 @@ const adminUserColumns = {
   name: users.name,
   email: users.email,
   role: users.role,
-  isAdmin: users.isAdmin,
   creditBalance: users.creditBalance,
   stripeCustomerId: users.stripeCustomerId,
   stripeSubscriptionId: users.stripeSubscriptionId,
@@ -39,7 +38,6 @@ const updateUserSchema = z
     email: z.string().trim().email().max(255).optional(),
     name: z.string().trim().max(100).nullable().optional(),
     role: z.enum(USER_ROLES).optional(),
-    isAdmin: z.boolean().optional(),
   })
   .strict();
 
@@ -123,13 +121,7 @@ export async function getUserById(id: number) {
 export async function updateUser(id: number, data: unknown) {
   const admin = await requireAdmin();
   const parsed = updateUserSchema.parse(data);
-  const role =
-    parsed.role ??
-    (typeof parsed.isAdmin === 'boolean'
-      ? parsed.isAdmin
-        ? 'admin'
-        : 'member'
-      : undefined);
+  const role = parsed.role;
 
   if (admin.id === id && role && role !== 'admin') {
     throw new Error('Cannot revoke your own admin role');
@@ -147,7 +139,6 @@ export async function updateUser(id: number, data: unknown) {
 
   if (role) {
     nextData.role = role;
-    nextData.isAdmin = role === 'admin';
   }
 
   if (Object.keys(nextData).length === 0) {
@@ -211,7 +202,6 @@ export async function setUserRole(id: number, role: UserRole) {
     .update(users)
     .set({
       role: parsedRole,
-      isAdmin: parsedRole === 'admin',
       updatedAt: new Date(),
     })
     .where(eq(users.id, id))

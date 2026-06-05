@@ -38,7 +38,6 @@ export type DashboardHeaderUser = {
   id: number;
   email?: string | null;
   name?: string | null;
-  isAdmin?: boolean;
   role?: string | null;
   creditBalance?: number;
   planName?: string | null;
@@ -46,7 +45,7 @@ export type DashboardHeaderUser = {
 };
 
 function canAccessAdmin(user: DashboardHeaderUser) {
-  return user.isAdmin || user.role === 'admin' || user.role === 'ops';
+  return user.role === 'admin' || user.role === 'ops';
 }
 
 async function fetchHeaderUser(url: string) {

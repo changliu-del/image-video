@@ -730,8 +730,6 @@ export const adminContent: Record<AdminLocale, AdminContent> = {
         save: 'Falha ao salvar',
         upload: 'Falha no envio',
         delete: 'Falha ao excluir',
-        publish: 'Falha ao publicar',
-        archive: 'Falha ao arquivar',
         prepareUpload: 'Não foi possível preparar o envio',
         completeUpload: 'Não foi possível concluir o envio',
         selectFile: 'Selecione um arquivo primeiro.',
@@ -893,15 +891,14 @@ Templates sao receitas de criacao. Operacao usa esta pagina para manter nome, ca
 
 ## Uso
 
-Ativos da biblioteca sao midias reutilizaveis. O upload cria o registro no Admin; depois de publicado com o caso de uso correto, o material aparece no workbench certo.
+Ativos da biblioteca sao midias reutilizaveis. O upload cria o registro no Admin; a categoria define em qual workbench o material aparece.
 
 ## Fluxo de operacao
 
 - Envie PNG, JPG, WEBP, MP4 ou WEBM.
 - Confira o preview antes de salvar.
-- Revise titulo, idioma, tipo, descricao, casos de uso e tags.
-- Preencha qualidade, peso, origem e licenca quando necessario.
-- Publique somente depois de confirmar qualidade, autorizacao e posicao no frontend.
+- Revise titulo, categoria, descricao e peso de ordenacao.
+- Salve e confira o material no workbench da categoria escolhida.
 
 ## Onde o usuario ve
 
@@ -911,7 +908,7 @@ Ativos da biblioteca sao midias reutilizaveis. O upload cria o registro no Admin
 
 - Caminho: workspace de criacao, aba de video.
 - O usuario ve: botoes de referencia e material para compor o video.
-- O operador confere: use case de video, preview claro e midia pronta para ser usada.
+- O operador confere: categoria de video, preview claro e midia pronta para ser usada.
 
 ### Workbench de produto
 
@@ -919,7 +916,7 @@ Ativos da biblioteca sao midias reutilizaveis. O upload cria o registro no Admin
 
 - Caminho: workspace de produto, botao de escolher da biblioteca.
 - O usuario ve: materiais de produto reutilizaveis para iniciar a composicao.
-- O operador confere: clareza, proporcao, qualidade e tags.
+- O operador confere: clareza, proporcao e se a categoria e produto.
 
 ### Workbench de prova virtual
 
@@ -927,30 +924,29 @@ Ativos da biblioteca sao midias reutilizaveis. O upload cria o registro no Admin
 
 - Caminho: workspace de prova virtual, area de modelo, roupa e material.
 - O usuario ve: modelos, roupas ou exemplos disponiveis para selecionar.
-- O operador confere: se o material esta na categoria correta e se a licenca esta clara.
+- O operador confere: se o material esta na categoria correta.
 
 ## Checklist
 
-- Upload concluido nao significa visivel no frontend; status ainda importa.
-- useCase errado coloca midia na pagina errada.
+- A categoria errada coloca midia na pagina errada.
 - Video precisa de poster ou thumbnail real antes de entrar em grid de imagem.
-- Qualidade, origem e licenca precisam estar resolvidas antes de publicar.`,
+- Para tirar do frontend, remova o registro da biblioteca.`,
           purpose:
             'Gerenciar mídias reutilizáveis de produto, modelo, peça, cena e exemplos que alimentam os workbenches.',
           dailyActions: [
             'Enviar arquivo, conferir preview e completar metadados básicos.',
-            'Ajustar tipo, casos de uso, tags, qualidade, origem e licença.',
-            'Publicar materiais aprovados e arquivar os obsoletos.',
+            'Ajustar categoria, descrição e peso de ordenação.',
+            'Remover materiais obsoletos quando não devem aparecer no frontend.',
           ],
           keyFields: [
-            'Preview, título, tipo, status, idioma e casos de uso.',
-            'Tags, qualidade, peso, origem e nota de licença.',
+            'Preview, título, categoria e descrição.',
+            'Peso de ordenação e uso.',
             'URL do ativo e metadados de mídia nos detalhes.',
           ],
           riskSignals: [
             'Vídeos precisam de tratamento próprio e não devem virar imagem quebrada.',
-            'Material sem licença ou baixa qualidade não deve ser publicado.',
-            'Caso de uso incorreto coloca material aprovado no workbench errado.',
+            'Categoria incorreta coloca material no workbench errado.',
+            'Materiais obsoletos devem ser removidos da biblioteca.',
           ],
         },
         {
@@ -1469,8 +1465,6 @@ Ativos da biblioteca sao midias reutilizaveis. O upload cria o registro no Admin
         save: 'Save failed',
         upload: 'Upload failed',
         delete: 'Delete failed',
-        publish: 'Publish failed',
-        archive: 'Archive failed',
         prepareUpload: 'Upload could not be prepared',
         completeUpload: 'Upload could not be completed',
         selectFile: 'Select a file first.',
@@ -1501,7 +1495,7 @@ Ativos da biblioteca sao midias reutilizaveis. O upload cria o registro no Admin
           title: 'Campaign work',
           items: [
             'Confirm templates have category, preview media, cost, and tags aligned with the campaign.',
-            'Use Library Assets to surface approved media and archive duplicates.',
+            'Use Library Assets to surface reusable media and remove duplicates.',
           ],
         },
         {
@@ -1514,7 +1508,7 @@ Ativos da biblioteca sao midias reutilizaveis. O upload cria o registro no Admin
       ],
       maintenanceTitle: 'How this column is managed',
       maintenance: [
-        'Update Help whenever a tab gains a field, filter, permission, or publishing rule.',
+        'Update Help whenever a tab gains a field, filter, permission, or operating rule.',
         'Write for operations: explain when to act, when not to act, and which tab confirms the hypothesis.',
         'Keep examples short; technical detail belongs in row details or engineering documentation.',
         'When a support trap repeats more than once, add one sentence to risk signals.',
@@ -1632,15 +1626,14 @@ Templates are creation recipes. Operators use this page to maintain the name, ca
 
 ## Purpose
 
-Library assets are reusable media. Uploading creates the Admin record; publishing it with the right use case makes the material appear in the matching workbench.
+Library assets are reusable media. Uploading creates the Admin record; the category decides which workbench shows the material.
 
 ## Operating flow
 
 - Upload a PNG, JPG, WEBP, MP4, or WEBM file.
 - Check the preview before saving.
-- Review title, locale, kind, description, use cases, and tags.
-- Fill quality, sort weight, source, and license note when needed.
-- Publish only after quality, rights, and frontend placement are clear.
+- Review title, category, description, and sort weight.
+- Save and check the material in the selected category's workbench.
 
 ## Where users see it
 
@@ -1650,7 +1643,7 @@ Library assets are reusable media. Uploading creates the Admin record; publishin
 
 - Path: creation workspace, video tab.
 - Users see: reference buttons and reusable material for composing a video.
-- Operators check: video use case, clear preview, and usable media.
+- Operators check: video category, clear preview, and usable media.
 
 ### Product image workbench
 
@@ -1658,7 +1651,7 @@ Library assets are reusable media. Uploading creates the Admin record; publishin
 
 - Path: product image workspace, choose-from-library entry.
 - Users see: reusable product materials for starting a composition.
-- Operators check: clarity, ratio, quality, and tags.
+- Operators check: clarity, ratio, and product-image category.
 
 ### Try-on workbench
 
@@ -1666,30 +1659,29 @@ Library assets are reusable media. Uploading creates the Admin record; publishin
 
 - Path: try-on workspace, model, garment, and material areas.
 - Users see: selectable models, garments, or examples.
-- Operators check: correct category and clear rights notes.
+- Operators check: correct category.
 
 ## Checklist
 
-- A completed upload is not automatically frontend-visible; status still matters.
-- A wrong useCase places media on the wrong page.
+- A wrong category places media on the wrong page.
 - Video needs a real poster or thumbnail before entering image grids.
-- Quality, source, and license should be resolved before publishing.`,
+- Remove obsolete materials from the library when they should leave the frontend.`,
           purpose:
             'Manage reusable product, model, garment, scene, and example media that feed the workbenches.',
           dailyActions: [
             'Upload the file, check the preview, and complete core metadata.',
-            'Set kind, use cases, tags, quality, source, and license note.',
-            'Publish approved assets and archive outdated materials.',
+            'Set category, description, and sort weight.',
+            'Remove outdated materials when they should not appear on the frontend.',
           ],
           keyFields: [
-            'Preview, title, kind, status, locale, and use cases.',
-            'Tags, quality score, sort weight, source, and license note.',
+            'Preview, title, category, and description.',
+            'Sort weight and usage count.',
             'Asset URL and media metadata in the detail view.',
           ],
           riskSignals: [
             'Videos need their own handling and should not render as broken images.',
-            'Unlicensed or low-quality material should stay out of published inventory.',
-            'A wrong use case places approved material on the wrong workbench.',
+            'A wrong category places material on the wrong workbench.',
+            'Outdated materials should be removed from the library.',
           ],
         },
         {
@@ -2204,8 +2196,6 @@ Library assets are reusable media. Uploading creates the Admin record; publishin
         save: '保存失败',
         upload: '上传失败',
         delete: '删除失败',
-        publish: '发布失败',
-        archive: '归档失败',
         prepareUpload: '无法准备上传',
         completeUpload: '无法完成上传',
         selectFile: '请先选择文件。',
@@ -2220,7 +2210,7 @@ Library assets are reusable media. Uploading creates the Admin record; publishin
       principles: [
         '先在左侧“帮助”下拉里选择要操作的页面讲解，再照着“实操步骤”做，不要把帮助当成数据字典。',
         '字段说明只写运营必须知道的含义：为什么要填、填错会影响哪里、最终会被哪个前台页面读取。',
-        '模板保存后按类别进入对应工作台；有状态的表如素材库，才需要额外确认草稿、发布和归档状态。',
+        '模板和素材都按类别进入对应工作台；素材库只维护类别和基础信息。',
         '遇到问题时按链路排查：模板决定创作入口，素材库提供可复用媒体，媒体文件确认上传状态，生成任务确认执行结果，算力流水解释余额。',
       ],
       rhythmTitle: '推荐运营节奏',
@@ -2228,7 +2218,7 @@ Library assets are reusable media. Uploading creates the Admin record; publishin
         {
           title: '上新前',
           items: [
-            '先准备模板或素材的预览，再补字段；模板保存后验证，素材发布前验证。',
+            '先准备模板或素材的预览，再补字段；保存后到对应工作台验证。',
             '用对应工作台确认用户能看到正确入口或素材。',
           ],
         },
@@ -2242,7 +2232,7 @@ Library assets are reusable media. Uploading creates the Admin record; publishin
         {
           title: '下架和复盘',
           items: [
-            '过期模板先降低排序或删除前确认历史排查需求；过期素材优先归档。',
+            '过期模板先降低排序或删除前确认历史排查需求；过期素材从素材库移除。',
             '把重复踩坑补进对应 tab 的风险信号。',
           ],
         },
@@ -2250,7 +2240,7 @@ Library assets are reusable media. Uploading creates the Admin record; publishin
       maintenanceTitle: '这个栏目怎么维护',
       maintenance: [
         '新增字段时同步写清楚字段含义、必填场景、错误后果和最终展示位置。',
-        '新增上传、发布、归档、删除等动作时，用步骤写法更新，不写抽象原则。',
+        '新增上传、删除等动作时，用步骤写法更新，不写抽象原则。',
         '如果某个字段只用于排查，不在首屏出现，要写明去详情里看。',
         '客服或运营重复踩过两次的坑，要补进对应 tab 的检查点。',
       ],
@@ -2420,9 +2410,8 @@ Library assets are reusable media. Uploading creates the Admin record; publishin
 ### 注意事项
 
 - 素材不是模板。素材是可复用媒体文件，模板是生成配方。
-- 文件上传成功不等于前台可见。只有 status 为发布，并且使用场景选对，用户才会在对应工作台看到它。
+- 文件上传成功后，类别会决定素材进入哪个工作台。
 - 视频素材进入图片格子前需要真实封面或缩略图。
-- 质量、来源和授权备注没有确认清楚时，不要发布。
 
 ## 二、系统整体界面介绍
 
@@ -2435,12 +2424,12 @@ Library assets are reusable media. Uploading creates the Admin record; publishin
 
 ### 素材库页面介绍
 
-素材库页面用于上传、编辑、发布和归档媒体素材。运营在这里维护文件预览、基础信息、使用场景、质量排序、来源和授权备注。
+素材库页面用于上传、编辑和删除媒体素材。运营在这里维护文件预览、标题、类别、描述和排序权重。
 
 - 上传与预览：上传 PNG、JPG、WEBP、MP4 或 WEBM 后，先确认预览是否正常。
-- 基础信息：标题、语言、类型、状态、描述。
-- 使用场景：决定素材会进入图生视频、商品图还是智能试衣。
-- 运营管理：标签、质量分、排序权重、来源、授权备注。
+- 基础信息：标题、类别、描述。
+- 类别：决定素材会进入图生视频、商品图还是智能试衣。
+- 运营管理：排序权重和使用量。
 
 ### 图生视频工作台页面介绍
 
@@ -2448,7 +2437,7 @@ Library assets are reusable media. Uploading creates the Admin record; publishin
 
 - 打开位置：创作工作台里的“图生视频”。
 - 用户看到：出镜商品、出镜模特、参考素材等可选入口。
-- 运营检查：使用场景适合视频，预览清楚，素材可以直接用于生成。
+- 运营检查：类别是图生视频，预览清楚，素材可以直接用于生成。
 
 ### 商品图工作台页面介绍
 
@@ -2456,7 +2445,7 @@ Library assets are reusable media. Uploading creates the Admin record; publishin
 
 - 打开位置：创作工作台里的“商品图”。
 - 用户看到：“从素材库选择”入口，用已有商品素材开始制作。
-- 运营检查：图片清晰，比例适合商品图，标题、标签和质量分能帮助筛选。
+- 运营检查：图片清晰，比例适合商品图，标题能帮助用户理解素材。
 
 ### 智能试衣工作台页面介绍
 
@@ -2464,80 +2453,68 @@ Library assets are reusable media. Uploading creates the Admin record; publishin
 
 - 打开位置：创作工作台里的“智能试衣”。
 - 用户看到：模特、服饰和参考素材的选择入口。
-- 运营检查：素材类型放对，模特图和服饰图不要混，来源和授权备注清楚。
+- 运营检查：类别是智能试衣，素材能作为模特、服饰或参考素材使用。
 
 ## 三、功能介绍
 
 ### 上传素材
 
 - 点击新增素材，选择 PNG、JPG、WEBP、MP4 或 WEBM 文件。
-- 上传后先看预览。预览打不开、主体被裁切、清晰度不足时，不要发布。
-- 系统可能根据文件名自动猜标题、类型、标签和使用场景，运营需要逐项复核。
+- 上传后先看预览。预览打不开、主体被裁切、清晰度不足时，不要保留在素材库。
+- 系统可能根据文件名自动猜标题和类别，运营需要复核。
 
 ### 编辑素材信息
 
 - 标题：使用运营能看懂的名称，不要只保留乱码文件名。
-- 语言：选择素材服务的语言版本。
-- 类型：标明产品图、模特图、服装图、场景图、示例图或示例视频。
 - 描述：说明适合什么商品、场景、风格或限制。
-- 标签：用于搜索、分类和后续推荐，不要写成长句。
 
-### 设置使用场景
+### 设置类别
 
 - image_to_video：素材会用于图生视频相关入口。
 - apparel_image：素材会用于商品图相关入口。
 - try_on：素材会用于智能试衣相关入口。
-- 使用场景选错会让素材出现在错误页面，尤其模特图和服饰图不要混。
+- 类别选错会让素材出现在错误页面。
 
-### 管理质量、排序和授权
+### 管理排序
 
-- 质量分：0 到 100，越高越适合优先展示。低质素材不要靠排序权重硬推。
-- 排序权重：同类素材的人工排序加权，活动主推可以调高，活动结束后要复原或归档。
-- 来源和授权备注：记录 manual、crawler、wanxiang、内部授权、生成素材等来源，避免版权不清的素材上线。
+- 排序权重：同类素材的人工排序加权，活动主推可以调高，活动结束后要复原。
+- 使用量：详情里查看素材被使用的统计值；当前不是手工填写字段。
 
 ## 四、业务操作指引
 
 ### 如何管理素材库
 
-新增素材：进入“素材库”页面，点击新增素材，上传文件，确认预览正常，再填写标题、语言、类型、描述、使用场景和标签。
+新增素材：进入“素材库”页面，点击新增素材，上传文件，确认预览正常，再填写标题、类别和描述。
 
-查询素材：通过标题、类型、状态、语言、标签或使用场景查找素材。前台找不到素材时，先检查是否发布、语言是否正确、使用场景是否选对。
+查询素材：通过标题、类别、MIME 或素材 ID 查找素材。前台找不到素材时，先检查底层媒体是否 uploaded、类别是否选对。
 
-修改素材：需要调整展示时，修改标题、描述、标签、质量分和排序权重；需要调整出现位置时，修改使用场景；需要处理版权问题时，补来源和授权备注。
+修改素材：需要调整展示时，修改标题、描述和排序权重；需要调整出现位置时，修改类别。
 
-删除或下架素材：不建议直接删除已上线素材。需要下架时改为归档，归档后前台不可见，但仍保留后台记录。
+删除或下架素材：确认不需要前台展示时，直接从素材库删除记录。
 
-发布后验证：发布后进入对应工作台检查素材是否出现。图生视频看视频素材入口，商品图看“从素材库选择”，智能试衣看模特、服饰和参考素材入口。`,
+保存后验证：保存后进入对应工作台检查素材是否出现。图生视频看视频素材入口，商品图看“从素材库选择”，智能试衣看模特、服饰和参考素材入口。`,
           purpose:
-            '上传和管理可复用媒体素材。新上传保存后先是 Admin 里的素材记录；状态发布后，才会按“使用场景”出现在对应工作台：图生视频、商品图或智能试衣。',
+            '上传和管理可复用媒体素材。新上传保存后就是 Admin 里的素材记录，并按“类别”出现在对应工作台：图生视频、商品图或智能试衣。',
           dailyActions: [
             '进入“素材库”，点击“新增素材”，先选择 PNG、JPG、WEBP、MP4 或 WEBM 文件。',
-            '看左侧预览是否正常。预览不正常时不要发布，先换文件或查媒体文件状态。',
-            '系统会根据文件名自动猜标题、类型、标签和使用场景，但运营需要逐项复核。',
-            '补标题、语言、类型、描述、使用场景和标签，必要时展开高级字段补质量分、排序权重、来源和授权备注。',
-            '先保存为草稿；确认质量、授权和展示位置后，由有权限的人发布。',
-            '发布后到对应工作台检查：image_to_video 看 /create/video，apparel_image 看 /create/apparel，try_on 看 /create/try-on。',
+            '看左侧预览是否正常。预览不正常时先换文件或查媒体文件状态。',
+            '系统会根据文件名自动猜标题和类别，但运营需要复核。',
+            '补标题、类别和描述，必要时展开高级字段补排序权重。',
+            '保存后到对应工作台检查：image_to_video 看 /create/video，apparel_image 看 /create/apparel，try_on 看 /create/try-on。',
           ],
           keyFields: [
             '上传文件：真正写入 R2 的原始媒体。支持图片和视频；文件决定预览、MIME、大小、尺寸、时长。',
-            '预览：发布前第一检查点。看不清、打不开、比例明显不对时不要发布。',
+            '预览：第一检查点。看不清、打不开、比例明显不对时不要保留。',
             '标题：运营可读名称，会用于 Admin 搜索和前台素材列表理解，不能只写文件名乱码。',
-            '语言：素材服务的默认语言版本。多语言素材要按实际使用区域选择。',
-            '类型：产品图、模特图、服装图、场景图、示例图、示例视频，用来告诉工作台这是什么素材。',
-            '状态：draft 只在 Admin；published 会进入公开素材 API；archived 从前台下架。',
+            '类别：image_to_video 出现在图生视频；apparel_image 出现在商品图；try_on 出现在智能试衣。',
             '描述：说明适合什么商品、场景、风格或限制，帮助运营二次筛选。',
-            '使用场景：image_to_video 出现在图生视频；apparel_image 出现在商品图；try_on 出现在智能试衣。',
-            '标签：逗号分隔，用于搜索、分类和后续推荐，不要塞长句。',
-            '质量分：0 到 100，越高越适合优先展示；低质素材不要靠排序权重硬推。',
-            '排序权重：同类素材的人工排序加权，活动主推可以调高，活动结束要复原或归档。',
-            '来源和授权备注：记录 manual、crawler、wanxiang、内部授权、生成素材等来源，避免版权不清的素材上线。',
+            '排序权重：同类素材的人工排序加权，活动主推可以调高，活动结束要复原。',
           ],
           riskSignals: [
-            '草稿不会出现在前台。保存后找不到素材时，先检查是否 published。',
-            '使用场景选错会让素材出现在错误工作台，尤其模特图和服装图通常应该给 try_on。',
+            '类别选错会让素材出现在错误工作台。',
             '视频素材不要当图片素材使用，否则前台可能没有图片缩略图。',
-            '版权不清、低清晰度、主体被裁切、商品和模特不适配的素材不要发布。',
-            '素材标题、类型、使用场景和授权备注不清楚时，不要发布。',
+            '低清晰度、主体被裁切、商品和模特不适配的素材不要保留在素材库。',
+            '素材标题、类别和描述不清楚时，用户会难以判断能不能使用。',
           ],
         },
         {

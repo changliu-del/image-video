@@ -23,9 +23,10 @@ import {
   type AdminTableColumn,
 } from '@/components/admin/admin-management-table';
 import type { AdminContent } from '@/lib/admin/content';
+import { inferLibraryAssetCategoryFromFile } from '@/lib/library-assets/category-inference';
 import { cn } from '@/lib/utils';
 
-type LibraryAssetCategory = 'image_to_video' | 'apparel_image' | 'try_on';
+export type LibraryAssetCategory = 'image_to_video' | 'apparel_image' | 'try_on';
 type ModalMode = 'create' | 'view' | 'edit';
 
 type AdminLibraryAsset = {
@@ -87,21 +88,7 @@ function freshEmptyForm(): LibraryAssetFormState {
 }
 
 function inferCategoryFromFile(file: File): LibraryAssetCategory {
-  const name = file.name.toLowerCase();
-
-  if (file.type.startsWith('video/')) {
-    return 'image_to_video';
-  }
-
-  if (/(model|modelo|mannequin|person|模特|garment|cloth|dress|shirt|pants|服装|衣服|试衣)/.test(name)) {
-    return 'try_on';
-  }
-
-  if (/(video|motion|clip|short|视频)/.test(name)) {
-    return 'image_to_video';
-  }
-
-  return 'apparel_image';
+  return inferLibraryAssetCategoryFromFile(file);
 }
 
 function titleFromFileName(fileName: string) {
@@ -256,6 +243,7 @@ export function LibraryAssetsPanel({
     useState<AdminLibraryAsset | null>(null);
   const [modalMode, setModalMode] = useState<ModalMode | null>(null);
   const [uploadFile, setUploadFile] = useState<File | null>(null);
+  const [categoryManuallyChanged, setCategoryManuallyChanged] = useState(false);
   const [filePreview, setFilePreview] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
   const [saving, setSaving] = useState(false);
@@ -379,6 +367,7 @@ export function LibraryAssetsPanel({
     setSelectedAsset(null);
     setForm(freshEmptyForm());
     setUploadFile(null);
+    setCategoryManuallyChanged(false);
     setModalMode('create');
     setError(null);
   }
@@ -387,6 +376,7 @@ export function LibraryAssetsPanel({
     setSelectedAsset(asset);
     setForm(assetToForm(asset));
     setUploadFile(null);
+    setCategoryManuallyChanged(false);
     setModalMode('view');
     setError(null);
   }
@@ -395,6 +385,7 @@ export function LibraryAssetsPanel({
     setSelectedAsset(asset);
     setForm(assetToForm(asset));
     setUploadFile(null);
+    setCategoryManuallyChanged(true);
     setModalMode('edit');
     setError(null);
   }
@@ -415,11 +406,13 @@ export function LibraryAssetsPanel({
     setForm((current) => ({
       ...current,
       title: current.title.trim() ? current.title : titleFromFileName(file.name),
-      category:
-        current.category === emptyForm.category
-          ? inferredCategory
-          : current.category,
+      category: categoryManuallyChanged ? current.category : inferredCategory,
     }));
+  }
+
+  function handleCategoryChange(value: LibraryAssetCategory) {
+    setCategoryManuallyChanged(true);
+    updateForm('category', value);
   }
 
   async function uploadAndCreateAsset() {
@@ -509,6 +502,7 @@ export function LibraryAssetsPanel({
       setSelectedAsset(null);
       setModalMode(null);
       setForm(freshEmptyForm());
+      setCategoryManuallyChanged(false);
       await loadAssets(data.page);
     } catch (deleteError) {
       setError(
@@ -729,8 +723,7 @@ export function LibraryAssetsPanel({
                   <select
                     value={form.category}
                     onChange={(event) =>
-                      updateForm(
-                        'category',
+                      handleCategoryChange(
                         event.target.value as LibraryAssetCategory
                       )
                     }

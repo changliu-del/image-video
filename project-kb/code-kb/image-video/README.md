@@ -1,6 +1,6 @@
 # Image Video Code KB
 
-Updated: 2026-06-03
+Updated: 2026-06-05
 
 ## Topic Index
 
@@ -15,7 +15,7 @@ Updated: 2026-06-03
 
 ## Fast Topic Routing
 
-- Material/library asset upload, publish/archive, workbench inspiration, and Admin UX: [07-library-assets-and-admin.md](07-library-assets-and-admin.md)
+- Material/library asset upload, category routing, workbench inspiration, and Admin UX: [07-library-assets-and-admin.md](07-library-assets-and-admin.md)
 - Frontend rendering contract for dashboard/workbench routes: [06-frontend-rendering-architecture.md](06-frontend-rendering-architecture.md)
 - Generation API payloads, credit reservation, and provider jobs: [03-api-generation-and-credits.md](03-api-generation-and-credits.md)
 - Env, migrations, deployment, and operational caveats: [04-config-and-operations.md](04-config-and-operations.md)

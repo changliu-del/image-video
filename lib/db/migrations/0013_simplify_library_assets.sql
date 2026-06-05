@@ -1,6 +1,8 @@
 alter table library_assets
   add column if not exists category varchar(32);
 
+drop index if exists library_assets_asset_id_unique;
+
 update library_assets
 set category = case
   when kind in ('model_image', 'garment_image') then 'try_on'
@@ -11,6 +13,45 @@ set category = case
   else 'image_to_video'
 end
 where category is null;
+
+insert into library_assets (
+  asset_id,
+  title,
+  description,
+  category,
+  sort_weight,
+  usage_count,
+  created_by,
+  updated_by,
+  created_at,
+  updated_at
+)
+select
+  la.asset_id,
+  la.title,
+  la.description,
+  categories.category,
+  la.sort_weight,
+  la.usage_count,
+  la.created_by,
+  la.updated_by,
+  la.created_at,
+  la.updated_at
+from library_assets la
+cross join lateral (
+  values
+    ('image_to_video'::varchar(32)),
+    ('apparel_image'::varchar(32)),
+    ('try_on'::varchar(32))
+) as categories(category)
+where la.use_cases_json ? categories.category
+  and categories.category <> la.category
+  and not exists (
+    select 1
+    from library_assets existing
+    where existing.asset_id = la.asset_id
+      and existing.category = categories.category
+  );
 
 alter table library_assets
   alter column category set not null;
@@ -46,3 +87,6 @@ create index if not exists library_assets_category_idx
 
 create index if not exists library_assets_sort_weight_idx
   on library_assets (sort_weight);
+
+create unique index if not exists library_assets_asset_category_unique
+  on library_assets (asset_id, category);

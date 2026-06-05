@@ -5,7 +5,7 @@ import { revalidatePath } from 'next/cache';
 import { adjustUserCredits } from '@/lib/credits';
 import { db } from '@/lib/db/drizzle';
 import { requireAdmin } from '@/lib/db/queries';
-import { users } from '@/lib/db/schema';
+import { USER_ROLES, users, type UserRole } from '@/lib/db/schema';
 
 function readUserId(formData: FormData) {
   const id = Number(formData.get('userId'));
@@ -18,10 +18,12 @@ export async function updateAdminUserAction(formData: FormData) {
   const userId = readUserId(formData);
   const name = String(formData.get('name') ?? '').trim() || null;
   const email = String(formData.get('email') ?? '').trim();
-  const isAdmin = formData.get('isAdmin') === 'on';
+  const roleInput = String(formData.get('role') ?? 'member');
   if (!email) throw new Error('Email is required');
-  if (admin.id === userId && !isAdmin) throw new Error('You cannot revoke your own admin access');
-  await db.update(users).set({ name, email, isAdmin, role: isAdmin ? 'admin' : 'member', updatedAt: new Date() }).where(eq(users.id, userId));
+  if (!USER_ROLES.includes(roleInput as UserRole)) throw new Error('Invalid role');
+  const role = roleInput as UserRole;
+  if (admin.id === userId && role !== 'admin') throw new Error('You cannot revoke your own admin access');
+  await db.update(users).set({ name, email, role, updatedAt: new Date() }).where(eq(users.id, userId));
   revalidatePath('/admin');
 }
 

@@ -106,7 +106,6 @@ export const users = pgTable(
       .$type<UserRole>()
       .notNull()
       .default('member'),
-    isAdmin: boolean('is_admin').notNull().default(false),
     creditBalance: integer('credit_balance').notNull().default(0),
     stripeCustomerId: text('stripe_customer_id').unique(),
     stripeSubscriptionId: text('stripe_subscription_id').unique(),
@@ -449,7 +448,10 @@ export const libraryAssets = pgTable(
     updatedAt: timestamp('updated_at').notNull().defaultNow(),
   },
   (table) => [
-    uniqueIndex('library_assets_asset_id_unique').on(table.assetId),
+    uniqueIndex('library_assets_asset_category_unique').on(
+      table.assetId,
+      table.category
+    ),
     index('library_assets_category_idx').on(table.category),
     index('library_assets_sort_weight_idx').on(table.sortWeight),
     check(

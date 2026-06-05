@@ -48,9 +48,9 @@ Key tables are defined in `lib/db/schema.ts`:
 - `credit_ledger`
 
 `library_assets` is the first-party reusable material layer. It references
-uploaded `assets` rows and stores operational metadata such as locale, kind,
-tags, use cases, quality score, sort weight, status, source, and license note.
-The public `/api/library-assets` route returns published uploaded records for
+uploaded `assets` rows and stores category, title, description, sort weight,
+usage count, and creator/updater audit metadata. The public
+`/api/library-assets` route returns uploaded records filtered by category for
 workbench inspiration and examples.
 
 ## Architecture Caveat

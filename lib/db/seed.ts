@@ -21,7 +21,6 @@ async function seed() {
         name: 'Codex Admin',
         passwordHash,
         role: 'admin',
-        isAdmin: true,
         creditBalance: 0,
         deletedAt: null,
         updatedAt: new Date(),
@@ -34,7 +33,6 @@ async function seed() {
       email,
       passwordHash,
       role: 'admin',
-      isAdmin: true,
       creditBalance: 0,
     });
     console.log('Codex admin user created.');

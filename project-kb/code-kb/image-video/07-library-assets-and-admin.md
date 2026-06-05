@@ -1,6 +1,6 @@
 # Library Assets and Admin
 
-Updated: 2026-06-04
+Updated: 2026-06-05
 
 ## Purpose
 
@@ -12,8 +12,8 @@ Use this page when a task mentions materials, material library, example media, w
 
 | Area | Files |
 |---|---|
-| DB schema | `lib/db/schema.ts` (`libraryAssets`, `LIBRARY_ASSET_KINDS`, `LIBRARY_ASSET_STATUSES`) |
-| Migration | `lib/db/migrations/0009_library_assets.sql` |
+| DB schema | `lib/db/schema.ts` (`libraryAssets`, `LIBRARY_ASSET_CATEGORIES`) |
+| Migration | `lib/db/migrations/0009_library_assets.sql`, `lib/db/migrations/0013_simplify_library_assets.sql`, `lib/db/migrations/0014_library_assets_category_unique.sql` |
 | Storage helpers | `lib/storage/r2.ts` (`buildLibraryAssetStorageKey`, `storageKeyMatchesLibraryAsset`) |
 | Public query | `lib/library-assets/query.ts`, `app/api/library-assets/route.ts` |
 | Admin service | `lib/admin/services/library-assets.ts` |
@@ -25,14 +25,14 @@ Use this page when a task mentions materials, material library, example media, w
 
 `library_assets` references uploaded rows in `assets` and adds operational metadata:
 
-- `kind`: product image, model image, garment image, scene image, example image, or example video.
-- `status`: draft, published, or archived.
-- `locale`, `title`, `description`, `source`, and `licenseNote`.
-- `tagsJson` and `useCasesJson` as JSON arrays.
-- `qualityScore`, `sortWeight`, and `usageCount` for ranking and curation.
-- creator/updater/publisher audit fields.
+- `assetId`: the single API/TypeScript field for the linked `assets.id`; the database column remains `asset_id` by SQL convention. Multiple library rows may point to the same `assetId` when the same file needs to appear in different categories.
+- `title` and `description`: operator-readable material context.
+- `category`: the one routing field for the workbench that should show the material.
+- `sortWeight` and `usageCount`: ranking and usage statistics.
+- creator/updater audit fields.
 
-Current allowed workbench use cases are `image_to_video`, `apparel_image`, and `try_on`.
+Current allowed categories are `image_to_video`, `apparel_image`, and `try_on`.
+The DB uniqueness rule is `(asset_id, category)`, not bare `asset_id`.
 
 ## Lifecycle
 
@@ -40,30 +40,29 @@ Current allowed workbench use cases are `image_to_video`, `apparel_image`, and `
 2. Browser uploads the file to R2 using the signed PUT URL.
 3. Client calls `POST /api/admin/library-assets/complete`.
 4. The service verifies the R2 object metadata before marking the upload asset as uploaded.
-5. The service creates an `assets` upload row and a draft `library_assets` row.
-6. Ops edits title, description, tags, use cases, quality score, source, license note, locale, and sort weight.
-7. Admin publishes the asset.
-8. Workbenches fetch published assets through `/api/library-assets`.
-9. Admin can archive or remove obsolete assets from the library.
+5. The service creates an `assets` upload row and a `library_assets` row.
+6. Ops/admin edits title, description, category, and sort weight.
+7. Workbenches fetch uploaded category-matched assets through `/api/library-assets`.
+8. Admin can remove obsolete assets from the library metadata.
 
-Role boundary: ops can create and edit drafts; admin is required for publish, archive, and delete.
+Role boundary: ops can create and edit library asset metadata; admin is required for delete.
 
-Publishing requires the underlying `assets` row to be `uploaded`. Do not allow
-`library_assets.status = published` while the file is still pending or missing.
+Frontend visibility requires the underlying `assets` row to be `uploaded` and the
+`library_assets.category` value to match the workbench query.
 
 ## Workbench Consumption
 
 Workbench libraries combine generated templates with first-party library assets:
 
-- `/create/video`: `/api/templates?category=image_to_video` plus `/api/library-assets?useCase=image_to_video`.
-- `/create/apparel`: `/api/templates?category=image_to_image` plus `/api/library-assets?useCase=apparel_image`.
-- `/create/try-on`: `/api/templates?category=try_on`, `/api/model-assets`, plus `/api/library-assets?useCase=try_on`.
+- `/create/video`: `/api/templates?category=image_to_video` plus `/api/library-assets?category=image_to_video`.
+- `/create/apparel`: `/api/templates?category=image_to_image` plus `/api/library-assets?category=apparel_image`.
+- `/create/try-on`: `/api/templates?category=try_on`, `/api/model-assets`, plus `/api/library-assets?category=try_on`.
 
 Keep template IDs and library asset IDs separate. Library assets are inspiration/examples unless the generation payload explicitly supports them as template inputs.
 
-Workbench image grids must not render video URLs through `<img>`. Published
-video assets should either expose a real image thumbnail/poster or be omitted
-from image-only grids.
+Workbench image grids must not render video URLs through `<img>`. Video assets
+should either expose a real image thumbnail/poster or be omitted from image-only
+grids.
 
 2026-06-04 public catalog cache policy:
 
@@ -85,39 +84,39 @@ The Admin shell exposes a dedicated `Library Assets` tab. Expected controls:
 - preview media
 - search and paginate
 - edit metadata
-- set tags and use cases
-- set quality score and sort weight
-- publish/archive/remove according to role
+- set category and sort weight
+- remove according to role
 
 This UI is operational, so keep it dense, predictable, and task-first rather than marketing-like.
 
 2026-06-04 Admin UX cleanup:
 
 - Generic Admin tables should not behave like raw database browsers. Default table columns should show operator-readable fields; IDs, storage keys, Stripe identifiers, provider task IDs, and raw JSON should stay out of the main table unless they are needed for a recovery workflow.
-- User management defaults to email, name, account status, role, credit balance, subscription, plan, and creation time. `is_admin`, soft-delete timestamps, and Stripe IDs are not first-scan fields.
+- User management defaults to email, name, account status, role, credit balance, subscription, plan, and creation time. Admin access is role-based; soft-delete timestamps and Stripe IDs are not first-scan fields.
 - Asset and generation job tables are for triage. Asset rows should start with an image/video preview, then show media type/status/format/size/timestamps. Generation rows should expose input and output media previews when available, then show generation type, status, input summary, template, credits, and timestamps; product/template summaries are derived from `inputJson`.
 - Credit ledger defaults to amount, reason, resulting balance, and creation time. User ID, job ID, Stripe event ID, and metadata remain detail/filter fields.
-- Library asset upload should give immediate file feedback, infer a sensible material kind from the file, auto-fill a readable title when empty, and fold low-frequency fields such as sort weight, source, and license note behind advanced editing.
+- Library asset upload should give immediate file feedback, infer a sensible category from the file, auto-fill a readable title when empty, and keep sort weight as the only low-frequency ranking field.
 - Library asset details should not expose R2 `storageKey` or long asset URLs as primary operational content; use the preview and open-link affordance instead.
 - Admin Help is a practical tab-level operation manual rendered from Markdown. The Help dropdown chooses one page guide, and the renderer only displays that guide's Markdown plus referenced static images from `public/admin-help/`.
 - Keep Template Help and Library Asset Help as separate Markdown documents for operators. Chinese operation manuals should follow the four-part structure: introduction, system/interface overview, feature introduction, and business operation guide. Template Help should use real UI screenshots for the Admin template list, Admin edit form, frontend templates page, and matching workbench; avoid abstract field-card/SVG explanations. It should give detailed operator-facing field meanings: why each field is filled, what frontend or generation behavior it affects, and what risk it creates when wrong. Library Asset Help should explain asset fields with cropped workbench material-entry screenshots. Do not add template explanations to the Library Asset page or library asset explanations to the Template page.
 
 2026-06-04 Admin operational search:
 
-- Templates and library assets serve different jobs. Templates are generation recipes: name, description, category, prompt, cost, duration, aspect ratio, tags, and preview media. Library assets are reusable media inventory: product/model/garment/scene/example images or videos that can feed workbenches.
-- Admin keyword search should be anchored on operator-facing fields. Templates search name, category, and tag labels/slugs, with ID available for exact lookup. Library assets search title, description, kind, status, locale, source, tags, use cases, and MIME format.
+- Templates and library assets serve different jobs. Templates are generation recipes: name, description, category, prompt, cost, duration, aspect ratio, tags, and preview media. Library assets are reusable media inventory that feeds one workbench category.
+- Admin keyword search should be anchored on operator-facing fields. Templates search name, category, and tag labels/slugs, with ID available for exact lookup. Library assets search title, description, category, asset ID, and MIME format.
 - Generic assets search upload type, status, MIME format, user/file ID, and keeps storage keys or public URLs out of default keyword search.
 - Generation jobs search product/prompt summary, template ID, status, generation type, provider/status, user email/name, error text, and whitelisted input fields such as product name, headline, prompt, template ID, and aspect ratio. Do not search whole raw JSON or media URLs by default.
 - Credit ledger search supports user email/name, credit reason, Stripe event/payment identifiers, job status/type, package/source metadata, and admin notes; user ID, job ID, and date remain explicit filters for reconciliation.
 
 ## Operational Notes
 
-- Apply `0009_library_assets.sql` before using the public or Admin routes in any target database.
+- Apply `0009_library_assets.sql`, `0013_simplify_library_assets.sql`, and `0014_library_assets_category_unique.sql` before using the public or Admin routes in any target database.
 - Do not automatically run migrations against a remote `POSTGRES_URL` without explicit user confirmation.
 - If `/api/library-assets` returns a table-not-found error in local smoke tests, the likely cause is that the target DB has not been migrated yet.
 - R2 objects for library assets should use `library-assets/<assetId>.<ext>` keys via `buildLibraryAssetStorageKey`.
 - `completeLibraryAsset` must verify the R2 object with `verifyUploadedObject` before marking the DB row uploaded.
 - Admin "remove" currently removes the library metadata record; it is not a full R2 object deletion flow.
+- The old multi-use field is intentionally removed. `category` is the single workbench routing field; migration keeps old multi-use-case records by copying them into one row per `(assetId, category)`.
 
 ## Validation
 
@@ -140,6 +139,6 @@ For frontend-visible changes, browser-smoke:
 ## Next Improvements
 
 - Add batch import/crawler support so Admin can seed many assets at once.
-- Add richer quality review fields, including dimensions, duration, aspect ratio, background, product category, and visual risk flags.
-- Add locale-aware copy and tags for stronger search and marketplace coverage.
+- Add richer review signals when needed, such as dimensions, duration, aspect ratio, background, product family, and visual risk flags.
+- Add Admin affordances for intentionally adding/removing extra category rows that reuse an existing uploaded file.
 - Add API route tests around admin role boundaries and public filtering.

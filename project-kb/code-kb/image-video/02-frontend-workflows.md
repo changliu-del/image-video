@@ -1,6 +1,6 @@
 # Frontend Workflows
 
-Updated: 2026-06-04
+Updated: 2026-06-05
 
 ## Dashboard Shell
 
@@ -24,17 +24,18 @@ For the default rendering contract, route/data ownership rules, and frontend rev
 
 Each workbench handles upload, payload construction, generation submission, polling, and result rendering.
 
-Workbench library loading now combines published templates with first-party
+Workbench library loading combines published templates with uploaded first-party
 library assets:
 
-- `/create/video` loads `image_to_video` templates plus `/api/library-assets?useCase=image_to_video`.
-- `/create/apparel` loads image templates plus `/api/library-assets?useCase=apparel_image`; library assets are used for inspiration/examples while template IDs remain template-only payload fields.
-- `/create/try-on` loads image templates, `/api/model-assets`, and `/api/library-assets?useCase=try_on`.
+- `/create/video` loads `image_to_video` templates plus `/api/library-assets?category=image_to_video`.
+- `/create/apparel` loads image templates plus `/api/library-assets?category=apparel_image`; library assets are used for inspiration/examples while template IDs remain template-only payload fields.
+- `/create/try-on` loads image templates, `/api/model-assets`, and `/api/library-assets?category=try_on`.
 
 Admin has a dedicated `Library Assets` tab for reusable product, model,
 garment, scene, example image, and example video materials. It supports
-R2-backed upload, metadata editing, publish/archive, tags, use cases, quality
-score, and sort weight.
+R2-backed upload, metadata editing, category routing, sort weight, and admin
+removal. `category` is the single workbench routing field; the old multi-use
+field is not a separate frontend filter.
 
 ## Frontend Optimization Candidates
 

@@ -14,7 +14,6 @@ export type WorkbenchLibraryItem = {
   videoUrl?: string | null;
   mimeType?: string | null;
   type?: string | null;
-  kind?: string | null;
 };
 
 function isVideoUrl(value: string | null | undefined) {
@@ -25,7 +24,6 @@ function isVideoItem(item: WorkbenchLibraryItem) {
   return (
     item.mimeType?.startsWith('video/') ||
     item.type === 'video' ||
-    item.kind === 'example_video' ||
     Boolean(item.videoUrl) ||
     isVideoUrl(item.assetUrl) ||
     isVideoUrl(item.publicUrl) ||

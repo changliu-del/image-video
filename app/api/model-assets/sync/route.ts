@@ -7,10 +7,9 @@ import { WanxiangProviderError } from '@/lib/providers/wanxiang/types';
 export const runtime = 'nodejs';
 
 function canSyncModelCatalog(user: {
-  isAdmin?: boolean | null;
   role?: string | null;
 }) {
-  return user.isAdmin || user.role === 'admin' || user.role === 'ops';
+  return user.role === 'admin' || user.role === 'ops';
 }
 
 export async function POST(request: NextRequest) {

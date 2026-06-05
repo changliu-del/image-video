@@ -32,11 +32,11 @@ export async function requireUser() {
   return user;
 }
 
-export function hasAdminAccess(user: Pick<User, 'isAdmin' | 'role'>) {
-  return user.isAdmin || user.role === 'admin';
+export function hasAdminAccess(user: Pick<User, 'role'>) {
+  return user.role === 'admin';
 }
 
-export function hasOpsAccess(user: Pick<User, 'isAdmin' | 'role'>) {
+export function hasOpsAccess(user: Pick<User, 'role'>) {
   return hasAdminAccess(user) || user.role === 'ops';
 }
 

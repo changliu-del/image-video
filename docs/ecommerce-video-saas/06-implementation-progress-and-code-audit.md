@@ -1,6 +1,6 @@
 # 电商图生视频 SaaS 当前实现进度和代码审计
 
-更新时间：2026-06-03
+更新时间：2026-06-05
 
 本文记录当前仓库代码的真实实现状态、主要风险、已完成优化和下一步建议。调研范围包括 Next.js App Router 页面、API routes、Drizzle schema、生成链路、支付/积分、R2 存储、模板/素材、后台任务、测试和既有文档。
 
@@ -52,7 +52,7 @@
 - 用户、角色、管理员权限和 credit balance。
 - 用户资产 `assets`。
 - 模板、标签、模板资产、审计日志。
-- 一等素材库 `library_assets`，引用 `assets` 并保存 locale、kind、status、tags、use cases、quality score、sort weight、来源和授权备注。
+- 一等素材库 `library_assets`，引用 `assets`，并保存 `category`、标题、描述、排序权重、使用量和创建/更新审计。
 - 模板爬虫 ingestion run 和 source record。
 - 万相模型素材 catalog。
 - 生成任务 `generation_jobs`。
@@ -130,19 +130,19 @@ pnpm test tests/generations-validation.test.ts
 已新增本地一等素材库能力：
 
 - `lib/db/schema.ts` 和 `lib/db/migrations/0009_library_assets.sql`
-  - 新增 `library_assets`，引用底层 `assets`，支持 `product_image/model_image/garment_image/scene_image/example_image/example_video`。
-  - 支持 `draft/published/archived`、tags、use cases、quality score、sort weight、usage count、source、license note。
+  - 新增 `library_assets`，引用底层 `assets`，并通过 `category` 路由到图生视频、商品图或智能试衣工作台。
+  - 保留标题、描述、排序权重、使用量和创建/更新审计；`0013_simplify_library_assets.sql` 已移除旧的细分类型、上下架、多场景、标签、来源、授权和质量字段。
 - `lib/admin/services/library-assets.ts`
-  - 支持素材库列表、R2 presign 上传、complete 入库、编辑、发布、归档、删除。
-  - ops 可录入/编辑草稿，发布/归档/删除仍需 admin。
+  - 支持素材库列表、R2 presign 上传、complete 入库、编辑和删除。
+  - ops 可录入/编辑，删除仍需 admin。
 - `components/admin/library-assets-panel.tsx`
-  - 新增 Admin 一级 `Library Assets` 面板，支持视觉预览、搜索、上传创建、元数据编辑和发布操作。
+  - 新增 Admin 一级 `Library Assets` 面板，支持视觉预览、搜索、上传创建和元数据编辑。
 - `app/api/library-assets/route.ts`、`lib/library-assets/query.ts`
-  - 替换旧外部素材代理，公开返回已发布且上传完成的本地素材。
+  - 替换旧外部素材代理，公开返回上传完成且类别匹配的本地素材。
 - 三个工作台已开始消费素材库：
-  - 图生视频加载 `useCase=image_to_video` 素材。
-  - 商品图加载 `useCase=apparel_image` 素材作为灵感/示例，模板 ID 仍只来自模板记录。
-  - 试衣加载 `useCase=try_on` 素材，并与模板、官方 model catalog 共同构成素材区。
+  - 图生视频加载 `category=image_to_video` 素材。
+  - 商品图加载 `category=apparel_image` 素材作为灵感/示例，模板 ID 仍只来自模板记录。
+  - 试衣加载 `category=try_on` 素材，并与模板、官方 model catalog 共同构成素材区。
 
 ## 5. 下一步优先级
 

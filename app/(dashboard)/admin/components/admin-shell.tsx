@@ -79,7 +79,6 @@ type ManagementTableKey = Exclude<
 >;
 type AdminShellUser = {
   id: number;
-  isAdmin?: boolean;
   role?: string | null;
 };
 
@@ -117,7 +116,7 @@ function rememberVisitedTab(tabs: TableKey[], tab: TableKey) {
 }
 
 function canManageAdminUsers(user: AdminShellUser | null) {
-  return Boolean(user?.isAdmin || user?.role === 'admin');
+  return user?.role === 'admin';
 }
 
 function canAccessAdminShell(user: AdminShellUser | null) {

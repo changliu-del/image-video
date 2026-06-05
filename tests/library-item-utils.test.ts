@@ -27,7 +27,6 @@ describe('library item utilities', () => {
         publicUrl: 'https://cdn.example.com/example.mp4',
         videoUrl: 'https://cdn.example.com/example.mp4',
         mimeType: 'video/mp4',
-        kind: 'example_video',
       })
     ).toBe('');
   });
