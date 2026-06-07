@@ -145,6 +145,17 @@ trigger/generate-wanxiang.ts
 trigger.config.ts
 ```
 
+模板表是轻量 prompt 配方表，不再承担标签体系、排序体系或发布状态。
+语义字段只保留 `id`、`type`、`title`、`title_translations_json`、
+`category`、`thumbnail_asset_id`、`preview_asset_id`、`prompt`、
+`prompt_translations_json`、`created_at`、`updated_at`。缩略图和预览
+视频/主图都作为 `assets` 行管理，模板表只保存稳定 asset 外键。
+首页模板库、公开模板库和图生视频工作台都复用
+`type=image_to_video` 的模板；`category` 只表示该 type 内部的业务分类。
+API 对前台输出 URL：列表只返回 `id`、按 `locale` 解析后的 `title`、
+`type`、`category`、`thumbnailUrl`，详情再返回 `previewUrl` 和按 `locale`
+解析后的 `prompt`。`category` 保持稳定 code，展示文案由前端类目映射本地化。
+
 ## 4. 前端页面设计
 
 ### `/create/video`、`/create/apparel`、`/create/try-on`
@@ -479,7 +490,7 @@ payload：
 
 旧 `trigger/generate-video.ts` 和 `lib/generations/runner.ts` 只保留为 disabled legacy。不要把它们配置成生产 active task。
 
-当前主线不跑 FFmpeg 后期模板，不再依赖 fal.ai 生成 raw video 后再套商业贴片。商品文案、模板、prompt、成本和来源信息保存在 `input_json`、模板表和素材库中；生成输出以 Wanxiang 结果为准。
+当前主线不跑 FFmpeg 后期模板，不再依赖 fal.ai 生成 raw video 后再套商业贴片。商品文案、模板 ID、prompt、成本和来源信息保存在 `input_json`，模板表只保存轻量 prompt 配方；生成输出以 Wanxiang 结果为准。
 
 如果未来要恢复 FFmpeg 或 fal.ai 路径，必须先重新设计：
 

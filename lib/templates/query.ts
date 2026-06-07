@@ -1,104 +1,98 @@
 import 'server-only';
 
-import { asc, desc, eq, ilike, or, sql } from 'drizzle-orm';
+import { asc, eq, ilike, or, sql } from 'drizzle-orm';
+import { alias } from 'drizzle-orm/pg-core';
 import { db } from '@/lib/db/drizzle';
-import {
-  type Asset,
-  type Template,
-  templates,
-} from '@/lib/db/schema';
+import { assets, templates } from '@/lib/db/schema';
 import type {
-  TemplateCatalogItem,
-  TemplateCategory,
+  TemplateCatalogDetailItem,
+  TemplateCatalogListItem,
+  TemplateType,
 } from '@/lib/templates/catalog';
+import type { Locale } from '@/lib/marketing/content';
+import {
+  getTemplateCategoriesForType,
+  normalizeTemplateCategoryForType,
+} from '@/lib/templates/category-config';
 
-type TemplateRecord = Template & {
-  previewAsset: Asset | null;
+const thumbnailAsset = alias(assets, 'template_thumbnail_asset');
+const previewAsset = alias(assets, 'template_preview_asset');
+
+type TemplateListRow = {
+  id: string;
+  title: string;
+  titleTranslations: Record<string, string>;
+  type: TemplateType;
+  category: string;
+  thumbnailAssetId: string;
+  createdAt: Date;
+  updatedAt: Date;
 };
 
-export type PublishedTemplateSort = 'featured' | 'newest' | 'lowCost';
+type TemplateDetailRow = TemplateListRow & {
+  previewAssetId: string;
+  prompt: string;
+  promptTranslations: Record<string, string>;
+};
 
 export type ListPublishedTemplatesInput = {
   page?: number;
   pageSize?: number;
+  locale?: string | null;
   search?: string;
-  category?: TemplateCategory;
-  tags?: string[];
-  sort?: PublishedTemplateSort;
+  type?: TemplateType;
+  category?: string;
 };
 
 export type PublishedTemplatesResult = {
-  list: TemplateCatalogItem[];
+  list: TemplateCatalogListItem[];
+  categories: string[];
   total: number;
   page: number;
   pageSize: number;
   hasMore: boolean;
 };
 
-const fallbackAssetByCategory: Record<TemplateCategory, string> = {
-  image_to_image: '/resources/example4.png',
-  image_to_video: '/resources/example2.mp4',
-  try_on: '/resources/example3.png',
-};
+const supportedLocales = new Set<Locale>(['pt', 'en', 'zh']);
 
-function categoryToTag(category: TemplateCategory) {
-  if (category === 'image_to_video') {
-    return 'image-to-video';
-  }
-
-  if (category === 'image_to_image') {
-    return 'image';
-  }
-
-  return 'try-on';
+function normalizeTemplateLocale(value: string | null | undefined): Locale {
+  return value && supportedLocales.has(value as Locale)
+    ? (value as Locale)
+    : 'pt';
 }
 
-function ratioToTag(ratio: string) {
-  return `ratio-${ratio.replace(':', '-')}`;
+function resolveLocalizedText(
+  fallback: string,
+  translations: Record<string, string>,
+  locale: Locale
+) {
+  const translated = translations?.[locale]?.trim();
+  return translated || fallback;
 }
 
-function resolveMediaType(input: {
-  asset: Asset | null;
-  category: TemplateCategory;
-}): TemplateCatalogItem['mediaType'] {
-  if (input.asset?.mimeType?.startsWith('video/')) {
-    return 'video';
-  }
-
-  if (input.asset?.mimeType?.startsWith('image/')) {
-    return 'image';
-  }
-
-  return input.category === 'image_to_video' ? 'video' : 'image';
-}
-
-export function mapTemplateRecordToCatalogItem(
-  row: TemplateRecord
-): TemplateCatalogItem {
-  const previewAsset = row.previewAsset;
-  const tags = new Set(row.tagsJson);
-  tags.add(categoryToTag(row.category));
-
-  for (const ratio of row.aspectRatiosJson) {
-    tags.add(ratioToTag(ratio));
-  }
-
+function mapTemplateListRow(
+  row: TemplateListRow,
+  locale: Locale
+): TemplateCatalogListItem {
   return {
     id: row.id,
-    name: row.name,
-    description: row.description,
+    title: resolveLocalizedText(row.title, row.titleTranslations, locale),
+    type: row.type,
     category: row.category,
-    prompt: row.prompt,
-    costCredits: row.costCredits,
-    aspectRatios: row.aspectRatiosJson,
-    durationSeconds: row.durationSeconds,
-    asset: previewAsset?.publicUrl ?? fallbackAssetByCategory[row.category],
-    mediaType: resolveMediaType({
-      asset: previewAsset,
-      category: row.category,
-    }),
-    tags: Array.from(tags),
-    source: 'admin',
+    thumbnailUrl: `/api/template-media/${row.thumbnailAssetId}`,
+    createdAt: row.createdAt.toISOString(),
+    updatedAt: row.updatedAt.toISOString(),
+  };
+}
+
+function mapTemplateDetailRow(
+  row: TemplateDetailRow,
+  locale: Locale
+): TemplateCatalogDetailItem {
+  return {
+    ...mapTemplateListRow(row, locale),
+    previewUrl: `/api/template-media/${row.previewAssetId}`,
+    prompt: resolveLocalizedText(row.prompt, row.promptTranslations, locale),
   };
 }
 
@@ -118,22 +112,15 @@ function normalizePageSize(value: number | undefined) {
   return Math.min(48, Math.max(1, value));
 }
 
-function normalizeTags(tags: string[] | undefined) {
-  return Array.from(
-    new Set(
-      (tags ?? [])
-        .map((tag) => tag.trim().toLowerCase())
-        .filter((tag) => /^[a-z0-9][a-z0-9_-]*$/.test(tag))
-    )
-  ).slice(0, 12);
-}
-
 function buildWhere(input: {
   search: string;
-  tags: string[];
-  category?: TemplateCategory;
+  type: TemplateType;
+  category?: string;
 }) {
-  const conditions = [];
+  const conditions = [
+    eq(templates.type, input.type),
+    eq(thumbnailAsset.status, 'uploaded' as const),
+  ];
 
   if (input.category) {
     conditions.push(eq(templates.category, input.category));
@@ -143,31 +130,86 @@ function buildWhere(input: {
     const search = `%${input.search}%`;
     conditions.push(
       or(
-        ilike(templates.name, search),
-        ilike(templates.description, search),
+        ilike(templates.category, search),
+        ilike(templates.title, search),
         ilike(templates.prompt, search),
+        sql`${templates.titleTranslations}::text ilike ${search}`,
+        sql`${templates.promptTranslations}::text ilike ${search}`,
         sql`${templates.id}::text ilike ${search}`
       )!
     );
   }
 
-  for (const tag of input.tags) {
-    conditions.push(sql`${templates.tagsJson} ? ${tag}`);
-  }
-
-  return conditions.length ? sql.join(conditions, sql` and `) : undefined;
+  return sql.join(conditions, sql` and `);
 }
 
-function getOrderBy(sort: PublishedTemplateSort) {
-  if (sort === 'newest') {
-    return [desc(templates.updatedAt), asc(templates.name)];
-  }
+function baseTemplateListQuery() {
+  return db
+    .select({
+      id: templates.id,
+      title: templates.title,
+      titleTranslations: templates.titleTranslations,
+      type: templates.type,
+      category: templates.category,
+      thumbnailAssetId: thumbnailAsset.id,
+      createdAt: templates.createdAt,
+      updatedAt: templates.updatedAt,
+    })
+    .from(templates)
+    .innerJoin(thumbnailAsset, eq(templates.thumbnailAssetId, thumbnailAsset.id));
+}
 
-  if (sort === 'lowCost') {
-    return [asc(templates.costCredits), desc(templates.sortWeight), asc(templates.name)];
-  }
+function baseTemplateDetailQuery() {
+  return db
+    .select({
+      id: templates.id,
+      title: templates.title,
+      titleTranslations: templates.titleTranslations,
+      type: templates.type,
+      category: templates.category,
+      thumbnailAssetId: thumbnailAsset.id,
+      previewAssetId: previewAsset.id,
+      prompt: templates.prompt,
+      promptTranslations: templates.promptTranslations,
+      createdAt: templates.createdAt,
+      updatedAt: templates.updatedAt,
+    })
+    .from(templates)
+    .innerJoin(thumbnailAsset, eq(templates.thumbnailAssetId, thumbnailAsset.id))
+    .innerJoin(previewAsset, eq(templates.previewAssetId, previewAsset.id));
+}
 
-  return [desc(templates.sortWeight), desc(templates.updatedAt), asc(templates.name)];
+function sortTemplateCategories(type: TemplateType, categories: string[]) {
+  const preferredCategories = getTemplateCategoriesForType(type);
+  const preferredRank = new Map(
+    preferredCategories.map((category, index) => [category, index])
+  );
+
+  return [...categories].sort((left, right) => {
+    const leftRank = preferredRank.get(left) ?? Number.POSITIVE_INFINITY;
+    const rightRank = preferredRank.get(right) ?? Number.POSITIVE_INFINITY;
+
+    if (leftRank !== rightRank) return leftRank - rightRank;
+    return left.localeCompare(right);
+  });
+}
+
+async function listTemplateCategoriesForType(type: TemplateType) {
+  const rows = await db
+    .select({ category: templates.category })
+    .from(templates)
+    .innerJoin(thumbnailAsset, eq(templates.thumbnailAssetId, thumbnailAsset.id))
+    .where(
+      sql`${templates.type} = ${type}
+        and ${thumbnailAsset.status} = 'uploaded'`
+    )
+    .groupBy(templates.category)
+    .orderBy(asc(templates.category));
+
+  return sortTemplateCategories(
+    type,
+    rows.map((row) => row.category)
+  );
 }
 
 export async function listPublishedTemplates(
@@ -175,37 +217,51 @@ export async function listPublishedTemplates(
 ): Promise<PublishedTemplatesResult> {
   const page = normalizePage(params.page);
   const pageSize = normalizePageSize(params.pageSize);
+  const locale = normalizeTemplateLocale(params.locale);
+  const type = params.type ?? 'image_to_video';
   const search = params.search?.trim() ?? '';
-  const tags = normalizeTags(params.tags);
-  const sort = params.sort ?? 'featured';
+  const requestedCategory = params.category?.trim() ?? '';
+  const category = requestedCategory
+    ? (normalizeTemplateCategoryForType(type, requestedCategory) ?? undefined)
+    : undefined;
+
+  if (requestedCategory && !category) {
+    const categories = await listTemplateCategoriesForType(type);
+    return {
+      list: [],
+      categories,
+      total: 0,
+      page,
+      pageSize,
+      hasMore: false,
+    };
+  }
+
   const where = buildWhere({
-    category: params.category,
+    type,
+    category,
     search,
-    tags,
   });
 
-  const [rows, totalRows] = await Promise.all([
-    db.query.templates.findMany({
-      where,
-      with: {
-        previewAsset: true,
-      },
-      orderBy: getOrderBy(sort),
-      limit: pageSize,
-      offset: (page - 1) * pageSize,
-    }),
+  const [rows, totalRows, categories] = await Promise.all([
+    baseTemplateListQuery()
+      .where(where)
+      .orderBy(asc(templates.createdAt), asc(templates.id))
+      .limit(pageSize)
+      .offset((page - 1) * pageSize),
     db
       .select({ count: sql<number>`count(*)::int` })
       .from(templates)
+      .innerJoin(thumbnailAsset, eq(templates.thumbnailAssetId, thumbnailAsset.id))
       .where(where),
+    listTemplateCategoriesForType(type),
   ]);
 
   const total = Number(totalRows[0]?.count ?? 0);
 
   return {
-    list: rows.map((row) =>
-      mapTemplateRecordToCatalogItem(row as TemplateRecord)
-    ),
+    list: rows.map((row) => mapTemplateListRow(row, locale)),
+    categories,
     total,
     page,
     pageSize,
@@ -213,15 +269,24 @@ export async function listPublishedTemplates(
   };
 }
 
-export async function listAllTemplates() {
-  const rows = await db.query.templates.findMany({
-    with: {
-      previewAsset: true,
-    },
-    orderBy: [desc(templates.sortWeight), desc(templates.updatedAt), asc(templates.name)],
-  });
+export async function getTemplateDetail(id: string, localeInput?: string | null) {
+  const locale = normalizeTemplateLocale(localeInput);
+  const [row] = await baseTemplateDetailQuery()
+    .where(
+      sql`${templates.id}::text = ${id}
+        and ${thumbnailAsset.status} = 'uploaded'
+        and ${previewAsset.status} = 'uploaded'`
+    )
+    .limit(1);
 
-  return rows.map((row) =>
-    mapTemplateRecordToCatalogItem(row as TemplateRecord)
+  return row ? mapTemplateDetailRow(row, locale) : null;
+}
+
+export async function listAllTemplates() {
+  const rows = await baseTemplateDetailQuery().orderBy(
+    asc(templates.createdAt),
+    asc(templates.id)
   );
+
+  return rows.map((row) => mapTemplateDetailRow(row, 'pt'));
 }

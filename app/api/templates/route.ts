@@ -1,55 +1,44 @@
 import { type NextRequest, NextResponse } from 'next/server';
-import { publicCatalogReadHeaders } from '@/lib/http/cache-control';
+import { templateCatalogReadHeaders } from '@/lib/http/cache-control';
+import { listPublishedTemplates } from '@/lib/templates/query';
 import {
-  listPublishedTemplates,
-  type PublishedTemplateSort,
-} from '@/lib/templates/query';
-import type { TemplateCategory } from '@/lib/templates/catalog';
+  templateTypes,
+  type TemplateType,
+} from '@/lib/templates/catalog';
 
 export const runtime = 'nodejs';
 
-const templateCategories = new Set<TemplateCategory>([
-  'image_to_video',
-  'image_to_image',
-  'try_on',
-]);
-const sortKeys = new Set<PublishedTemplateSort>([
-  'featured',
-  'newest',
-  'lowCost',
-]);
+const templateTypeSet = new Set<TemplateType>(templateTypes);
 
 function parsePositiveInteger(value: string | null, fallback: number) {
   const parsed = Number.parseInt(value ?? '', 10);
   return Number.isFinite(parsed) && parsed > 0 ? parsed : fallback;
 }
 
+function normalizeTemplateType(value: string | null) {
+  return value && templateTypeSet.has(value as TemplateType)
+    ? (value as TemplateType)
+    : null;
+}
+
 export async function GET(request: NextRequest) {
   const { searchParams } = request.nextUrl;
+  const rawType = normalizeTemplateType(searchParams.get('type'));
   const rawCategory = searchParams.get('category');
-  const rawSort = searchParams.get('sort');
-  const tags = searchParams
-    .getAll('tag')
-    .concat(searchParams.get('tags')?.split(',') ?? [])
-    .map((tag) => tag.trim())
-    .filter(Boolean);
+  const legacyCategoryType = normalizeTemplateType(rawCategory);
+  const type = rawType ?? legacyCategoryType ?? 'image_to_video';
+  const category = legacyCategoryType ? undefined : rawCategory ?? undefined;
 
   try {
     const result = await listPublishedTemplates({
       page: parsePositiveInteger(searchParams.get('page'), 1),
       pageSize: parsePositiveInteger(searchParams.get('pageSize'), 12),
+      locale: searchParams.get('locale') ?? undefined,
       search: searchParams.get('search') ?? '',
-      category:
-        rawCategory && templateCategories.has(rawCategory as TemplateCategory)
-          ? (rawCategory as TemplateCategory)
-          : undefined,
-      tags,
-      sort:
-        rawSort && sortKeys.has(rawSort as PublishedTemplateSort)
-          ? (rawSort as PublishedTemplateSort)
-          : 'featured',
+      type,
+      category,
     });
-    return NextResponse.json(result, { headers: publicCatalogReadHeaders });
+    return NextResponse.json(result, { headers: templateCatalogReadHeaders });
   } catch (error) {
     console.error('Failed to list templates', error);
     return NextResponse.json(

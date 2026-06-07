@@ -38,6 +38,14 @@ Fixed in this pass:
 - `/dashboard` no longer waits on a DB `getUser()` call before rendering the workspace shell. `app/(dashboard)/layout.tsx` verifies the session token through `getSessionUserId()`, then the header fetches `/api/user` for balance, plan, user menu, and admin-link state.
 - `/admin` also uses session-first rendering. `app/(dashboard)/admin/page.tsx` only redirects unauthenticated sessions; `AdminShell` fetches `/api/user` client-side before showing ops/admin tabs or the forbidden state. Admin data APIs remain server-authorized.
 - Marketing home template catalog refresh is deferred with `IntersectionObserver`, so users who click into the workspace immediately are not competing with `/api/templates`.
+- Template catalog lists are stable public data. Cache list results by `type` and
+  business `category`, render thumbnails from `thumbnailUrl`, and fetch detail
+  by template id only when a user opens or applies a template so `previewUrl`
+  and `prompt` do not bloat the first list response.
+- Template text is locale-aware. The API accepts `locale` and resolves
+  `title_translations_json` and `prompt_translations_json` before returning
+  `title` and detail `prompt`; `category` stays a stable code and UI surfaces
+  localize it through `getTemplateCategoryLabel`.
 - Dashboard demo video loading now triggers closer to viewport entry to reduce first-navigation media contention.
 
 ## 2026-06-03 Frontend Review Results

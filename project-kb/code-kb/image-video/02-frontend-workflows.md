@@ -27,9 +27,13 @@ Each workbench handles upload, payload construction, generation submission, poll
 Workbench library loading separates official material catalogs from private user
 history:
 
-- `/create/video` loads `image_to_video` templates plus `/api/library-assets?category=image_to_video` for official inspiration, and `/api/user-media?generationType=image_to_video` for the user's private history.
-- `/create/apparel` loads image templates plus `/api/library-assets?category=apparel_image`; library assets are used for inspiration/examples while template IDs remain template-only payload fields. The history tab uses `/api/user-media?generationType=apparel_image`.
-- `/create/try-on` loads image templates, `/api/model-assets`, and `/api/library-assets?category=try_on` for official material/model choices. The history tab uses `/api/user-media?generationType=try_on`.
+- `/create/video` loads `/api/templates?type=image_to_video` plus `/api/library-assets?category=image_to_video` for official inspiration, and `/api/user-media?generationType=image_to_video` for the user's private history.
+- The public homepage template gallery and public templates page reuse the same image-to-video template catalog by querying `type=image_to_video`.
+- Template list responses should only drive thumbnail browsing: `id`, `type`, `category`, and `thumbnailUrl`. When the user opens details or applies a template, fetch the template detail by id to get `previewUrl` and `prompt`.
+- Template catalog data is stable enough for frontend memory/SWR caching by `type`, `category`, and template id. Media files are object-versioned assets and should rely on R2/CDN long cache headers.
+- Template `category` is a business category inside `type`; do not use category values such as `image_to_video`, `image_to_image`, or `try_on` as the template workflow selector.
+- `/create/apparel` uses `/api/library-assets?category=apparel_image`; library assets are used for inspiration/examples while template IDs remain template-only payload fields. The history tab uses `/api/user-media?generationType=apparel_image`.
+- `/create/try-on` loads `/api/model-assets` plus `/api/library-assets?category=try_on` for official material/model choices. The history tab uses `/api/user-media?generationType=try_on`.
 
 Admin exposes two material surfaces:
 

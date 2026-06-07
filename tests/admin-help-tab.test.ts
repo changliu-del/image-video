@@ -34,6 +34,37 @@ const EXISTING_ADMIN_TAB_KEYS = [
   'generation-jobs',
   'credit-ledger',
 ] as const;
+const MINIMAL_TEMPLATE_HELP_FIELDS = [
+  'id',
+  'type',
+  'category',
+  'thumbnail_asset_id',
+  'preview_asset_id',
+  'prompt',
+  'created_at',
+  'updated_at',
+] as const;
+const REMOVED_TEMPLATE_HELP_TERMS = [
+  'negativePrompt',
+  'negative prompt',
+  'Prompt negativo',
+  '负向提示词',
+  '反向提示词',
+  'reverse prompt',
+  'thumbnail_url',
+  'preview_url',
+  'tagsJson',
+  'tagSlugs',
+  'tags',
+  'slug',
+  'sortWeight',
+  '排序权重',
+  'costCredits',
+  'aspectRatios',
+  'durationSeconds',
+  '提示词 JSON',
+  '草稿和归档',
+] as const;
 
 type ExpectedAdminTabKey = (typeof EXPECTED_ADMIN_TAB_KEYS)[number];
 type Assert<T extends true> = T;
@@ -93,6 +124,26 @@ function expectCompleteKeySet(
 function expectNonEmptyString(value: unknown, label: string) {
   expect(value, label).toEqual(expect.any(String));
   expect((value as string).trim(), label).not.toBe('');
+}
+
+function expectTextIncludes(
+  value: string | undefined,
+  label: string,
+  expected: string
+) {
+  expect(value?.includes(expected), `${label} should include ${expected}`).toBe(
+    true
+  );
+}
+
+function expectTextExcludes(
+  value: string | undefined,
+  label: string,
+  forbidden: string
+) {
+  expect(value?.includes(forbidden), `${label} should exclude ${forbidden}`).toBe(
+    false
+  );
 }
 
 describe('Admin Help tab coverage', () => {
@@ -307,6 +358,12 @@ describe('Admin Help tab coverage', () => {
       expect(templates?.markdown, `${locale}.templates.markdown`).not.toContain(
         'numeros das imagens'
       );
+      for (const field of MINIMAL_TEMPLATE_HELP_FIELDS) {
+        expectTextIncludes(templates?.markdown, `${locale}.templates.markdown`, field);
+      }
+      for (const term of REMOVED_TEMPLATE_HELP_TERMS) {
+        expectTextExcludes(templates?.markdown, `${locale}.templates.markdown`, term);
+      }
       if (locale === 'zh') {
         expect(templates?.markdown, `${locale}.templates.markdown`).toContain(
           '模板保存后要按用户路径检查'
@@ -315,7 +372,10 @@ describe('Admin Help tab coverage', () => {
           '### 字段说明'
         );
         expect(templates?.markdown, `${locale}.templates.markdown`).toContain(
-          '预览媒体：preview 用于展示结果预期'
+          'type=image_to_video'
+        );
+        expect(templates?.markdown, `${locale}.templates.markdown`).toContain(
+          'category 是业务分类'
         );
         expect(templates?.markdown, `${locale}.templates.markdown`).toContain(
           '模板管理列表页'
@@ -358,18 +418,6 @@ describe('Admin Help tab coverage', () => {
         );
         expect(templates?.markdown, `${locale}.templates.markdown`).not.toContain(
           '### #1'
-        );
-        expect(templates?.markdown, `${locale}.templates.markdown`).not.toContain(
-          '1) status'
-        );
-        expect(templates?.markdown, `${locale}.templates.markdown`).not.toContain(
-          'thumbnail 用于缩略图'
-        );
-        expect(templates?.markdown, `${locale}.templates.markdown`).not.toContain(
-          '提示词 JSON'
-        );
-        expect(templates?.markdown, `${locale}.templates.markdown`).not.toContain(
-          '草稿和归档'
         );
         expect(libraryAssets?.markdown, `${locale}.library-assets.markdown`).toContain(
           '## 一、引言'

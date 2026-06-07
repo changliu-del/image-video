@@ -28,7 +28,7 @@ export const ADMIN_OPERATIONAL_SEARCH_FIELDS: Record<
     'status',
     'generationType',
   ],
-  templates: ['name', 'category', 'tags'],
+  templates: ['id', 'title', 'type', 'category', 'prompt'],
   'library-assets': ['title', 'description', 'category', 'assetId', 'mimeType'],
   'credit-ledger': [
     'userEmail',

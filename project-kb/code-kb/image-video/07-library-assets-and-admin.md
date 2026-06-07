@@ -35,6 +35,46 @@ Use this page when a task mentions materials, material library, example media, w
 Current allowed categories are `image_to_video`, `apparel_image`, and `try_on`.
 The DB uniqueness rule is `(asset_id, category)`, not bare `asset_id`.
 
+## Template Catalog Minimal Contract
+
+Templates are generation prompt recipes, not a browse/tag taxonomy and not a
+material inventory. The template model is intentionally minimal:
+
+- `id`
+- `type`
+- `title`
+- `title_translations_json`
+- `category`
+- `thumbnail_asset_id`
+- `preview_asset_id`
+- `prompt`
+- `prompt_translations_json`
+- `created_at`
+- `updated_at`
+
+Thumbnail and preview media are stored as regular `assets` rows. The template
+table keeps the stable asset IDs; API responses resolve those IDs into URLs for
+the browser. The public list shape is `id`, localized `title`, `type`,
+`category`, and `thumbnailUrl`. Template detail adds `previewUrl` and localized
+`prompt`; the raw translation JSON fields stay private/Admin-only.
+
+`type` selects the workflow. The homepage template gallery, public template
+library, and image-to-video workbench all reuse the image-to-video catalog via
+`/api/templates?type=image_to_video`.
+
+`category` is a business category inside the selected type. It should describe
+the product/campaign grouping, not replace `type` with values such as
+`image_to_video`, `image_to_image`, or `try_on`.
+Store `category` as a stable code and localize its display through
+`getTemplateCategoryLabel`; do not store translated category names on every
+template row.
+
+Template semantics should not reintroduce tag JSON, tag slugs, publication
+status, sort/order fields, direct URL columns, negative prompts, reverse
+prompts, or preset JSON blocks. If the Admin UI needs ordering, filtering, or
+helper explanation, keep that behavior outside the template model unless the
+model contract is changed explicitly.
+
 ## Library vs User History
 
 As of 2026-06-05, first-party materials and personal user history are separate product surfaces:
@@ -83,11 +123,12 @@ The history write path must not fail upload completion, job success, or credit s
 
 ## Workbench Consumption
 
-Workbench libraries combine generated templates with first-party library assets:
+Workbench libraries combine image-to-video templates with first-party library assets:
 
-- `/create/video`: `/api/templates?category=image_to_video` plus `/api/library-assets?category=image_to_video`.
-- `/create/apparel`: `/api/templates?category=image_to_image` plus `/api/library-assets?category=apparel_image`.
-- `/create/try-on`: `/api/templates?category=try_on`, `/api/model-assets`, plus `/api/library-assets?category=try_on`.
+- `/create/video`: `/api/templates?type=image_to_video` plus `/api/library-assets?category=image_to_video`.
+- Public homepage/template library: `/api/templates?type=image_to_video`.
+- `/create/apparel`: `/api/library-assets?category=apparel_image`.
+- `/create/try-on`: `/api/model-assets` plus `/api/library-assets?category=try_on`.
 
 Each workbench should keep official library materials and user history visually separated:
 
@@ -96,19 +137,37 @@ Each workbench should keep official library materials and user history visually 
 
 Keep template IDs and library asset IDs separate. Library assets are inspiration/examples unless the generation payload explicitly supports them as template inputs.
 
+Template list views should use the cached list response and show thumbnails
+only. When a user opens a template detail or applies it in the workbench, fetch
+the detail by template id so the UI gets `previewUrl` and `prompt` only when
+needed.
+
 Workbench image grids must not render video URLs through `<img>`. Video assets
 should either expose a real image thumbnail/poster or be omitted from image-only
 grids.
 
-2026-06-04 public catalog cache policy:
+2026-06-07 public template and catalog cache policy:
 
-- `/api/templates`, `/api/library-assets`, and `/api/model-assets` return public,
-  non-user-specific catalog data and share `publicCatalogReadHeaders` from
-  `lib/http/cache-control.ts`.
-- The current policy is `public, max-age=60, s-maxage=300,
-  stale-while-revalidate=600`: browsers can reuse responses briefly, shared
-  caches can absorb repeat catalog reads, and stale data can be served while a
-  background refresh catches up.
+- `/api/templates` and template detail use `templateCatalogReadHeaders` from
+  `lib/http/cache-control.ts` because template data changes rarely.
+- `/api/library-assets` and `/api/model-assets` remain public,
+  non-user-specific catalog data and can use `publicCatalogReadHeaders`.
+- The template catalog policy is `public, max-age=300, s-maxage=86400,
+  stale-while-revalidate=604800`: browsers can reuse responses briefly, shared
+  caches can absorb repeat catalog reads for a day, and stale data can be served
+  while a background refresh catches up.
+- Template list data is stable and suitable for frontend memory/SWR caching by
+  `type` and `category`. Template detail is cacheable by template id.
+- Template media URLs should be object-versioned through new `assets` rows when
+  media changes, so R2/CDN media responses can use long cache headers without
+  breaking replacement flows.
+- Template image/video bytes also have a process-local memory cache in
+  `lib/templates/media-cache.ts`. Public media reads may serve cached bytes and
+  fall back to DB/R2 on cache miss, but public reads must not refresh the memory
+  cache. Only Admin template writes update it: create/update refresh the current
+  thumbnail and preview assets, delete purges the template assets, and template
+  preview upload completion refreshes the newly uploaded asset while removing
+  the replaced one.
 - Do not reuse this public cache header for account, billing, credits, jobs, or
   any response containing user-specific/private data.
 
@@ -141,12 +200,12 @@ This UI is operational, so keep it dense, predictable, and task-first rather tha
 - Library asset upload should give immediate file feedback, infer a sensible category from the file, auto-fill a readable title when empty, and keep sort weight as the only low-frequency ranking field.
 - Library asset details should not expose R2 `storageKey` or long asset URLs as primary operational content; use the preview and open-link affordance instead.
 - Admin Help is a practical tab-level operation manual rendered from Markdown. The Help dropdown chooses one page guide, and the renderer only displays that guide's Markdown plus referenced static images from `public/admin-help/`.
-- Keep Template Help and Library Asset Help as separate Markdown documents for operators. Chinese operation manuals should follow the four-part structure: introduction, system/interface overview, feature introduction, and business operation guide. Template Help should use real UI screenshots for the Admin template list, Admin edit form, frontend templates page, and matching workbench; avoid abstract field-card/SVG explanations. It should give detailed operator-facing field meanings: why each field is filled, what frontend or generation behavior it affects, and what risk it creates when wrong. Library Asset Help should explain asset fields with cropped workbench material-entry screenshots. Do not add template explanations to the Library Asset page or library asset explanations to the Template page.
+- Keep Template Help and Library Asset Help as separate Markdown documents for operators. Chinese operation manuals should follow the four-part structure: introduction, system/interface overview, feature introduction, and business operation guide. Template Help should use real UI screenshots for the Admin template list, Admin edit form, frontend templates page, and matching workbench; avoid abstract field-card/SVG explanations. It should explain only the minimal template fields: `id`, `type`, `category`, `thumbnail_asset_id`, `preview_asset_id`, `prompt`, `created_at`, and `updated_at`, while noting that APIs output `thumbnailUrl` and `previewUrl` for the browser. Library Asset Help should explain asset fields with cropped workbench material-entry screenshots. Do not add template explanations to the Library Asset page or library asset explanations to the Template page.
 
 2026-06-04 Admin operational search:
 
-- Templates and library assets serve different jobs. Templates are generation recipes: name, description, category, prompt, cost, duration, aspect ratio, tags, and preview media. Library assets are reusable media inventory that feeds one workbench category.
-- Admin keyword search should be anchored on operator-facing fields. Templates search name, category, and tag labels/slugs, with ID available for exact lookup. Library assets search title, description, category, asset ID, and MIME format.
+- Templates and library assets serve different jobs. Templates are minimal generation prompt recipes: id, type, business category, thumbnail asset id, preview asset id, prompt, and timestamps. Library assets are reusable media inventory that feeds one workbench category.
+- Admin keyword search should be anchored on operator-facing fields. Templates search id, type, category, and prompt. Library assets search title, description, category, asset ID, and MIME format.
 - User History search supports user email/name, title, source, generation type, visibility, role, linked official material title, generation job status, and MIME format. Keep storage keys and public URLs out of default keyword search.
 - Generation jobs search product/prompt summary, template ID, status, generation type, provider/status, user email/name, error text, and whitelisted input fields such as product name, headline, prompt, template ID, and aspect ratio. Do not search whole raw JSON or media URLs by default.
 - Credit ledger search supports user email/name, credit reason, Stripe event/payment identifiers, job status/type, package/source metadata, and admin notes; user ID, job ID, and date remain explicit filters for reconciliation.

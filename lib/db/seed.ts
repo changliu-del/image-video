@@ -1,11 +1,10 @@
 import { createHash } from 'crypto';
-import { eq } from 'drizzle-orm';
+import { eq, sql } from 'drizzle-orm';
 import { db } from './drizzle';
 import {
   assets,
   templates,
   users,
-  type VideoAspectRatio,
 } from './schema';
 import { hashPassword } from '@/lib/auth/password';
 import { starterTemplateSeeds } from '@/lib/templates/catalog';
@@ -27,34 +26,6 @@ function deterministicUuid(value: string) {
     12,
     16
   )}-${hex.slice(16, 20)}-${hex.slice(20)}`;
-}
-
-function getSeedAssetMimeType(publicUrl: string) {
-  if (publicUrl.endsWith('.mp4')) {
-    return 'video/mp4';
-  }
-
-  if (publicUrl.endsWith('.png')) {
-    return 'image/png';
-  }
-
-  if (publicUrl.endsWith('.jpg') || publicUrl.endsWith('.jpeg')) {
-    return 'image/jpeg';
-  }
-
-  return 'application/octet-stream';
-}
-
-function getSeedAssetDurationSeconds(publicUrl: string) {
-  return publicUrl.endsWith('.mp4') ? 5 : null;
-}
-
-function getSeedAssetStorageKey(publicUrl: string) {
-  return `seed${publicUrl.startsWith('/') ? publicUrl : `/${publicUrl}`}`;
-}
-
-function getSeedTemplateSortWeight(index: number) {
-  return 1200 - index * 10;
 }
 
 async function seedCodexAdminUser() {
@@ -99,34 +70,48 @@ async function seedCodexAdminUser() {
   return admin;
 }
 
-async function seedStarterTemplateCatalog(adminId: number) {
-  for (const [index, template] of starterTemplateSeeds.entries()) {
-    const templateId = deterministicUuid(`template:${template.id}`);
-    const assetId = deterministicUuid(`asset:${template.asset}`);
+async function seedStarterTemplateCatalog() {
+  const admin = await seedCodexAdminUser();
+
+  for (const template of starterTemplateSeeds) {
+    const templateId = deterministicUuid(`template:${template.seedKey}`);
+    const thumbnailAssetId = deterministicUuid(
+      `asset:${template.thumbnailAssetSeedKey}`
+    );
+    const previewAssetId = deterministicUuid(
+      `asset:${template.previewAssetSeedKey}`
+    );
     const now = new Date();
 
     await db
       .insert(assets)
-      .values({
-        id: assetId,
-        userId: adminId,
-        type: 'upload',
-        status: 'uploaded',
-        storageKey: getSeedAssetStorageKey(template.asset),
-        publicUrl: template.asset,
-        mimeType: getSeedAssetMimeType(template.asset),
-        durationSeconds: getSeedAssetDurationSeconds(template.asset),
-      })
+      .values([
+        {
+          id: thumbnailAssetId,
+          userId: admin.id,
+          type: 'upload',
+          status: 'uploaded',
+          storageKey: `templates/starter/${template.seedKey}/thumbnail`,
+          publicUrl: template.thumbnailUrl,
+          mimeType: 'image/png',
+        },
+        {
+          id: previewAssetId,
+          userId: admin.id,
+          type: 'upload',
+          status: 'uploaded',
+          storageKey: `templates/starter/${template.seedKey}/preview`,
+          publicUrl: template.previewUrl,
+          mimeType: 'video/mp4',
+        },
+      ])
       .onConflictDoUpdate({
         target: assets.id,
         set: {
-          userId: adminId,
-          type: 'upload',
           status: 'uploaded',
-          storageKey: getSeedAssetStorageKey(template.asset),
-          publicUrl: template.asset,
-          mimeType: getSeedAssetMimeType(template.asset),
-          durationSeconds: getSeedAssetDurationSeconds(template.asset),
+          publicUrl: sql`excluded.public_url`,
+          storageKey: sql`excluded.storage_key`,
+          mimeType: sql`excluded.mime_type`,
           updatedAt: now,
         },
       });
@@ -135,33 +120,26 @@ async function seedStarterTemplateCatalog(adminId: number) {
       .insert(templates)
       .values({
         id: templateId,
-        name: template.name,
-        description: template.description,
+        title: template.title,
+        titleTranslations: template.titleTranslations ?? {},
+        type: template.type,
         category: template.category,
+        thumbnailAssetId,
+        previewAssetId,
         prompt: template.prompt,
-        previewAssetId: assetId,
-        tagsJson: template.tags,
-        costCredits: template.costCredits,
-        aspectRatiosJson: template.aspectRatios as VideoAspectRatio[],
-        durationSeconds: template.durationSeconds ?? null,
-        sortWeight: getSeedTemplateSortWeight(index),
-        createdBy: adminId,
-        updatedBy: adminId,
+        promptTranslations: template.promptTranslations ?? {},
       })
       .onConflictDoUpdate({
         target: templates.id,
         set: {
-          name: template.name,
-          description: template.description,
+          type: template.type,
+          title: template.title,
+          titleTranslations: template.titleTranslations ?? {},
           category: template.category,
+          thumbnailAssetId,
+          previewAssetId,
           prompt: template.prompt,
-          previewAssetId: assetId,
-          tagsJson: template.tags,
-          costCredits: template.costCredits,
-          aspectRatiosJson: template.aspectRatios as VideoAspectRatio[],
-          durationSeconds: template.durationSeconds ?? null,
-          sortWeight: getSeedTemplateSortWeight(index),
-          updatedBy: adminId,
+          promptTranslations: template.promptTranslations ?? {},
           updatedAt: now,
         },
       });
@@ -173,8 +151,7 @@ async function seedStarterTemplateCatalog(adminId: number) {
 }
 
 async function seed() {
-  const admin = await seedCodexAdminUser();
-  await seedStarterTemplateCatalog(admin.id);
+  await seedStarterTemplateCatalog();
 }
 
 seed()

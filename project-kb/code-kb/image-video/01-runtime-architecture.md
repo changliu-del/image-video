@@ -46,6 +46,22 @@ Key tables are defined in `lib/db/schema.ts`:
 - `user_media_history`
 - `credit_ledger`
 
+`templates` is the minimal public template catalog. Its semantic fields are
+`id`, `type`, `category`, `thumbnail_asset_id`, `preview_asset_id`, `prompt`,
+`created_at`, and `updated_at`. Thumbnail and preview media are regular
+`assets` rows; templates store stable asset IDs, and public APIs resolve those
+IDs into URLs. `type` is the top-level workflow selector: the homepage template
+gallery, public template library, and `/create/video` image-to-video workbench
+should query `/api/templates?type=image_to_video`. `category` is only a
+business category inside that type. Template semantics do not include tag JSON,
+slugs, publication status, sort/order fields, direct URL columns, or
+negative/reverse prompts.
+
+The template list API should return only `id`, `type`, `category`, and
+`thumbnailUrl`. Template detail should resolve `preview_asset_id` and return
+`previewUrl` plus `prompt` when the user opens a detail view or applies a
+template.
+
 `library_assets` is the first-party reusable material layer. It references
 uploaded `assets` rows and stores category, title, description, sort weight,
 usage count, and creator/updater audit metadata. The public

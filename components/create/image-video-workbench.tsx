@@ -45,6 +45,13 @@ import {
 import { refreshDashboardUser } from '@/lib/dashboard/user-cache';
 import { useDashboardLocale } from '@/lib/dashboard/use-dashboard-locale';
 import { getCreditCostForDuration } from '@/lib/generations/credit-costs';
+import { imageToVideoTemplateCategories } from '@/lib/templates/category-config';
+import { getTemplateCategoryLabel } from '@/lib/templates/catalog';
+import {
+  normalizePublicTemplateDetail,
+  normalizePublicTemplateItems,
+  type PublicTemplateItem,
+} from '@/lib/templates/public-client';
 import { cn } from '@/lib/utils';
 
 type AspectRatio = '9:16' | '1:1' | '16:9';
@@ -80,6 +87,7 @@ type JobStatusResponse = {
 
 const MAX_IMAGE_BYTES = 10 * 1024 * 1024;
 const ACCEPTED_IMAGE_TYPES = ['image/png', 'image/jpeg', 'image/webp'];
+const IMAGE_TO_VIDEO_LIBRARY_CATEGORY = 'image_to_video';
 const aspectRatios: AspectRatio[] = ['9:16', '1:1', '16:9'];
 const durations: DurationSeconds[] = [5, 8, 10];
 const materialPickerCopy = {
@@ -89,6 +97,11 @@ const materialPickerCopy = {
     loadingHistory: 'Carregando historico',
     historyError: 'Nao foi possivel carregar seu historico.',
     emptyHistory: 'Seu historico ainda nao tem imagens para este fluxo.',
+    allTemplates: 'Todos',
+    templateLibrary: 'Templates',
+    loadingTemplates: 'Carregando templates',
+    templateError: 'Nao foi possivel carregar o template.',
+    emptyTemplates: 'Nenhum template nesta categoria.',
     retry: 'Tentar novamente',
   },
   en: {
@@ -97,6 +110,11 @@ const materialPickerCopy = {
     loadingHistory: 'Loading history',
     historyError: 'History could not be loaded.',
     emptyHistory: 'Your history does not have images for this flow yet.',
+    allTemplates: 'All',
+    templateLibrary: 'Templates',
+    loadingTemplates: 'Loading templates',
+    templateError: 'Template could not be loaded.',
+    emptyTemplates: 'No templates in this category.',
     retry: 'Retry',
   },
   zh: {
@@ -105,6 +123,11 @@ const materialPickerCopy = {
     loadingHistory: '加载历史素材中',
     historyError: '历史素材加载失败。',
     emptyHistory: '当前流程还没有可用的历史图片。',
+    allTemplates: '全部',
+    templateLibrary: '模板',
+    loadingTemplates: '加载模板中',
+    templateError: '模板加载失败。',
+    emptyTemplates: '当前类目暂无模板。',
     retry: '重试',
   },
 };
@@ -280,7 +303,10 @@ export function ImageVideoWorkbench({
   const [aspectRatio, setAspectRatio] = useState<AspectRatio>('9:16');
   const [durationSeconds, setDurationSeconds] = useState<DurationSeconds>(5);
   const [exampleOffset, setExampleOffset] = useState(0);
-  const [templates, setTemplates] = useState<LibraryItem[]>([]);
+  const [templates, setTemplates] = useState<PublicTemplateItem[]>([]);
+  const [templateCategory, setTemplateCategory] = useState('');
+  const [templateTotal, setTemplateTotal] = useState(0);
+  const [templateReloadKey, setTemplateReloadKey] = useState(0);
   const [assets, setAssets] = useState<LibraryItem[]>([]);
   const [materialSource, setMaterialSource] =
     useState<MaterialPickerSource>('official');
@@ -291,7 +317,10 @@ export function ImageVideoWorkbench({
   const [selectedTemplate, setSelectedTemplate] =
     useState<LibraryItem | null>(null);
   const [selectedAsset, setSelectedAsset] = useState<LibraryItem | null>(null);
+  const [isLoadingTemplates, setIsLoadingTemplates] = useState(true);
   const [isLoadingLibrary, setIsLoadingLibrary] = useState(true);
+  const [templateError, setTemplateError] = useState(false);
+  const [loadingTemplateId, setLoadingTemplateId] = useState('');
   const [submitLabel, setSubmitLabel] = useState<string | null>(null);
   const [jobId, setJobId] = useState<string | null>(null);
   const [jobStatus, setJobStatus] = useState<JobStatusResponse | null>(null);
@@ -335,72 +364,151 @@ export function ImageVideoWorkbench({
 
   useEffect(() => {
     let cancelled = false;
+    const controller = new AbortController();
 
-    async function loadLibrary() {
-      setIsLoadingLibrary(true);
+    async function loadTemplates() {
+      setIsLoadingTemplates(true);
+      setTemplateError(false);
+
       try {
         const params = new URLSearchParams({
-          pageSize: '12',
-          category: 'image_to_video',
+          pageSize: templateCategory ? '48' : '12',
+          type: 'image_to_video',
+          locale,
         });
-        const assetParams = new URLSearchParams({
-          pageSize: '12',
-          category: 'image_to_video',
-        });
-        const [templateResponse, assetResponse] = await Promise.all([
-          fetch(`/api/templates?${params.toString()}`),
-          fetch(`/api/library-assets?${assetParams.toString()}`),
-        ]);
+        if (templateCategory) params.set('category', templateCategory);
 
-        const [templateBody, assetBody] = await Promise.all([
-          templateResponse.ok ? templateResponse.json() : Promise.resolve({ list: [] }),
-          assetResponse.ok ? assetResponse.json() : Promise.resolve({ items: [] }),
-        ]);
+        const response = await fetch(`/api/templates?${params.toString()}`, {
+          signal: controller.signal,
+        });
+
+        if (!response.ok) {
+          throw new Error('template-load-failed');
+        }
+
+        const templateBody = await response.json();
 
         if (!cancelled) {
-          const nextTemplates = normalizeItems(templateBody);
-          const nextAssets = normalizeItems(assetBody);
+          const nextTemplates = normalizePublicTemplateItems(templateBody);
           const requestedTemplate = nextTemplates.find(
             (template) => String(template.id) === requestedTemplateId
           );
-          const defaultAsset = nextAssets.find(
-            (asset) => getItemAssetId(asset) && getItemImage(asset)
-          );
+
           setTemplates(nextTemplates);
-          setAssets(nextAssets);
+          setTemplateTotal(Number(templateBody.total ?? nextTemplates.length));
           setSelectedTemplate((current) => {
             if (requestedTemplate) {
               return requestedTemplate;
             }
 
-            if (!requestedTemplateId) {
-              return current &&
-                nextTemplates.some(
-                  (template) => String(template.id) === String(current.id)
-                )
+            if (requestedTemplateId) {
+              return String(current?.id ?? '') === requestedTemplateId
                 ? current
-                : null;
+                : { id: requestedTemplateId };
             }
 
-            return null;
+            return current &&
+              nextTemplates.some(
+                (template) => String(template.id) === String(current.id)
+              )
+              ? current
+              : null;
           });
-          if (requestedTemplate?.prompt) {
-            setPrompt(String(requestedTemplate.prompt));
-          }
+        }
+      } catch {
+        if (!cancelled) {
+          setTemplates([]);
+          setTemplateTotal(0);
+          setTemplateError(true);
+        }
+      } finally {
+        if (!cancelled) setIsLoadingTemplates(false);
+      }
+    }
+
+    void loadTemplates();
+    return () => {
+      cancelled = true;
+      controller.abort();
+    };
+  }, [locale, requestedTemplateId, templateCategory, templateReloadKey]);
+
+  useEffect(() => {
+    let cancelled = false;
+    const controller = new AbortController();
+
+    async function loadLibraryAssets() {
+      setIsLoadingLibrary(true);
+
+      try {
+        const assetParams = new URLSearchParams({
+          pageSize: '12',
+          category: IMAGE_TO_VIDEO_LIBRARY_CATEGORY,
+        });
+        const response = await fetch(
+          `/api/library-assets?${assetParams.toString()}`,
+          { signal: controller.signal }
+        );
+        const assetBody = response.ok ? await response.json() : { items: [] };
+
+        if (!cancelled) {
+          const nextAssets = normalizeItems(assetBody);
+          const defaultAsset = nextAssets.find(
+            (asset) => getItemAssetId(asset) && getItemImage(asset)
+          );
+          setAssets(nextAssets);
           setSelectedAsset((current) =>
             current && getItemAssetId(current) ? current : defaultAsset ?? null
           );
+        }
+      } catch {
+        if (!cancelled) {
+          setAssets([]);
         }
       } finally {
         if (!cancelled) setIsLoadingLibrary(false);
       }
     }
 
-    loadLibrary();
+    void loadLibraryAssets();
+    return () => {
+      cancelled = true;
+      controller.abort();
+    };
+  }, []);
+
+  useEffect(() => {
+    if (!requestedTemplateId || starterPrompt) return;
+
+    let cancelled = false;
+
+    async function loadTemplateDetail() {
+      try {
+        const response = await fetch(
+          `/api/templates/${encodeURIComponent(requestedTemplateId)}?${new URLSearchParams({ locale })}`
+        );
+
+        if (!response.ok) return;
+
+        const detail = normalizePublicTemplateDetail(await response.json());
+        if (!detail || cancelled) return;
+
+        setSelectedTemplate((current) => ({
+          ...(current ?? {}),
+          ...detail,
+        }));
+        setPrompt(detail.prompt);
+      } catch {
+        // The workbench remains usable with the default prompt if the template
+        // detail fetch fails.
+      }
+    }
+
+    void loadTemplateDetail();
     return () => {
       cancelled = true;
     };
-  }, [locale, requestedTemplateId]);
+  }, [locale, requestedTemplateId, starterPrompt]);
 
   useEffect(() => {
     if (materialSource !== 'history' || hasLoadedHistory) return;
@@ -505,6 +613,34 @@ export function ImageVideoWorkbench({
     setError(null);
     setSourceFile(null);
     setSelectedAsset(asset);
+  }
+
+  async function selectTemplate(template: PublicTemplateItem) {
+    setError(null);
+    setSelectedTemplate(template);
+    setLoadingTemplateId(template.id);
+
+    try {
+      const response = await fetch(
+        `/api/templates/${encodeURIComponent(template.id)}?${new URLSearchParams({ locale })}`
+      );
+
+      if (!response.ok) {
+        throw new Error('template-detail-load-failed');
+      }
+
+      const detail = normalizePublicTemplateDetail(await response.json());
+      if (!detail) {
+        throw new Error('template-detail-invalid');
+      }
+
+      setSelectedTemplate(detail);
+      setPrompt(detail.prompt);
+    } catch {
+      setError(materialCopy.templateError);
+    } finally {
+      setLoadingTemplateId('');
+    }
   }
 
   async function handleSubmit(event: React.FormEvent<HTMLFormElement>) {
@@ -712,13 +848,9 @@ export function ImageVideoWorkbench({
         <PanelSection
           title={copy.inspiration}
           hint={
-            materialSource === 'history'
-              ? isLoadingHistory
-                ? materialCopy.loadingHistory
-                : commonCopy.materialCount(selectableHistoryItems.length)
-              : isLoadingLibrary
-                ? commonCopy.loadingLibrary
-                : commonCopy.materialCount(selectableAssets.length)
+            isLoadingTemplates
+              ? materialCopy.loadingTemplates
+              : commonCopy.templateCount(templateTotal)
           }
         >
           <ChoiceGrid
@@ -727,6 +859,115 @@ export function ImageVideoWorkbench({
             onChange={setPrompt}
             disabled={isSubmitting}
           />
+          <div className="mt-3 rounded-lg border border-gray-200 bg-white p-3">
+            <div className="mb-3 flex items-center justify-between gap-3">
+              <span className="text-xs font-bold uppercase text-gray-500">
+                {materialCopy.templateLibrary}
+              </span>
+              {templateError ? (
+                <button
+                  type="button"
+                  onClick={() => setTemplateReloadKey((value) => value + 1)}
+                  className="text-xs font-bold text-red-600 underline underline-offset-2"
+                >
+                  {materialCopy.retry}
+                </button>
+              ) : null}
+            </div>
+            <div className="flex gap-2 overflow-x-auto pb-1">
+              <button
+                type="button"
+                onClick={() => setTemplateCategory('')}
+                disabled={isSubmitting}
+                className={cn(
+                  'inline-flex h-8 shrink-0 items-center gap-1 rounded-md border px-2.5 text-xs font-bold transition disabled:cursor-not-allowed disabled:opacity-60',
+                  !templateCategory
+                    ? 'border-indigo-500 bg-indigo-50 text-indigo-700'
+                    : 'border-gray-200 bg-white text-gray-500 hover:border-indigo-200 hover:text-indigo-600'
+                )}
+              >
+                {materialCopy.allTemplates}
+              </button>
+              {imageToVideoTemplateCategories.map((category) => (
+                <button
+                  key={category}
+                  type="button"
+                  onClick={() =>
+                    setTemplateCategory((current) =>
+                      current === category ? '' : category
+                    )
+                  }
+                  disabled={isSubmitting}
+                  className={cn(
+                    'inline-flex h-8 shrink-0 items-center gap-1 rounded-md border px-2.5 text-xs font-bold transition disabled:cursor-not-allowed disabled:opacity-60',
+                    templateCategory === category
+                      ? 'border-indigo-500 bg-indigo-50 text-indigo-700'
+                      : 'border-gray-200 bg-white text-gray-500 hover:border-indigo-200 hover:text-indigo-600'
+                  )}
+                >
+                  {getTemplateCategoryLabel(category, locale)}
+                </button>
+              ))}
+            </div>
+            <div className="mt-3 grid grid-cols-3 gap-2">
+              {isLoadingTemplates ? (
+                <div className="col-span-3 flex items-center justify-center gap-2 rounded-lg border border-dashed border-gray-200 px-3 py-4 text-sm font-semibold text-gray-400">
+                  <Loader2 className="size-4 animate-spin" />
+                  {materialCopy.loadingTemplates}
+                </div>
+              ) : templateError ? (
+                <div className="col-span-3 rounded-lg border border-red-100 bg-red-50 px-3 py-4 text-sm text-red-700">
+                  <div className="flex items-start gap-2">
+                    <AlertCircle className="mt-0.5 size-4 shrink-0" />
+                    <span>{materialCopy.templateError}</span>
+                  </div>
+                </div>
+              ) : templates.length ? (
+                templates.map((template) => {
+                  const active = selectedTemplateId === template.id;
+                  const loading = loadingTemplateId === template.id;
+
+                  return (
+                    <button
+                      key={template.id}
+                      type="button"
+                      onClick={() => void selectTemplate(template)}
+                      disabled={isSubmitting || loading}
+                      className={cn(
+                        'relative aspect-[4/5] overflow-hidden rounded-lg border bg-gray-100 transition disabled:cursor-not-allowed disabled:opacity-60',
+                        active
+                          ? 'border-indigo-500 ring-2 ring-indigo-100'
+                          : 'border-gray-200 hover:border-indigo-200'
+                      )}
+                      title={template.title}
+                    >
+                      <img
+                        src={template.thumbnailUrl}
+                        alt=""
+                        className="size-full object-cover"
+                      />
+                      <span className="absolute inset-x-1 bottom-1 truncate rounded bg-white/90 px-1.5 py-0.5 text-[10px] font-bold text-gray-700">
+                        {template.title}
+                      </span>
+                      {loading ? (
+                        <span className="absolute inset-0 grid place-items-center bg-white/60">
+                          <Loader2 className="size-4 animate-spin text-indigo-600" />
+                        </span>
+                      ) : active ? (
+                        <span className="absolute right-2 top-2 flex size-6 items-center justify-center rounded-full bg-emerald-300 text-gray-950">
+                          <CheckCircle2 className="size-4" />
+                        </span>
+                      ) : null}
+                    </button>
+                  );
+                })
+              ) : (
+                <div className="col-span-3 rounded-lg border border-dashed border-gray-200 px-3 py-4 text-sm text-gray-400">
+                  {materialCopy.emptyTemplates}
+                </div>
+              )}
+            </div>
+          </div>
           <div className="mt-3 grid grid-cols-2 rounded-lg bg-gray-100 p-1">
             {(['official', 'history'] as const).map((source) => (
               <button

@@ -105,6 +105,7 @@ const materialPickerCopy = {
     loadingHistory: 'Carregando historico',
     historyError: 'Nao foi possivel carregar seu historico.',
     emptyHistory: 'Seu historico ainda nao tem imagens para este fluxo.',
+    emptyOfficial: 'Nenhum material oficial disponivel para este fluxo.',
     retry: 'Tentar novamente',
   },
   en: {
@@ -113,6 +114,7 @@ const materialPickerCopy = {
     loadingHistory: 'Loading history',
     historyError: 'History could not be loaded.',
     emptyHistory: 'Your history does not have images for this flow yet.',
+    emptyOfficial: 'No official materials are available for this flow yet.',
     retry: 'Retry',
   },
   zh: {
@@ -121,6 +123,7 @@ const materialPickerCopy = {
     loadingHistory: '加载历史素材中',
     historyError: '历史素材加载失败。',
     emptyHistory: '当前流程还没有可用的历史图片。',
+    emptyOfficial: '当前流程暂无官方素材。',
     retry: '重试',
   },
 };
@@ -419,10 +422,8 @@ function LibraryTile({
 }
 
 export function TryOnWorkbench({
-  initialTemplateId = '',
   initialPrompt = '',
 }: {
-  initialTemplateId?: string;
   initialPrompt?: string;
 }) {
   const locale = useDashboardLocale();
@@ -442,7 +443,6 @@ export function TryOnWorkbench({
   const [fit, setFit] = useState<FitPreset>('natural');
   const [preserveFace, setPreserveFace] = useState(true);
   const [prompt, setPrompt] = useState(() => starterPrompt);
-  const [templates, setTemplates] = useState<LibraryItem[]>([]);
   const [assets, setAssets] = useState<LibraryItem[]>([]);
   const [modelAssets, setModelAssets] = useState<ModelCatalogItem[]>([]);
   const [materialSource, setMaterialSource] =
@@ -452,7 +452,6 @@ export function TryOnWorkbench({
   const [isLoadingHistory, setIsLoadingHistory] = useState(false);
   const [historyError, setHistoryError] = useState(false);
   const [selectedModelAsset, setSelectedModelAsset] = useState<ModelCatalogItem | null>(null);
-  const [selectedLibraryItem, setSelectedLibraryItem] = useState<LibraryItem | null>(null);
   const [selectedGarmentAssets, setSelectedGarmentAssets] = useState<
     LibraryItem[]
   >([]);
@@ -462,7 +461,6 @@ export function TryOnWorkbench({
   const [jobId, setJobId] = useState<string | null>(null);
   const [jobStatus, setJobStatus] = useState<JobStatusResponse | null>(null);
   const [error, setError] = useState<string | null>(null);
-  const requestedTemplateId = initialTemplateId;
 
   const isSubmitting = Boolean(submitLabel);
   const selectedResultUrl = resultUrl(jobStatus);
@@ -539,10 +537,6 @@ export function TryOnWorkbench({
     async function loadLibrary() {
       setIsLoadingLibrary(true);
       try {
-        const templateParams = new URLSearchParams({
-          pageSize: '12',
-          category: 'try_on',
-        });
         const modelParams = new URLSearchParams({
           locale,
           limit: '24',
@@ -551,47 +545,21 @@ export function TryOnWorkbench({
           pageSize: '12',
           category: 'try_on',
         });
-        const [templateResponse, modelResponse, assetResponse] = await Promise.all([
-          fetch(`/api/templates?${templateParams.toString()}`),
+        const [modelResponse, assetResponse] = await Promise.all([
           fetch(`/api/model-assets?${modelParams.toString()}`),
           fetch(`/api/library-assets?${assetParams.toString()}`),
         ]);
 
-        const [templateBody, modelBody, assetBody] = await Promise.all([
-          templateResponse.ok ? templateResponse.json() : Promise.resolve({ list: [] }),
+        const [modelBody, assetBody] = await Promise.all([
           modelResponse.ok ? modelResponse.json() : Promise.resolve({ items: [] }),
           assetResponse.ok ? assetResponse.json() : Promise.resolve({ items: [] }),
         ]);
 
         if (!cancelled) {
-          const nextTemplates = normalizeItems(templateBody);
           const nextModelAssets = normalizeModelItems(modelBody);
           const nextAssets = normalizeItems(assetBody);
-          const requestedTemplate = nextTemplates.find(
-            (template) => String(template.id) === requestedTemplateId
-          );
-          setTemplates(nextTemplates);
           setAssets(nextAssets);
           setModelAssets(nextModelAssets);
-          setSelectedLibraryItem((current) => {
-            if (requestedTemplate) {
-              return requestedTemplate;
-            }
-
-            if (!requestedTemplateId) {
-              return current &&
-                [...nextTemplates, ...nextAssets].some(
-                  (item) => String(item.id) === String(current.id)
-                )
-                ? current
-                : null;
-            }
-
-            return null;
-          });
-          if (requestedTemplate?.prompt) {
-            setPrompt(String(requestedTemplate.prompt));
-          }
           setSelectedModelAsset((current) => current ?? nextModelAssets[0] ?? null);
           if (nextModelAssets.length === 0) {
             setModelSource('custom');
@@ -606,7 +574,7 @@ export function TryOnWorkbench({
     return () => {
       cancelled = true;
     };
-  }, [locale, requestedTemplateId]);
+  }, [locale]);
 
   useEffect(() => {
     if (materialSource !== 'history' || hasLoadedHistory) return;
@@ -759,16 +727,11 @@ export function TryOnWorkbench({
       ];
 
       setSubmitLabel(copy.startingTryOn);
-      const selectedTemplateId =
-        selectedLibraryItem && !getItemAssetId(selectedLibraryItem)
-          ? selectedLibraryItem.id
-          : null;
       const generation = await postJson<GenerationResponse>(
         '/api/generations',
         {
           generationType: 'try_on',
           tryOnMode: mode,
-          ...(selectedTemplateId ? { templateId: String(selectedTemplateId) } : {}),
           ...(modelAssetId
             ? { modelAssetId }
             : { modelCatalogAssetId: selectedModelAsset?.id }),
@@ -820,17 +783,6 @@ export function TryOnWorkbench({
     document.getElementById(inputId)?.click();
   }
 
-  function applyLibraryTemplate(template: LibraryItem | null | undefined) {
-    if (!template) return;
-
-    setSelectedLibraryItem(template);
-    setPrompt((current) => {
-      const label = getItemLabel(template);
-      const trimmed = current.trim();
-      return trimmed.includes(label) ? trimmed : `${trimmed} ${label}`.trim();
-    });
-  }
-
   function selectLibraryGarment(asset: LibraryItem | null | undefined) {
     if (!asset || !getItemAssetId(asset)) return;
 
@@ -839,7 +791,6 @@ export function TryOnWorkbench({
     if (mode === 'single') {
       setGarmentFiles([]);
     }
-    setSelectedLibraryItem(asset);
     setPrompt((current) => {
       const label = getItemLabel(asset);
       const trimmed = current.trim();
@@ -852,7 +803,6 @@ export function TryOnWorkbench({
     if (!asset || !assetId) return;
 
     setError(null);
-    setSelectedLibraryItem(asset);
     setSelectedGarmentAssets((current) => {
       const existingIndex = current.findIndex(
         (item) => getItemAssetId(item) === assetId
@@ -911,13 +861,8 @@ export function TryOnWorkbench({
       }
     }
 
-    applyLibraryTemplate(selectedLibraryItem ?? templates[0] ?? assets[0]);
   }
 
-  const libraryTiles = useMemo(
-    () => [...templates, ...assets],
-    [assets, templates]
-  );
   const selectableGarmentAssets = useMemo(
     () => assets.filter((item) => getItemAssetId(item) && getItemImage(item)),
     [assets]
@@ -928,10 +873,10 @@ export function TryOnWorkbench({
     [historyItems]
   );
   const displayedLibraryTiles =
-    materialSource === 'history' ? selectableHistoryItems : libraryTiles;
+    materialSource === 'history' ? selectableHistoryItems : selectableGarmentAssets;
   const isChooseFromLibraryDisabled =
     modelAssets.length === 0 && displayedLibraryTiles.length === 0;
-  const baseLibraryImages = [...templates, ...assets].map(getItemImage).filter(Boolean);
+  const baseLibraryImages = assets.map(getItemImage).filter(Boolean);
   const libraryStart = baseLibraryImages.length ? exampleOffset % baseLibraryImages.length : 0;
   const libraryImages = [
     ...baseLibraryImages.slice(libraryStart),
@@ -1196,7 +1141,7 @@ export function TryOnWorkbench({
                 : commonCopy.materialCount(selectableHistoryItems.length)
               : isLoadingLibrary
                 ? commonCopy.loadingLibrary
-                : commonCopy.materialCount(libraryTiles.length)
+                : commonCopy.materialCount(displayedLibraryTiles.length)
           }
         >
           <div className="space-y-3">
@@ -1245,38 +1190,31 @@ export function TryOnWorkbench({
                 <p className="col-span-3 rounded-lg border border-dashed border-gray-200 px-3 py-4 text-sm text-gray-400">
                   {materialSource === 'history'
                     ? materialCopy.emptyHistory
-                    : copy.noTemplates}
+                    : materialCopy.emptyOfficial}
                 </p>
               ) : (
-                displayedLibraryTiles.slice(0, 12).map((template) => {
-                  const image = getItemImage(template);
-                  const assetId = getItemAssetId(template);
-                  const active = assetId
-                    ? selectedGarmentAssetIds.includes(assetId)
-                    : String(selectedLibraryItem?.id) === String(template.id);
+                displayedLibraryTiles.slice(0, 12).map((asset) => {
+                  const image = getItemImage(asset);
+                  const assetId = getItemAssetId(asset);
+                  const active = selectedGarmentAssetIds.includes(assetId);
 
                   return (
                     <button
-                      key={String(template.id ?? image)}
+                      key={String(asset.id ?? image)}
                       type="button"
                       onClick={() => {
-                        if (!assetId) {
-                          applyLibraryTemplate(template);
-                          return;
-                        }
-
                         if (mode === 'single') {
-                          selectLibraryGarment(template);
+                          selectLibraryGarment(asset);
                           return;
                         }
 
-                        toggleLibraryGarment(template);
+                        toggleLibraryGarment(asset);
                       }}
                       className={cn(
                         'aspect-square overflow-hidden rounded-lg border bg-gray-100',
                         active ? 'border-indigo-500 ring-2 ring-indigo-100' : 'border-gray-200'
                       )}
-                      title={getItemLabel(template)}
+                      title={getItemLabel(asset)}
                     >
                       {image ? <img src={image} alt="" className="size-full object-cover" /> : null}
                     </button>

@@ -1,24 +1,21 @@
 import 'server-only';
 
 import { randomUUID } from 'crypto';
-import { and, desc, eq, sql } from 'drizzle-orm';
+import { and, desc, eq, or, sql } from 'drizzle-orm';
+import { alias } from 'drizzle-orm/pg-core';
 import { z } from 'zod';
 import { db } from '@/lib/db/drizzle';
 import {
   assets,
   templates,
-  type Template,
+  type Asset,
 } from '@/lib/db/schema';
 import {
   hasAdminAccess,
   requireOpsOrAdmin,
   requireAdmin,
 } from '@/lib/db/queries';
-import {
-  templateTagOptions,
-  type TemplateCatalogItem,
-} from '@/lib/templates/catalog';
-import { mapTemplateRecordToCatalogItem } from '@/lib/templates/query';
+import { type TemplateCatalogDetailItem } from '@/lib/templates/catalog';
 import {
   buildPublicUrl,
   buildTemplatePreviewStorageKey,
@@ -29,46 +26,64 @@ import {
   type AdminMediaMimeType,
 } from '@/lib/storage/r2';
 import {
-  adminSearchMatches,
-  normalizeAdminSearchQuery,
-} from '@/lib/admin/search';
-import { type PaginatedResult } from './shared';
+  deleteTemplateMediaCacheEntries,
+  refreshTemplateMediaCache,
+  refreshTemplateMediaCacheForAsset,
+} from '@/lib/templates/media-cache';
+import { normalizeAdminSearchQuery } from '@/lib/admin/search';
+import {
+  exactCol,
+  ilikeCol,
+  type PaginatedResult,
+  withPagination,
+} from './shared';
 
 const MAX_TEMPLATE_PREVIEW_BYTES = 80 * 1024 * 1024;
 const templateIdSchema = z.string().uuid();
+const adminThumbnailAsset = alias(assets, 'admin_template_thumbnail_asset');
+const adminPreviewAsset = alias(assets, 'admin_template_preview_asset');
+const localeSchema = z.enum(['pt', 'en', 'zh']);
+const titleTranslationsSchema = z
+  .record(localeSchema, z.string().trim().min(1).max(140))
+  .optional()
+  .default({});
+const promptTranslationsSchema = z
+  .record(localeSchema, z.string().trim().min(1).max(5000))
+  .optional()
+  .default({});
 
-type AdminTemplateRecord = Template & {
-  previewAsset: typeof assets.$inferSelect | null;
-};
-
-export type AdminTemplateListItem = TemplateCatalogItem & {
-  negativePrompt: string | null;
-  previewAssetId: string | null;
+export type AdminTemplateListItem = TemplateCatalogDetailItem & {
+  titleTranslations: Record<string, string>;
+  promptTranslations: Record<string, string>;
+  thumbnailAssetId: string;
+  previewAssetId: string;
   createdAt: string;
   updatedAt: string;
-  sortWeight: number;
-  usageCount: number;
+};
+
+type AdminTemplateRecord = {
+  template: typeof templates.$inferSelect;
+  thumbnailAsset: Pick<Asset, 'publicUrl' | 'mimeType' | 'status'>;
+  previewAsset: Pick<Asset, 'publicUrl' | 'mimeType' | 'status'>;
 };
 
 const templatePayloadSchema = z
   .object({
     id: z.string().uuid().optional(),
-    name: z.string().trim().min(2).max(140),
-    description: z.string().trim().min(2).max(1200),
-    category: z.enum(['image_to_video', 'image_to_image', 'try_on']),
-    prompt: z.string().trim().min(4).max(5000),
-    negativePrompt: z.string().trim().max(2000).optional().nullable(),
-    costCredits: z.coerce.number().int().min(0).max(999).default(1),
-    aspectRatios: z
-      .array(z.enum(['9:16', '1:1', '16:9']))
+    type: z.enum(['image_to_image', 'image_to_video']),
+    category: z
+      .string()
+      .trim()
+      .toLowerCase()
       .min(1)
-      .default(['9:16']),
-    durationSeconds: z
-      .union([z.literal(5), z.literal(8), z.literal(10)])
-      .nullable()
-      .optional(),
-    sortWeight: z.coerce.number().int().min(-9999).max(9999).default(0),
-    tagSlugs: z.array(z.string().trim().min(1).max(80)).default([]),
+      .max(80)
+      .regex(/^[a-z0-9][a-z0-9_-]*$/),
+    title: z.string().trim().min(1).max(140),
+    titleTranslations: titleTranslationsSchema,
+    thumbnailAssetId: z.string().uuid(),
+    previewAssetId: z.string().uuid(),
+    prompt: z.string().trim().min(4).max(5000),
+    promptTranslations: promptTranslationsSchema,
   })
   .strict();
 
@@ -89,50 +104,123 @@ const completeTemplatePreviewSchema = z
   })
   .strict();
 
-const templateTagSlugSet = new Set(templateTagOptions.map((tag) => tag.slug));
-
-function matchesAdminExactId(value: string | null | undefined, query: string) {
-  return Boolean(value && query && value.toLowerCase() === query);
+function normalizeTemplatePayload(input: unknown) {
+  return templatePayloadSchema.parse(input);
 }
 
-function normalizeTemplatePayload(input: unknown) {
-  const parsed = templatePayloadSchema.parse(input);
-  return {
-    ...parsed,
-    negativePrompt: parsed.negativePrompt?.trim() || null,
-    durationSeconds:
-      parsed.category === 'image_to_video' ? parsed.durationSeconds ?? 5 : null,
-    tagSlugs: Array.from(new Set(parsed.tagSlugs)).filter((slug) =>
-      templateTagSlugSet.has(slug)
-    ),
-  };
+async function getUploadedAsset(assetId: string) {
+  const [asset] = await db
+    .select()
+    .from(assets)
+    .where(and(eq(assets.id, assetId), eq(assets.status, 'uploaded')))
+    .limit(1);
+
+  return asset ?? null;
+}
+
+async function assertTemplateAssets(input: {
+  thumbnailAssetId: string;
+  previewAssetId: string;
+}) {
+  const [thumbnailAsset, previewAsset] = await Promise.all([
+    getUploadedAsset(input.thumbnailAssetId),
+    getUploadedAsset(input.previewAssetId),
+  ]);
+
+  if (!thumbnailAsset) {
+    throw new Error('Template thumbnail asset must exist and be uploaded');
+  }
+
+  if (!thumbnailAsset.mimeType?.startsWith('image/')) {
+    throw new Error('Template thumbnail asset must be an image');
+  }
+
+  if (!previewAsset) {
+    throw new Error('Template preview asset must exist and be uploaded');
+  }
+
+  if (
+    !previewAsset.mimeType?.startsWith('image/') &&
+    !previewAsset.mimeType?.startsWith('video/')
+  ) {
+    throw new Error('Template preview asset must be an image or video');
+  }
+}
+
+async function refreshTemplateMediaCacheAfterAdminWrite(
+  assetIds: string[],
+  context: string
+) {
+  try {
+    await refreshTemplateMediaCache(assetIds);
+  } catch (error) {
+    console.error(`Failed to refresh template media cache after ${context}`, error);
+  }
+}
+
+async function refreshSingleTemplateMediaCacheAfterAdminWrite(
+  assetId: string,
+  context: string
+) {
+  try {
+    await refreshTemplateMediaCacheForAsset(assetId);
+  } catch (error) {
+    console.error(`Failed to refresh template media cache after ${context}`, error);
+  }
 }
 
 function adminTemplateRecordToListItem(
   row: AdminTemplateRecord
 ): AdminTemplateListItem {
-  const catalogItem = mapTemplateRecordToCatalogItem(row);
-
   return {
-    ...catalogItem,
-    negativePrompt: row.negativePrompt,
-    previewAssetId: row.previewAssetId,
-    createdAt: row.createdAt.toISOString(),
-    updatedAt: row.updatedAt.toISOString(),
-    sortWeight: row.sortWeight,
-    usageCount: row.usageCount,
+    id: row.template.id,
+    title: row.template.title,
+    titleTranslations: row.template.titleTranslations,
+    type: row.template.type,
+    category: row.template.category,
+    thumbnailUrl: row.thumbnailAsset.publicUrl,
+    thumbnailAssetId: row.template.thumbnailAssetId,
+    previewUrl: row.previewAsset.publicUrl,
+    previewAssetId: row.template.previewAssetId,
+    prompt: row.template.prompt,
+    promptTranslations: row.template.promptTranslations,
+    createdAt: row.template.createdAt.toISOString(),
+    updatedAt: row.template.updatedAt.toISOString(),
   };
 }
 
-function getTemplateSearchTags(row: AdminTemplateRecord) {
-  const labels = row.tagsJson.flatMap((slug) => {
-    const option = templateTagOptions.find((tag) => tag.slug === slug);
-    return option
-      ? [slug, option.group, option.labels.pt, option.labels.en, option.labels.zh]
-      : [slug];
-  });
+async function getAdminTemplateDetail(id: string) {
+  const [row] = await db
+    .select({
+      template: templates,
+      thumbnailAsset: {
+        publicUrl: adminThumbnailAsset.publicUrl,
+        mimeType: adminThumbnailAsset.mimeType,
+        status: adminThumbnailAsset.status,
+      },
+      previewAsset: {
+        publicUrl: adminPreviewAsset.publicUrl,
+        mimeType: adminPreviewAsset.mimeType,
+        status: adminPreviewAsset.status,
+      },
+    })
+    .from(templates)
+    .innerJoin(
+      adminThumbnailAsset,
+      eq(templates.thumbnailAssetId, adminThumbnailAsset.id)
+    )
+    .innerJoin(
+      adminPreviewAsset,
+      eq(templates.previewAssetId, adminPreviewAsset.id)
+    )
+    .where(eq(templates.id, id))
+    .limit(1);
 
-  return labels;
+  if (!row) {
+    throw new Error('Template not found');
+  }
+
+  return adminTemplateRecordToListItem(row);
 }
 
 export async function listAdminTemplates(params: {
@@ -143,70 +231,112 @@ export async function listAdminTemplates(params: {
   await requireOpsOrAdmin();
   const { search = '', page = 1, pageSize = 20 } = params;
   const query = normalizeAdminSearchQuery(search);
-
-  const rows = (await db.query.templates.findMany({
-    with: {
-      previewAsset: true,
-    },
-    orderBy: [desc(templates.updatedAt)],
-  })) as AdminTemplateRecord[];
-
-  const filtered = query
-    ? rows.filter((row) =>
-        matchesAdminExactId(row.id, query) ||
-        adminSearchMatches(
-          [
-            row.name,
-            row.description,
-            row.category,
-            ...getTemplateSearchTags(row),
-          ],
-          query
-        )
+  const where = query
+    ? or(
+        exactCol(templates.id, query),
+        exactCol(templates.thumbnailAssetId, query),
+        exactCol(templates.previewAssetId, query),
+        ilikeCol(templates.type, query),
+        ilikeCol(templates.title, query),
+        ilikeCol(templates.category, query),
+        ilikeCol(templates.prompt, query),
+        sql`${templates.titleTranslations}::text ilike ${`%${query}%`}`,
+        sql`${templates.promptTranslations}::text ilike ${`%${query}%`}`,
+        ilikeCol(adminThumbnailAsset.mimeType, query),
+        ilikeCol(adminPreviewAsset.mimeType, query)
       )
-    : rows;
+    : undefined;
 
-  const start = (page - 1) * pageSize;
+  const [rows, countRows] = await Promise.all([
+    withPagination(
+      db
+        .select({
+          template: templates,
+          thumbnailAsset: {
+            publicUrl: adminThumbnailAsset.publicUrl,
+            mimeType: adminThumbnailAsset.mimeType,
+            status: adminThumbnailAsset.status,
+          },
+          previewAsset: {
+            publicUrl: adminPreviewAsset.publicUrl,
+            mimeType: adminPreviewAsset.mimeType,
+            status: adminPreviewAsset.status,
+          },
+        })
+        .from(templates)
+        .innerJoin(
+          adminThumbnailAsset,
+          eq(templates.thumbnailAssetId, adminThumbnailAsset.id)
+        )
+        .innerJoin(
+          adminPreviewAsset,
+          eq(templates.previewAssetId, adminPreviewAsset.id)
+        )
+        .where(where)
+        .orderBy(desc(templates.updatedAt)),
+      page,
+      pageSize
+    ),
+    db
+      .select({ count: sql<number>`count(*)::int` })
+      .from(templates)
+      .innerJoin(
+        adminThumbnailAsset,
+        eq(templates.thumbnailAssetId, adminThumbnailAsset.id)
+      )
+      .innerJoin(
+        adminPreviewAsset,
+        eq(templates.previewAssetId, adminPreviewAsset.id)
+      )
+      .where(where),
+  ]);
+
   return {
-    list: filtered
-      .slice(start, start + pageSize)
-      .map(adminTemplateRecordToListItem),
-    total: filtered.length,
+    list: rows.map(adminTemplateRecordToListItem),
+    total: Number(countRows[0]?.count ?? 0),
     page,
     pageSize,
   };
 }
 
 export async function createTemplate(input: unknown) {
-  const user = await requireOpsOrAdmin();
+  await requireOpsOrAdmin();
   const payload = normalizeTemplatePayload(input);
+  await assertTemplateAssets(payload);
+
   const [row] = await db
     .insert(templates)
     .values({
-      name: payload.name,
-      description: payload.description,
+      type: payload.type,
+      title: payload.title,
+      titleTranslations: payload.titleTranslations,
       category: payload.category,
+      thumbnailAssetId: payload.thumbnailAssetId,
+      previewAssetId: payload.previewAssetId,
       prompt: payload.prompt,
-      negativePrompt: payload.negativePrompt,
-      tagsJson: payload.tagSlugs,
-      costCredits: payload.costCredits,
-      aspectRatiosJson: payload.aspectRatios,
-      durationSeconds: payload.durationSeconds,
-      sortWeight: payload.sortWeight,
-      createdBy: user.id,
-      updatedBy: user.id,
+      promptTranslations: payload.promptTranslations,
     })
     .returning();
 
-  return row;
+  await refreshTemplateMediaCacheAfterAdminWrite(
+    [payload.thumbnailAssetId, payload.previewAssetId],
+    'template create'
+  );
+
+  return getAdminTemplateDetail(row.id);
 }
 
 export async function updateTemplate(id: string, input: unknown) {
-  const user = await requireOpsOrAdmin();
+  await requireOpsOrAdmin();
   const templateId = templateIdSchema.parse(id);
   const payload = normalizeTemplatePayload(input);
+  await assertTemplateAssets(payload);
   const [existing] = await db
-    .select()
+    .select({
+      id: templates.id,
+      thumbnailAssetId: templates.thumbnailAssetId,
+      previewAssetId: templates.previewAssetId,
+    })
     .from(templates)
     .where(eq(templates.id, templateId))
     .limit(1);
@@ -218,23 +348,31 @@ export async function updateTemplate(id: string, input: unknown) {
   const [row] = await db
     .update(templates)
     .set({
-      name: payload.name,
-      description: payload.description,
+      type: payload.type,
+      title: payload.title,
+      titleTranslations: payload.titleTranslations,
       category: payload.category,
+      thumbnailAssetId: payload.thumbnailAssetId,
+      previewAssetId: payload.previewAssetId,
       prompt: payload.prompt,
-      negativePrompt: payload.negativePrompt,
-      tagsJson: payload.tagSlugs,
-      costCredits: payload.costCredits,
-      aspectRatiosJson: payload.aspectRatios,
-      durationSeconds: payload.durationSeconds,
-      sortWeight: payload.sortWeight,
-      updatedBy: user.id,
+      promptTranslations: payload.promptTranslations,
       updatedAt: new Date(),
     })
     .where(eq(templates.id, templateId))
     .returning();
 
-  return row;
+  const nextAssetIds = [payload.thumbnailAssetId, payload.previewAssetId];
+  deleteTemplateMediaCacheEntries(
+    [existing.thumbnailAssetId, existing.previewAssetId].filter(
+      (assetId) => !nextAssetIds.includes(assetId)
+    )
+  );
+  await refreshTemplateMediaCacheAfterAdminWrite(
+    nextAssetIds,
+    'template update'
+  );
+
+  return getAdminTemplateDetail(row.id);
 }
 
 export async function removeTemplate(id: string) {
@@ -243,7 +381,9 @@ export async function removeTemplate(id: string) {
   const [existing] = await db
     .select({
       id: templates.id,
-      name: templates.name,
+      thumbnailAssetId: templates.thumbnailAssetId,
+      previewAssetId: templates.previewAssetId,
+      prompt: templates.prompt,
       category: templates.category,
     })
     .from(templates)
@@ -255,6 +395,10 @@ export async function removeTemplate(id: string) {
   }
 
   await db.delete(templates).where(eq(templates.id, templateId));
+  deleteTemplateMediaCacheEntries([
+    existing.thumbnailAssetId,
+    existing.previewAssetId,
+  ]);
 }
 
 export async function createTemplatePreviewPresign(input: unknown) {
@@ -308,7 +452,11 @@ export async function completeTemplatePreviewUpload(input: unknown) {
   const payload = completeTemplatePreviewSchema.parse(input);
 
   const [template] = await db
-    .select({ id: templates.id })
+    .select({
+      id: templates.id,
+      thumbnailAssetId: templates.thumbnailAssetId,
+      previewAssetId: templates.previewAssetId,
+    })
     .from(templates)
     .where(eq(templates.id, payload.templateId))
     .limit(1);
@@ -362,18 +510,32 @@ export async function completeTemplatePreviewUpload(input: unknown) {
     .set({ status: 'uploaded', updatedAt: sql`CURRENT_TIMESTAMP` })
     .where(eq(assets.id, payload.assetId));
 
+  const target = asset.mimeType?.startsWith('image/') ? 'thumbnail' : 'preview';
+  const replacedAssetId =
+    target === 'thumbnail' ? template.thumbnailAssetId : template.previewAssetId;
+
   await db
     .update(templates)
     .set({
-      previewAssetId: payload.assetId,
-      updatedBy: user.id,
+      ...(target === 'thumbnail'
+        ? { thumbnailAssetId: asset.id }
+        : { previewAssetId: asset.id }),
       updatedAt: new Date(),
     })
     .where(eq(templates.id, payload.templateId));
 
+  if (replacedAssetId !== asset.id) {
+    deleteTemplateMediaCacheEntries([replacedAssetId]);
+  }
+  await refreshSingleTemplateMediaCacheAfterAdminWrite(
+    asset.id,
+    'template preview upload complete'
+  );
+
   return {
     assetId: payload.assetId,
     publicUrl: asset.publicUrl,
+    target,
     status: 'uploaded',
   };
 }

@@ -38,13 +38,15 @@ describe('Admin backend safety rails', () => {
     expect(source).not.toContain('update.status = parsed.status');
   });
 
-  it('verifies template preview objects in R2 before marking them uploaded', () => {
+  it('verifies template media objects in R2 before linking uploaded assets to templates', () => {
     const source = readSource('lib/admin/services/templates.ts');
     const verifyIndex = source.indexOf('verifyUploadedObject({');
     const updateIndex = source.indexOf('.update(assets)', verifyIndex);
 
     expect(verifyIndex).toBeGreaterThan(-1);
     expect(updateIndex).toBeGreaterThan(verifyIndex);
+    expect(source).toMatch(/\bthumbnailAssetId\b|\bthumbnail_asset_id\b/);
+    expect(source).toMatch(/\bpreviewAssetId\b|\bpreview_asset_id\b/);
   });
 
   it('deletes templates directly from the catalog table', () => {
@@ -53,11 +55,12 @@ describe('Admin backend safety rails', () => {
     expect(source).toContain('await db.delete(templates)');
   });
 
-  it('keeps template usage counts tied to generation job creation', () => {
+  it('validates template type without writing removed usage counters', () => {
     const source = readSource('lib/generations/jobs.ts');
 
-    expect(source).toContain('if (input.templateId)');
-    expect(source).toContain('set usage_count = usage_count + 1');
+    expect(source).toContain('select id, type');
+    expect(source).toContain('template_type_mismatch');
+    expect(source).not.toContain('usage_count');
   });
 
   it('keeps dashboard activity estimates scoped to user behavior', () => {

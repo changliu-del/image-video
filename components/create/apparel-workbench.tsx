@@ -110,6 +110,7 @@ const materialPickerCopy = {
     loadingHistory: 'Carregando historico',
     historyError: 'Nao foi possivel carregar seu historico.',
     emptyHistory: 'Seu historico ainda nao tem imagens para este fluxo.',
+    emptyOfficial: 'Nenhum material oficial disponivel para este fluxo.',
     retry: 'Tentar novamente',
   },
   en: {
@@ -118,6 +119,7 @@ const materialPickerCopy = {
     loadingHistory: 'Loading history',
     historyError: 'History could not be loaded.',
     emptyHistory: 'Your history does not have images for this flow yet.',
+    emptyOfficial: 'No official materials are available for this flow yet.',
     retry: 'Retry',
   },
   zh: {
@@ -126,6 +128,7 @@ const materialPickerCopy = {
     loadingHistory: '加载历史素材中',
     historyError: '历史素材加载失败。',
     emptyHistory: '当前流程还没有可用的历史图片。',
+    emptyOfficial: '当前流程暂无官方素材。',
     retry: '重试',
   },
 };
@@ -357,10 +360,8 @@ function LibraryTile({
 }
 
 export function ApparelWorkbench({
-  initialTemplateId = '',
   initialPrompt = '',
 }: {
-  initialTemplateId?: string;
   initialPrompt?: string;
 }) {
   const locale = useDashboardLocale();
@@ -371,7 +372,6 @@ export function ApparelWorkbench({
   const starterPrompt = initialPrompt.trim();
   const [primaryFile, setPrimaryFile] = useState<File | null>(null);
   const [primaryPreview, setPrimaryPreview] = useState<string | null>(null);
-  const [templates, setTemplates] = useState<LibraryItem[]>([]);
   const [assets, setAssets] = useState<LibraryItem[]>([]);
   const [materialSource, setMaterialSource] =
     useState<MaterialPickerSource>('official');
@@ -379,7 +379,6 @@ export function ApparelWorkbench({
   const [hasLoadedHistory, setHasLoadedHistory] = useState(false);
   const [isLoadingHistory, setIsLoadingHistory] = useState(false);
   const [historyError, setHistoryError] = useState(false);
-  const [selectedTemplate, setSelectedTemplate] = useState<LibraryItem | null>(null);
   const [selectedLibraryAsset, setSelectedLibraryAsset] =
     useState<LibraryItem | null>(null);
   const [isLoadingLibrary, setIsLoadingLibrary] = useState(true);
@@ -400,12 +399,9 @@ export function ApparelWorkbench({
   const [jobId, setJobId] = useState<string | null>(null);
   const [jobStatus, setJobStatus] = useState<JobStatusResponse | null>(null);
   const [error, setError] = useState<string | null>(null);
-  const requestedTemplateId = initialTemplateId;
 
   const isSubmitting = Boolean(submitLabel);
   const selectedResultUrl = resultUrl(jobStatus);
-  const selectedTemplateId =
-    selectedTemplate?.id == null ? '' : String(selectedTemplate.id);
   const selectedLibraryAssetId = selectedLibraryAsset
     ? getItemAssetId(selectedLibraryAsset)
     : '';
@@ -464,50 +460,20 @@ export function ApparelWorkbench({
     async function loadLibrary() {
       setIsLoadingLibrary(true);
       try {
-        const params = new URLSearchParams({
-          pageSize: '12',
-          category: 'image_to_image',
-        });
         const assetParams = new URLSearchParams({
           pageSize: '12',
           category: 'apparel_image',
         });
-        const [templateResponse, assetResponse] = await Promise.all([
-          fetch(`/api/templates?${params.toString()}`),
-          fetch(`/api/library-assets?${assetParams.toString()}`),
-        ]);
-        const [templateBody, assetBody] = await Promise.all([
-          templateResponse.ok ? templateResponse.json() : Promise.resolve({ list: [] }),
-          assetResponse.ok ? assetResponse.json() : Promise.resolve({ items: [] }),
-        ]);
+        const assetResponse = await fetch(
+          `/api/library-assets?${assetParams.toString()}`
+        );
+        const assetBody = assetResponse.ok
+          ? await assetResponse.json()
+          : { items: [] };
 
         if (!cancelled) {
-          const nextTemplates = normalizeItems(templateBody);
           const nextAssets = normalizeItems(assetBody);
-          const requestedTemplate = nextTemplates.find(
-            (template) => String(template.id) === requestedTemplateId
-          );
-          setTemplates(nextTemplates);
           setAssets(nextAssets);
-          setSelectedTemplate((current) => {
-            if (requestedTemplate) {
-              return requestedTemplate;
-            }
-
-            if (!requestedTemplateId) {
-              return current &&
-                nextTemplates.some(
-                  (template) => String(template.id) === String(current.id)
-                )
-                ? current
-                : null;
-            }
-
-            return null;
-          });
-          if (requestedTemplate?.prompt) {
-            setPrompt(String(requestedTemplate.prompt));
-          }
         }
       } finally {
         if (!cancelled) setIsLoadingLibrary(false);
@@ -518,7 +484,7 @@ export function ApparelWorkbench({
     return () => {
       cancelled = true;
     };
-  }, [locale, requestedTemplateId]);
+  }, []);
 
   useEffect(() => {
     if (materialSource !== 'history' || hasLoadedHistory) return;
@@ -640,7 +606,6 @@ export function ApparelWorkbench({
         {
           generationType: 'apparel_image',
           inputAssetId,
-          ...(selectedTemplateId ? { templateId: selectedTemplateId } : {}),
           prompt: [
             prompt.trim(),
             `${copy.modelType}: ${selectedModelTypeLabel}.`,
@@ -685,18 +650,6 @@ export function ApparelWorkbench({
     setPrompt(idea);
   }
 
-  function applyTemplate(template: LibraryItem | null | undefined) {
-    if (!template) return;
-
-    setSelectedTemplate(template);
-    setCreationMode('advanced');
-    setPrompt((current) => {
-      const label = getItemLabel(template);
-      const trimmed = current.trim();
-      return trimmed.includes(label) ? trimmed : `${trimmed} ${label}`.trim();
-    });
-  }
-
   function applyLibraryAsset(asset: LibraryItem | null | undefined) {
     if (!asset || !getItemAssetId(asset)) return;
 
@@ -711,7 +664,7 @@ export function ApparelWorkbench({
     });
   }
 
-  const baseLibraryImages = [...templates, ...assets].map(getItemImage).filter(Boolean);
+  const baseLibraryImages = assets.map(getItemImage).filter(Boolean);
   const libraryStart = baseLibraryImages.length ? exampleOffset % baseLibraryImages.length : 0;
   const libraryImages = [
     ...baseLibraryImages.slice(libraryStart),
@@ -813,16 +766,8 @@ export function ApparelWorkbench({
           />
 
           <div className="mt-4">
-            <div className="mb-2 flex items-center justify-between text-sm">
+            <div className="mb-2 text-sm">
               <span className="font-bold text-gray-900">{copy.promptIdeas}</span>
-              <button
-                type="button"
-                onClick={() => applyTemplate(selectedTemplate ?? templates[0])}
-                disabled={templates.length === 0}
-                className="font-semibold text-gray-500 hover:text-indigo-600 disabled:cursor-not-allowed disabled:opacity-40"
-              >
-                {copy.addFromTemplate}
-              </button>
             </div>
             <div className="grid grid-cols-[78px_1fr] gap-3">
               <div className="space-y-2 text-sm font-semibold text-gray-500">
@@ -868,7 +813,7 @@ export function ApparelWorkbench({
                 : commonCopy.materialCount(selectableHistoryItems.length)
               : isLoadingLibrary
                 ? commonCopy.loadingLibrary
-                : commonCopy.materialCount(templates.length + assets.length)
+                : commonCopy.materialCount(assets.length)
           }
         >
           <div className="space-y-4">
@@ -951,48 +896,13 @@ export function ApparelWorkbench({
                   {materialCopy.emptyHistory}
                 </div>
               )
-            ) : (
-              <>
-                <div>
-                  <h3 className="mb-2 text-xs font-bold text-gray-400">{copy.templateMaterials}</h3>
-                  <div className="grid grid-cols-2 gap-2">
-                    {templates.length === 0 ? (
-                      <p className="col-span-2 rounded-lg border border-dashed border-gray-200 px-3 py-4 text-sm text-gray-400">
-                        {commonCopy.noTemplates}
-                      </p>
-                    ) : (
-                      templates.slice(0, 4).map((template) => {
-                        const image = getItemImage(template);
-                        const active =
-                          String(selectedTemplate?.id) === String(template.id);
-
-                        return (
-                          <button
-                            key={itemKey(template)}
-                            type="button"
-                            onClick={() => setSelectedTemplate(template)}
-                            className={cn(
-                              'rounded-lg border bg-white p-2 text-left transition',
-                              active ? 'border-indigo-500 text-indigo-600' : 'border-gray-200 text-gray-600'
-                            )}
-                          >
-                            <div className="aspect-square overflow-hidden rounded-md bg-gray-100">
-                              {image ? <img src={image} alt="" className="size-full object-cover" /> : null}
-                            </div>
-                            <p className="mt-2 truncate text-xs font-bold">{getItemLabel(template)}</p>
-                          </button>
-                        );
-                      })
-                    )}
-                  </div>
-                </div>
-                {selectableAssets.length > 0 ? (
+            ) : selectableAssets.length > 0 ? (
               <div>
                 <h3 className="mb-2 text-xs font-bold text-gray-400">
                   {copy.libraryMaterials}
                 </h3>
                 <div className="grid grid-cols-2 gap-2">
-                  {selectableAssets.slice(0, 4).map((asset) => {
+                  {selectableAssets.slice(0, 8).map((asset) => {
                     const image = getItemImage(asset);
                     const active =
                       selectedLibraryAssetId === getItemAssetId(asset);
@@ -1026,8 +936,10 @@ export function ApparelWorkbench({
                   })}
                 </div>
               </div>
-                ) : null}
-              </>
+            ) : (
+              <div className="rounded-lg border border-dashed border-gray-200 px-3 py-4 text-sm text-gray-400">
+                {materialCopy.emptyOfficial}
+              </div>
             )}
           </div>
         </PanelSection>

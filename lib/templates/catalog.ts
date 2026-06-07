@@ -1,224 +1,85 @@
 import type { Locale } from '@/lib/marketing/content';
 
-export type TemplateCategory =
-  | 'image_to_video'
-  | 'image_to_image'
-  | 'try_on';
+export type TemplateType = 'image_to_image' | 'image_to_video';
 
-export type TemplateTagGroup =
-  | 'goal'
-  | 'type'
-  | 'industry'
-  | 'channel'
-  | 'funnel'
-  | 'cost'
-  | 'aspect_ratio';
-
-export type TemplateMediaType = 'image' | 'video';
-
-export type TemplateCatalogItem = {
+export type TemplateCatalogListItem = {
   id: string;
-  name: string;
-  description: string;
-  category: TemplateCategory;
-  prompt: string;
-  costCredits: number;
-  aspectRatios: string[];
-  durationSeconds?: number | null;
-  asset: string;
-  mediaType: TemplateMediaType;
-  tags: string[];
-  source?: 'starter' | 'admin';
+  title: string;
+  type: TemplateType;
+  category: string;
+  thumbnailUrl: string;
+  createdAt: string;
+  updatedAt: string;
 };
+
+export type TemplateCatalogDetailItem = TemplateCatalogListItem & {
+  previewUrl: string;
+  prompt: string;
+  promptTranslations?: Partial<LocalizedText>;
+};
+
+export type TemplateCatalogItem = TemplateCatalogDetailItem;
+export type TemplateListItem = TemplateCatalogListItem;
+export type TemplateDetailItem = TemplateCatalogDetailItem;
 
 type LocalizedText = Record<Locale, string>;
 
-export type TemplateTagOption = {
-  slug: string;
-  group: TemplateTagGroup;
-  labels: LocalizedText;
-};
-
 export type StarterTemplateSeed = {
-  id: string;
-  name: string;
-  description: string;
-  category: TemplateCategory;
+  seedKey: string;
+  title: string;
+  titleTranslations?: Partial<LocalizedText>;
+  type: TemplateType;
+  category: string;
+  thumbnailAssetSeedKey: string;
+  previewAssetSeedKey: string;
+  thumbnailUrl: string;
+  previewUrl: string;
   prompt: string;
-  costCredits: number;
-  aspectRatios: string[];
-  durationSeconds?: number | null;
-  asset: string;
-  mediaType: TemplateMediaType;
-  tags: string[];
+  promptTranslations?: Partial<LocalizedText>;
 };
 
-export const templateTagGroups: Array<{
-  group: TemplateTagGroup;
-  labels: LocalizedText;
-}> = [
-  {
-    group: 'goal',
-    labels: { pt: 'Objetivo', en: 'Goal', zh: '目标' },
-  },
-  {
-    group: 'type',
-    labels: { pt: 'Formato', en: 'Format', zh: '类型' },
-  },
-  {
-    group: 'industry',
-    labels: { pt: 'Categoria', en: 'Category', zh: '行业' },
-  },
-  {
-    group: 'channel',
-    labels: { pt: 'Canal', en: 'Channel', zh: '渠道' },
-  },
-  {
-    group: 'funnel',
-    labels: { pt: 'Funil', en: 'Funnel', zh: '漏斗' },
-  },
-  {
-    group: 'cost',
-    labels: { pt: 'Custo', en: 'Cost', zh: '成本' },
-  },
-  {
-    group: 'aspect_ratio',
-    labels: { pt: 'Proporcao', en: 'Ratio', zh: '比例' },
-  },
+export const templateTypes: TemplateType[] = [
+  'image_to_video',
+  'image_to_image',
 ];
 
-export const templateTagOptions: TemplateTagOption[] = [
-  {
-    slug: 'promotion',
-    group: 'goal',
-    labels: { pt: 'Promocao', en: 'Promotion', zh: '促销' },
+export const templateTypeLabels: Record<TemplateType, LocalizedText> = {
+  image_to_video: {
+    pt: 'Imagem para video',
+    en: 'Image to video',
+    zh: '图生视频',
   },
-  {
-    slug: 'customer-review',
-    group: 'goal',
-    labels: { pt: 'Review de cliente', en: 'Customer review', zh: '客户评价' },
+  image_to_image: {
+    pt: 'Imagem',
+    en: 'Image',
+    zh: '生图',
   },
-  {
-    slug: 'before-after',
-    group: 'goal',
-    labels: { pt: 'Antes e depois', en: 'Before and after', zh: '前后对比' },
-  },
-  {
-    slug: 'new-arrival',
-    group: 'goal',
-    labels: { pt: 'Lancamento', en: 'New arrival', zh: '上新' },
-  },
-  {
-    slug: 'pdp-detail',
-    group: 'goal',
-    labels: { pt: 'Detalhe PDP', en: 'PDP detail', zh: '详情页' },
-  },
-  {
-    slug: 'image',
-    group: 'type',
-    labels: { pt: 'Imagem', en: 'Image', zh: '图片' },
-  },
-  {
-    slug: 'image-to-video',
-    group: 'type',
-    labels: { pt: 'Imagem para video', en: 'Image to video', zh: '图生视频' },
-  },
-  {
-    slug: 'video',
-    group: 'type',
-    labels: { pt: 'Video', en: 'Video', zh: '视频' },
-  },
-  {
-    slug: 'beauty',
-    group: 'industry',
-    labels: { pt: 'Beleza', en: 'Beauty', zh: '美妆' },
-  },
-  {
-    slug: 'fashion',
-    group: 'industry',
-    labels: { pt: 'Moda', en: 'Fashion', zh: '服饰' },
-  },
-  {
-    slug: 'home',
-    group: 'industry',
-    labels: { pt: 'Casa', en: 'Home', zh: '家居' },
-  },
-  {
-    slug: 'electronics',
-    group: 'industry',
-    labels: { pt: 'Eletronicos', en: 'Electronics', zh: '电子' },
-  },
-  {
-    slug: 'food',
-    group: 'industry',
-    labels: { pt: 'Alimentos', en: 'Food', zh: '食品' },
-  },
-  {
-    slug: 'tiktok',
-    group: 'channel',
-    labels: { pt: 'TikTok', en: 'TikTok', zh: 'TikTok' },
-  },
-  {
-    slug: 'reels',
-    group: 'channel',
-    labels: { pt: 'Reels', en: 'Reels', zh: 'Reels' },
-  },
-  {
-    slug: 'whatsapp',
-    group: 'channel',
-    labels: { pt: 'WhatsApp', en: 'WhatsApp', zh: 'WhatsApp' },
-  },
-  {
-    slug: 'marketplace',
-    group: 'channel',
-    labels: { pt: 'Marketplace', en: 'Marketplace', zh: 'Marketplace' },
-  },
-  {
-    slug: 'traffic',
-    group: 'funnel',
-    labels: { pt: 'Atracao', en: 'Traffic', zh: '引流' },
-  },
-  {
-    slug: 'consideration',
-    group: 'funnel',
-    labels: { pt: 'Consideracao', en: 'Consideration', zh: '种草' },
-  },
-  {
-    slug: 'conversion',
-    group: 'funnel',
-    labels: { pt: 'Conversao', en: 'Conversion', zh: '转化' },
-  },
-  {
-    slug: 'retention',
-    group: 'funnel',
-    labels: { pt: 'Recompra', en: 'Retention', zh: '复购' },
-  },
-  {
-    slug: 'low-cost',
-    group: 'cost',
-    labels: { pt: 'Baixo custo', en: 'Low cost', zh: '低成本' },
-  },
-  {
-    slug: 'standard-video',
-    group: 'cost',
-    labels: { pt: 'Video padrao', en: 'Standard video', zh: '标准视频' },
-  },
-  {
-    slug: 'ratio-9-16',
-    group: 'aspect_ratio',
-    labels: { pt: '9:16', en: '9:16', zh: '9:16' },
-  },
-  {
-    slug: 'ratio-1-1',
-    group: 'aspect_ratio',
-    labels: { pt: '1:1', en: '1:1', zh: '1:1' },
-  },
-  {
-    slug: 'ratio-16-9',
-    group: 'aspect_ratio',
-    labels: { pt: '16:9', en: '16:9', zh: '16:9' },
-  },
-];
+};
+
+export const templateCategoryLabels: Record<string, LocalizedText> = {
+  product: { pt: 'Produto', en: 'Product', zh: '商品' },
+  fashion: { pt: 'Moda', en: 'Fashion', zh: '服饰' },
+  food: { pt: 'Alimentos', en: 'Food', zh: '食品' },
+  beauty: { pt: 'Beleza', en: 'Beauty', zh: '美妆' },
+  electronics: { pt: 'Eletronicos', en: 'Electronics', zh: '电子' },
+  appliances: { pt: 'Eletrodomesticos', en: 'Appliances', zh: '家用电器' },
+  home: { pt: 'Casa', en: 'Home', zh: '家居' },
+  sports: { pt: 'Esportes', en: 'Sports', zh: '运动' },
+  social: { pt: 'Social', en: 'Social', zh: '社媒' },
+  marketplace: { pt: 'Marketplace', en: 'Marketplace', zh: '平台电商' },
+  general: { pt: 'Geral', en: 'General', zh: '通用' },
+};
+
+export function getTemplateCategoryLabel(category: string, locale: Locale) {
+  const label = templateCategoryLabels[category]?.[locale];
+  if (label) return label;
+
+  return category
+    .split(/[_-]+/)
+    .filter(Boolean)
+    .map((part) => part[0]?.toUpperCase() + part.slice(1))
+    .join(' ');
+}
 
 export const templatesPageContent: Record<
   Locale,
@@ -235,516 +96,192 @@ export const templatesPageContent: Record<
     loginHint: string;
     emptyTitle: string;
     emptyText: string;
-    costSuffix: string;
-    sortLabel: string;
-    sortOptions: Record<'featured' | 'newest' | 'lowCost', string>;
     categoryFilterLabel: string;
-    categoryLabels: Record<TemplateCategory, string>;
   }
 > = {
   pt: {
     metadata: {
-      title: 'Templates de e-commerce com IA para vender no Brasil',
+      title: 'Templates de video para e-commerce com IA',
       description:
-        'Explore templates de imagem e video para promocao, reviews, PDP, WhatsApp e marketplaces no Brasil.',
+        'Explore templates de imagem para video com prompts prontos para produtos, moda, alimentos e campanhas.',
     },
     eyebrow: 'Biblioteca de templates',
-    title: 'Encontre o modelo certo para cada produto, canal e campanha.',
+    title: 'Escolha um ponto de partida para transformar produto em video.',
     description:
-      'Filtre por objetivo, formato, categoria, canal, funil e custo. Comece barato com imagem e suba para video quando fizer sentido.',
-    searchPlaceholder: 'Buscar por Pix, review, PDP, WhatsApp...',
+      'A biblioteca usa os mesmos templates do fluxo de imagem para video. Escolha uma categoria, abra o workbench e edite o prompt livremente.',
+    searchPlaceholder: 'Buscar por produto, moda, alimento...',
     clearFilters: 'Limpar filtros',
     all: 'Todos',
     results: 'templates encontrados',
-    useTemplate: 'Usar modelo',
+    useTemplate: 'Usar template',
     loginHint: 'Entre para editar prompt, produto e detalhes.',
     emptyTitle: 'Nenhum template encontrado',
-    emptyText: 'Remova alguns filtros ou busque por outro objetivo de venda.',
-    costSuffix: 'credito',
-    sortLabel: 'Ordenar',
-    sortOptions: {
-      featured: 'Destaques',
-      newest: 'Mais recentes',
-      lowCost: 'Menor custo',
-    },
-    categoryFilterLabel: 'Workbench',
-    categoryLabels: {
-      image_to_image: 'Imagem',
-      image_to_video: 'Imagem -> video',
-      try_on: 'Provador',
-    },
+    emptyText: 'Remova a categoria ou busque por outro tipo de produto.',
+    categoryFilterLabel: 'Categoria',
   },
   en: {
     metadata: {
-      title: 'AI ecommerce templates for Brazil',
+      title: 'AI video templates for ecommerce',
       description:
-        'Browse image and video templates for promotions, reviews, PDP, WhatsApp, and marketplaces in Brazil.',
+        'Browse image-to-video templates with ready prompts for products, fashion, food, and campaigns.',
     },
     eyebrow: 'Template library',
-    title: 'Find the right template for each product, channel, and campaign.',
+    title: 'Choose a starting point for turning product images into video.',
     description:
-      'Filter by goal, format, category, channel, funnel, and cost. Start with low-cost images and move to video when it makes sense.',
-    searchPlaceholder: 'Search Pix, review, PDP, WhatsApp...',
+      'The library reuses the same templates as the image-to-video workflow. Pick a category, open the workbench, and freely edit the prompt.',
+    searchPlaceholder: 'Search product, fashion, food...',
     clearFilters: 'Clear filters',
     all: 'All',
     results: 'templates found',
     useTemplate: 'Use template',
     loginHint: 'Sign in to edit prompt, product, and details.',
     emptyTitle: 'No templates found',
-    emptyText: 'Remove some filters or search for another sales goal.',
-    costSuffix: 'credit',
-    sortLabel: 'Sort',
-    sortOptions: {
-      featured: 'Featured',
-      newest: 'Newest',
-      lowCost: 'Lowest cost',
-    },
-    categoryFilterLabel: 'Workbench',
-    categoryLabels: {
-      image_to_image: 'Image',
-      image_to_video: 'Image -> video',
-      try_on: 'Try-on',
-    },
+    emptyText: 'Remove the category or search for another product type.',
+    categoryFilterLabel: 'Category',
   },
   zh: {
     metadata: {
-      title: '面向巴西电商的 AI 模板库',
+      title: '面向电商的 AI 视频模板库',
       description:
-        '浏览促销、评价、详情页、WhatsApp 和电商平台场景的图片与视频模板。',
+        '浏览图生视频模板，使用商品、服饰、食品和活动场景的现成提示词。',
     },
     eyebrow: '模板库',
-    title: '按商品、渠道和活动目标，找到最合适的模板。',
+    title: '选择一个起点，把商品图变成视频。',
     description:
-      '支持按目标、类型、行业、渠道、漏斗和成本筛选。先用低成本图片测试，再在合适时升级视频。',
-    searchPlaceholder: '搜索 Pix、评价、详情页、WhatsApp...',
+      '首页模板库复用图生视频模板。选择类目后进入工作台，提示词仍然可以自由编辑。',
+    searchPlaceholder: '搜索商品、服饰、食品...',
     clearFilters: '清除筛选',
     all: '全部',
     results: '个模板',
     useTemplate: '使用模板',
     loginHint: '登录后可编辑提示词、商品和细节。',
     emptyTitle: '没有找到模板',
-    emptyText: '减少筛选条件，或换一个卖货目标搜索。',
-    costSuffix: '算力值',
-    sortLabel: '排序',
-    sortOptions: {
-      featured: '推荐',
-      newest: '最新',
-      lowCost: '低成本优先',
-    },
-    categoryFilterLabel: '工作台',
-    categoryLabels: {
-      image_to_image: '图片',
-      image_to_video: '图生视频',
-      try_on: '智能试衣',
-    },
+    emptyText: '移除类目，或换一个商品类型搜索。',
+    categoryFilterLabel: '类目',
   },
 };
 
-const assets = [
-  '/resources/example4.png',
-  '/resources/example2.mp4',
-  '/resources/example3.png',
-  '/resources/example1.mp4',
-  '/resources/example1.png',
-  '/resources/example5.png',
-] as const;
+const resource = (name: string) => `/resources/${name}`;
 
 export const starterTemplateSeeds: StarterTemplateSeed[] = [
   {
-    id: 'promocao-pix-relampago',
-    name: 'Promocao Pix Relampago',
-    description: 'Oferta direta com preco forte, urgencia e chamada para Pix.',
-    category: 'image_to_image',
+    seedKey: 'product-soft-motion',
+    title: 'Produto com movimento suave',
+    titleTranslations: {
+      en: 'Soft product motion',
+      zh: '商品柔和运镜',
+    },
+    type: 'image_to_video',
+    category: 'product',
+    thumbnailAssetSeedKey: 'product-soft-motion-thumbnail',
+    previewAssetSeedKey: 'product-soft-motion-preview',
+    thumbnailUrl: resource('example1.png'),
+    previewUrl: resource('example1.mp4'),
     prompt:
-      'Crie uma imagem promocional para ecommerce brasileiro com o produto em destaque, composicao limpa, preco em evidencia e chamada para Pix.',
-    costCredits: 1,
-    aspectRatios: ['1:1', '9:16'],
-    asset: assets[0],
-    mediaType: 'image',
-    tags: [
-      'promotion',
-      'image',
-      'marketplace',
-      'conversion',
-      'low-cost',
-      'ratio-1-1',
-    ],
+      'Transforme a foto do produto em um video curto de ecommerce com movimento suave de camera, luz limpa, produto centralizado e acabamento premium.',
+    promptTranslations: {
+      en: 'Turn the product photo into a short ecommerce video with smooth camera motion, clean lighting, centered product framing, and a premium finish.',
+      zh: '把商品照片转换成短电商视频，使用柔和运镜、干净光线、商品居中构图和高级质感。',
+    },
   },
   {
-    id: 'produto-em-uso-reels',
-    name: 'Produto em Uso',
-    description: 'Mostre o produto no contexto de uso com ritmo social.',
-    category: 'image_to_video',
+    seedKey: 'fashion-model-motion',
+    title: 'Lookbook de moda em movimento',
+    titleTranslations: {
+      en: 'Fashion lookbook in motion',
+      zh: '动态服饰 Lookbook',
+    },
+    type: 'image_to_video',
+    category: 'fashion',
+    thumbnailAssetSeedKey: 'fashion-model-motion-thumbnail',
+    previewAssetSeedKey: 'fashion-model-motion-preview',
+    thumbnailUrl: resource('example2.png'),
+    previewUrl: resource('example2.mp4'),
     prompt:
-      'Transforme a imagem do produto em um video curto de ecommerce, com movimento suave, ambiente realista e foco nos beneficios de uso.',
-    costCredits: 10,
-    aspectRatios: ['9:16'],
-    durationSeconds: 5,
-    asset: assets[1],
-    mediaType: 'video',
-    tags: [
-      'image-to-video',
-      'reels',
-      'consideration',
-      'standard-video',
-      'ratio-9-16',
-      'fashion',
-    ],
+      'Crie um video vertical de moda a partir da imagem, com movimento natural, tecido em destaque, fundo de estudio moderno e ritmo social.',
+    promptTranslations: {
+      en: 'Create a vertical fashion video from the image with natural movement, highlighted fabric texture, a modern studio background, and social rhythm.',
+      zh: '基于图片生成竖版服饰视频，动作自然，突出面料质感，现代影棚背景，节奏适合社媒。',
+    },
   },
   {
-    id: 'antes-e-depois-beneficio',
-    name: 'Antes e Depois',
-    description: 'Estrutura visual para comparar problema, solucao e ganho.',
-    category: 'image_to_image',
+    seedKey: 'food-fresh-closeup',
+    title: 'Close-up fresco de alimento',
+    titleTranslations: {
+      en: 'Fresh food close-up',
+      zh: '食物新鲜特写',
+    },
+    type: 'image_to_video',
+    category: 'food',
+    thumbnailAssetSeedKey: 'food-fresh-closeup-thumbnail',
+    previewAssetSeedKey: 'food-fresh-closeup-preview',
+    thumbnailUrl: resource('example3.png'),
+    previewUrl: resource('example3.mp4'),
     prompt:
-      'Crie um criativo antes e depois para ecommerce, com divisao clara da cena, produto como solucao e visual limpo para anuncio.',
-    costCredits: 1,
-    aspectRatios: ['1:1', '16:9'],
-    asset: assets[2],
-    mediaType: 'image',
-    tags: [
-      'before-after',
-      'image',
-      'beauty',
-      'consideration',
-      'low-cost',
-      'ratio-1-1',
-    ],
+      'Transforme a foto do alimento em um video apetitoso com brilho natural, movimento lento, textura em destaque e sensacao fresca.',
+    promptTranslations: {
+      en: 'Turn the food photo into an appetizing video with natural gloss, slow motion, highlighted texture, and a fresh feeling.',
+      zh: '把食物照片转换成诱人的视频，保留自然光泽、慢动作、突出纹理和新鲜感。',
+    },
   },
   {
-    id: 'review-cliente-whatsapp',
-    name: 'Review de Cliente',
-    description: 'Prova social com texto curto e visual de conversa.',
-    category: 'image_to_video',
+    seedKey: 'beauty-premium-detail',
+    title: 'Detalhe premium de beleza',
+    titleTranslations: {
+      en: 'Premium beauty detail',
+      zh: '美妆高级细节',
+    },
+    type: 'image_to_video',
+    category: 'beauty',
+    thumbnailAssetSeedKey: 'beauty-premium-detail-thumbnail',
+    previewAssetSeedKey: 'beauty-premium-detail-preview',
+    thumbnailUrl: resource('example4.png'),
+    previewUrl: resource('example4.mp4'),
     prompt:
-      'Crie um video curto com clima de review de cliente, produto em destaque, prova social visual e espaco para depoimento em PT-BR.',
-    costCredits: 10,
-    aspectRatios: ['9:16'],
-    durationSeconds: 5,
-    asset: assets[3],
-    mediaType: 'video',
-    tags: [
-      'customer-review',
-      'image-to-video',
-      'whatsapp',
-      'conversion',
-      'standard-video',
-      'ratio-9-16',
-    ],
+      'Crie um video premium de beleza com close-up elegante, reflexos suaves, embalagem em foco e movimento de camera delicado.',
+    promptTranslations: {
+      en: 'Create a premium beauty video with an elegant close-up, soft reflections, focused packaging, and delicate camera movement.',
+      zh: '生成高级美妆视频，使用优雅特写、柔和反光、包装聚焦和细腻运镜。',
+    },
   },
   {
-    id: 'detalhe-pdp-textura',
-    name: 'Detalhe PDP',
-    description: 'Destaque textura, embalagem, material e beneficio.',
-    category: 'image_to_image',
+    seedKey: 'electronics-launch',
+    title: 'Lancamento de eletronico',
+    titleTranslations: {
+      en: 'Electronics launch',
+      zh: '数码新品发布',
+    },
+    type: 'image_to_video',
+    category: 'electronics',
+    thumbnailAssetSeedKey: 'electronics-launch-thumbnail',
+    previewAssetSeedKey: 'electronics-launch-preview',
+    thumbnailUrl: resource('example5.png'),
+    previewUrl: resource('example5.mp4'),
     prompt:
-      'Crie uma imagem PDP premium com close-up do produto, textura visivel, fundo limpo e espaco para beneficios curtos.',
-    costCredits: 1,
-    aspectRatios: ['1:1'],
-    asset: assets[4],
-    mediaType: 'image',
-    tags: [
-      'pdp-detail',
-      'image',
-      'marketplace',
-      'conversion',
-      'low-cost',
-      'ratio-1-1',
-      'electronics',
-    ],
+      'Gere um video de lancamento para produto eletronico com luz tecnica, movimento preciso, detalhes de material e atmosfera moderna.',
+    promptTranslations: {
+      en: 'Generate a launch video for an electronics product with technical lighting, precise motion, material detail, and a modern atmosphere.',
+      zh: '生成数码产品发布视频，使用科技感灯光、精准运动、材质细节和现代氛围。',
+    },
   },
   {
-    id: 'banner-cupom-marketplace',
-    name: 'Banner Promocional',
-    description: 'Base visual para cupom, frete gratis e calendario comercial.',
-    category: 'image_to_image',
+    seedKey: 'home-lifestyle-scene',
+    title: 'Cena de casa e decoracao',
+    titleTranslations: {
+      en: 'Home lifestyle scene',
+      zh: '家居生活场景',
+    },
+    type: 'image_to_video',
+    category: 'home',
+    thumbnailAssetSeedKey: 'home-lifestyle-scene-thumbnail',
+    previewAssetSeedKey: 'home-lifestyle-scene-preview',
+    thumbnailUrl: resource('example6.png'),
+    previewUrl: resource('example6.mp4'),
     prompt:
-      'Crie um banner promocional para marketplace brasileiro, com produto em destaque, area para cupom e visual comercial moderno.',
-    costCredits: 1,
-    aspectRatios: ['16:9', '1:1'],
-    asset: assets[5],
-    mediaType: 'image',
-    tags: [
-      'promotion',
-      'image',
-      'marketplace',
-      'traffic',
-      'low-cost',
-      'ratio-16-9',
-    ],
-  },
-  {
-    id: 'lancamento-tiktok',
-    name: 'Lancamento TikTok',
-    description: 'Gancho rapido para apresentar novidade em video vertical.',
-    category: 'image_to_video',
-    prompt:
-      'Crie um video vertical de lancamento para TikTok, com movimento dinamico, produto centralizado e visual moderno para ecommerce.',
-    costCredits: 10,
-    aspectRatios: ['9:16'],
-    durationSeconds: 5,
-    asset: assets[1],
-    mediaType: 'video',
-    tags: [
-      'new-arrival',
-      'image-to-video',
-      'tiktok',
-      'traffic',
-      'standard-video',
-      'ratio-9-16',
-      'fashion',
-    ],
-  },
-  {
-    id: 'combo-kits-recompra',
-    name: 'Combo para Recompra',
-    description: 'Apresente kits, bundles e recompra com valor percebido.',
-    category: 'image_to_image',
-    prompt:
-      'Crie um criativo de kit promocional para ecommerce, com composicao organizada, varios itens do produto e beneficio de economia.',
-    costCredits: 1,
-    aspectRatios: ['1:1'],
-    asset: assets[0],
-    mediaType: 'image',
-    tags: [
-      'promotion',
-      'image',
-      'retention',
-      'marketplace',
-      'low-cost',
-      'ratio-1-1',
-      'beauty',
-    ],
-  },
-  {
-    id: 'food-delivery-oferta',
-    name: 'Oferta de Alimentos',
-    description: 'Criativo apetitoso para preco, combo e urgencia.',
-    category: 'image_to_image',
-    prompt:
-      'Crie uma imagem de oferta para produto alimenticio, com composicao apetitosa, luz natural e destaque para combo promocional.',
-    costCredits: 1,
-    aspectRatios: ['1:1', '9:16'],
-    asset: assets[5],
-    mediaType: 'image',
-    tags: [
-      'promotion',
-      'image',
-      'food',
-      'whatsapp',
-      'conversion',
-      'low-cost',
-      'ratio-9-16',
-    ],
-  },
-  {
-    id: 'eletronico-demo-curta',
-    name: 'Demo Curta de Eletronico',
-    description: 'Mostre funcao, detalhe e beneficio em poucos segundos.',
-    category: 'image_to_video',
-    prompt:
-      'Transforme a imagem do eletronico em um video de produto com camera lenta, brilho controlado, close-up tecnico e fundo limpo.',
-    costCredits: 10,
-    aspectRatios: ['9:16', '16:9'],
-    durationSeconds: 5,
-    asset: assets[3],
-    mediaType: 'video',
-    tags: [
-      'pdp-detail',
-      'image-to-video',
-      'electronics',
-      'reels',
-      'consideration',
-      'standard-video',
-      'ratio-16-9',
-    ],
-  },
-  {
-    id: 'moda-lookbook-marketplace',
-    name: 'Lookbook Marketplace',
-    description: 'Imagem comercial para look, variacao e catalogo.',
-    category: 'image_to_image',
-    prompt:
-      'Crie uma imagem estilo lookbook para ecommerce de moda, com produto em composicao elegante, fundo neutro e foco em combinacoes.',
-    costCredits: 1,
-    aspectRatios: ['1:1'],
-    asset: assets[2],
-    mediaType: 'image',
-    tags: [
-      'pdp-detail',
-      'image',
-      'fashion',
-      'marketplace',
-      'consideration',
-      'low-cost',
-      'ratio-1-1',
-    ],
-  },
-  {
-    id: 'whatsapp-consulta-rapida',
-    name: 'Consulta pelo WhatsApp',
-    description: 'Criativo para levar compradores a uma conversa direta.',
-    category: 'image_to_image',
-    prompt:
-      'Crie um criativo para ecommerce com chamada para WhatsApp, produto claro, visual confiavel e espaco para perguntas frequentes.',
-    costCredits: 1,
-    aspectRatios: ['9:16', '1:1'],
-    asset: assets[4],
-    mediaType: 'image',
-    tags: [
-      'customer-review',
-      'image',
-      'whatsapp',
-      'conversion',
-      'low-cost',
-      'ratio-9-16',
-      'home',
-    ],
+      'Transforme a imagem em um video de casa e decoracao com cena realista, luz natural, movimento calmo e uso cotidiano do produto.',
+    promptTranslations: {
+      en: 'Turn the image into a home and decor video with a realistic scene, natural light, calm movement, and everyday product usage.',
+      zh: '把图片转换成家居装饰视频，场景真实、自然光、运动平稳，并展示产品日常使用感。',
+    },
   },
 ];
-
-const translations: Record<
-  Exclude<Locale, 'pt'>,
-  Record<
-    string,
-    Partial<Pick<StarterTemplateSeed, 'name' | 'description'>>
-  >
-> = {
-  en: {
-    'promocao-pix-relampago': {
-      name: 'Pix Flash Promotion',
-      description: 'Direct offer with strong price, urgency, and Pix action cue.',
-    },
-    'produto-em-uso-reels': {
-      name: 'Product in Use',
-      description: 'Show the product in context with social pacing.',
-    },
-    'antes-e-depois-beneficio': {
-      name: 'Before and After',
-      description: 'Visual structure to compare problem, solution, and gain.',
-    },
-    'review-cliente-whatsapp': {
-      name: 'Customer Review',
-      description: 'Social proof with short copy and conversation-style visual.',
-    },
-    'detalhe-pdp-textura': {
-      name: 'PDP Detail',
-      description: 'Highlight texture, packaging, material, and benefit.',
-    },
-    'banner-cupom-marketplace': {
-      name: 'Promo Banner',
-      description: 'Visual base for coupons, free shipping, and retail dates.',
-    },
-    'lancamento-tiktok': {
-      name: 'TikTok Launch',
-      description: 'Fast opening to introduce a new item in vertical video.',
-    },
-    'combo-kits-recompra': {
-      name: 'Repurchase Bundle',
-      description: 'Present kits, bundles, and repeat purchase value.',
-    },
-    'food-delivery-oferta': {
-      name: 'Food Offer',
-      description: 'Appetizing creative for price, combo, and urgency.',
-    },
-    'eletronico-demo-curta': {
-      name: 'Short Electronics Demo',
-      description: 'Show function, detail, and benefit in seconds.',
-    },
-    'moda-lookbook-marketplace': {
-      name: 'Marketplace Lookbook',
-      description: 'Commercial image for looks, variants, and catalog.',
-    },
-    'whatsapp-consulta-rapida': {
-      name: 'WhatsApp Consultation',
-      description: 'Creative to move shoppers into a direct conversation.',
-    },
-  },
-  zh: {
-    'promocao-pix-relampago': {
-      name: 'Pix 限时促销',
-      description: '突出价格、紧迫感和 Pix 行动提示的转化模板。',
-    },
-    'produto-em-uso-reels': {
-      name: '商品使用场景',
-      description: '用社媒节奏展示商品真实使用场景。',
-    },
-    'antes-e-depois-beneficio': {
-      name: '前后对比',
-      description: '对比问题、解决方案和收益的视觉结构。',
-    },
-    'review-cliente-whatsapp': {
-      name: '客户评价',
-      description: '适合短评价和聊天截图风格的用户口碑模板。',
-    },
-    'detalhe-pdp-textura': {
-      name: '详情页细节',
-      description: '突出纹理、包装、材质和核心利益点。',
-    },
-    'banner-cupom-marketplace': {
-      name: '促销横幅',
-      description: '适合优惠券、免运和大促节点的视觉基础。',
-    },
-    'lancamento-tiktok': {
-      name: 'TikTok 上新',
-      description: '用竖版短视频快速介绍新品。',
-    },
-    'combo-kits-recompra': {
-      name: '复购组合装',
-      description: '展示套装、组合和复购价值。',
-    },
-    'food-delivery-oferta': {
-      name: '食品优惠',
-      description: '适合价格、套餐和限时活动的食品促销素材。',
-    },
-    'eletronico-demo-curta': {
-      name: '电子产品短演示',
-      description: '几秒内展示功能、细节和利益点。',
-    },
-    'moda-lookbook-marketplace': {
-      name: '电商平台穿搭图',
-      description: '适合穿搭、变体和商品目录的商业图片。',
-    },
-    'whatsapp-consulta-rapida': {
-      name: 'WhatsApp 快速咨询',
-      description: '把买家引导到一对一咨询的图片模板。',
-    },
-  },
-};
-
-export function getStarterTemplates(locale: Locale): TemplateCatalogItem[] {
-  return starterTemplateSeeds.map((template) => {
-    const translated =
-      translations[locale as Exclude<Locale, 'pt'>]?.[template.id] ?? {};
-    return {
-      id: template.id,
-      name: translated.name ?? template.name,
-      description: translated.description ?? template.description,
-      category: template.category,
-      prompt: template.prompt,
-      costCredits: template.costCredits,
-      aspectRatios: template.aspectRatios,
-      durationSeconds: template.durationSeconds,
-      asset: template.asset,
-      mediaType: template.mediaType,
-      tags: template.tags,
-      source: 'starter',
-    };
-  });
-}
-
-export function getTemplateTagLabel(slug: string, locale: Locale) {
-  return (
-    templateTagOptions.find((tag) => tag.slug === slug)?.labels[locale] ?? slug
-  );
-}
-
-export function getTemplateTagGroupLabel(
-  group: TemplateTagGroup,
-  locale: Locale
-) {
-  return (
-    templateTagGroups.find((item) => item.group === group)?.labels[locale] ??
-    group
-  );
-}

@@ -14,6 +14,8 @@ const technicalOnlyFields = new Set([
   'userId',
   'assetId',
   'templateId',
+  'thumbnailAssetId',
+  'previewAssetId',
   'storageKey',
   'publicUrl',
   'providerTaskId',
@@ -36,7 +38,18 @@ describe('Admin operational search fields', () => {
       expect.arrayContaining(['email'])
     );
     expect(ADMIN_OPERATIONAL_SEARCH_FIELDS.templates).toEqual(
-      expect.arrayContaining(['name', 'category', 'tags'])
+      expect.arrayContaining(['id', 'title', 'type', 'category', 'prompt'])
+    );
+    expect(ADMIN_OPERATIONAL_SEARCH_FIELDS.templates).not.toContain('tags');
+    expect(ADMIN_OPERATIONAL_SEARCH_FIELDS.templates).not.toContain('slug');
+    expect(ADMIN_OPERATIONAL_SEARCH_FIELDS.templates).not.toContain(
+      'thumbnailAssetId'
+    );
+    expect(ADMIN_OPERATIONAL_SEARCH_FIELDS.templates).not.toContain(
+      'previewAssetId'
+    );
+    expect(ADMIN_OPERATIONAL_SEARCH_FIELDS.templates).not.toContain(
+      'sortWeight'
     );
     expect(ADMIN_OPERATIONAL_SEARCH_FIELDS['library-assets']).toEqual(
       expect.arrayContaining(['title', 'category', 'assetId', 'mimeType'])
@@ -66,16 +79,21 @@ describe('adminSearchMatches', () => {
     ).toBe(true);
   });
 
-  it('matches template name, category, and tag searches', () => {
+  it('matches template id, title, type, category, and prompt searches', () => {
     const values = [
-      'Flash sale product hero',
+      'tpl_flash_sale_product_hero',
+      'Fashion launch',
       'image_to_video',
-      ['sale', 'ratio-9-16'],
+      'fashion',
+      'Show the uploaded product in a clean sale video.',
     ];
 
-    expect(adminSearchMatches(values, 'flash sale')).toBe(true);
+    expect(adminSearchMatches(values, 'tpl_flash_sale')).toBe(true);
+    expect(adminSearchMatches(values, 'fashion launch')).toBe(true);
     expect(adminSearchMatches(values, 'image_to_video')).toBe(true);
-    expect(adminSearchMatches(values, 'ratio-9-16')).toBe(true);
+    expect(adminSearchMatches(values, 'fashion')).toBe(true);
+    expect(adminSearchMatches(values, 'clean sale video')).toBe(true);
+    expect(adminSearchMatches(values, 'ratio-9-16')).toBe(false);
   });
 
   it('matches library asset title, category, and asset metadata', () => {

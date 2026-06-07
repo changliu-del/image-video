@@ -18,7 +18,11 @@ import {
   getMarketingContent,
   type Locale,
 } from '@/lib/marketing/content';
-import type { TemplateCatalogItem } from '@/lib/templates/catalog';
+import {
+  normalizePublicTemplateItems,
+  type PublicTemplateItem,
+  type PublicTemplatesApiResponse,
+} from '@/lib/templates/public-client';
 import { cn } from '@/lib/utils';
 
 type MarketingContent = ReturnType<typeof getMarketingContent>;
@@ -29,18 +33,12 @@ type TemplateItem = {
   asset: string;
   mediaType: 'image' | 'video';
   category: string;
-  cost: string;
+  badge: string;
   summary: string;
   useCase: string;
+  templateId?: string;
 };
-
-type TemplatesApiResponse = {
-  list?: TemplateCatalogItem[];
-  total?: number;
-  page?: number;
-  pageSize?: number;
-  hasMore?: boolean;
-};
+type TemplatesApiResponse = PublicTemplatesApiResponse;
 
 const templateGalleryStatusCopy: Record<
   Locale,
@@ -49,9 +47,7 @@ const templateGalleryStatusCopy: Record<
     empty: string;
     error: string;
     retry: string;
-    categoryLabels: Record<TemplateCatalogItem['category'], string>;
-    credit: string;
-    credits: string;
+    viewAll: string;
   }
 > = {
   pt: {
@@ -59,39 +55,21 @@ const templateGalleryStatusCopy: Record<
     empty: 'Nenhum template publicado ainda.',
     error: 'Nao foi possivel carregar os templates.',
     retry: 'Tentar novamente',
-    categoryLabels: {
-      image_to_image: 'Imagem',
-      image_to_video: 'Imagem para video',
-      try_on: 'Provador',
-    },
-    credit: 'credito',
-    credits: 'creditos',
+    viewAll: 'Ver todos os templates',
   },
   en: {
     loading: 'Loading templates...',
     empty: 'No published templates yet.',
     error: 'Could not load templates.',
     retry: 'Try again',
-    categoryLabels: {
-      image_to_image: 'Image',
-      image_to_video: 'Image to video',
-      try_on: 'Try-on',
-    },
-    credit: 'credit',
-    credits: 'credits',
+    viewAll: 'View all templates',
   },
   zh: {
     loading: '正在加载模板...',
     empty: '暂无已发布模板。',
     error: '模板加载失败。',
     retry: '重试',
-    categoryLabels: {
-      image_to_image: '图片',
-      image_to_video: '图生视频',
-      try_on: '智能试衣',
-    },
-    credit: '算力值',
-    credits: '算力值',
+    viewAll: '查看全部模板',
   },
 };
 
@@ -148,14 +126,14 @@ function TemplateHero({
 
           <div className="mt-8 flex flex-col gap-3 sm:flex-row">
             <Link
-              href={getLocalizedHref(locale, '#templates')}
+              href={getLocalizedHref(locale, '/templates?type=image_to_video')}
               className="inline-flex h-12 items-center justify-center gap-2 rounded-lg bg-white px-5 text-sm font-semibold text-gray-950 transition hover:bg-white/90"
             >
               {content.hero.primaryAction}
               <ArrowRight className="size-4" />
             </Link>
             <Link
-              href={getLocalizedHref(locale, '/templates?category=image_to_image')}
+              href={getLocalizedHref(locale, '/templates?type=image_to_video')}
               className="inline-flex h-12 items-center justify-center gap-2 rounded-lg border border-white/20 bg-white/[0.06] px-5 text-sm font-semibold text-white transition hover:bg-white/10"
             >
               {content.hero.secondaryAction}
@@ -243,7 +221,7 @@ function TemplateCard({
   locale: Locale;
 }) {
   return (
-    <article className="group overflow-hidden rounded-lg border border-gray-200 bg-white shadow-sm transition hover:-translate-y-1 hover:border-gray-300 hover:shadow-md">
+    <article className="group flex h-full flex-col overflow-hidden rounded-lg border border-gray-200 bg-white shadow-sm transition hover:-translate-y-1 hover:border-gray-300 hover:shadow-md">
       <div className="relative aspect-[4/5] overflow-hidden bg-gray-100">
         <TemplateMedia item={item} />
         <div className="absolute left-3 top-3 inline-flex items-center gap-1.5 rounded-full bg-white/92 px-3 py-1 text-xs font-semibold text-gray-800 shadow-sm backdrop-blur">
@@ -255,11 +233,11 @@ function TemplateCard({
           {item.category}
         </div>
       </div>
-      <div className="p-5">
+      <div className="flex flex-1 flex-col p-5">
         <div className="flex items-start justify-between gap-3">
           <h3 className="text-lg font-semibold text-gray-950">{item.name}</h3>
           <span className="rounded-md bg-emerald-50 px-2.5 py-1 text-xs font-semibold text-emerald-700">
-            {item.cost}
+            {item.badge}
           </span>
         </div>
         <p className="mt-4 rounded-lg bg-gray-50 p-3 text-sm font-medium leading-6 text-gray-800">
@@ -268,13 +246,20 @@ function TemplateCard({
         <p className="mt-3 min-h-12 text-sm leading-6 text-gray-600">
           {item.useCase}
         </p>
-        <Link
-          href={getLocalizedHref(locale, '/login')}
-          className="mt-5 inline-flex h-10 w-full items-center justify-center gap-2 rounded-lg bg-gray-950 px-4 text-sm font-semibold text-white transition hover:bg-gray-800"
-        >
-          {actionLabel}
-          <ArrowRight className="size-4" />
-        </Link>
+        <div className="mt-auto pt-5">
+          <Link
+            href={getLocalizedHref(
+              locale,
+              item.templateId
+                ? `/login?redirect=${encodeURIComponent(`/create/video?templateId=${item.templateId}`)}`
+                : '/login'
+            )}
+            className="inline-flex h-10 w-full items-center justify-center gap-2 rounded-lg bg-gray-950 px-4 text-sm font-semibold text-white transition hover:bg-gray-800"
+          >
+            {actionLabel}
+            <ArrowRight className="size-4" />
+          </Link>
+        </div>
       </div>
     </article>
   );
@@ -305,14 +290,17 @@ function TemplateGallerySkeleton({ label }: { label: string }) {
 
 function TemplateGallery({
   content,
+  examples,
   locale,
 }: {
   content: HomeContent['templates'];
+  examples: HomeContent['examples'];
   locale: Locale;
 }) {
   const sectionRef = useRef<HTMLElement>(null);
-  const [items, setItems] = useState<TemplateItem[]>([]);
-  const [page, setPage] = useState(1);
+  const [items, setItems] = useState<TemplateItem[]>(() =>
+    getStaticTemplateItems(examples)
+  );
   const [hasMore, setHasMore] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [hasLoaded, setHasLoaded] = useState(false);
@@ -320,6 +308,10 @@ function TemplateGallery({
   const [reloadKey, setReloadKey] = useState(0);
   const [shouldLoadRemote, setShouldLoadRemote] = useState(false);
   const statusCopy = templateGalleryStatusCopy[locale];
+
+  useEffect(() => {
+    setItems(getStaticTemplateItems(examples));
+  }, [examples]);
 
   useEffect(() => {
     const section = sectionRef.current;
@@ -357,9 +349,10 @@ function TemplateGallery({
       setError(false);
       try {
         const params = new URLSearchParams({
-          page: String(page),
+          page: '1',
           pageSize: '6',
-          sort: 'featured',
+          type: 'image_to_video',
+          locale,
         });
         const response = await fetch(`/api/templates?${params.toString()}`, {
           signal: controller.signal,
@@ -369,26 +362,18 @@ function TemplateGallery({
         }
 
         const data = (await response.json()) as TemplatesApiResponse;
-        const remoteItems = (data.list ?? []).map((template) =>
-          mapCatalogTemplateItem(template, locale)
-        );
+        const remoteItems = normalizePublicTemplateItems(data);
 
         if (!ignore) {
-          setItems((current) => {
-            if (page === 1) {
-              return remoteItems;
-            }
-
-            return uniqueHomeItems([...current, ...remoteItems]);
-          });
+          setItems((current) =>
+            attachRemoteTemplateIds(current, remoteItems)
+          );
           setHasMore(Boolean(data.hasMore));
           setHasLoaded(true);
         }
       } catch {
         if (!ignore) {
-          if (page === 1) {
-            setItems([]);
-          }
+          setItems(getStaticTemplateItems(examples));
           setError(true);
           setHasMore(false);
         }
@@ -405,7 +390,7 @@ function TemplateGallery({
       ignore = true;
       controller.abort();
     };
-  }, [locale, page, reloadKey, shouldLoadRemote]);
+  }, [examples, locale, reloadKey, shouldLoadRemote]);
 
   const showInitialLoading =
     items.length === 0 && !error && (!hasLoaded || isLoading);
@@ -432,7 +417,7 @@ function TemplateGallery({
         </div>
 
         {items.length > 0 ? (
-          <div className="grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-3">
+          <div className="grid grid-cols-1 items-stretch gap-5 sm:grid-cols-2 lg:grid-cols-3">
             {items.map((item) => (
               <TemplateCard
                 key={item.id}
@@ -455,7 +440,6 @@ function TemplateGallery({
               <button
                 type="button"
                 onClick={() => {
-                  setPage(1);
                   setShouldLoadRemote(true);
                   setReloadKey((value) => value + 1);
                 }}
@@ -468,20 +452,13 @@ function TemplateGallery({
         ) : null}
         {hasMore ? (
           <div className="mt-8 flex justify-center">
-            <button
-              type="button"
-              onClick={() => setPage((value) => value + 1)}
-              disabled={isLoading}
-              className="inline-flex h-11 items-center justify-center rounded-md border border-gray-300 bg-white px-5 text-sm font-semibold text-gray-900 transition hover:bg-gray-50 disabled:cursor-not-allowed disabled:opacity-60"
+            <Link
+              href={getLocalizedHref(locale, '/templates?type=image_to_video')}
+              className="inline-flex h-11 items-center justify-center gap-2 rounded-md border border-gray-300 bg-white px-5 text-sm font-semibold text-gray-900 transition hover:bg-gray-50"
             >
-              {isLoading
-                ? locale === 'zh'
-                  ? '加载中...'
-                  : 'Loading...'
-                : locale === 'zh'
-                  ? '加载更多'
-                  : 'Load more'}
-            </button>
+              {statusCopy.viewAll}
+              <ArrowRight className="size-4" />
+            </Link>
           </div>
         ) : null}
       </div>
@@ -489,35 +466,34 @@ function TemplateGallery({
   );
 }
 
-function mapCatalogTemplateItem(
-  template: TemplateCatalogItem,
-  locale: Locale
-): TemplateItem {
-  const statusCopy = templateGalleryStatusCopy[locale];
-  const costUnit =
-    template.costCredits === 1 ? statusCopy.credit : statusCopy.credits;
-
-  return {
-    id: template.id,
-    name: template.name,
-    asset: template.asset,
-    mediaType: template.mediaType,
-    category: statusCopy.categoryLabels[template.category],
-    cost: `${template.costCredits} ${costUnit}`,
-    summary: template.description,
-    useCase: template.description,
-  };
+function getStaticTemplateItems(
+  examples: HomeContent['examples']
+): TemplateItem[] {
+  return examples.items.slice(0, 6).map((item, index) => ({
+    id: `static-template-${index}-${item.asset ?? item.title}`,
+    name: item.title,
+    asset: item.asset ?? '',
+    mediaType: item.mediaType,
+    category: item.category,
+    badge:
+      item.mediaType === 'video'
+        ? examples.videoLabel
+        : examples.imageLabel,
+    summary: item.text,
+    useCase: item.category,
+  }));
 }
 
-function uniqueHomeItems(items: TemplateItem[]) {
-  const seen = new Set<string>();
-  return items.filter((item) => {
-    if (seen.has(item.id)) {
-      return false;
-    }
-    seen.add(item.id);
-    return true;
-  });
+function attachRemoteTemplateIds(
+  items: TemplateItem[],
+  remoteItems: PublicTemplateItem[]
+) {
+  if (remoteItems.length === 0) return items;
+
+  return items.map((item, index) => ({
+    ...item,
+    templateId: remoteItems[index]?.id ?? item.templateId,
+  }));
 }
 
 function WorkflowSection({ content }: { content: HomeContent['workflow'] }) {
@@ -635,7 +611,11 @@ export function MarketingHomePage({ locale }: { locale: Locale }) {
   return (
     <main className="bg-white">
       <TemplateHero content={content} locale={locale} />
-      <TemplateGallery content={content.templates} locale={locale} />
+      <TemplateGallery
+        content={content.templates}
+        examples={content.examples}
+        locale={locale}
+      />
       <WorkflowSection content={content.workflow} />
       <FaqSection content={content.faq} />
       <CtaSection content={content.cta} locale={locale} />

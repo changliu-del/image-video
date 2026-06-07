@@ -1,0 +1,306 @@
+import 'server-only';
+
+import { eq, inArray } from 'drizzle-orm';
+import { db } from '@/lib/db/drizzle';
+import { assets } from '@/lib/db/schema';
+import { getObjectFromR2 } from '@/lib/storage/r2';
+
+type TemplateMediaCacheEntry = {
+  assetId: string;
+  body: Uint8Array;
+  contentType: string | null;
+  etag: string | null;
+  lastModified: string | null;
+  storageKey: string;
+  updatedAt: number;
+};
+
+type TemplateMediaCacheState = {
+  entries: Map<string, TemplateMediaCacheEntry>;
+  totalBytes: number;
+};
+
+type TemplateMediaAssetRow = {
+  id: string;
+  mimeType: string | null;
+  sizeBytes: number | null;
+  status: string;
+  storageKey: string;
+};
+
+type ObjectBody = {
+  transformToByteArray?: () => Promise<Uint8Array>;
+  transformToWebStream?: () => ReadableStream<Uint8Array>;
+};
+
+type CachedMediaResponse = {
+  body: Uint8Array | null;
+  headers: Headers;
+  status: number;
+};
+
+const MiB = 1024 * 1024;
+const DEFAULT_MAX_TOTAL_BYTES = 512 * MiB;
+const DEFAULT_MAX_ITEM_BYTES = 80 * MiB;
+const globalCacheKey = '__imageVideoTemplateMediaCache';
+
+function readPositiveIntegerEnv(name: string, fallback: number) {
+  const value = Number(process.env[name]);
+  return Number.isInteger(value) && value > 0 ? value : fallback;
+}
+
+function maxTotalBytes() {
+  return readPositiveIntegerEnv(
+    'TEMPLATE_MEDIA_MEMORY_CACHE_MAX_BYTES',
+    DEFAULT_MAX_TOTAL_BYTES
+  );
+}
+
+function maxItemBytes() {
+  return readPositiveIntegerEnv(
+    'TEMPLATE_MEDIA_MEMORY_CACHE_MAX_ITEM_BYTES',
+    DEFAULT_MAX_ITEM_BYTES
+  );
+}
+
+function cacheState() {
+  const globalScope = globalThis as typeof globalThis & {
+    [globalCacheKey]?: TemplateMediaCacheState;
+  };
+
+  if (!globalScope[globalCacheKey]) {
+    globalScope[globalCacheKey] = {
+      entries: new Map(),
+      totalBytes: 0,
+    };
+  }
+
+  return globalScope[globalCacheKey]!;
+}
+
+function deleteEntry(state: TemplateMediaCacheState, assetId: string) {
+  const current = state.entries.get(assetId);
+  if (!current) return;
+
+  state.totalBytes -= current.body.byteLength;
+  state.entries.delete(assetId);
+}
+
+function evictToFit(state: TemplateMediaCacheState) {
+  const limit = maxTotalBytes();
+
+  while (state.totalBytes > limit) {
+    const oldestKey = state.entries.keys().next().value as string | undefined;
+    if (!oldestKey) break;
+    deleteEntry(state, oldestKey);
+  }
+}
+
+async function bodyToBytes(body: unknown) {
+  if (!body || typeof body !== 'object') {
+    return null;
+  }
+
+  const objectBody = body as ObjectBody;
+  if (typeof objectBody.transformToByteArray === 'function') {
+    return objectBody.transformToByteArray();
+  }
+
+  if (typeof objectBody.transformToWebStream !== 'function') {
+    return null;
+  }
+
+  const reader = objectBody.transformToWebStream().getReader();
+  const chunks: Uint8Array[] = [];
+  let total = 0;
+
+  while (true) {
+    const { done, value } = await reader.read();
+    if (done) break;
+
+    const chunk =
+      value instanceof Uint8Array ? value : new Uint8Array(value);
+    chunks.push(chunk);
+    total += chunk.byteLength;
+  }
+
+  const bytes = new Uint8Array(total);
+  let offset = 0;
+  for (const chunk of chunks) {
+    bytes.set(chunk, offset);
+    offset += chunk.byteLength;
+  }
+
+  return bytes;
+}
+
+function isTemplateMediaAsset(asset: TemplateMediaAssetRow) {
+  return asset.status === 'uploaded' && asset.storageKey.startsWith('templates/');
+}
+
+async function getTemplateMediaAssets(assetIds: string[]) {
+  const ids = Array.from(new Set(assetIds.filter(Boolean)));
+  if (ids.length === 0) return [];
+
+  return db
+    .select({
+      id: assets.id,
+      mimeType: assets.mimeType,
+      sizeBytes: assets.sizeBytes,
+      status: assets.status,
+      storageKey: assets.storageKey,
+    })
+    .from(assets)
+    .where(inArray(assets.id, ids));
+}
+
+async function cacheTemplateMediaAsset(asset: TemplateMediaAssetRow) {
+  const state = cacheState();
+
+  if (!isTemplateMediaAsset(asset)) {
+    deleteEntry(state, asset.id);
+    return false;
+  }
+
+  if (asset.sizeBytes != null && asset.sizeBytes > maxItemBytes()) {
+    deleteEntry(state, asset.id);
+    return false;
+  }
+
+  const object = await getObjectFromR2({ storageKey: asset.storageKey });
+  const body = await bodyToBytes(object.Body);
+
+  if (!body || body.byteLength > maxItemBytes()) {
+    deleteEntry(state, asset.id);
+    return false;
+  }
+
+  deleteEntry(state, asset.id);
+  state.entries.set(asset.id, {
+    assetId: asset.id,
+    body,
+    contentType: object.ContentType ?? asset.mimeType,
+    etag: object.ETag ?? null,
+    lastModified: object.LastModified?.toUTCString() ?? null,
+    storageKey: asset.storageKey,
+    updatedAt: Date.now(),
+  });
+  state.totalBytes += body.byteLength;
+  evictToFit(state);
+
+  return true;
+}
+
+export function getTemplateMediaCacheEntry(assetId: string) {
+  return cacheState().entries.get(assetId) ?? null;
+}
+
+export async function refreshTemplateMediaCache(assetIds: string[]) {
+  const assetRows = await getTemplateMediaAssets(assetIds);
+
+  for (const asset of assetRows) {
+    await cacheTemplateMediaAsset(asset);
+  }
+}
+
+export async function refreshTemplateMediaCacheForAsset(assetId: string) {
+  const [asset] = await getTemplateMediaAssets([assetId]);
+  if (!asset) {
+    deleteTemplateMediaCacheEntries([assetId]);
+    return;
+  }
+
+  await cacheTemplateMediaAsset(asset);
+}
+
+export function deleteTemplateMediaCacheEntries(assetIds: string[]) {
+  const state = cacheState();
+
+  for (const assetId of assetIds) {
+    deleteEntry(state, assetId);
+  }
+}
+
+function parseRange(rangeHeader: string | null, size: number) {
+  if (!rangeHeader) return null;
+
+  const match = /^bytes=(\d*)-(\d*)$/.exec(rangeHeader.trim());
+  if (!match) return { invalid: true as const };
+
+  const [, rawStart, rawEnd] = match;
+  if (!rawStart && !rawEnd) return { invalid: true as const };
+
+  let start: number;
+  let end: number;
+
+  if (!rawStart) {
+    const suffixLength = Number(rawEnd);
+    if (!Number.isInteger(suffixLength) || suffixLength <= 0) {
+      return { invalid: true as const };
+    }
+    start = Math.max(size - suffixLength, 0);
+    end = size - 1;
+  } else {
+    start = Number(rawStart);
+    end = rawEnd ? Number(rawEnd) : size - 1;
+  }
+
+  if (
+    !Number.isInteger(start) ||
+    !Number.isInteger(end) ||
+    start < 0 ||
+    end < start ||
+    start >= size
+  ) {
+    return { invalid: true as const };
+  }
+
+  return {
+    invalid: false as const,
+    start,
+    end: Math.min(end, size - 1),
+  };
+}
+
+export function createCachedTemplateMediaResponse(
+  entry: TemplateMediaCacheEntry,
+  rangeHeader: string | null
+): CachedMediaResponse {
+  const size = entry.body.byteLength;
+  const range = parseRange(rangeHeader, size);
+  const headers = new Headers({
+    'Accept-Ranges': 'bytes',
+    'Cache-Control': 'public, max-age=300, stale-while-revalidate=3600',
+  });
+
+  if (entry.contentType) headers.set('Content-Type', entry.contentType);
+  if (entry.etag) headers.set('ETag', entry.etag);
+  if (entry.lastModified) headers.set('Last-Modified', entry.lastModified);
+
+  if (range?.invalid) {
+    headers.set('Content-Range', `bytes */${size}`);
+    return {
+      body: null,
+      headers,
+      status: 416,
+    };
+  }
+
+  if (range) {
+    const body = entry.body.slice(range.start, range.end + 1);
+    headers.set('Content-Length', String(body.byteLength));
+    headers.set('Content-Range', `bytes ${range.start}-${range.end}/${size}`);
+    return {
+      body,
+      headers,
+      status: 206,
+    };
+  }
+
+  headers.set('Content-Length', String(size));
+  return {
+    body: entry.body,
+    headers,
+    status: 200,
+  };
+}

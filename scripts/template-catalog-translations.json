@@ -1,0 +1,742 @@
+{
+  "3c数码/充电宝使用展示": {
+    "title": {
+      "pt": "Demonstração de power bank",
+      "en": "Power bank usage demo"
+    },
+    "prompt": {
+      "pt": "Crie um vídeo de produto de 15 segundos para um power bank magnético. Use as imagens de referência, mostre o celular com bateria baixa, o power bank encaixando na traseira, o aparelho sendo virado e balançado sem soltar, depois afaste a câmera para mostrar encaixe fino e leve em cenas de café ou deslocamento. Estilo publicitário hiper-realista em 8K, sem texto nem marca d'água.",
+      "en": "Create a 15-second product video for a magnetic power bank. Use the reference images, show a phone with low battery, the power bank attaching to the back, the phone being flipped and shaken without detaching, then pull back to show a thin, lightweight fit in cafe or commute scenes. Hyper-realistic 8K commercial style, no text or watermark."
+    }
+  },
+  "3c数码/电动牙刷博士试用展示": {
+    "title": {
+      "pt": "Teste de escova elétrica por especialista",
+      "en": "Electric toothbrush expert trial"
+    },
+    "prompt": {
+      "pt": "Crie um vídeo de 15 segundos para escova elétrica. Comece em uma manhã clara, com uma mulher indo ao lavatório, pegando a escova da Imagem 1 e colocando pasta de menta. Mostre a textura da pasta, o uso diante do espelho, espuma delicada, vibração suave e sorriso confiante no final. Use som limpo de pasta e motor leve, ritmo fresco, profissional e premium.",
+      "en": "Create a 15-second electric toothbrush video. Start in a bright morning bedroom as a woman walks to the sink, picks up the toothbrush from Image 1, and adds mint toothpaste. Show paste texture, brushing in the mirror, fine foam, gentle vibration, and a confident smile at the end. Use clean toothpaste and soft motor sounds with a fresh, professional premium rhythm."
+    }
+  },
+  "3c数码/耳机高级感展示": {
+    "title": {
+      "pt": "Headphone premium em detalhe",
+      "en": "Premium headphone detail showcase"
+    },
+    "prompt": {
+      "pt": "Crie um vídeo comercial de 15 segundos para fones de ouvido usando as imagens de referência. Mostre rotação 360 graus, macro do acabamento metálico, dobradiças, malha e almofadas, depois uma visão técnica do driver em explosão e ondas sonoras luminosas ao redor do produto. Use fundo preto e cinza sofisticado, luz cinematográfica, textura hiper-realista e nenhum texto extra.",
+      "en": "Create a 15-second commercial headphone video using the reference images. Show a 360-degree rotation, macro shots of metallic finish, hinges, mesh and ear cushions, then a technical exploded driver view and glowing sound waves around the product. Use a sophisticated black-gray background, cinematic lighting, hyper-real texture, and no extra text."
+    }
+  },
+  "3c数码/耳机真人试戴": {
+    "title": {
+      "pt": "Teste real com headphone",
+      "en": "Headphone real-person try-on"
+    },
+    "prompt": {
+      "pt": "Crie um vídeo de 15 segundos para fones de ouvido. Primeiro, o produto surge da escuridão com rotação elegante e close-ups de dobradiça, malha e botões. Depois, um modelo masculino estiloso sentado em uma cadeira gamer usa o fone, fecha os olhos e aproveita a música com cabelo levemente ao vento. Qualidade 8K, padrão de anúncio comercial, voz masculina adulta, sem texto ou marca d'água.",
+      "en": "Create a 15-second headphone video. First, the product emerges from darkness with an elegant rotation and close-ups of hinge, mesh, and buttons. Then a stylish male model sits in a gaming chair wearing the headphones, eyes closed, enjoying music with hair gently moving. 8K quality, commercial ad standard, adult male voiceover, no text or watermark."
+    }
+  },
+  "3c数码/骨传导耳机多场景使用展示": {
+    "title": {
+      "pt": "Fone de condução óssea em vários cenários",
+      "en": "Bone-conduction headphones multi-scene demo"
+    },
+    "prompt": {
+      "pt": "Crie um anúncio de 15 segundos para fone de condução óssea. Mostre três cenas: corrida matinal no parque com estabilidade no ouvido, uso na piscina com gotas de água e tom azul profundo, e escritório moderno com foco e conexão. Mantenha a posição correta do fone, figurino esportivo limpo, visual premium de filme e narração sobre liberdade, ritmo e foco.",
+      "en": "Create a 15-second bone-conduction headphone ad. Show three scenes: a morning park run with stable fit, a swimming pool shot with water droplets and deep blue tone, and a modern office scene about focus and connection. Keep the headphone placement physically accurate, clean sports styling, premium film texture, and voiceover about freedom, rhythm, and focus."
+    }
+  },
+  "3c数码/键盘多角度展示": {
+    "title": {
+      "pt": "Teclado em múltiplos ângulos",
+      "en": "Keyboard multi-angle showcase"
+    },
+    "prompt": {
+      "pt": "Crie um vídeo tecnológico de 15 segundos para teclado. O teclado da Imagem 1 entra pela lateral em ângulo de 45 graus, a câmera avança com movimento estável, mostra o conjunto completo, switches mecânicos, USB-C e luz indicadora. Inclua dedos digitando rapidamente e finalize em uma mesa gamer completa com mouse, caixas luminosas, dois monitores e mousepad geométrico. Estilo produto 8K hiper-realista, sem texto.",
+      "en": "Create a 15-second tech-style keyboard video. The keyboard from Image 1 slides in from the side at a 45-degree angle, the camera pushes in steadily, showing the full layout, mechanical switches, USB-C port, and power indicator. Include fast typing fingers and end on a complete gaming desk with mouse, glowing speakers, dual monitors, and geometric mousepad. Hyper-real 8K product style, no text."
+    }
+  },
+  "3c数码/键盘功能详解": {
+    "title": {
+      "pt": "Explicação das funções do teclado",
+      "en": "Keyboard feature breakdown"
+    },
+    "prompt": {
+      "pt": "Crie um vídeo de 15 segundos em estilo cyberpunk para teclado. Mostre o teclado frontal com RGB aceso, close-up das teclas com foco percorrendo da esquerda para a direita, visão macro dos switches mecânicos e estrutura interna, depois cena de jogo com mãos operando rapidamente e ondas de luz a cada tecla. Narração energética destacando precisão, resposta rápida e sensação gamer.",
+      "en": "Create a 15-second cyberpunk-style keyboard video. Show the front keyboard with RGB lighting, close-up keycaps with focus sweeping left to right, macro view of mechanical switches and internal structure, then a gaming scene with hands operating quickly and light waves triggered by each key. Use energetic voiceover about precision, fast response, and gaming feel."
+    }
+  },
+  "3c数码/筋膜枪博主试用": {
+    "title": {
+      "pt": "Teste de massageador por criador",
+      "en": "Massage gun creator trial"
+    },
+    "prompt": {
+      "pt": "Crie um vídeo UGC de 15 segundos para massageador muscular. Um criador aparece cansado no sofá com dor no ombro, pega o massageador da Imagem 1 e aplica na área dolorida. Mostre vibração no músculo, expressão de alívio, produto compacto na mão e fechamento com gesto de aprovação. Estilo direto, convincente, com som de acionamento e close-ups de performance.",
+      "en": "Create a 15-second UGC video for a massage gun. A creator appears tired on the sofa with shoulder soreness, picks up the device from Image 1, and applies it to the sore area. Show muscle vibration, relieved expression, compact product grip, and a thumbs-up ending. Direct, convincing style with startup sound and performance close-ups."
+    }
+  },
+  "3c数码/拍立得多场景使用展示": {
+    "title": {
+      "pt": "Instantânea em vários momentos",
+      "en": "Instant camera multi-scene moments"
+    },
+    "prompt": {
+      "pt": "Crie um vídeo de 15 segundos para câmera instantânea. Mostre piquenique na grama, encontro na rua, casamento, foto de família e a câmera sobre a mesa diante de uma parede de fotos. Em cada cena, congele o momento como uma foto instantânea com borda branca e som de clique ou revelação. Tom caloroso, nostálgico e delicado, celebrando memórias que merecem ser guardadas.",
+      "en": "Create a 15-second instant camera video. Show a grass picnic, street date, wedding moment, family photo, and the camera placed on a table before a photo wall. In each scene, freeze the moment into an instant photo with white border and shutter or developing sound. Warm, nostalgic, delicate tone celebrating memories worth keeping."
+    }
+  },
+  "3c数码/投影仪使用展示": {
+    "title": {
+      "pt": "Demonstração de projetor em casa",
+      "en": "Home projector usage demo"
+    },
+    "prompt": {
+      "pt": "Crie um vídeo cinematográfico de 15 segundos para projetor. Em quarto escuro, mostre o corpo do projetor sobre lençol branco, textura fosca e feixe de luz. A câmera avança até a imagem 4K na parede ficar nítida, com som de ondas. Depois revele o quarto inteiro com uma mulher relaxando na cama, luz LED quente e clima de cinema em casa. Final calmo e atmosférico.",
+      "en": "Create a cinematic 15-second projector video. In a dark bedroom, show the projector body on white sheets, matte texture, and a clear light beam. Push the camera forward until the 4K wall projection becomes sharp, with ocean-wave sound. Then reveal the full bedroom with a woman relaxing in bed, warm LED lighting, and home-cinema comfort. Calm atmospheric ending."
+    }
+  },
+  "服饰/上衣一衣多穿": {
+    "title": {
+      "pt": "Uma blusa, vários looks",
+      "en": "One top, multiple outfits"
+    },
+    "prompt": {
+      "pt": "Crie um vídeo de 15 segundos mostrando uma blusa da Imagem 2 em uma modelo chinesa jovem no cenário da Imagem 1. Gere quatro combinações diferentes com bolsas, casacos, partes de baixo, sapatos e acessórios. A modelo entra pela direita e exibe cada look, começando com roupa de casa e saudação, terminando com o último look saindo do quadro. Fundo fixo, rosto consistente, BGM alegre, sem legendas.",
+      "en": "Create a 15-second video showing the top from Image 2 on a young Chinese female model in the Image 1 background. Generate four different outfits with bags, jackets, bottoms, shoes, and accessories. The model enters from the right and presents each look, starting in homewear with a greeting and ending with the final look walking out. Fixed background, consistent face, cheerful BGM, no subtitles."
+    }
+  },
+  "服饰/上衣多SKU展示": {
+    "title": {
+      "pt": "Blusas de trabalho em vários SKUs",
+      "en": "Multi-SKU workwear tops showcase"
+    },
+    "prompt": {
+      "pt": "Crie um vídeo de 15 segundos para recomendações de blusas de outono para trabalho. Use uma modelo asiática jovem em estilo coreano minimalista, fundo fixo da Imagem 1, plano de corpo inteiro 3:4 e voz feminina suave. Mostre três blusas diferentes das imagens com gestos naturais, detalhes de caimento e cortes rápidos no final para comparar os estilos.",
+      "en": "Create a 15-second video recommending autumn workwear tops. Use a young Asian female model in minimalist Korean style, fixed Image 1 background, full-body 3:4 framing, and gentle female voiceover. Show three different tops from the images with natural gestures, fit details, and quick cuts at the end to compare the styles."
+    }
+  },
+  "服饰/多角度快闪展示": {
+    "title": {
+      "pt": "Look em cortes rápidos de vários ângulos",
+      "en": "Multi-angle outfit flash showcase"
+    },
+    "prompt": {
+      "pt": "Crie um vídeo UGC realista de 15 segundos com uma jovem asiática usando a blusa e calça das imagens no cenário da Imagem 1. Use fundo fixo, sem efeitos especiais, poses frontais e laterais, toque no colarinho, na barra e no tecido, caminhada curta e gesto final de aprovação. Narração animada destacando caimento limpo, conforto, tecido respirável e versatilidade para trabalho.",
+      "en": "Create a realistic 15-second UGC video with a young Asian woman wearing the top and pants from the images in the Image 1 setting. Use fixed background, no special effects, front and side poses, touching collar, hem and fabric, a short walk, and final approval gesture. Energetic voiceover highlights clean fit, comfort, breathable fabric, and workwear versatility."
+    }
+  },
+  "服饰/女鞋户外试穿展示": {
+    "title": {
+      "pt": "Teste externo de sapato feminino",
+      "en": "Outdoor women's shoe try-on"
+    },
+    "prompt": {
+      "pt": "Crie um vídeo realista de 15 segundos para sapatos. Mostre a modelo entrando em um gramado usando o calçado da Imagem 1, depois close sentada em uma toalha de piquenique, caminhada acompanhando os pés, composição com objetos ao redor e um salto leve para mostrar aderência. Narração casual sobre estilo, praticidade, material macio e conforto para passeio.",
+      "en": "Create a realistic 15-second shoe video. Show the model walking onto grass wearing the shoes from Image 1, then a seated picnic-mat close-up, walking foot-follow shot, relaxed composition with surrounding objects, and a light jump to show grip. Casual voiceover about style, convenience, soft material, and comfortable outings."
+    }
+  },
+  "服饰/服饰氛围感tvc": {
+    "title": {
+      "pt": "TVC de moda com atmosfera",
+      "en": "Atmospheric fashion TVC"
+    },
+    "prompt": {
+      "pt": "Crie um vídeo de marca de moda de 15 segundos sem legendas nem narração. Use a roupa da Imagem 1 em uma cena de bosque com sol atravessando as folhas. Alterne grande angular, travelling lateral, close-up de rosto, toque no colarinho, caminhada sobre a grama e silhueta em contraluz. Textura de filme, luz natural, tecido em destaque e fade out final elegante.",
+      "en": "Create a 15-second fashion brand video with no subtitles or voiceover. Use the outfit from Image 1 in a forest scene with sunlight through leaves. Alternate wide angle, lateral tracking, face close-up, collar touch, grass walking, and backlit silhouette. Film texture, natural light, fabric emphasis, and elegant final fade out."
+    }
+  },
+  "服饰/美瞳真人试戴": {
+    "title": {
+      "pt": "Teste real de lentes coloridas",
+      "en": "Real colored contact lens try-on"
+    },
+    "prompt": {
+      "pt": "Crie um vídeo de quatro cenas para teste de lentes coloridas. A pessoa da Imagem 2 deve usar a lente da Imagem 1, mantendo rosto, maquiagem, roupa, cenário e enquadramento consistentes em todas as cenas. Mostre poses e expressões diferentes, câmera fixa, sem narração, apenas música R&B coreana suave.",
+      "en": "Create a four-shot colored contact lens try-on video. The person from Image 2 should wear the lenses from Image 1 while keeping face, makeup, outfit, scene, and framing consistent across all shots. Show different poses and expressions, fixed camera, no voiceover, only soft Korean R&B music."
+    }
+  },
+  "服饰/男装棚拍展示": {
+    "title": {
+      "pt": "Moda masculina em estúdio branco",
+      "en": "Men's studio fashion showcase"
+    },
+    "prompt": {
+      "pt": "Crie um vídeo de moda masculina de 15 segundos em fundo branco fixo, claro e limpo. Gere um modelo asiático bonito de cerca de 35 anos usando a blusa e calça da Imagem 1, com detalhes das Imagens 2 e 3. Use cortes rápidos de 1 a 2 segundos, poses alternadas, enquadramento central, atmosfera elegante e energética, qualidade comercial, sem texto ou narração.",
+      "en": "Create a 15-second men's fashion video on a fixed clean white background. Generate a handsome Asian male model around 35 wearing the top and pants from Image 1, with details from Images 2 and 3. Use quick 1-2 second cuts, alternating poses, centered framing, elegant energetic atmosphere, commercial quality, no text or voiceover."
+    }
+  },
+  "服饰/男装种草展示": {
+    "title": {
+      "pt": "Recomendação UGC de calça masculina",
+      "en": "Men's jeans UGC recommendation"
+    },
+    "prompt": {
+      "pt": "Crie um vídeo UGC de 15 segundos para calça jeans masculina usando Imagem 1 frontal e Imagem 2 traseira. Mostre o modelo andando na rua, girando em ambiente interno para exibir bolsos e perfil, close no tecido e cintura, calça com tênis em degrau e final Clean Fit ao pôr do sol. Narração destaca pernas alongadas, caimento slim, tecido estruturado e estilo urbano.",
+      "en": "Create a 15-second UGC video for men's jeans using front Image 1 and back Image 2. Show the model walking on the street, rotating indoors to show pockets and side profile, close-ups of fabric and waist, pants with sneakers on steps, and a Clean Fit sunset ending. Voiceover highlights long-leg effect, slim fit, structured fabric, and street style."
+    }
+  },
+  "服饰/牛仔裤变装展示": {
+    "title": {
+      "pt": "Transformações com jeans",
+      "en": "Jeans outfit transformation"
+    },
+    "prompt": {
+      "pt": "Crie um vídeo de 15 segundos de troca de looks com a calça jeans da Imagem 1. Mantenha a modelo em um fundo residencial estilo Instagram, câmera fixa e sem legendas. Comece com roupa de casa perguntando como combinar jeans no verão, depois troque rapidamente para cinco looks: malha branca, camiseta cinza, blusa ombro a ombro roxa, cardigã listrado com café e regata poá. Final com gesto fofo e sorriso.",
+      "en": "Create a 15-second outfit transformation video with the jeans from Image 1. Keep the model in an Instagram-style home background, fixed camera, no subtitles. Start in homewear asking how to style jeans in summer, then rapidly switch through five looks: white knit, gray tee, purple off-shoulder top, striped cardigan with coffee, and polka-dot sleeveless top. End with a cute gesture and smile."
+    }
+  },
+  "服饰/穿搭多场景展示": {
+    "title": {
+      "pt": "Mesmo look em vários cenários",
+      "en": "Same outfit across multiple scenes"
+    },
+    "prompt": {
+      "pt": "Crie um vídeo de 15 segundos com textura realista mostrando o mesmo look da Imagem 1 em vários cenários, sem texto. A modelo mantém os detalhes da roupa e aparece no espelho de casa, faixa de pedestres urbana, café ao ar livre, galeria minimalista e parque ao pôr do sol. A narração apresenta uma combinação confortável, bonita e versátil para rua, café e exposição.",
+      "en": "Create a realistic 15-second video showing the same outfit from Image 1 across multiple scenes, with no text. Keep clothing details consistent as the model appears at a home mirror, urban crosswalk, outdoor cafe, minimalist gallery, and sunset park. Voiceover introduces a comfortable, stylish, versatile outfit for street, coffee, and exhibitions."
+    }
+  },
+  "服饰/裙子多穿搭展示": {
+    "title": {
+      "pt": "Saia em looks da semana",
+      "en": "Skirt weekly outfit variations"
+    },
+    "prompt": {
+      "pt": "Crie um vídeo realista de 15 segundos de uma semana de looks com a saia da Imagem 1 na modelo, sempre no cenário da Imagem 2. Use transições esquerda-para-direita para cinco combinações: blusa preta ombro a ombro, camisa branca com café, blusa de manga bufante, regata preta com óculos, e camiseta rosa. Movimento natural, luz transparente, sem narração, BGM francês leve.",
+      "en": "Create a realistic 15-second weekly outfit video using the skirt from Image 1 on the model, always in the Image 2 setting. Use left-to-right transitions for five combinations: black off-shoulder top, white shirt with coffee, puff-sleeve top, black cami with sunglasses, and pink short tee. Natural movement, airy light, no voiceover, light French BGM."
+    }
+  },
+  "服饰/鞋子开箱试穿": {
+    "title": {
+      "pt": "Unboxing e teste de tênis",
+      "en": "Shoe unboxing and try-on"
+    },
+    "prompt": {
+      "pt": "Crie um vídeo de 15 segundos em 3:4 com unboxing e prova de tênis. Mostre visão em primeira pessoa abrindo a caixa em tapete branco, retirando papel protetor e segurando o calçado da Imagem 2. Faça close-ups girando o tênis para mostrar laterais, traseira, mesh, couro e costura. Finalize com prova no pé diante do espelho, sem mostrar o rosto, com narração casual.",
+      "en": "Create a 15-second 3:4 shoe unboxing and try-on video. Show first-person view opening the box on a white carpet, removing dust paper, and holding the shoe from Image 2. Use close-ups rotating the sneaker to show side profile, heel, mesh, leather, and stitching. Finish with on-foot mirror try-on, no face shown, casual voiceover."
+    }
+  },
+  "家居/台灯场景展示": {
+    "title": {
+      "pt": "Luminária em cena de ambiente",
+      "en": "Table lamp scene showcase"
+    },
+    "prompt": {
+      "pt": "Crie um vídeo de 15 segundos para luminária de mesa. Use as imagens de referência para mostrar primeiro a cena de uso em mesa de trabalho ou quarto, depois close-ups do acabamento, luz suave e ajuste de ângulo. A iluminação deve parecer aconchegante, limpa e realista, com transições calmas e sensação de produto útil para casa.",
+      "en": "Create a 15-second table lamp video. Use the reference images to first show the lamp in a desk or bedroom setting, then close-ups of finish, soft light, and angle adjustment. Lighting should feel cozy, clean, and realistic, with calm transitions and a practical home-product feeling."
+    }
+  },
+  "家居/四斗柜使用展示": {
+    "title": {
+      "pt": "Demonstração de cômoda com quatro gavetas",
+      "en": "Four-drawer cabinet usage demo"
+    },
+    "prompt": {
+      "pt": "Crie um vídeo de 15 segundos para uma cômoda de quatro gavetas. Mostre o móvel em um ambiente de casa limpo, abertura suave das gavetas, organização de roupas e objetos, detalhes de puxador, acabamento e estabilidade. Use luz natural, enquadramento realista, sensação de armazenamento prático e visual organizado.",
+      "en": "Create a 15-second video for a four-drawer cabinet. Show the furniture in a clean home environment, smooth drawer opening, organized clothes and objects, handle details, finish, and stability. Use natural light, realistic framing, practical storage feeling, and tidy visual style."
+    }
+  },
+  "家居/多场景印象展示": {
+    "title": {
+      "pt": "Impressão de produto em vários ambientes",
+      "en": "Multi-scene home impression"
+    },
+    "prompt": {
+      "pt": "Crie um vídeo de 15 segundos com aparência de anúncio de casa, mostrando o produto em vários ambientes. Alterne sala, quarto, canto de trabalho ou cozinha conforme as imagens, sempre mantendo o produto consistente. Use câmera suave, luz natural, composição limpa e clima de vida cotidiana confortável.",
+      "en": "Create a 15-second home-ad style video showing the product across multiple rooms. Alternate living room, bedroom, work corner, or kitchen according to the images while keeping the product consistent. Use smooth camera movement, natural light, clean composition, and comfortable everyday-life mood."
+    }
+  },
+  "家居/家居痛点场景种草": {
+    "title": {
+      "pt": "Solução para dor do dia a dia em casa",
+      "en": "Home pain-point recommendation"
+    },
+    "prompt": {
+      "pt": "Crie um vídeo UGC de 15 segundos para um produto de casa. Comece mostrando um problema cotidiano claro, como bagunça, poeira, uso difícil ou falta de espaço. Em seguida apresente o produto, mostre como ele resolve a dor em close-ups funcionais e finalize com o ambiente organizado e uma recomendação natural. Realista, direto e convincente.",
+      "en": "Create a 15-second UGC video for a home product. Start with a clear everyday pain point such as clutter, dust, difficult use, or lack of space. Then introduce the product, show how it solves the problem through functional close-ups, and end with an organized environment and natural recommendation. Realistic, direct, and convincing."
+    }
+  },
+  "家居/炒锅使用展示": {
+    "title": {
+      "pt": "Demonstração de wok em uso",
+      "en": "Wok cooking usage demo"
+    },
+    "prompt": {
+      "pt": "Crie um vídeo de 15 segundos para uma wok ou frigideira. Mostre a panela brilhante no fogão, óleo aquecendo, legumes e carne sendo salteados, vapor e aroma visual. Destaque revestimento, aquecimento uniforme, cabo firme e facilidade de uso. Use luz quente de cozinha, som de fritura e textura documental de comida.",
+      "en": "Create a 15-second video for a wok or frying pan. Show the shiny pan on the stove, oil heating, vegetables and meat being stir-fried, steam, and visual aroma. Highlight coating, even heating, sturdy handle, and ease of use. Use warm kitchen light, sizzling sound, and food-documentary texture."
+    }
+  },
+  "家居/粘毛器使用展示": {
+    "title": {
+      "pt": "Removedor de pelos em uso",
+      "en": "Lint remover usage demo"
+    },
+    "prompt": {
+      "pt": "Crie um vídeo de 15 segundos para removedor de pelos. Mostre sofá, roupa ou tapete com pelos visíveis, a ferramenta passando pela superfície, close-up da limpeza instantânea e comparação antes/depois. Finalize com o ambiente limpo e o produto na mão. Estilo UGC realista, simples e altamente demonstrativo.",
+      "en": "Create a 15-second lint remover video. Show a sofa, clothing, or rug with visible pet hair, the tool passing over the surface, instant cleaning close-up, and before/after comparison. End with a clean environment and the product in hand. Realistic UGC style, simple and highly demonstrative."
+    }
+  },
+  "家居/衣柜生活感tvc": {
+    "title": {
+      "pt": "TVC lifestyle de guarda-roupa",
+      "en": "Wardrobe lifestyle TVC"
+    },
+    "prompt": {
+      "pt": "Crie um TVC de 15 segundos para guarda-roupa com sensação de vida real. Mostre quarto iluminado, portas abrindo suavemente, roupas bem organizadas, detalhes de trilho, puxador e divisórias. Inclua uma pessoa escolhendo roupa com calma e finalize com o quarto elegante e organizado. Luz natural, ritmo premium e sem texto.",
+      "en": "Create a 15-second lifestyle TVC for a wardrobe. Show a bright bedroom, doors opening smoothly, neatly organized clothes, rail, handle, and compartment details. Include a person calmly choosing an outfit and end with an elegant, organized room. Natural light, premium rhythm, no text."
+    }
+  },
+  "家居/迷你拖把使用展示": {
+    "title": {
+      "pt": "Mini mop em uso",
+      "en": "Mini mop usage demo"
+    },
+    "prompt": {
+      "pt": "Crie um vídeo de 15 segundos para mini mop. Mostre manchas ou respingos em mesa, pia, vidro ou chão pequeno, depois a mini mop limpando com facilidade. Use close-ups do material absorvente, torção ou lavagem, e comparação antes/depois. Finalize guardando o produto de forma compacta. Estilo limpo, prático e doméstico.",
+      "en": "Create a 15-second mini mop video. Show stains or splashes on a table, sink, glass, or small floor area, then the mini mop cleaning easily. Use close-ups of absorbent material, wringing or rinsing, and before/after comparison. End by storing the compact product. Clean, practical home style."
+    }
+  },
+  "家用电器/冰箱tvc展示": {
+    "title": {
+      "pt": "TVC de geladeira",
+      "en": "Refrigerator TVC showcase"
+    },
+    "prompt": {
+      "pt": "Crie um TVC de 15 segundos para geladeira. Um criador interage com a geladeira nos primeiros segundos, toca a porta e destaca o visual. Depois abre a porta para mostrar grande capacidade, alimentos frescos e divisão organizada. Mostre gavetas deslizando suavemente e finalize com o criador recomendando o produto. Filtro frio claro, música leve de vlog, sem legendas.",
+      "en": "Create a 15-second refrigerator TVC. A creator interacts with the fridge in the first seconds, touches the door, and highlights its look. Then open the door to show large capacity, fresh food, and organized zones. Show drawers sliding smoothly and end with the creator recommending the product. Bright cool filter, light vlog music, no subtitles."
+    }
+  },
+  "家用电器/加湿器痛点展示": {
+    "title": {
+      "pt": "Umidificador resolvendo dor do ar seco",
+      "en": "Humidifier dry-air pain-point demo"
+    },
+    "prompt": {
+      "pt": "Crie um vídeo UGC de 15 segundos para umidificador. Comece com ambiente seco, pele desconfortável ou garganta irritada. Mostre o produto ligado, névoa fina saindo de forma estável, quarto ou mesa ficando mais confortável, e close no design. Finalize com sensação de ar fresco, luz suave e recomendação natural.",
+      "en": "Create a 15-second UGC humidifier video. Start with dry air, uncomfortable skin, or irritated throat. Show the product turning on, fine mist flowing steadily, a bedroom or desk becoming more comfortable, and design close-ups. End with fresh-air feeling, soft light, and natural recommendation."
+    }
+  },
+  "家用电器/台灯TVC场景展示": {
+    "title": {
+      "pt": "TVC de luminária em cena",
+      "en": "Table lamp TVC scene"
+    },
+    "prompt": {
+      "pt": "Crie um TVC de 15 segundos para luminária. Mostre uma pessoa enfrentando cansaço no trabalho ou leitura em luz fraca, depois ligando a luminária. Destaque feixe suave, ajuste de ângulo, textura do produto e mesa mais confortável. Use transições limpas, luz quente, clima premium e final com o produto centralizado.",
+      "en": "Create a 15-second TVC for a table lamp. Show someone dealing with work fatigue or reading in poor light, then turning on the lamp. Highlight soft beam, angle adjustment, product texture, and a more comfortable desk. Use clean transitions, warm light, premium mood, and product-centered ending."
+    }
+  },
+  "家用电器/吹风机使用前后对比": {
+    "title": {
+      "pt": "Secador antes e depois",
+      "en": "Hair dryer before-and-after"
+    },
+    "prompt": {
+      "pt": "Crie um vídeo de 15 segundos para secador de cabelo. Mostre cabelo molhado e sem forma, depois a pessoa usando o secador com fluxo de ar forte e controlado. Inclua close do bocal, brilho do cabelo, movimento natural e comparação antes/depois com resultado macio e volumoso. Estilo beauty premium, sem texto excessivo.",
+      "en": "Create a 15-second hair dryer video. Show wet, shapeless hair, then the person using the dryer with strong controlled airflow. Include nozzle close-up, hair shine, natural movement, and before/after comparison with soft voluminous result. Premium beauty style, no excessive text."
+    }
+  },
+  "家用电器/夹发板博主试用": {
+    "title": {
+      "pt": "Teste de prancha por criadora",
+      "en": "Hair straightener creator trial"
+    },
+    "prompt": {
+      "pt": "Crie um vídeo UGC de 15 segundos para prancha de cabelo. A criadora mostra cabelo desalinhado, aquece a prancha, passa em uma mecha e revela acabamento liso e brilhante. Destaque controle, deslizamento, proteção do fio e facilidade de uso. Final com look pronto e recomendação confiante, luz de banheiro ou penteadeira.",
+      "en": "Create a 15-second UGC video for a hair straightener. The creator shows messy hair, heats the tool, glides it through one section, and reveals smooth shiny finish. Highlight control, glide, hair protection, and ease of use. End with finished look and confident recommendation, bathroom or vanity lighting."
+    }
+  },
+  "家用电器/电动剃须刀tvc展示": {
+    "title": {
+      "pt": "TVC de barbeador elétrico",
+      "en": "Electric shaver TVC"
+    },
+    "prompt": {
+      "pt": "Crie um TVC de 15 segundos para barbeador elétrico. Mostre um homem adulto diante do espelho, close na barba curta, o barbeador deslizando pelo rosto, detalhes da lâmina e design do produto. Inclua antes/depois limpo, pele confortável e final com produto sobre bancada. Estilo masculino moderno, luz limpa, som preciso.",
+      "en": "Create a 15-second electric shaver TVC. Show an adult man in front of a mirror, close-up of stubble, the shaver gliding across the face, blade and product design details. Include clean before/after, comfortable skin, and product on countertop ending. Modern masculine style, clean light, precise sound."
+    }
+  },
+  "家用电器/电热水壶试用展示": {
+    "title": {
+      "pt": "Teste de chaleira elétrica",
+      "en": "Electric kettle trial"
+    },
+    "prompt": {
+      "pt": "Crie um vídeo de 15 segundos para chaleira elétrica. Mostre água sendo colocada, botão acionado, luz ou indicador, vapor suave e água quente sendo servida em xícara. Destaque rapidez, segurança, design limpo e uso matinal. Cozinha clara, som de fervura controlado, sensação de rotina prática e elegante.",
+      "en": "Create a 15-second electric kettle video. Show water being added, button pressed, light or indicator, soft steam, and hot water poured into a cup. Highlight speed, safety, clean design, and morning use. Bright kitchen, controlled boiling sound, practical elegant routine feeling."
+    }
+  },
+  "家用电器/空气炸锅tvc展示": {
+    "title": {
+      "pt": "TVC de air fryer",
+      "en": "Air fryer TVC showcase"
+    },
+    "prompt": {
+      "pt": "Crie um TVC de 15 segundos para air fryer. Mostre alimentos sendo colocados no cesto, painel sendo ajustado, cozimento com luz quente e resultado crocante saindo. Destaque praticidade, menos óleo, limpeza e aparência do produto na cozinha. Use close-ups apetitosos, ritmo familiar e final com prato pronto.",
+      "en": "Create a 15-second air fryer TVC. Show food placed in the basket, panel adjusted, warm cooking light, and crispy result coming out. Highlight convenience, less oil, cleaning ease, and product look in the kitchen. Use appetizing close-ups, family-friendly rhythm, and finished dish ending."
+    }
+  },
+  "家用电器/空调产品展示": {
+    "title": {
+      "pt": "Demonstração de ar-condicionado",
+      "en": "Air conditioner product showcase"
+    },
+    "prompt": {
+      "pt": "Crie um vídeo de 15 segundos para ar-condicionado. Mostre ambiente quente e desconfortável, depois o aparelho ligando, fluxo de ar suave, pessoas relaxando e cortinas se movendo levemente. Inclua close do design, controle remoto e saída de ar. Visual limpo, sensação fresca, silenciosa e confortável.",
+      "en": "Create a 15-second air conditioner video. Show a hot uncomfortable room, then the unit turning on, soft airflow, people relaxing, and curtains moving gently. Include close-ups of design, remote control, and air outlet. Clean visuals, fresh, quiet, comfortable feeling."
+    }
+  },
+  "美妆个护/vc精华博主试用": {
+    "title": {
+      "pt": "Teste de sérum VC por criadora",
+      "en": "VC serum creator trial"
+    },
+    "prompt": {
+      "pt": "Crie um anúncio realista de 15 segundos para sérum VC com uma criadora de skincare em lavatório minimalista de manhã. Mostre gotas no dorso da mão, textura translúcida, aplicação no rosto, absorção rápida, brilho natural da pele e produto final sob luz elegante. Evite filtros exagerados, mantenha poros reais, ritmo fluido e narração confiante.",
+      "en": "Create a realistic 15-second VC serum ad with a skincare creator at a minimalist morning sink. Show drops on the back of the hand, translucent texture, face application, quick absorption, natural skin glow, and final product under elegant light. Avoid exaggerated filters, keep real pores, smooth rhythm, and confident voiceover."
+    }
+  },
+  "美妆个护/唇膏tvc展示": {
+    "title": {
+      "pt": "TVC de batom em bastão",
+      "en": "Lipstick TVC showcase"
+    },
+    "prompt": {
+      "pt": "Crie um TVC de 15 segundos para batom em bastão. Mostre produto em close premium, textura do bastão, aplicação nos lábios, cor ficando uniforme e acabamento hidratado. Use luz suave, fundo elegante, movimento de câmera delicado e final com embalagem centralizada. Sem texto excessivo, atmosfera beauty refinada.",
+      "en": "Create a 15-second lipstick TVC. Show premium product close-ups, stick texture, application on lips, even color payoff, and hydrated finish. Use soft lighting, elegant background, delicate camera motion, and final centered packaging. No excessive text, refined beauty atmosphere."
+    }
+  },
+  "美妆个护/唇釉高级感tvc": {
+    "title": {
+      "pt": "TVC premium de lip tint",
+      "en": "Premium lip glaze TVC"
+    },
+    "prompt": {
+      "pt": "Crie um TVC sofisticado de 15 segundos para lip tint. Mostre embalagem com reflexos luxuosos, aplicador retirando produto, textura brilhante em macro, aplicação nos lábios e resultado com cor intensa. Use fundo escuro ou espelhado, luz de beleza precisa, movimentos lentos e sensação de campanha premium.",
+      "en": "Create a sophisticated 15-second TVC for lip glaze. Show luxurious package reflections, applicator pulling product, glossy macro texture, lip application, and intense color result. Use a dark or mirrored background, precise beauty lighting, slow motion, and premium campaign feeling."
+    }
+  },
+  "美妆个护/散粉tvc展示": {
+    "title": {
+      "pt": "TVC de pó solto",
+      "en": "Loose powder TVC showcase"
+    },
+    "prompt": {
+      "pt": "Crie um TVC de 15 segundos para pó solto. Mostre embalagem abrindo, partículas finas flutuando sob luz suave, pincel tocando o pó e aplicação no rosto para acabamento aveludado. Inclua close de pele sem brilho, textura leve e produto final. Visual limpo, delicado e premium.",
+      "en": "Create a 15-second loose powder TVC. Show packaging opening, fine particles floating under soft light, brush touching the powder, and face application for a velvet finish. Include close-up of shine-free skin, lightweight texture, and final product shot. Clean, delicate, premium visuals."
+    }
+  },
+  "美妆个护/洗面奶博主推荐": {
+    "title": {
+      "pt": "Recomendação de gel de limpeza por criadora",
+      "en": "Cleanser creator recommendation"
+    },
+    "prompt": {
+      "pt": "Crie um vídeo UGC de 15 segundos para gel de limpeza facial. Uma criadora mostra o produto no banheiro, aplica na mão, forma espuma delicada, massageia o rosto e enxágua. Destaque limpeza suave, pele sem repuxar e sensação fresca. Luz de manhã, tom natural, narração próxima e convincente.",
+      "en": "Create a 15-second UGC video for facial cleanser. A creator shows the product in a bathroom, applies it to the hand, creates fine foam, massages the face, and rinses. Highlight gentle cleansing, no tight feeling, and freshness. Morning light, natural tone, close and convincing voiceover."
+    }
+  },
+  "美妆个护/洗面奶解说tvc": {
+    "title": {
+      "pt": "TVC explicativo de gel de limpeza",
+      "en": "Cleanser explainer TVC"
+    },
+    "prompt": {
+      "pt": "Crie um TVC explicativo de 15 segundos para gel de limpeza. Mostre textura, espuma, aplicação, enxágue e resultado de pele limpa. Use close-ups didáticos sem texto excessivo, narração sobre limpeza suave, refrescância e cuidado diário. Fundo de banheiro limpo, luz clara e ritmo profissional.",
+      "en": "Create a 15-second explainer TVC for facial cleanser. Show texture, foam, application, rinsing, and clean-skin result. Use instructional close-ups without excessive text, voiceover about gentle cleansing, freshness, and daily care. Clean bathroom background, bright light, professional rhythm."
+    }
+  },
+  "美妆个护/粉底展示": {
+    "title": {
+      "pt": "Demonstração de base",
+      "en": "Foundation showcase"
+    },
+    "prompt": {
+      "pt": "Crie um vídeo de 15 segundos para base. Mostre embalagem, textura sendo espalhada no dorso da mão, aplicação no rosto com esponja ou pincel, cobertura uniforme e acabamento natural. Inclua antes/depois sutil, pele luminosa e produto centralizado. Estilo beauty limpo e comercial.",
+      "en": "Create a 15-second foundation video. Show packaging, texture spread on the back of the hand, face application with sponge or brush, even coverage, and natural finish. Include subtle before/after, luminous skin, and centered product shot. Clean commercial beauty style."
+    }
+  },
+  "美妆个护/精华博主推荐": {
+    "title": {
+      "pt": "Recomendação de sérum por criadora",
+      "en": "Serum creator recommendation"
+    },
+    "prompt": {
+      "pt": "Crie um vídeo UGC de 15 segundos para sérum facial. A criadora mostra o produto, pinga o sérum, destaca textura leve, aplica no rosto e mostra brilho após absorção. Narração próxima fala sobre hidratação, luminosidade e uso diário. Pele real, luz natural, fundo limpo e sem filtros exagerados.",
+      "en": "Create a 15-second UGC video for facial serum. The creator shows the product, drops the serum, highlights lightweight texture, applies it to the face, and shows glow after absorption. Friendly voiceover mentions hydration, luminosity, and daily use. Real skin, natural light, clean background, no exaggerated filters."
+    }
+  },
+  "美妆个护/精华试用展示": {
+    "title": {
+      "pt": "Demonstração de teste de sérum",
+      "en": "Serum trial showcase"
+    },
+    "prompt": {
+      "pt": "Crie um vídeo de 15 segundos testando um sérum. Mostre o produto sobre bancada clara, gota em macro, aplicação no rosto, absorção rápida e close de brilho hidratado. Use movimentos suaves, textura realista, pele natural e final com embalagem em destaque. Tom profissional e confiável.",
+      "en": "Create a 15-second serum trial video. Show the product on a bright counter, macro drop, face application, quick absorption, and close-up of hydrated glow. Use smooth movements, realistic texture, natural skin, and final highlighted packaging. Professional trustworthy tone."
+    }
+  },
+  "美妆个护/美妆粉饼真人试用": {
+    "title": {
+      "pt": "Teste real de pó compacto",
+      "en": "Pressed powder real trial"
+    },
+    "prompt": {
+      "pt": "Crie um vídeo de 15 segundos para pó compacto com pessoa real. Mostre embalagem abrindo, esponja tocando o produto, aplicação na zona T, controle de brilho e retoque rápido na bolsa. Inclua close antes/depois de pele mais uniforme. Estilo UGC beauty, natural e limpo.",
+      "en": "Create a 15-second pressed powder video with a real person. Show compact opening, sponge touching product, application on the T-zone, shine control, and quick bag touch-up. Include close before/after of more even skin. Natural clean UGC beauty style."
+    }
+  },
+  "美妆个护/腮红粉饼TVC": {
+    "title": {
+      "pt": "TVC de blush compacto",
+      "en": "Blush compact TVC"
+    },
+    "prompt": {
+      "pt": "Crie um TVC de 15 segundos para blush compacto. Mostre embalagem elegante, pincel tocando o pó, partículas finas, aplicação nas bochechas e aparência saudável. Use tons rosados, luz suave, close de sorriso e produto final com textura premium. Sem texto, clima feminino e delicado.",
+      "en": "Create a 15-second blush compact TVC. Show elegant packaging, brush touching powder, fine particles, cheek application, and healthy complexion. Use rosy tones, soft light, smile close-up, and final premium texture product shot. No text, feminine delicate mood."
+    }
+  },
+  "美妆个护/防晒霜博主测评": {
+    "title": {
+      "pt": "Review de protetor solar por criadora",
+      "en": "Sunscreen creator review"
+    },
+    "prompt": {
+      "pt": "Crie um vídeo UGC de 15 segundos para protetor solar. A criadora mostra o produto, aplica no rosto e braço, destaca textura leve, sem esbranquiçar e confortável ao sol. Inclua cena externa clara, close de absorção e recomendação final para rotina diária. Realista, natural e confiável.",
+      "en": "Create a 15-second UGC sunscreen review. The creator shows the product, applies it to face and arm, highlights lightweight texture, no white cast, and comfort under sunlight. Include a bright outdoor scene, absorption close-up, and final daily-routine recommendation. Realistic, natural, trustworthy."
+    }
+  },
+  "美妆个护/面膜使用前后对比": {
+    "title": {
+      "pt": "Máscara facial antes e depois",
+      "en": "Facial mask before-and-after"
+    },
+    "prompt": {
+      "pt": "Crie um vídeo de 15 segundos para máscara facial. Mostre pele cansada antes, abertura da embalagem, aplicação da máscara, momento relaxante e retirada revelando pele hidratada e luminosa. Inclua comparação antes/depois sutil, luz limpa e atmosfera de cuidado noturno. Sem exagerar filtros.",
+      "en": "Create a 15-second facial mask video. Show tired skin before, package opening, mask application, relaxing moment, and removal revealing hydrated glowing skin. Include subtle before/after comparison, clean light, and night-care atmosphere. Avoid exaggerated filters."
+    }
+  },
+  "美妆个护/面膜面霜tvc展示": {
+    "title": {
+      "pt": "TVC de máscara e creme facial",
+      "en": "Mask and face cream TVC"
+    },
+    "prompt": {
+      "pt": "Crie um TVC de 15 segundos combinando máscara e creme facial. Mostre os produtos em bancada elegante, textura da máscara, aplicação relaxante, depois creme sendo espalhado e pele com brilho hidratado. Use luz suave, movimentos lentos, close-ups de textura e final com kit centralizado.",
+      "en": "Create a 15-second TVC combining facial mask and cream. Show the products on an elegant counter, mask texture, relaxing application, then cream being spread and hydrated glowing skin. Use soft light, slow movements, texture close-ups, and final centered kit shot."
+    }
+  },
+  "美妆个护/面霜tvc展示": {
+    "title": {
+      "pt": "TVC de creme facial",
+      "en": "Face cream TVC"
+    },
+    "prompt": {
+      "pt": "Crie um TVC de 15 segundos para creme facial. Mostre pote ou bisnaga em close, textura cremosa sendo retirada, aplicação no rosto, absorção suave e pele hidratada. Use fundo limpo, luz de skincare premium, movimentos lentos e final com embalagem em destaque.",
+      "en": "Create a 15-second face cream TVC. Show jar or tube close-up, creamy texture being taken, face application, smooth absorption, and hydrated skin. Use clean background, premium skincare lighting, slow motion, and final highlighted packaging."
+    }
+  },
+  "美妆个护/面霜高级感展示": {
+    "title": {
+      "pt": "Creme facial premium",
+      "en": "Premium face cream showcase"
+    },
+    "prompt": {
+      "pt": "Crie um vídeo premium de 15 segundos para creme facial. Use reflexos suaves, bancada elegante, macro da textura, aplicação delicada e close de pele luminosa. O produto deve parecer luxuoso, com composição minimalista, tons claros, câmera lenta e final refinado sem texto.",
+      "en": "Create a premium 15-second face cream video. Use soft reflections, elegant counter, macro texture, delicate application, and close-up of luminous skin. The product should feel luxurious with minimalist composition, light tones, slow camera movement, and refined no-text ending."
+    }
+  },
+  "美妆个护/香水tvc": {
+    "title": {
+      "pt": "TVC de perfume",
+      "en": "Perfume TVC"
+    },
+    "prompt": {
+      "pt": "Crie um TVC de 15 segundos para perfume usando o frasco da Imagem 1. Mostre o frasco em fundo preto luxuoso, borrifo em névoa, reflexos dourados, silhueta elegante e cortes sincronizados com música. Finalize com o frasco ao centro, contorno dourado e som delicado. Visual premium, sensual e sem texto excessivo.",
+      "en": "Create a 15-second perfume TVC using the bottle from Image 1. Show the bottle on a luxurious black background, mist spray, golden reflections, elegant silhouette, and cuts synced to music. Finish with the bottle centered, golden outline, and delicate sound. Premium sensual visuals, no excessive text."
+    }
+  },
+  "通用/婴儿奶瓶试用展示": {
+    "title": {
+      "pt": "Teste de mamadeira",
+      "en": "Baby bottle trial"
+    },
+    "prompt": {
+      "pt": "Crie um vídeo de 15 segundos para mamadeira. Mostre mãos delicadas de bebê segurando o corpo da mamadeira, bico tocando os lábios, bebê mamando naturalmente, mãe observando com carinho e bolhas subindo no leite. Use luz quente clara, plano limpo, música minimalista de piano e sensação segura, calma e premium.",
+      "en": "Create a 15-second baby bottle video. Show delicate baby hands holding the bottle, nipple touching the lips, baby feeding naturally, mother watching warmly, and bubbles rising in the milk. Use warm white light, clean framing, minimalist piano music, and a safe, calm, premium feeling."
+    }
+  },
+  "通用/婴儿宝宝霜试用展示": {
+    "title": {
+      "pt": "Teste de creme infantil",
+      "en": "Baby cream trial"
+    },
+    "prompt": {
+      "pt": "Crie um vídeo de 15 segundos para creme infantil. Uma menina pequena brinca diante do espelho, pega o creme com entusiasmo, aplica nas bochechas de forma fofa e exagerada, depois mostra o rosto hidratado. A mãe aparece no final abraçando a criança e exibindo o produto. Música alegre, clima carinhoso, pele natural e segura.",
+      "en": "Create a 15-second baby cream video. A little girl plays in front of a mirror, excitedly picks up the cream, applies it to her cheeks in a cute exaggerated way, then shows hydrated skin. The mother appears at the end hugging the child and presenting the product. Cheerful music, warm mood, natural safe skin."
+    }
+  },
+  "通用/巧克力质感TVC": {
+    "title": {
+      "pt": "TVC de chocolate com textura premium",
+      "en": "Premium chocolate texture TVC"
+    },
+    "prompt": {
+      "pt": "Crie um TVC de 15 segundos para chocolate. Mostre grãos de cacau caindo em veludo escuro, transformação em cascata líquida, brilho sedoso, mulher elegante provando o chocolate e expressão de prazer. Finalize com embalagem centralizada e grãos ao lado. Luz quente marrom, câmera lenta, BGM elegante e sensação de qualidade superior.",
+      "en": "Create a 15-second chocolate TVC. Show cocoa beans falling on dark velvet, transformation into a liquid cascade, silky highlights, an elegant woman tasting chocolate, and satisfied expression. Finish with packaging centered and cocoa beans beside it. Warm deep-brown light, slow motion, elegant BGM, premium quality feeling."
+    }
+  },
+  "通用/玩具展示": {
+    "title": {
+      "pt": "Demonstração de brinquedo infantil",
+      "en": "Children's toy showcase"
+    },
+    "prompt": {
+      "pt": "Crie um vídeo cinematográfico de 15 segundos para brinquedo infantil multifuncional. Em sala acolhedora, uma menina de quatro anos usa o brinquedo como carrinho silencioso e depois como cavalinho de balanço. Mostre alças, rodas, base estável, apoio seguro e mãe observando no sofá. Luz suave, clima familiar, sem texto.",
+      "en": "Create a cinematic 15-second video for a multifunctional children's toy. In a cozy living room, a four-year-old girl uses it as a quiet ride-on car and then as a rocking horse. Show handles, wheels, stable base, safe support, and mother watching from the sofa. Soft light, family mood, no text."
+    }
+  },
+  "通用/盲盒剧情故事": {
+    "title": {
+      "pt": "História de blind box no espaço",
+      "en": "Blind box space story"
+    },
+    "prompt": {
+      "pt": "Crie um vídeo de 15 segundos em estilo anúncio 3D premium para blind box. Use um astronauta em espaço profundo realista, nebulosas coloridas e partículas. Mostre o personagem na lua olhando para as estrelas, saltando com um planeta na mão, flutuando no mar de estrelas e sorrindo para a câmera. Tom épico, sonhador e de conto de fadas.",
+      "en": "Create a 15-second premium 3D blind box ad. Use an astronaut in realistic deep space with colorful nebulae and particles. Show the character on the moon looking at the stars, jumping with a planet in hand, floating in the star sea, and smiling at the camera. Epic, dreamy, fairy-tale tone."
+    }
+  },
+  "通用/花生油炒菜展示": {
+    "title": {
+      "pt": "Óleo de amendoim cozinhando",
+      "en": "Peanut oil cooking demo"
+    },
+    "prompt": {
+      "pt": "Crie um vídeo de 15 segundos para óleo de amendoim. Mostre amendoins sob luz quente, mãos segurando grãos, garrafa de óleo dourado transparente, óleo sendo servido e usado para refogar legumes e carne. Finalize com garrafa no centro em cozinha rural. Tom de documentário gastronômico, luz natural quente e voz masculina madura.",
+      "en": "Create a 15-second peanut oil video. Show peanuts under warm light, hands holding kernels, a transparent golden oil bottle, oil being poured, and used to stir-fry vegetables and meat. Finish with the bottle centered in a rural kitchen. Food-documentary tone, warm natural light, mature male voiceover."
+    }
+  },
+  "通用/饮料广告": {
+    "title": {
+      "pt": "Anúncio de bebida gaseificada",
+      "en": "Sparkling drink advertisement"
+    },
+    "prompt": {
+      "pt": "Crie um anúncio premium de 15 segundos para bebida de maçã. Mostre fatias de maçã verde e gelo caindo na água com respingos, o produto entrando pelo lado com brilho metálico, abertura da lata com bolhas saindo como fonte, produto ao lado de maçã fresca e gelo, depois cena externa de camping com jovens segurando a bebida. Música alegre, sem texto.",
+      "en": "Create a premium 15-second apple drink ad. Show green apple slices and ice falling into water with splashes, the product sliding in with metallic shine, can opening with bubbles rising like a small fountain, product beside fresh apple and ice, then an outdoor camping scene with young people holding the drink. Cheerful music, no text."
+    }
+  },
+  "运动/书包功能讲解": {
+    "title": {
+      "pt": "Explicação das funções da mochila",
+      "en": "Backpack feature explainer"
+    },
+    "prompt": {
+      "pt": "Crie um vídeo de 15 segundos para mochila de viagem. Mostre uma jovem viajante entrando em cena com mochila verde, depois cortes de zíper, fivelas metálicas, alças ergonômicas, garrafa saindo da lateral, power bank no bolso e compartimento principal organizado. Finalize com a viajante indo para longe. Narração feminina sobre organização, leveza e conforto.",
+      "en": "Create a 15-second travel backpack video. Show a young traveler entering with a green backpack, then quick cuts of zipper, metal buckles, ergonomic straps, bottle pulled from side pocket, power bank in pocket, and organized main compartment. End with the traveler walking into the distance. Female voiceover about organization, lightness, and comfort."
+    }
+  },
+  "运动/书包多场景展示": {
+    "title": {
+      "pt": "Mochila em múltiplos cenários",
+      "en": "Backpack multi-scene showcase"
+    },
+    "prompt": {
+      "pt": "Crie um vídeo de 15 segundos para mochila de viagem em alta qualidade. Mostre detalhes de ferragens sobre mesa, teste de água em câmera lenta, alças ergonômicas com espuma, compartimento principal aberto com notebook e roupas, e montagem final em café, aeroporto ou metrô. Sem rosto, textura realista, luz limpa e sensação premium de viagem.",
+      "en": "Create a high-quality 15-second travel backpack video. Show hardware details on a table, slow-motion water test, ergonomic foam straps, open main compartment with laptop and clothes, and final montage in cafe, airport, or subway. No face, realistic texture, clean light, premium travel feeling."
+    }
+  },
+  "运动/冲锋衣功能测试": {
+    "title": {
+      "pt": "Teste funcional de jaqueta outdoor",
+      "en": "Outdoor jacket function test"
+    },
+    "prompt": {
+      "pt": "Crie um vídeo de 15 segundos para jaqueta outdoor em 3:4, sem legendas. Mostre o modelo vestindo a jaqueta da Imagem 1, teste de água com gotas escorrendo, detalhes de fleece interno, gola alta, zíper e velcro nos punhos, depois dobrando a jaqueta na mochila. Finalize com look completo, caimento limpo e narração sobre impermeabilidade, corta-vento e leveza.",
+      "en": "Create a 15-second 3:4 outdoor jacket video with no subtitles. Show the model wearing the Image 1 jacket, water test with droplets sliding off, inner fleece, high collar, zipper and cuff velcro details, then folding it into a backpack. End with full look, clean fit, and voiceover about waterproofing, wind protection, and lightness."
+    }
+  },
+  "运动/冲锋衣模特试穿": {
+    "title": {
+      "pt": "Modelo testando jaqueta outdoor",
+      "en": "Outdoor jacket model try-on"
+    },
+    "prompt": {
+      "pt": "Crie um vídeo de 15 segundos sem narração e sem legendas para jaqueta outdoor. Um modelo masculino usa a jaqueta da Imagem 1 em floresta, caminhando de longe até a câmera. Mostre chuva leve com gotas escorrendo, gola e punhos contra vento, trilha com mochila e capuz ao vento. Final com meio-corpo, fundo verde desfocado e sorriso discreto.",
+      "en": "Create a 15-second video with no voiceover or subtitles for an outdoor jacket. A male model wears the Image 1 jacket in a forest, walking from distance toward camera. Show light rain droplets sliding off, collar and cuffs blocking wind, hiking with backpack, and hood moving in breeze. End with half-body shot, blurred green background, subtle smile."
+    }
+  },
+  "运动/折叠椅使用展示": {
+    "title": {
+      "pt": "Demonstração de cadeira dobrável",
+      "en": "Folding chair usage demo"
+    },
+    "prompt": {
+      "pt": "Crie um vídeo realista de 15 segundos em 3:4 para cadeira dobrável de camping. Mostre uma família no parque, a cadeira sendo carregada, aberta rapidamente, pessoa sentando para demonstrar apoio do encosto, close no bolso lateral com celular e final em drone afastando para todos brindando. Visual claro, colorido, vida real e sem narração.",
+      "en": "Create a realistic 15-second 3:4 camping folding chair video. Show a family in a park, the chair being carried, opened quickly, someone sitting to demonstrate back support, close-up of side pocket holding a phone, and drone pullback as everyone cheers. Bright colorful real-life visuals, no voiceover."
+    }
+  },
+  "运动/行李箱多角度展示": {
+    "title": {
+      "pt": "Mala em múltiplos ângulos",
+      "en": "Suitcase multi-angle showcase"
+    },
+    "prompt": {
+      "pt": "Crie um vídeo de 15 segundos em 3:4 para mala. Use movimentos suaves e luz natural. Mostre frente em slow push, rotação lateral a 45 graus destacando curvas, cantos reforçados e textura resistente, close das rodas silenciosas, abertura completa com divisórias internas e final com puxador levantado e mala sendo empurrada levemente.",
+      "en": "Create a 15-second 3:4 suitcase video with smooth camera and natural light. Show front slow push, 45-degree side rotation highlighting curves, reinforced corners and durable texture, close-up of silent wheels, full opening with internal compartments, and final with handle raised and suitcase pushed gently."
+    }
+  },
+  "运动/行李箱真人试穿": {
+    "title": {
+      "pt": "Mala testada por pessoa real",
+      "en": "Suitcase real-person demo"
+    },
+    "prompt": {
+      "pt": "Crie um vídeo de 15 segundos em 3:4 para mala listrada. Um homem jovem estiloso puxa a mala em ambiente interno moderno com madeira e luz natural, gira a mala para mostrar rodas silenciosas, explica material e cantos reforçados, testa puxador e rodas, depois pisa sobre a mala para mostrar resistência. Tom claro, e-commerce premium, narração confiante.",
+      "en": "Create a 15-second 3:4 video for a striped suitcase. A stylish young man pulls it through a modern indoor space with wood and natural light, spins it to show silent wheels, explains material and reinforced corners, tests handle and wheels, then steps on it to show strength. Bright premium ecommerce tone, confident voiceover."
+    }
+  },
+  "运动/运动鞋真人试穿": {
+    "title": {
+      "pt": "Teste real de tênis esportivo",
+      "en": "Sports shoe real try-on"
+    },
+    "prompt": {
+      "pt": "Crie um vídeo de 15 segundos em 3:4 para tênis esportivo. Mostre o par da Imagem 1 no piso claro, câmera avançando, close do mesh respirável, mãos pressionando o cabedal para mostrar maciez, rotação 360 graus da sola antiderrapante, passos leves com calça preta e final com efeito no pé. Tom quente, natural e dinâmico.",
+      "en": "Create a 15-second 3:4 sports shoe video. Show the pair from Image 1 on a light wooden floor, camera pushing in, close-up of breathable mesh, hands pressing the upper to show softness, 360-degree rotation of anti-slip sole, light steps with black leggings, and final on-foot look. Warm, natural, dynamic tone."
+    }
+  },
+  "运动/防晒衣功能试穿展示": {
+    "title": {
+      "pt": "Teste funcional de jaqueta UV",
+      "en": "Sun-protection jacket function try-on"
+    },
+    "prompt": {
+      "pt": "Crie um vídeo realista de 15 segundos em 3:4 para jaqueta de proteção solar. Mostre a modelo correndo na praia com luz forte e tecido esvoaçando, depois cortes rápidos em ambiente claro: ajuste da máscara, abertura para rabo de cavalo, furo do polegar e elasticidade. Finalize com look completo, giro elegante e sorriso confiante. Sem texto, sem narração.",
+      "en": "Create a realistic 15-second 3:4 video for a sun-protection jacket. Show the model running on a sunny beach with fabric flowing, then quick cuts in a bright indoor setting: face-cover adjustment, ponytail opening, thumbhole, and stretch. End with full look, elegant turn, and confident smile. No text, no voiceover."
+    }
+  },
+  "运动/雨伞使用展示": {
+    "title": {
+      "pt": "Demonstração de guarda-chuva",
+      "en": "Umbrella usage demo"
+    },
+    "prompt": {
+      "pt": "Crie um vídeo de produto para guarda-chuva sem narração nem texto. Mostre passeio em parque ensolarado com a sombrinha aberta, macro extremo de chuva escorrendo na superfície hidrofóbica em rua noturna, close da armação e cabo em estúdio minimalista e final guardando a sombrinha em uma bolsa pequena. Música ambiente suave, imagem realista sem falhas.",
+      "en": "Create a product video for an umbrella with no voiceover or text. Show a sunny park walk with the umbrella open, extreme macro of rain sliding off the hydrophobic fabric on a night street, close-up of frame and handle in minimalist studio, and final storing it in a small bag. Soft ambient music, realistic clean image."
+    }
+  },
+  "运动/露营帐篷使用展示": {
+    "title": {
+      "pt": "Demonstração de barraca de camping",
+      "en": "Camping tent usage demo"
+    },
+    "prompt": {
+      "pt": "Crie um vídeo cinematográfico 4K de 15 segundos para barraca de camping. Mostre parque gramado de manhã, barraca montada com mesa e cadeiras, close de chuva escorrendo, ferragens e varetas firmes, zíper abrindo, visão em primeira pessoa entrando para mostrar interior respirável e final em plano aberto verde. Sem pessoas no início, detalhes realistas e narração acolhedora.",
+      "en": "Create a cinematic 4K 15-second camping tent video. Show a morning grassy park, tent set up with table and chairs, close-up of rain sliding off, sturdy hardware and poles, zipper opening, first-person view entering to show breathable interior, and final wide green outdoor shot. No people at first, realistic details, warm voiceover."
+    }
+  }
+}

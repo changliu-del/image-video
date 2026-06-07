@@ -35,15 +35,14 @@ const UUID_PATTERN =
   /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 type QueryableSql = postgres.Sql;
 
-type TemplateCategory = 'image_to_video' | 'image_to_image' | 'try_on';
+type TemplateType = 'image_to_video' | 'image_to_image';
 
-const TEMPLATE_CATEGORY_BY_GENERATION_TYPE: Record<
+const TEMPLATE_TYPE_BY_GENERATION_TYPE: Partial<Record<
   GenerationType,
-  TemplateCategory
-> = {
+  TemplateType
+>> = {
   image_to_video: 'image_to_video',
   apparel_image: 'image_to_image',
-  try_on: 'try_on',
 };
 
 type AssetRecord = {
@@ -419,8 +418,19 @@ async function assertTemplateForGeneration(generation: GenerationRequest) {
     );
   }
 
+  const expectedType =
+    TEMPLATE_TYPE_BY_GENERATION_TYPE[generation.generationType];
+
+  if (!expectedType) {
+    throw new GenerationApiError(
+      400,
+      'template_type_unsupported',
+      'Templates are not supported for this generation type'
+    );
+  }
+
   const rows = await client`
-    select id, category
+    select id, type
     from templates
     where id = ${generation.templateId}
     limit 1
@@ -435,15 +445,13 @@ async function assertTemplateForGeneration(generation: GenerationRequest) {
     );
   }
 
-  const expectedCategory =
-    TEMPLATE_CATEGORY_BY_GENERATION_TYPE[generation.generationType];
-  const actualCategory = toStringValue(row.category) as TemplateCategory;
+  const actualType = toStringValue(row.type) as TemplateType;
 
-  if (actualCategory !== expectedCategory) {
+  if (actualType !== expectedType) {
     throw new GenerationApiError(
       400,
-      'template_category_mismatch',
-      'Template category does not match this generation type'
+      'template_type_mismatch',
+      'Template type does not match this generation type'
     );
   }
 
@@ -585,14 +593,6 @@ async function createQueuedGenerationJobWithCreditReservation(input: {
     `;
     const createdJob = mapJobRow(jobRows[0] as Record<string, unknown>);
     const balanceAfter = currentBalance - input.creditReserved;
-
-    if (input.templateId) {
-      await sql`
-        update templates
-        set usage_count = usage_count + 1
-        where id = ${input.templateId}
-      `;
-    }
 
     await sql`
       update users

@@ -627,7 +627,7 @@ const pt: MarketingContent = {
         'Templates livres para editar antes de gastar créditos em vídeo.',
       ],
       stats: [
-        { stat: '12', label: 'templates iniciais' },
+        { stat: '74', label: 'templates no catalogo' },
         { stat: '1', label: 'crédito para imagem' },
         { stat: 'PT-BR', label: 'prompts locais' },
       ],
@@ -646,7 +646,7 @@ const pt: MarketingContent = {
       eyebrow: 'Biblioteca de templates',
       title: 'Comece pelo tipo de vídeo que vende o produto',
       description:
-        'Cada modelo traz descrição, prompt e direção visual. O vendedor escolhe, troca pelo próprio produto e edita o prompt sem ficar preso a regras rígidas.',
+        'Cada card mostra categoria e visual do template. Nos detalhes, o vendedor vê o preview, aplica o prompt e troca pela imagem do próprio produto.',
       actionLabel: 'Usar modelo',
     },
     workflow: {
@@ -1104,7 +1104,7 @@ const en: MarketingContent = {
         'Templates stay editable before you spend credits on video.',
       ],
       stats: [
-        { stat: '12', label: 'starter templates' },
+        { stat: '74', label: 'catalog templates' },
         { stat: '1', label: 'image credit' },
         { stat: 'PT-BR', label: 'local prompts' },
       ],
@@ -1125,7 +1125,7 @@ const en: MarketingContent = {
       eyebrow: 'Template library',
       title: 'Start with the kind of video that sells the product',
       description:
-        'Each model includes a description, prompt, and visual direction. Sellers choose one, swap in their product, and freely edit the prompt.',
+        'Each card shows the template category and visual. Details reveal the preview and prompt before sellers adapt it with their own product image.',
       actionLabel: 'Use template',
     },
     workflow: {
@@ -1453,7 +1453,7 @@ const zh: MarketingContent = {
         '在消耗视频算力值前，模板和提示词都可以自由修改。',
       ],
       stats: [
-        { stat: '12', label: '初始模板' },
+        { stat: '74', label: '个模板' },
         { stat: '1', label: '图片算力值' },
         { stat: 'PT-BR', label: '本地话术' },
       ],
@@ -1474,7 +1474,7 @@ const zh: MarketingContent = {
       eyebrow: '模板库',
       title: '先选择最适合卖这个商品的视频类型',
       description:
-        '每个模板都包含说明、提示词和视觉方向。卖家选择模板、换成自己的商品，并且可以自由编辑提示词。',
+        '卡片只展示模板类目和缩略图。打开详情后可查看预览和提示词，再用自己的商品图继续编辑。',
       actionLabel: '使用模板',
     },
     workflow: {

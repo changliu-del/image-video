@@ -35,6 +35,7 @@ Updated: 2026-06-03
 - `app/api/generations/route.ts`
 - `app/api/generations/[id]/status/route.ts`
 - `app/api/templates/route.ts`
+- `app/api/templates/[id]/route.ts`
 - `app/api/library-assets/route.ts`
 - `app/api/model-assets/route.ts`
 - `app/api/stripe/webhook/route.ts`

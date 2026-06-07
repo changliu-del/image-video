@@ -14,7 +14,6 @@ import {
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
 import {
   AdminManagementTable,
   AdminModal,
@@ -25,33 +24,30 @@ import {
 } from '@/components/admin/admin-management-table';
 import type { AdminContent, AdminLocale } from '@/lib/admin/content';
 import {
-  templateTagGroups,
-  templateTagOptions,
-  type TemplateCatalogItem,
-  type TemplateCategory,
+  templateTypeLabels,
+  type TemplateCatalogDetailItem,
+  type TemplateType,
 } from '@/lib/templates/catalog';
-import { cn } from '@/lib/utils';
 
-type AdminTemplate = TemplateCatalogItem & {
-  negativePrompt: string | null;
+type AdminTemplate = TemplateCatalogDetailItem & {
+  titleTranslations: Record<string, string>;
+  promptTranslations: Record<string, string>;
+  thumbnailAssetId: string;
+  previewAssetId: string;
   createdAt: string;
   updatedAt: string;
-  sortWeight: number;
-  usageCount: number;
 };
 
 type TemplateFormState = {
   id?: string;
-  name: string;
-  description: string;
-  category: TemplateCategory;
+  title: string;
+  titleTranslations: string;
+  type: TemplateType;
+  category: string;
+  thumbnailAssetId: string;
+  previewAssetId: string;
   prompt: string;
-  negativePrompt: string;
-  costCredits: number;
-  aspectRatios: Array<'9:16' | '1:1' | '16:9'>;
-  durationSeconds: 5 | 8 | 10;
-  sortWeight: number;
-  tagSlugs: string[];
+  promptTranslations: string;
 };
 
 type ModalMode = 'create' | 'view' | 'edit';
@@ -64,40 +60,36 @@ type PaginatedTemplates = {
 };
 
 const emptyForm: TemplateFormState = {
-  name: '',
-  description: '',
-  category: 'image_to_image',
+  title: '',
+  titleTranslations: '{}',
+  type: 'image_to_video',
+  category: 'general',
+  thumbnailAssetId: '',
+  previewAssetId: '',
   prompt: '',
-  negativePrompt: '',
-  costCredits: 1,
-  aspectRatios: ['9:16'],
-  durationSeconds: 5,
-  sortWeight: 0,
-  tagSlugs: ['image', 'low-cost', 'ratio-9-16'],
+  promptTranslations: '{}',
 };
 
 function freshEmptyForm(): TemplateFormState {
-  return {
-    ...emptyForm,
-    aspectRatios: [...emptyForm.aspectRatios],
-    tagSlugs: [...emptyForm.tagSlugs],
-  };
+  return { ...emptyForm };
 }
 
 function templateToForm(template: AdminTemplate): TemplateFormState {
   return {
     id: template.id,
-    name: template.name,
-    description: template.description,
+    title: template.title,
+    titleTranslations: formatTranslations(template.titleTranslations),
+    type: template.type,
     category: template.category,
+    thumbnailAssetId: template.thumbnailAssetId,
+    previewAssetId: template.previewAssetId,
     prompt: template.prompt,
-    negativePrompt: template.negativePrompt ?? '',
-    costCredits: template.costCredits,
-    aspectRatios: template.aspectRatios as Array<'9:16' | '1:1' | '16:9'>,
-    durationSeconds: (template.durationSeconds ?? 5) as 5 | 8 | 10,
-    sortWeight: template.sortWeight,
-    tagSlugs: template.tags,
+    promptTranslations: formatTranslations(template.promptTranslations),
   };
+}
+
+function formatTranslations(value: Record<string, string> | null | undefined) {
+  return JSON.stringify(value ?? {}, null, 2);
 }
 
 async function readError(response: Response, fallback: string) {
@@ -107,6 +99,37 @@ async function readError(response: Response, fallback: string) {
   } catch {
     return fallback;
   }
+}
+
+function parseTranslationsJson(value: string, label: string) {
+  const trimmed = value.trim();
+  if (!trimmed) return {};
+
+  let parsed: unknown;
+  try {
+    parsed = JSON.parse(trimmed);
+  } catch {
+    throw new Error(`${label} must be valid JSON.`);
+  }
+
+  if (!parsed || typeof parsed !== 'object' || Array.isArray(parsed)) {
+    throw new Error(`${label} must be a JSON object.`);
+  }
+
+  const normalized: Record<string, string> = {};
+  for (const [key, rawValue] of Object.entries(parsed)) {
+    if (!['pt', 'en', 'zh'].includes(key)) {
+      throw new Error(`${label} only supports pt, en, and zh keys.`);
+    }
+
+    if (typeof rawValue !== 'string' || !rawValue.trim()) {
+      throw new Error(`${label}.${key} must be a non-empty string.`);
+    }
+
+    normalized[key] = rawValue.trim();
+  }
+
+  return normalized;
 }
 
 async function requestJson<T>(
@@ -129,13 +152,7 @@ async function requestJson<T>(
   return (await response.json()) as T;
 }
 
-function Field({
-  children,
-  label,
-}: {
-  children: ReactNode;
-  label: string;
-}) {
+function Field({ children, label }: { children: ReactNode; label: string }) {
   return (
     <label className="grid gap-2">
       <span className="text-xs font-semibold uppercase text-gray-500">
@@ -143,6 +160,41 @@ function Field({
       </span>
       {children}
     </label>
+  );
+}
+
+function isLikelyVideoUrl(url: string) {
+  return /\.(mp4|webm|mov)(\?.*)?$/i.test(url);
+}
+
+function TemplatePreview({ template }: { template: AdminTemplate }) {
+  return (
+    <div className="grid gap-4 md:grid-cols-2">
+      <div className="overflow-hidden rounded-lg border border-gray-200 bg-gray-100">
+        <img
+          src={template.thumbnailUrl}
+          alt=""
+          className="aspect-[4/3] w-full object-cover"
+        />
+      </div>
+      <div className="overflow-hidden rounded-lg border border-gray-200 bg-gray-100">
+        {isLikelyVideoUrl(template.previewUrl) ? (
+          <video
+            src={template.previewUrl}
+            className="aspect-[4/3] w-full object-cover"
+            controls
+            muted
+            playsInline
+          />
+        ) : (
+          <img
+            src={template.previewUrl}
+            alt=""
+            className="aspect-[4/3] w-full object-cover"
+          />
+        )}
+      </div>
+    </div>
   );
 }
 
@@ -175,21 +227,34 @@ export function TemplatesPanel({
   const [uploading, setUploading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
+  const typeLabel = (type: TemplateType) =>
+    templateTypeLabels[type]?.[locale] ?? type;
+
   const columns = useMemo<AdminTableColumn<AdminTemplate>[]>(
     () => [
       {
-        key: 'name',
-        label: copy.columns.name,
+        key: 'id',
+        label: copy.columns.id ?? 'ID',
         kind: 'primary',
-        width: 280,
+        width: 260,
         render: (template) => (
           <div>
-            <div className="break-words text-sm font-medium text-gray-950">
-              {template.name}
-            </div>
-            <div className="mt-1 break-words font-mono text-xs text-gray-500">
+            <div className="break-words font-mono text-xs text-gray-900">
               {template.id}
             </div>
+            <div className="mt-1 text-xs font-medium text-gray-500">
+              {typeLabel(template.type)}
+            </div>
+          </div>
+        ),
+      },
+      {
+        key: 'title',
+        label: copy.fields.title ?? 'Title',
+        width: 220,
+        render: (template) => (
+          <div className="line-clamp-2 text-sm font-semibold leading-5 text-gray-900">
+            {template.title}
           </div>
         ),
       },
@@ -197,50 +262,17 @@ export function TemplatesPanel({
         key: 'category',
         label: copy.columns.category,
         kind: 'status',
-        width: 150,
-        render: (template) =>
-          copy.categoryOptions[template.category] ?? template.category,
+        width: 140,
       },
       {
-        key: 'costCredits',
-        label: copy.columns.costCredits,
-        kind: 'number',
-        width: 96,
-      },
-      {
-        key: 'durationSeconds',
-        label: copy.columns.durationSeconds,
-        width: 104,
-        render: (template) =>
-          template.durationSeconds ? `${template.durationSeconds}s` : '-',
-      },
-      {
-        key: 'tags',
-        label: copy.columns.tags,
-        width: 280,
+        key: 'prompt',
+        label: copy.fields.prompt,
+        width: 420,
         render: (template) => (
-          <div className="flex flex-wrap gap-1">
-            {template.tags.slice(0, 4).map((tag) => (
-              <span
-                key={tag}
-                className="rounded bg-gray-100 px-1.5 py-0.5 text-[11px] text-gray-600"
-              >
-                {tag}
-              </span>
-            ))}
-            {template.tags.length > 4 ? (
-              <span className="text-xs text-gray-400">
-                +{template.tags.length - 4}
-              </span>
-            ) : null}
-          </div>
+          <p className="line-clamp-2 text-sm leading-5 text-gray-700">
+            {template.prompt}
+          </p>
         ),
-      },
-      {
-        key: 'usageCount',
-        label: copy.columns.usageCount,
-        kind: 'number',
-        width: 90,
       },
       {
         key: 'updatedAt',
@@ -253,7 +285,7 @@ export function TemplatesPanel({
         ),
       },
     ],
-    [copy]
+    [copy, locale]
   );
 
   async function loadTemplates(page = 1) {
@@ -282,7 +314,9 @@ export function TemplatesPanel({
         }
       }
     } catch (loadError) {
-      setError(loadError instanceof Error ? loadError.message : copy.errors.load);
+      setError(
+        loadError instanceof Error ? loadError.message : copy.errors.load
+      );
     } finally {
       setLoading(false);
     }
@@ -324,52 +358,35 @@ export function TemplatesPanel({
     setForm((current) => ({ ...current, [key]: value }));
   }
 
-  function toggleTag(slug: string) {
-    setForm((current) => {
-      const next = new Set(current.tagSlugs);
-      if (next.has(slug)) {
-        next.delete(slug);
-      } else {
-        next.add(slug);
-      }
-
-      return { ...current, tagSlugs: Array.from(next) };
-    });
-  }
-
-  function toggleRatio(ratio: '9:16' | '1:1' | '16:9') {
-    setForm((current) => {
-      const next = new Set(current.aspectRatios);
-      if (next.has(ratio) && next.size > 1) {
-        next.delete(ratio);
-      } else {
-        next.add(ratio);
-      }
-
-      return {
-        ...current,
-        aspectRatios: Array.from(next) as Array<'9:16' | '1:1' | '16:9'>,
-      };
-    });
-  }
-
   async function saveTemplate() {
     setSaving(true);
     setError(null);
     try {
       const payload = {
         ...form,
-        durationSeconds:
-          form.category === 'image_to_video' ? form.durationSeconds : null,
+        title: form.title.trim(),
+        titleTranslations: parseTranslationsJson(
+          form.titleTranslations,
+          copy.fields.titleTranslations ?? 'Title translations'
+        ),
+        category: form.category.trim().toLowerCase(),
+        promptTranslations: parseTranslationsJson(
+          form.promptTranslations,
+          copy.fields.promptTranslations ?? 'Prompt translations'
+        ),
       };
       const url = form.id
         ? `/api/admin/templates/${form.id}`
         : '/api/admin/templates';
       const method = form.id ? 'PUT' : 'POST';
-      await requestJson(url, {
-        method,
-        body: JSON.stringify(payload),
-      }, copy.errors.save);
+      await requestJson(
+        url,
+        {
+          method,
+          body: JSON.stringify(payload),
+        },
+        copy.errors.save
+      );
       await loadTemplates(form.id ? data.page : 1);
       if (!form.id) {
         setModalMode(null);
@@ -378,7 +395,9 @@ export function TemplatesPanel({
         setModalMode('view');
       }
     } catch (saveError) {
-      setError(saveError instanceof Error ? saveError.message : copy.errors.save);
+      setError(
+        saveError instanceof Error ? saveError.message : copy.errors.save
+      );
     } finally {
       setSaving(false);
     }
@@ -386,20 +405,26 @@ export function TemplatesPanel({
 
   async function deleteTemplate(template = selectedTemplate) {
     if (!template?.id) return;
-    if (!window.confirm(copy.confirmDelete(template.name))) return;
+    if (!window.confirm(copy.confirmDelete(template.id))) return;
 
     setSaving(true);
     setError(null);
     try {
-      await requestJson(`/api/admin/templates/${template.id}`, {
-        method: 'DELETE',
-      }, copy.errors.delete);
+      await requestJson(
+        `/api/admin/templates/${template.id}`,
+        {
+          method: 'DELETE',
+        },
+        copy.errors.delete
+      );
       setSelectedTemplate(null);
       setModalMode(null);
       setForm(freshEmptyForm());
       await loadTemplates(data.page);
     } catch (deleteError) {
-      setError(deleteError instanceof Error ? deleteError.message : copy.errors.delete);
+      setError(
+        deleteError instanceof Error ? deleteError.message : copy.errors.delete
+      );
     } finally {
       setSaving(false);
     }
@@ -418,15 +443,19 @@ export function TemplatesPanel({
         assetId: string;
         uploadUrl: string;
         storageKey: string;
-      }>('/api/admin/template-preview/presign', {
-        method: 'POST',
-        body: JSON.stringify({
-          templateId: form.id,
-          fileName: uploadFile.name,
-          mimeType: uploadFile.type,
-          sizeBytes: uploadFile.size,
-        }),
-      }, copy.errors.prepareUpload);
+      }>(
+        '/api/admin/template-preview/presign',
+        {
+          method: 'POST',
+          body: JSON.stringify({
+            templateId: form.id,
+            fileName: uploadFile.name,
+            mimeType: uploadFile.type,
+            sizeBytes: uploadFile.size,
+          }),
+        },
+        copy.errors.prepareUpload
+      );
 
       const uploadResponse = await fetch(presign.uploadUrl, {
         method: 'PUT',
@@ -438,19 +467,25 @@ export function TemplatesPanel({
         throw new Error(copy.errors.upload);
       }
 
-      await requestJson('/api/admin/template-preview/complete', {
-        method: 'POST',
-        body: JSON.stringify({
-          templateId: form.id,
-          assetId: presign.assetId,
-          storageKey: presign.storageKey,
-        }),
-      }, copy.errors.completeUpload);
+      await requestJson(
+        '/api/admin/template-preview/complete',
+        {
+          method: 'POST',
+          body: JSON.stringify({
+            templateId: form.id,
+            assetId: presign.assetId,
+            storageKey: presign.storageKey,
+          }),
+        },
+        copy.errors.completeUpload
+      );
 
       setUploadFile(null);
       await loadTemplates(data.page);
     } catch (uploadError) {
-      setError(uploadError instanceof Error ? uploadError.message : copy.errors.upload);
+      setError(
+        uploadError instanceof Error ? uploadError.message : copy.errors.upload
+      );
     } finally {
       setUploading(false);
     }
@@ -461,7 +496,9 @@ export function TemplatesPanel({
     setAppliedSearch('');
   }
 
-  function tableActions(template: AdminTemplate): AdminTableAction<AdminTemplate>[] {
+  function tableActions(
+    template: AdminTemplate
+  ): AdminTableAction<AdminTemplate>[] {
     const actions: AdminTableAction<AdminTemplate>[] = [
       {
         key: 'view',
@@ -497,9 +534,7 @@ export function TemplatesPanel({
     return actions;
   }
 
-  const selectedKey = selectedTemplate
-    ? String(selectedTemplate.id)
-    : null;
+  const selectedKey = selectedTemplate ? String(selectedTemplate.id) : null;
 
   const modalTitle =
     modalMode === 'create'
@@ -546,7 +581,7 @@ export function TemplatesPanel({
         searchValue={search}
         selectedRowKey={selectedKey}
         statusLabels={content.statusLabels}
-        tableMinWidth={1100}
+        tableMinWidth={1000}
         title={copy.title}
       />
 
@@ -554,7 +589,7 @@ export function TemplatesPanel({
         open={Boolean(modalMode)}
         title={modalTitle}
         closeLabel={common.close}
-        maxWidth="max-w-5xl"
+        maxWidth="max-w-4xl"
         onClose={() => setModalMode(null)}
         footer={
           modalMode === 'view' ? (
@@ -595,193 +630,126 @@ export function TemplatesPanel({
         }
       >
         {modalMode === 'view' && selectedTemplate ? (
-          <AdminRecordDetails
-            record={selectedTemplate as unknown as Record<string, unknown>}
-            fieldLabels={{ ...copy.fields, ...copy.columns }}
-            statusLabels={content.statusLabels}
-            columns={[
-              'name',
-              'id',
-              'category',
-              'description',
-              'prompt',
-              'negativePrompt',
-              'tags',
-              'costCredits',
-              'aspectRatios',
-              'durationSeconds',
-              'usageCount',
-              'createdAt',
-              'updatedAt',
-            ]}
-          />
+          <div className="grid gap-5">
+            <TemplatePreview template={selectedTemplate} />
+            <AdminRecordDetails
+              record={selectedTemplate as unknown as Record<string, unknown>}
+              fieldLabels={{ ...copy.fields, ...copy.columns }}
+              statusLabels={content.statusLabels}
+              columns={[
+                'id',
+                'title',
+                'titleTranslations',
+                'type',
+                'category',
+                'thumbnailAssetId',
+                'previewAssetId',
+                'thumbnailUrl',
+                'previewUrl',
+                'prompt',
+                'promptTranslations',
+                'createdAt',
+                'updatedAt',
+              ]}
+            />
+          </div>
         ) : (
           <div className="grid gap-5">
             <div className="grid gap-4 md:grid-cols-2">
-              <Field label={copy.fields.name}>
+              <Field label={copy.fields.title ?? 'Title'}>
                 <Input
-                  value={form.name}
-                  onChange={(event) => updateForm('name', event.target.value)}
+                  value={form.title}
+                  placeholder="Product launch"
+                  onChange={(event) =>
+                    updateForm('title', event.target.value)
+                  }
                 />
               </Field>
-              <Field label={copy.fields.category}>
+              <Field label={copy.fields.type ?? 'Type'}>
                 <select
-                  value={form.category}
+                  value={form.type}
                   onChange={(event) =>
-                    updateForm(
-                      'category',
-                      event.target.value as TemplateCategory
-                    )
+                    updateForm('type', event.target.value as TemplateType)
                   }
                   className="h-9 rounded-md border border-gray-200 bg-white px-3 text-sm"
                 >
-                  <option value="image_to_image">
-                    {copy.categoryOptions.image_to_image}
-                  </option>
                   <option value="image_to_video">
-                    {copy.categoryOptions.image_to_video}
+                    {templateTypeLabels.image_to_video[locale]}
                   </option>
-                  <option value="try_on">
-                    {copy.categoryOptions.try_on}
+                  <option value="image_to_image">
+                    {templateTypeLabels.image_to_image[locale]}
                   </option>
                 </select>
               </Field>
+              <Field label={copy.fields.category}>
+                <Input
+                  value={form.category}
+                  placeholder="product"
+                  onChange={(event) =>
+                    updateForm('category', event.target.value)
+                  }
+                />
+              </Field>
             </div>
 
-            <Field label={copy.fields.description}>
+            <Field label={copy.fields.titleTranslations ?? 'Title translations'}>
               <textarea
-                value={form.description}
+                value={form.titleTranslations}
                 onChange={(event) =>
-                  updateForm('description', event.target.value)
+                  updateForm('titleTranslations', event.target.value)
                 }
-                rows={3}
-                className="min-h-24 rounded-md border border-gray-200 bg-white px-3 py-2 text-sm outline-none focus:border-gray-400"
+                rows={4}
+                className="rounded-md border border-gray-200 bg-white px-3 py-2 font-mono text-xs leading-5 outline-none focus:border-gray-400"
               />
             </Field>
+
+            <div className="grid gap-4 md:grid-cols-2">
+              <Field label={copy.fields.thumbnailAssetId ?? 'Thumbnail asset ID'}>
+                <Input
+                  value={form.thumbnailAssetId}
+                  onChange={(event) =>
+                    updateForm('thumbnailAssetId', event.target.value)
+                  }
+                />
+              </Field>
+              <Field label={copy.fields.previewAssetId ?? 'Preview asset ID'}>
+                <Input
+                  value={form.previewAssetId}
+                  onChange={(event) =>
+                    updateForm('previewAssetId', event.target.value)
+                  }
+                />
+              </Field>
+            </div>
+
             <Field label={copy.fields.prompt}>
               <textarea
                 value={form.prompt}
                 onChange={(event) => updateForm('prompt', event.target.value)}
-                rows={5}
-                className="min-h-36 rounded-md border border-gray-200 bg-white px-3 py-2 text-sm outline-none focus:border-gray-400"
+                rows={8}
+                className="min-h-48 rounded-md border border-gray-200 bg-white px-3 py-2 text-sm leading-6 outline-none focus:border-gray-400"
               />
             </Field>
-            <div className="grid gap-4 md:grid-cols-2">
-              <Field label={copy.fields.negativePrompt}>
-                <textarea
-                  value={form.negativePrompt}
-                  onChange={(event) =>
-                    updateForm('negativePrompt', event.target.value)
-                  }
-                  rows={4}
-                  className="min-h-28 rounded-md border border-gray-200 bg-white px-3 py-2 text-sm outline-none focus:border-gray-400"
-                />
-              </Field>
-              <div className="grid gap-4 sm:grid-cols-3">
-                <Field label={copy.fields.costCredits}>
-                  <Input
-                    type="number"
-                    min={0}
-                    value={form.costCredits}
-                    onChange={(event) =>
-                      updateForm('costCredits', Number(event.target.value))
-                    }
-                  />
-                </Field>
-                <Field label={copy.fields.durationSeconds}>
-                  <select
-                    value={form.durationSeconds}
-                    disabled={form.category !== 'image_to_video'}
-                    onChange={(event) =>
-                      updateForm(
-                        'durationSeconds',
-                        Number(event.target.value) as 5 | 8 | 10
-                      )
-                    }
-                    className="h-9 rounded-md border border-gray-200 bg-white px-3 text-sm disabled:opacity-50"
-                  >
-                    <option value={5}>5s</option>
-                    <option value={8}>8s</option>
-                    <option value={10}>10s</option>
-                  </select>
-                </Field>
-                <Field label={copy.fields.sortWeight}>
-                  <Input
-                    type="number"
-                    value={form.sortWeight}
-                    onChange={(event) =>
-                      updateForm('sortWeight', Number(event.target.value))
-                    }
-                  />
-                </Field>
-              </div>
-            </div>
 
-            <div>
-              <Label className="mb-2 block text-xs font-semibold uppercase text-gray-500">
-                {copy.fields.aspectRatios}
-              </Label>
-              <div className="flex flex-wrap gap-2">
-                {(['9:16', '1:1', '16:9'] as const).map((ratio) => (
-                  <button
-                    key={ratio}
-                    type="button"
-                    onClick={() => toggleRatio(ratio)}
-                    className={cn(
-                      'h-9 rounded-md border px-3 text-sm font-medium',
-                      form.aspectRatios.includes(ratio)
-                        ? 'border-gray-950 bg-gray-950 text-white'
-                        : 'border-gray-200 bg-white text-gray-700'
-                    )}
-                  >
-                    {ratio}
-                  </button>
-                ))}
-              </div>
-            </div>
-
-            <div className="rounded-lg border border-gray-200 bg-gray-50 p-4">
-              <div className="mb-4 text-sm font-semibold text-gray-950">
-                {copy.tags}
-              </div>
-              <div className="grid gap-4">
-                {templateTagGroups.map(({ group, labels }) => (
-                  <div key={group}>
-                    <div className="mb-2 text-xs font-semibold uppercase text-gray-500">
-                      {labels[locale] ?? labels.en}
-                    </div>
-                    <div className="flex flex-wrap gap-2">
-                      {templateTagOptions
-                        .filter((tag) => tag.group === group)
-                        .map((tag) => (
-                          <button
-                            key={tag.slug}
-                            type="button"
-                            onClick={() => toggleTag(tag.slug)}
-                            className={cn(
-                              'h-8 rounded-md border px-2.5 text-xs font-medium',
-                              form.tagSlugs.includes(tag.slug)
-                                ? 'border-orange-500 bg-orange-50 text-orange-700'
-                                : 'border-gray-200 bg-white text-gray-700'
-                            )}
-                          >
-                            {tag.labels[locale] ?? tag.labels.pt}
-                          </button>
-                        ))}
-                    </div>
-                  </div>
-                ))}
-              </div>
-            </div>
+            <Field label={copy.fields.promptTranslations ?? 'Prompt translations'}>
+              <textarea
+                value={form.promptTranslations}
+                onChange={(event) =>
+                  updateForm('promptTranslations', event.target.value)
+                }
+                rows={6}
+                className="rounded-md border border-gray-200 bg-white px-3 py-2 font-mono text-xs leading-5 outline-none focus:border-gray-400"
+              />
+            </Field>
 
             <div className="rounded-lg border border-gray-200 p-4">
               <div className="mb-4 flex items-center justify-between gap-3">
                 <div className="text-sm font-semibold text-gray-950">
                   {copy.uploadAsset}
                 </div>
-                {selectedTemplate?.asset ? (
+                {selectedTemplate?.previewUrl ? (
                   <a
-                    href={selectedTemplate.asset}
+                    href={selectedTemplate.previewUrl}
                     target="_blank"
                     rel="noreferrer"
                     className="text-xs font-semibold text-orange-700"

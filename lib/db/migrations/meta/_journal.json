@@ -134,6 +134,27 @@
       "when": 1780000016000,
       "tag": "0019_single_template_table",
       "breakpoints": true
+    },
+    {
+      "idx": 19,
+      "version": "7",
+      "when": 1780000017000,
+      "tag": "0020_minimal_templates",
+      "breakpoints": true
+    },
+    {
+      "idx": 20,
+      "version": "7",
+      "when": 1780000018000,
+      "tag": "0021_template_titles",
+      "breakpoints": true
+    },
+    {
+      "idx": 21,
+      "version": "7",
+      "when": 1780000019000,
+      "tag": "0022_template_prompt_translations",
+      "breakpoints": true
     }
   ]
 }

@@ -1,6 +1,11 @@
 import 'server-only';
 
-import { HeadObjectCommand, PutObjectCommand, S3Client } from '@aws-sdk/client-s3';
+import {
+  GetObjectCommand,
+  HeadObjectCommand,
+  PutObjectCommand,
+  S3Client,
+} from '@aws-sdk/client-s3';
 import { getSignedUrl } from '@aws-sdk/s3-request-presigner';
 
 import {
@@ -22,6 +27,16 @@ type SignedPutUrlInput = {
   mimeType: string;
   sizeBytes: number;
   expiresInSeconds?: number;
+};
+
+type SignedGetUrlInput = {
+  storageKey: string;
+  expiresInSeconds?: number;
+};
+
+type GetObjectInput = {
+  storageKey: string;
+  range?: string | null;
 };
 
 type PutObjectInput = {
@@ -229,6 +244,32 @@ export async function createSignedPutUrl({
     sizeBytes,
     expiresInSeconds,
   });
+}
+
+export async function createSignedGetUrl({
+  storageKey,
+  expiresInSeconds = 3600,
+}: SignedGetUrlInput) {
+  const config = getR2Config();
+  const client = getR2Client(config);
+  const command = new GetObjectCommand({
+    Bucket: config.bucket,
+    Key: storageKey,
+  });
+
+  return getSignedUrl(client, command, { expiresIn: expiresInSeconds });
+}
+
+export async function getObjectFromR2({ storageKey, range }: GetObjectInput) {
+  const config = getR2Config();
+  const client = getR2Client(config);
+  return client.send(
+    new GetObjectCommand({
+      Bucket: config.bucket,
+      Key: storageKey,
+      Range: range ?? undefined,
+    })
+  );
 }
 
 export async function createSignedAdminMediaPutUrl({

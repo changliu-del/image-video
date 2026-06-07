@@ -6,7 +6,7 @@ import {
   locales,
   type Locale,
 } from '@/lib/marketing/content';
-import { templatesPageContent } from '@/lib/templates/catalog';
+import { publicTemplatesPageContent } from '@/lib/templates/public-content';
 
 type TemplatesPageProps = {
   params: Promise<{
@@ -27,7 +27,7 @@ export async function generateMetadata({
     return {};
   }
 
-  const content = templatesPageContent[locale].metadata;
+  const content = publicTemplatesPageContent[locale].metadata;
 
   return {
     title: content.title,

@@ -673,9 +673,9 @@ export const adminContent: Record<AdminLocale, AdminContent> = {
     },
     templates: {
       title: 'Templates',
-      description: 'Gerencie registros do catálogo e mídias de preview.',
+      description: 'Gerencie titulo, tipo, categoria, midias e prompt dos templates.',
       emptyText: 'Nenhum template.',
-      searchPlaceholder: 'Nome, categoria, tag...',
+      searchPlaceholder: 'ID, titulo, tipo, categoria ou prompt...',
       create: 'Criar',
       modalCreate: 'Criar template',
       modalEdit: 'Editar template',
@@ -686,30 +686,29 @@ export const adminContent: Record<AdminLocale, AdminContent> = {
       selectSavedTemplate: 'Selecione um template salvo e um arquivo primeiro.',
       confirmDelete: (name) => `Excluir template ${name}?`,
       columns: {
-        name: 'Template',
+        id: 'ID',
+        title: 'Titulo',
+        titleTranslations: 'Traducoes do titulo',
+        type: 'Tipo',
         category: 'Categoria',
-        costCredits: 'Créditos',
-        durationSeconds: 'Duração',
-        tags: 'Tags',
-        usageCount: 'Uso',
+        prompt: 'Prompt',
         updatedAt: 'Atualizado em',
       },
       fields: {
-        name: 'Nome',
         id: 'ID',
+        title: 'Titulo',
+        type: 'Tipo',
         category: 'Categoria',
-        description: 'Descrição',
+        thumbnailAssetId: 'ID do asset da miniatura',
+        previewAssetId: 'ID do asset do preview',
+        thumbnailUrl: 'URL da miniatura',
+        previewUrl: 'URL do preview',
         prompt: 'Prompt',
-        negativePrompt: 'Prompt negativo',
-        costCredits: 'Custo',
-        durationSeconds: 'Duração',
-        sortWeight: 'Peso',
-        aspectRatios: 'Proporções',
+        promptTranslations: 'Traducoes do prompt',
       },
       categoryOptions: {
         image_to_image: 'Imagem',
         image_to_video: 'Imagem para vídeo',
-        try_on: 'Provador',
       },
       errors: {
         load: 'Falha ao carregar',
@@ -851,7 +850,7 @@ export const adminContent: Record<AdminLocale, AdminContent> = {
 
 ## Uso
 
-Templates orientam a escolha do usuario. Operacao usa esta pagina para deixar claro o cenario, o resultado esperado, o prompt padrao, o formato, a duracao, o custo e as midias de preview que aparecem na biblioteca e nos workbenches.
+Templates agora sao registros pequenos de imagem para video. A tabela de templates guarda type, categoria de negocio, thumbnail_asset_id, preview_asset_id e prompt. A biblioteca da home reutiliza os mesmos registros do workbench de imagem para video, enquanto a API entrega URLs prontas para a interface.
 
 ## Onde operar e conferir
 
@@ -859,67 +858,67 @@ Templates orientam a escolha do usuario. Operacao usa esta pagina para deixar cl
 
 ![Admin template list](/admin-help/placements/template-admin-list.png)
 
-- Use a busca para encontrar por nome, categoria ou tag antes de criar outro template parecido.
-- A tabela mostra categoria, custo, duracao, tags, uso e ultima atualizacao para decidir o que revisar primeiro.
+- Use a busca para encontrar por id, type, category ou prompt antes de criar outro template parecido.
+- A tabela mostra id, type, category, prompt e updated_at para decidir o que revisar primeiro.
 - O botao Criar abre o formulario. Upload de preview fica dentro do detalhe ou edicao.
 
 ### Formulario de criacao e edicao
 
 ![Admin template form](/admin-help/placements/template-admin-form.png)
 
-- Preencha primeiro nome, categoria e descricao.
-- Depois revise prompt, prompt negativo, custo, duracao, proporcoes, tags e sortWeight.
-- Em templates ja salvos, envie preview para explicar o resultado esperado.
+- Preencha type, category, thumbnail_asset_id, preview_asset_id e prompt.
+- type=image_to_video e o valor usado pela home e pelo workbench de video.
+- category e a classificacao de negocio dentro desse type, por exemplo product, fashion ou food.
+- Em templates ja salvos, envie ou selecione a miniatura e o preview para explicar o resultado esperado.
 
 ### Biblioteca de templates no frontend
 
 ![Frontend templates page](/admin-help/placements/templates-page.png)
 
-- O usuario encontra templates por busca, categoria, tags e ordenacao.
-- Nome, descricao e preview precisam explicar rapidamente o uso.
-- Tags e sortWeight definem a navegacao e a prioridade dentro da biblioteca.
+- O usuario encontra templates por category e busca textual.
+- A lista recebe thumbnailUrl da API e mostra a miniatura.
+- O detalhe recebe previewUrl e prompt para mostrar o preview principal e preencher o workbench.
 
 ### Workbench de criacao
 
 ![Creation workbench template placement](/admin-help/placements/video-workbench.png)
 
-- A categoria decide em qual fluxo o template e validado: imagem, imagem para video ou provador.
-- Prompt e negativePrompt precisam bater com a experiencia real de geracao.
-- CostCredits, aspectRatios e durationSeconds precisam bater com a cobranca e com a promessa feita ao usuario.
+- O workbench de video carrega os mesmos templates com type=image_to_video.
+- Ao escolher um template, o prompt entra no campo editavel do usuario.
+- O template salvo deve funcionar com uma imagem de produto real.
 
 ## Campos que a operacao precisa revisar
 
-- Nome: texto claro para Admin, busca e frontend.
 - ID: identificador gerado pelo sistema para links, tarefas e busca. Use para localizar um template em suporte ou investigacao.
-- Categoria: define o fluxo de criacao em que o template deve ser conferido.
-- Descricao: explica cenario de uso, limite e resultado esperado para o usuario decidir se deve escolher esse template.
-- Prompt e prompt negativo: instrucoes reais para geracao; nao publique texto temporario.
-- Custo, duracao e proporcoes: expectativa de credito, tempo de video e formato visual.
-- Tags e sortWeight: busca, filtro, organizacao e prioridade.
-- Preview: midia que ajuda o usuario e a operacao a reconhecer o template.
+- type: tipo de capacidade. Hoje a home e o workbench usam type=image_to_video.
+- category: classificacao de negocio. Nao use category para representar pagina ou workbench.
+- thumbnail_asset_id: asset da miniatura da lista; a API publica como thumbnailUrl.
+- preview_asset_id: asset do video ou imagem principal; a API de detalhe publica como previewUrl.
+- prompt: instrucao real de geracao; nao publique texto temporario.
+- created_at e updated_at: auditoria basica de criacao e ultima alteracao.
 
 ## Checklist
 
-- Nao crie duplicado sem buscar por nome, categoria e tags.
+- Nao crie duplicado sem buscar por id, category e prompt.
 - Nao deixe template sem preview compreensivel quando ele for importante para navegacao.
-- Prompt, custo, duracao e proporcao precisam bater com a geracao real.
-- Depois de salvar, confira a biblioteca de templates e o workbench correspondente.`,
+- O prompt precisa bater com a geracao real.
+- Depois de salvar, confira a biblioteca de templates e o workbench de video.`,
           purpose:
-            'Manter receitas de geração e mídias de preview que viram entradas visíveis nos workbenches.',
+            'Manter templates mínimos de imagem para vídeo usados pela home e pelo workbench de vídeo.',
           dailyActions: [
-            'Criar ou editar templates com nome, categoria, descrição e prompt completos.',
-            'Enviar preview para explicar o resultado.',
-            'Revisar custo, duração, proporção e tags antes de usar em campanhas.',
+            'Criar ou editar templates com type, category, thumbnail_asset_id, preview_asset_id e prompt.',
+            'Enviar ou selecionar miniatura e preview para explicar o resultado.',
+            'Conferir a biblioteca da home e o workbench de vídeo depois de salvar.',
           ],
           keyFields: [
-            'ID, nome, categoria, descrição e tags.',
-            'Prompt e prompt negativo.',
-            'Créditos, duração, proporções, tags, peso e uso.',
+            'id, type, category, created_at e updated_at.',
+            'thumbnail_asset_id e preview_asset_id.',
+            'prompt.',
           ],
           riskSignals: [
-            'Categoria errada faz o template aparecer no workbench errado.',
+            'type errado faz o template sumir da home e do workbench de vídeo.',
             'Template sem preview claro reduz confiança do usuário.',
-            'Custo de créditos deve acompanhar a regra real de geração.',
+            'category muito genérica dificulta a navegação.',
           ],
         },
         {
@@ -1411,9 +1410,9 @@ Ativos da biblioteca sao midias reutilizaveis. O upload cria o registro no Admin
     },
     templates: {
       title: 'Templates',
-      description: 'Manage template catalog records and preview media.',
+      description: 'Manage template title, type, category, media, and prompt.',
       emptyText: 'No templates.',
-      searchPlaceholder: 'Name, category, tag...',
+      searchPlaceholder: 'ID, title, type, category, or prompt...',
       create: 'Create',
       modalCreate: 'Create template',
       modalEdit: 'Edit template',
@@ -1424,30 +1423,29 @@ Ativos da biblioteca sao midias reutilizaveis. O upload cria o registro no Admin
       selectSavedTemplate: 'Select a saved template and a file first.',
       confirmDelete: (name) => `Delete template ${name}?`,
       columns: {
-        name: 'Template',
+        id: 'ID',
+        title: 'Title',
+        titleTranslations: 'Title translations',
+        type: 'Type',
         category: 'Category',
-        costCredits: 'Credits',
-        durationSeconds: 'Duration',
-        tags: 'Tags',
-        usageCount: 'Usage',
+        prompt: 'Prompt',
         updatedAt: 'Updated At',
       },
       fields: {
-        name: 'Name',
         id: 'ID',
+        title: 'Title',
+        type: 'Type',
         category: 'Category',
-        description: 'Description',
+        thumbnailAssetId: 'Thumbnail asset ID',
+        previewAssetId: 'Preview asset ID',
+        thumbnailUrl: 'Thumbnail URL',
+        previewUrl: 'Preview URL',
         prompt: 'Prompt',
-        negativePrompt: 'Negative prompt',
-        costCredits: 'Cost',
-        durationSeconds: 'Duration',
-        sortWeight: 'Weight',
-        aspectRatios: 'Aspect ratios',
+        promptTranslations: 'Prompt translations',
       },
       categoryOptions: {
         image_to_image: 'Image',
         image_to_video: 'Image to video',
-        try_on: 'Try-on',
       },
       errors: {
         load: 'Load failed',
@@ -1589,7 +1587,7 @@ Ativos da biblioteca sao midias reutilizaveis. O upload cria o registro no Admin
 
 ## Purpose
 
-Templates guide the user's creation choice. Operators use this page to make the scenario, expected result, default prompt, format, duration, cost, and preview media clear in the template library and matching workbenches.
+Templates are now small image-to-video records. The templates table stores type, business category, thumbnail_asset_id, preview_asset_id, and prompt. The homepage template library reuses the same records as the image-to-video workbench, while the API returns ready-to-render URLs.
 
 ## Where to operate and verify
 
@@ -1597,67 +1595,67 @@ Templates guide the user's creation choice. Operators use this page to make the 
 
 ![Admin template list](/admin-help/placements/template-admin-list.png)
 
-- Search by name, category, or tag before creating another similar template.
-- The table shows category, credit cost, duration, tags, usage, and last update so operators can decide what to review first.
+- Search by id, type, category, or prompt before creating another similar template.
+- The table shows id, type, category, prompt, and updated_at so operators can decide what to review first.
 - Create opens the form. Preview uploads happen from detail or edit views.
 
 ### Create and edit form
 
 ![Admin template form](/admin-help/placements/template-admin-form.png)
 
-- Fill name, category, and description first.
-- Then review prompt, negative prompt, cost, duration, aspect ratios, tags, and sortWeight.
-- For saved templates, upload preview media to explain the expected result.
+- Fill type, category, thumbnail_asset_id, preview_asset_id, and prompt.
+- type=image_to_video is the value used by the homepage and video workbench.
+- category is the business classification inside that type, for example product, fashion, or food.
+- For saved templates, upload or select thumbnail and preview media to explain the expected result.
 
 ### Frontend template library
 
 ![Frontend templates page](/admin-help/placements/templates-page.png)
 
-- Users find templates through search, category, tags, and sorting.
-- Name, description, and preview must explain the use case quickly.
-- Tags and sortWeight decide browsing organization and priority.
+- Users find templates through category and text search.
+- The list API returns thumbnailUrl for the card thumbnail.
+- The detail API returns previewUrl and prompt for the main preview and workbench fill.
 
 ### Creation workbench
 
 ![Creation workbench template placement](/admin-help/placements/video-workbench.png)
 
-- Category decides which creation flow must be checked: image, image to video, or try-on.
-- Prompt and negativePrompt must match the real generation experience.
-- CostCredits, aspectRatios, and durationSeconds must match billing and the promise shown to users.
+- The video workbench loads the same templates with type=image_to_video.
+- When a user chooses a template, the prompt fills the editable prompt field.
+- The saved template must work with a real product image.
 
 ## Fields operators need to review
 
-- Name: clear text for Admin, search, and frontend.
 - ID: system-generated identifier for links, tasks, and search. Use it to locate a template in support or investigation.
-- Category: creation flow where the template should be verified.
-- Description: scenario, limitation, and expected result so users can decide whether to choose this template.
-- Prompt and negative prompt: real generation instructions; do not publish placeholder text.
-- Cost, duration, and aspect ratios: credit expectation, video length, and visual format.
-- Tags and sortWeight: search, filtering, organization, and priority.
-- Preview media: helps users and operators recognize the template.
+- type: capability type. Today the homepage and workbench use type=image_to_video.
+- category: business classification. Do not use category to represent a page or workbench.
+- thumbnail_asset_id: asset used for the list thumbnail; the API publishes it as thumbnailUrl.
+- preview_asset_id: asset used for the main video or image; the detail API publishes it as previewUrl.
+- prompt: real generation instruction; do not publish placeholder text.
+- created_at and updated_at: basic creation and last-edit audit.
 
 ## Checklist
 
-- Do not create a duplicate without searching by name, category, and tags.
+- Do not create a duplicate without searching by id, category, and prompt.
 - Do not leave important browsing templates without understandable preview media.
-- Prompt, cost, duration, and aspect ratio must match the real generation flow.
-- After saving, check the frontend template library and the matching workbench.`,
+- The prompt must match the real generation flow.
+- After saving, check the frontend template library and the video workbench.`,
           purpose:
-            'Maintain generation recipes and preview media that become visible workbench entry points.',
+            'Maintain minimal image-to-video templates used by the homepage and video workbench.',
           dailyActions: [
-            'Create or edit templates with complete name, category, description, and prompt.',
-            'Upload preview media to explain the result.',
-            'Review cost, duration, aspect ratio, and tags before using templates in campaigns.',
+            'Create or edit templates with type, category, thumbnail_asset_id, preview_asset_id, and prompt.',
+            'Upload or select thumbnail and preview media to explain the result.',
+            'Check the homepage library and video workbench after saving.',
           ],
           keyFields: [
-            'ID, name, category, description, and tags.',
-            'Prompt and negative prompt.',
-            'Credits, duration, aspect ratios, tags, sort weight, and usage.',
+            'id, type, category, created_at, and updated_at.',
+            'thumbnail_asset_id and preview_asset_id.',
+            'prompt.',
           ],
           riskSignals: [
-            'Wrong category makes the template appear in the wrong workbench.',
+            'Wrong type makes the template disappear from the homepage and video workbench.',
             'A template without clear preview media lowers user confidence.',
-            'Credit cost should match the real generation reservation rule.',
+            'A vague category makes browsing harder.',
           ],
         },
         {
@@ -2147,9 +2145,9 @@ Library assets are reusable media. Uploading creates the Admin record; the categ
     },
     templates: {
       title: '模板',
-      description: '管理模板目录记录和预览媒体。',
+      description: '管理模板的标题、类型、类目、媒体和提示词。',
       emptyText: '暂无模板。',
-      searchPlaceholder: '搜索名称、类别或标签...',
+      searchPlaceholder: '搜索 ID、标题、类型、类目或提示词...',
       create: '创建',
       modalCreate: '创建模板',
       modalEdit: '编辑模板',
@@ -2160,30 +2158,29 @@ Library assets are reusable media. Uploading creates the Admin record; the categ
       selectSavedTemplate: '请先选择已保存的模板和文件。',
       confirmDelete: (name) => `确认删除模板 ${name}？`,
       columns: {
-        name: '模板',
-        category: '类别',
-        costCredits: '消耗算力',
-        durationSeconds: '时长',
-        tags: '标签',
-        usageCount: '使用量',
+        id: 'ID',
+        title: '标题',
+        titleTranslations: '标题翻译',
+        type: '类型',
+        category: '类目',
+        prompt: '提示词',
         updatedAt: '更新时间',
       },
       fields: {
-        name: '名称',
         id: 'ID',
-        category: '类别',
-        description: '描述',
+        title: '标题',
+        type: '类型',
+        category: '类目',
+        thumbnailAssetId: '缩略图素材 ID',
+        previewAssetId: '预览素材 ID',
+        thumbnailUrl: '缩略图 URL',
+        previewUrl: '预览 URL',
         prompt: '提示词',
-        negativePrompt: '负向提示词',
-        costCredits: '成本',
-        durationSeconds: '时长',
-        sortWeight: '排序权重',
-        aspectRatios: '画幅比例',
+        promptTranslations: '提示词翻译',
       },
       categoryOptions: {
         image_to_image: '图片',
         image_to_video: '图生视频',
-        try_on: '智能试衣',
       },
       errors: {
         load: '加载失败',
@@ -2329,15 +2326,15 @@ Library assets are reusable media. Uploading creates the Admin record; the categ
 
 ### 编写目的
 
-本文用于指导运营在管理后台维护模板。模板是用户选择创作方向的入口：它告诉用户适合什么商品和场景、预期生成什么效果，并把默认提示词、画幅、时长和算力成本带到对应工作台。
+本文用于指导运营在管理后台维护模板。模板是用户选择创作方向的入口：它告诉用户适合什么商品和场景、预期生成什么效果，并把默认提示词带到图生视频工作台。
 
 ### 注意事项
 
 - 先从用户视角判断模板：用户能不能一眼看懂用途、预览效果和适合的商品场景。
 - 模板保存后要按用户路径检查：先看前台模板库页面是否方便发现和理解，再看对应创作工作台能否正确选择并生成。
-- 类别决定模板进入哪个创作工作台；标签帮助用户浏览筛选，也帮助运营做活动分组。
-- 名称、描述和预览负责降低用户选择成本；提示词、画幅、时长和算力成本负责生成结果与扣费预期。
-- 算力成本、时长和画幅比例必须和真实生成规则一致，不能只为了展示好看而随意填写。
+- type 决定模板能力类型；category 是业务分类，不表示页面或工作台入口。
+- 缩略图和主预览都来自 assets 表，模板表只保存 thumbnail_asset_id 和 preview_asset_id。
+- API 对前台输出 thumbnailUrl、previewUrl 和 prompt，前台不直接依赖模板表里的 asset id。
 
 ## 二、系统整体界面介绍
 
@@ -2346,98 +2343,91 @@ Library assets are reusable media. Uploading creates the Admin record; the categ
 - 系统 URL：使用管理员提供的后台域名进入系统。
 - 登录方式：使用管理员账号登录后进入管理后台。
 - 功能入口：左侧菜单选择“管理后台 > 模板”。
-- 前台验证位置：前台模板库页面，以及图生视频、商品图、智能试衣等创作工作台。
+- 前台验证位置：首页模板库、前台模板库页面，以及图生视频创作工作台。
 
 ### 模板管理列表页面介绍
 
 ![模板管理列表页](/admin-help/placements/template-admin-list.png)
 
-模板管理列表是运营每天查找、创建和复核模板的入口。截图里本地环境暂无模板，但页面结构就是线上运营要看的结构：搜索框用于按名称、ID、类别或标签定位模板；“创建”用于新增模板；列表列位用于快速判断模板类别、消耗算力、时长、标签、使用量和更新时间；操作列用于查看、编辑、上传预览媒体或删除。
+模板管理列表页是运营每天查找、创建和复核模板的入口。截图里本地环境暂无模板，但页面结构就是线上运营要看的结构：搜索框用于按 id、type、category 或 prompt 定位模板；“创建”用于新增模板；列表列位用于快速判断模板类型、业务类目、提示词和 updated_at；操作列用于查看、编辑、上传预览媒体或删除。
 
-运营在列表页先看三件事：是否已经有相似模板、模板类别是否符合工作台入口、更新时间和使用量是否需要复核。不要只凭名称判断模板能不能上线，必须进详情或编辑表单看提示词、成本和预览效果。
+运营在列表页先看三件事：是否已经有相似模板、type 是否是当前要展示的能力、category 是否是清晰的业务分类。不要把 category 当成页面或工作台入口，首页模板库和图生视频工作台复用 type=image_to_video 这一批模板。
 
 ### 模板编辑表单页面介绍
 
 ![模板编辑表单](/admin-help/placements/template-admin-form.png)
 
-模板编辑表单是补齐展示信息和生成配置的地方。顶部字段负责前台展示和基础归类：名称、类别、描述。继续向下滚动后会看到提示词、负向提示词、成本、时长、排序权重、画幅比例、标签和预览媒体。只有已保存模板才能上传 preview 预览媒体。
+模板编辑表单只维护最小字段：type、category、thumbnail_asset_id、preview_asset_id 和 prompt。缩略图和主预览必须先作为 assets 上传或被选择，再由模板引用对应 asset id。
 
 ### 前台模板库页面介绍
 
 ![前台模板库页面](/admin-help/placements/templates-page.png)
 
-前台模板库是用户浏览和筛选模板的页面。运营保存后要检查名称是否能说明用途、预览是否看得懂、标签是否能被筛选到、排序是否符合活动优先级。这里主要验证“用户能不能发现并理解模板”。
+前台模板库是用户浏览图生视频模板的页面。运营保存后要检查 category 是否容易理解、列表 API 输出的 thumbnailUrl 是否能作为卡片缩略图、详情 API 输出的 previewUrl 是否能展示主视频或主图、prompt 是否能说明生成方向。这里主要验证“用户能不能发现并理解模板”。
 
 ### 创作工作台页面介绍
 
 ![创作工作台模板入口](/admin-help/placements/video-workbench.png)
 
-创作工作台验证模板是否真的能用于生成。运营要按 category 进入对应工作台：image_to_video 看图生视频，image_to_image 看图片生成，try_on 看智能试衣。这里重点检查默认提示词、上传要求、画幅、时长、算力说明和生成按钮是否符合模板承诺。
+创作工作台验证模板是否真的能用于生成。当前模板表只在首页模板库和图生视频工作台展示，两处都读取 type=image_to_video。用户选择模板后，prompt 会进入可编辑输入框，用户仍然可以继续改写。
 
 ## 三、功能介绍
 
 ### 创建和编辑模板
 
-- 新建模板时先填写名称、类别和描述。
-- 再填写提示词、负向提示词、成本、画幅、时长、排序权重和标签。
-- 需要解释效果时，上传 preview 预览媒体。
-- 保存后检查预览和字段是否完整，再到对应工作台验证。
+- 新建模板时填写 type、category、thumbnail_asset_id、preview_asset_id 和 prompt。
+- type 控制能力类型；当前首页模板库和图生视频都用 type=image_to_video。
+- category 是业务分类，例如 product、fashion、food。
+- 需要解释效果时，上传或选择缩略图 asset 和 preview asset。
+- 模板保存后要按用户路径检查：首页模板库能看到，图生视频工作台能选中并带入 prompt。
 
 ### 字段说明
 
-- 名称：运营和用户都能看到的模板名称。要写成可理解的结果或用途，不要只写内部代号。
 - ID：系统生成的模板唯一标识，用于跳转、任务记录和定位。创建后自动产生，运营复制给技术或客服定位即可。
-- 类别：决定模板要去哪个工作台验证。image_to_video 看图生视频；image_to_image 看图片生成；try_on 看智能试衣。类别填错时，运营会在错误页面找模板。
-- 描述：解释适合的商品、渠道、活动目标或限制条件，帮助用户确认要不要选择这个模板。描述太泛会影响用户选择。
-- 提示词：正向生成要求，是模板效果的核心。不能只写展示文案，必须能指导真实生成。
-- 负向提示词：用于排除不想要的画面、风格或错误结果。常见问题可以沉淀在这里。
-- 成本：用户生成时看到和预留的算力成本说明，必须和后端真实扣费规则一致。
-- 时长：视频模板的默认时长。图片模板通常不需要时长；视频时长要和 provider 支持能力一致。
-- 画幅比例：用户可选或默认生成比例。保存前要确认预览媒体和生成结果都适配这些比例。
-- 标签：用于搜索、筛选、活动分组和运营排查。用短标签，不要写成长句。
-- 排序权重：同类模板的人工排序加权。活动主推可以临时调高，活动结束后要调回。
-- 预览媒体：preview 用于展示结果预期。重要模板没有清晰预览时不要放到活动入口。
-- 使用量和更新时间：用于判断模板是否还在被用户使用，以及最近是否有人改动。高使用模板修改前要更谨慎。
+- type：能力类型。当前首页模板库和图生视频工作台都读取 type=image_to_video。
+- category：业务分类。category 是业务分类，不表示首页、工作台或展示位置。
+- thumbnail_asset_id：卡片缩略图对应的 assets.id，列表 API 会输出为 thumbnailUrl。
+- preview_asset_id：模板主预览对应的 assets.id，详情 API 会输出为 previewUrl。
+- prompt：真实生成提示词，是模板效果的核心。不能只写展示文案，必须能指导真实生成。
+- created_at 和 updated_at：创建和更新时间，用于判断最近是否有人改动。
 
 ### 保存和验证模板
 
-- 保存前先检查展示字段，再检查生成配置。
-- 保存后到模板库和对应工作台验证是否出现。
+- 保存前检查 type、category、thumbnail_asset_id、preview_asset_id 和 prompt 是否完整。
+- 保存后到首页模板库和图生视频工作台验证是否出现。
 - 过期或错误模板可以删除；删除前确认没有还需要排查的历史任务。
 
 ## 四、业务操作指引
 
 ### 如何管理模板
 
-新增模板：进入“模板”页面，点击创建，填写名称、类别、描述、提示词、画幅、时长、标签和算力成本，再补齐 preview 预览媒体。
+新增模板：进入“模板”页面，点击创建，填写 type、category、thumbnail_asset_id、preview_asset_id 和 prompt，并确认两个 asset 都已上传完成。
 
-查询模板：通过名称、ID、类别或标签查找模板。找不到时先确认是否在正确工作台类别下查询。
+查询模板：通过 id、type、category 或 prompt 查找模板。找不到时先确认是否应该是 type=image_to_video。
 
-修改模板：先判断要改的是展示效果还是生成配置。展示效果通常修改名称、描述、预览、标签和排序；生成配置通常修改提示词、画幅、时长和算力成本。
+修改模板：先判断要改的是媒体还是生成提示。媒体通常替换 thumbnail_asset_id 或 preview_asset_id；生成效果通常修改 prompt；归类问题修改 category。
 
-删除模板：删除前确认模板不是当前活动入口，也不会影响历史任务排查。只是临时不想主推时，优先调低排序权重或移除相关标签。
+删除模板：删除前确认模板不是当前活动入口，也不会影响历史任务排查。
 
-保存后验证：保存后先看前台模板库是否能被搜索和筛选到，再进入对应创作工作台检查模板入口、默认提示词、画幅时长和算力说明是否正确。`,
+保存后验证：保存后先看前台模板库是否能被搜索和按 category 筛选到，再进入图生视频工作台检查模板入口和默认 prompt 是否正确。`,
           purpose:
-            '维护用户在模板库和工作台看到的创作入口。模板会把名称、预览、默认提示词、画幅、时长和算力成本带到用户选择和生成流程。',
+            '维护首页模板库和图生视频工作台共用的最小模板记录。',
           dailyActions: [
-            '点击“创建”维护名称、类别、描述和提示词。',
-            '进入已保存模板，上传 preview 预览媒体，让用户能看懂结果预期。',
-            '复核成本、时长、画幅比例和标签后再用于活动入口。',
-            '保存后到对应工作台查看模板是否出现，过期模板降低排序或删除。',
+            '点击“创建”维护 type、category、thumbnail_asset_id、preview_asset_id 和 prompt。',
+            '进入已保存模板，上传或选择缩略图和主预览，让用户能看懂结果预期。',
+            '保存后到首页模板库和图生视频工作台查看模板是否出现。',
           ],
           keyFields: [
             'ID：系统生成的模板唯一标识，用于跳转、任务记录和定位。',
-            '名称、描述、类别：用户看到的浏览信息，以及模板进入哪个工作台。',
-            'Prompt 和负向 Prompt：真正给生成服务的配置。',
-            '算力成本：用户点击生成时会按这个成本展示和预留，必须和后端真实规则一致。',
-            '时长和画幅比例：影响视频长度和生成尺寸，也影响用户预期。',
-            '标签和排序权重：决定前台分类、搜索和展示顺序。',
+            'type 和 category：type 是能力类型，category 是业务分类。',
+            'thumbnail_asset_id 和 preview_asset_id：分别引用卡片缩略图和主预览 asset。',
+            'prompt：真正给生成流程使用的默认提示词。',
+            'created_at 和 updated_at：用于判断创建和最近修改时间。',
           ],
           riskSignals: [
-            '类别填错会让模板进入错误工作台。',
+            'type 填错会让模板从首页模板库和图生视频工作台消失。',
             '没有清晰预览的模板不要作为主推入口，用户不知道会生成什么。',
-            '算力成本填错会直接影响扣费解释和客服处理。',
+            'category 太泛会让用户难以按业务类目浏览。',
             '删除模板前确认没有历史排查需求。',
           ],
         },

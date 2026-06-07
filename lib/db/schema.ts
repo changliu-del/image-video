@@ -53,12 +53,11 @@ export const EMAIL_VERIFICATION_PURPOSES = ['signup'] as const;
 export type EmailVerificationPurpose =
   (typeof EMAIL_VERIFICATION_PURPOSES)[number];
 
-export const TEMPLATE_CATEGORIES = [
-  'image_to_video',
+export const TEMPLATE_TYPES = [
   'image_to_image',
-  'try_on',
+  'image_to_video',
 ] as const;
-export type TemplateCategory = (typeof TEMPLATE_CATEGORIES)[number];
+export type TemplateType = (typeof TEMPLATE_TYPES)[number];
 
 export const LIBRARY_ASSET_CATEGORIES = [
   'image_to_video',
@@ -227,45 +226,42 @@ export const templates = pgTable(
   'templates',
   {
     id: uuid('id').defaultRandom().primaryKey(),
-    name: varchar('name', { length: 140 }).notNull(),
-    description: text('description').notNull(),
-    category: text('category')
-      .$type<TemplateCategory>()
+    type: text('type')
+      .$type<TemplateType>()
       .notNull()
-      .default('image_to_image'),
+      .default('image_to_video'),
+    title: varchar('title', { length: 140 }).notNull(),
+    titleTranslations: jsonb('title_translations_json')
+      .$type<Record<string, string>>()
+      .notNull()
+      .default(sql`'{}'::jsonb`),
+    category: text('category').notNull(),
+    thumbnailAssetId: uuid('thumbnail_asset_id')
+      .notNull()
+      .references(() => assets.id),
+    previewAssetId: uuid('preview_asset_id')
+      .notNull()
+      .references(() => assets.id),
     prompt: text('prompt').notNull(),
-    negativePrompt: text('negative_prompt'),
-    previewAssetId: uuid('preview_asset_id').references(() => assets.id),
-    tagsJson: jsonb('tags_json')
-      .$type<string[]>()
+    promptTranslations: jsonb('prompt_translations_json')
+      .$type<Record<string, string>>()
       .notNull()
-      .default(sql`'[]'::jsonb`),
-    costCredits: integer('cost_credits').notNull().default(1),
-    aspectRatiosJson: jsonb('aspect_ratios_json')
-      .$type<VideoAspectRatio[]>()
-      .notNull()
-      .default(sql`'["9:16"]'::jsonb`),
-    durationSeconds: integer('duration_seconds'),
-    sortWeight: integer('sort_weight').notNull().default(0),
-    usageCount: integer('usage_count').notNull().default(0),
-    createdBy: integer('created_by').references(() => users.id),
-    updatedBy: integer('updated_by').references(() => users.id),
+      .default(sql`'{}'::jsonb`),
     createdAt: timestamp('created_at').notNull().defaultNow(),
     updatedAt: timestamp('updated_at').notNull().defaultNow(),
   },
   (table) => [
-    index('templates_category_idx').on(table.category),
-    index('templates_sort_weight_idx').on(table.sortWeight),
+    index('templates_type_idx').on(table.type),
+    index('templates_type_category_idx').on(table.type, table.category),
+    index('templates_type_title_idx').on(table.type, table.title),
+    index('templates_thumbnail_asset_id_idx').on(table.thumbnailAssetId),
+    index('templates_preview_asset_id_idx').on(table.previewAssetId),
     check(
-      'templates_category_check',
-      sql`${table.category} in ('image_to_video', 'image_to_image', 'try_on')`
+      'templates_type_check',
+      sql`${table.type} in ('image_to_video', 'image_to_image')`
     ),
-    check('templates_cost_credits_check', sql`${table.costCredits} >= 0`),
-    check('templates_usage_count_check', sql`${table.usageCount} >= 0`),
-    check(
-      'templates_duration_seconds_check',
-      sql`${table.durationSeconds} is null or ${table.durationSeconds} in (5, 8, 10)`
-    ),
+    check('templates_title_not_empty_check', sql`length(trim(${table.title})) > 0`),
+    check('templates_category_not_empty_check', sql`length(trim(${table.category})) > 0`),
   ]
 );
 
@@ -559,8 +555,6 @@ export const usersRelations = relations(users, ({ many }) => ({
   generationJobs: many(generationJobs),
   userMediaHistory: many(userMediaHistory),
   creditLedgerEntries: many(creditLedger),
-  createdTemplates: many(templates, { relationName: 'templateCreator' }),
-  updatedTemplates: many(templates, { relationName: 'templateUpdater' }),
   createdLibraryAssets: many(libraryAssets, { relationName: 'libraryAssetCreator' }),
   updatedLibraryAssets: many(libraryAssets, { relationName: 'libraryAssetUpdater' }),
 }));
@@ -572,26 +566,22 @@ export const assetsRelations = relations(assets, ({ one, many }) => ({
   }),
   inputForJobs: many(generationJobs, { relationName: 'inputAsset' }),
   outputForJobs: many(generationJobs, { relationName: 'outputAsset' }),
-  previewForTemplates: many(templates, { relationName: 'templatePreviewAsset' }),
+  templateThumbnails: many(templates, { relationName: 'templateThumbnail' }),
+  templatePreviews: many(templates, { relationName: 'templatePreview' }),
   libraryAssetRecords: many(libraryAssets),
   userMediaHistory: many(userMediaHistory),
 }));
 
 export const templatesRelations = relations(templates, ({ one }) => ({
+  thumbnailAsset: one(assets, {
+    fields: [templates.thumbnailAssetId],
+    references: [assets.id],
+    relationName: 'templateThumbnail',
+  }),
   previewAsset: one(assets, {
     fields: [templates.previewAssetId],
     references: [assets.id],
-    relationName: 'templatePreviewAsset',
-  }),
-  creator: one(users, {
-    fields: [templates.createdBy],
-    references: [users.id],
-    relationName: 'templateCreator',
-  }),
-  updater: one(users, {
-    fields: [templates.updatedBy],
-    references: [users.id],
-    relationName: 'templateUpdater',
+    relationName: 'templatePreview',
   }),
 }));
 

@@ -1,74 +1,118 @@
 'use client';
 
 import Link from 'next/link';
-import { useEffect, useMemo, useState } from 'react';
-import {
-  ArrowRight,
-  Check,
-  Filter,
-  ImageIcon,
-  Search,
-  SlidersHorizontal,
-  Video,
-  X,
-} from 'lucide-react';
+import { useEffect, useState } from 'react';
+import { ArrowRight, Eye, Loader2, Search, Video, X } from 'lucide-react';
 import {
   getLocalizedHref,
   type Locale,
 } from '@/lib/marketing/content';
+import { getTemplateCategoryLabel } from '@/lib/templates/catalog';
+import { imageToVideoTemplateCategories } from '@/lib/templates/category-config';
+import { publicTemplatesPageContent } from '@/lib/templates/public-content';
 import {
-  getStarterTemplates,
-  getTemplateTagGroupLabel,
-  getTemplateTagLabel,
-  templateTagGroups,
-  templateTagOptions,
-  templatesPageContent,
-  type TemplateCatalogItem,
-  type TemplateTagGroup,
-} from '@/lib/templates/catalog';
+  getPublicTemplateMediaUrl,
+  isPublicTemplateVideo,
+  normalizePublicTemplateCategories,
+  normalizePublicTemplateDetail,
+  normalizePublicTemplateItems,
+  uniquePublicTemplates,
+  type PublicTemplateDetailItem,
+  type PublicTemplateItem,
+  type PublicTemplatesApiResponse,
+} from '@/lib/templates/public-client';
 import { cn } from '@/lib/utils';
 
-type SortKey = 'featured' | 'newest' | 'lowCost';
-type TemplateCategory = TemplateCatalogItem['category'];
+const templateType = 'image_to_video';
+const defaultTemplateCategory: string = imageToVideoTemplateCategories[0] ?? '';
 
-const templateCategories: TemplateCategory[] = [
-  'image_to_image',
-  'image_to_video',
-  'try_on',
-];
-
-type TemplatesApiResponse = {
-  list?: TemplateCatalogItem[];
-  total?: number;
-  page?: number;
-  pageSize?: number;
-  hasMore?: boolean;
-};
-
-function uniqueById(items: TemplateCatalogItem[]) {
-  const seen = new Set<string>();
-  return items.filter((item) => {
-    const key = item.id;
-    if (seen.has(key)) {
-      return false;
-    }
-    seen.add(key);
-    return true;
-  });
+function getTemplateWorkbenchPath(template: PublicTemplateItem) {
+  const params = new URLSearchParams({ templateId: template.id });
+  return `/create/video?${params.toString()}`;
 }
 
-function normalizeTemplateCategory(value: string | null): TemplateCategory | null {
-  return templateCategories.includes(value as TemplateCategory)
-    ? (value as TemplateCategory)
-    : null;
-}
-
-function TemplateMedia({ template }: { template: TemplateCatalogItem }) {
+function categoryLabel(template: PublicTemplateItem, locale: Locale) {
   return (
-    <div className="relative aspect-[4/5] overflow-hidden bg-gray-100">
-      {template.mediaType === 'video' ? (
+    (template.category
+      ? getTemplateCategoryLabel(template.category, locale)
+      : null) ||
+    publicTemplatesPageContent[locale].defaultCategory
+  );
+}
+
+function TemplateMedia({
+  locale,
+  template,
+}: {
+  locale: Locale;
+  template: PublicTemplateItem;
+}) {
+  const mediaUrl = getPublicTemplateMediaUrl(template);
+  const [isHovering, setIsHovering] = useState(false);
+  const [previewUrl, setPreviewUrl] = useState('');
+  const [previewLoadFailed, setPreviewLoadFailed] = useState(false);
+
+  useEffect(() => {
+    if (!isHovering || previewUrl || previewLoadFailed) return;
+
+    let ignore = false;
+    const controller = new AbortController();
+
+    async function loadPreview() {
+      try {
+        const params = new URLSearchParams({ locale });
+        const response = await fetch(`/api/templates/${template.id}?${params}`, {
+          signal: controller.signal,
+        });
+
+        if (!response.ok) {
+          throw new Error('template-preview-load-failed');
+        }
+
+        const detail = normalizePublicTemplateDetail(await response.json());
+        if (!detail?.previewUrl) {
+          throw new Error('template-preview-invalid');
+        }
+
+        if (!ignore) {
+          setPreviewUrl(detail.previewUrl);
+        }
+      } catch {
+        if (!ignore) {
+          setPreviewLoadFailed(true);
+        }
+      }
+    }
+
+    loadPreview();
+
+    return () => {
+      ignore = true;
+      controller.abort();
+    };
+  }, [isHovering, locale, previewLoadFailed, previewUrl, template.id]);
+
+  if (!mediaUrl) {
+    return (
+      <div className="flex size-full items-center justify-center bg-gray-100 text-gray-300">
+        <Video className="size-10" />
+      </div>
+    );
+  }
+
+  const previewIsActive = isHovering && previewUrl;
+
+  return (
+    <div
+      className="relative size-full"
+      onMouseEnter={() => setIsHovering(true)}
+      onMouseLeave={() => setIsHovering(false)}
+      onPointerEnter={() => setIsHovering(true)}
+      onPointerLeave={() => setIsHovering(false)}
+    >
+      {isPublicTemplateVideo(template) ? (
         <video
-          src={template.asset}
+          src={mediaUrl}
           className="size-full object-cover"
           autoPlay
           muted
@@ -77,109 +121,218 @@ function TemplateMedia({ template }: { template: TemplateCatalogItem }) {
         />
       ) : (
         <img
-          src={template.asset}
+          src={mediaUrl}
           alt=""
           className="size-full object-cover transition duration-700 group-hover:scale-105"
         />
       )}
-      <div className="absolute left-3 top-3 inline-flex h-8 items-center gap-1.5 rounded-md bg-white/92 px-2.5 text-xs font-semibold text-gray-900 shadow-sm backdrop-blur">
-        {template.mediaType === 'video' ? (
-          <Video className="size-3.5 text-orange-600" />
-        ) : (
-          <ImageIcon className="size-3.5 text-emerald-600" />
-        )}
-        {template.costCredits}
-      </div>
+      {previewIsActive ? (
+        <video
+          key={previewUrl}
+          src={previewUrl}
+          poster={template.thumbnailUrl}
+          className="absolute inset-0 size-full object-cover"
+          autoPlay
+          muted
+          loop
+          playsInline
+          preload="metadata"
+        />
+      ) : null}
     </div>
   );
 }
 
-function getTemplateWorkbenchPath(template: TemplateCatalogItem) {
-  const basePath =
-    template.category === 'image_to_video'
-      ? '/create/video'
-      : template.category === 'try_on'
-        ? '/create/try-on'
-        : '/create/apparel';
-  const params = new URLSearchParams();
-
-  if (template.source === 'starter') {
-    params.set('prompt', template.prompt);
-  } else {
-    params.set('templateId', template.id);
-  }
-
-  return `${basePath}?${params.toString()}`;
-}
-
 function TemplateCard({
-  content,
   locale,
+  onDetails,
   template,
 }: {
-  content: (typeof templatesPageContent)[Locale];
   locale: Locale;
-  template: TemplateCatalogItem;
+  onDetails: (template: PublicTemplateItem) => void;
+  template: PublicTemplateItem;
 }) {
-  const visibleTags = template.tags.slice(0, 4);
+  const content = publicTemplatesPageContent[locale];
+  const category = categoryLabel(template, locale);
 
   return (
     <article className="group overflow-hidden rounded-lg border border-gray-200 bg-white shadow-sm transition hover:-translate-y-1 hover:border-gray-300 hover:shadow-lg">
-      <TemplateMedia template={template} />
-      <div className="grid min-h-[300px] content-between gap-5 p-5">
+      <div className="relative aspect-[4/5] overflow-hidden bg-gray-100">
+        <TemplateMedia locale={locale} template={template} />
+        <div className="absolute left-3 top-3 inline-flex h-8 items-center gap-1.5 rounded-md bg-white/92 px-2.5 text-xs font-semibold text-gray-900 shadow-sm backdrop-blur">
+          <Video className="size-3.5 text-orange-600" />
+          {category}
+        </div>
+      </div>
+      <div className="grid min-h-[190px] content-between gap-5 p-5">
         <div>
           <div className="mb-3 flex items-center justify-between gap-3">
             <span className="rounded-md bg-gray-100 px-2.5 py-1 text-xs font-semibold text-gray-700">
-              {content.categoryLabels[template.category]}
+              {template.type}
             </span>
-            <span className="text-xs font-medium text-gray-500">
-              {template.costCredits} {content.costSuffix}
-              {template.costCredits === 1 ? '' : 's'}
+            <span className="max-w-[12rem] truncate text-xs font-medium text-gray-500">
+              {content.idLabel}: {template.id}
             </span>
           </div>
           <h2 className="text-lg font-semibold tracking-tight text-gray-950">
-            {template.name}
+            {template.title}
           </h2>
-          <p className="mt-2 text-sm leading-6 text-gray-600">
-            {template.description}
-          </p>
-          <div className="mt-4 flex flex-wrap gap-2">
-            {visibleTags.map((tag) => (
-              <span
-                key={tag}
-                className="rounded-md bg-orange-50 px-2.5 py-1 text-xs font-medium text-orange-700"
-              >
-                {getTemplateTagLabel(tag, locale)}
-              </span>
-            ))}
-          </div>
         </div>
         <div>
           <p className="mb-3 text-xs text-gray-500">{content.loginHint}</p>
-          <Link
-            href={getLocalizedHref(
-              locale,
-              `/login?redirect=${encodeURIComponent(getTemplateWorkbenchPath(template))}`
-            )}
-            className="inline-flex h-10 w-full items-center justify-center gap-2 rounded-md bg-gray-950 px-4 text-sm font-semibold text-white transition hover:bg-gray-800"
-          >
-            {content.useTemplate}
-            <ArrowRight className="size-4" />
-          </Link>
+          <div className="grid gap-2 sm:grid-cols-2">
+            <button
+              type="button"
+              onClick={() => onDetails(template)}
+              className="inline-flex h-10 items-center justify-center gap-2 rounded-md border border-gray-300 bg-white px-3 text-sm font-semibold text-gray-900 transition hover:bg-gray-50"
+            >
+              <Eye className="size-4" />
+              {content.viewDetails}
+            </button>
+            <Link
+              href={getLocalizedHref(
+                locale,
+                `/login?redirect=${encodeURIComponent(getTemplateWorkbenchPath(template))}`
+              )}
+              className="inline-flex h-10 items-center justify-center gap-2 rounded-md bg-gray-950 px-3 text-sm font-semibold text-white transition hover:bg-gray-800"
+            >
+              {content.useTemplate}
+              <ArrowRight className="size-4" />
+            </Link>
+          </div>
         </div>
       </div>
     </article>
   );
 }
 
-function FilterChip({
+function DetailMedia({ detail }: { detail: PublicTemplateDetailItem }) {
+  if (detail.type === 'image_to_video') {
+    return (
+      <video
+        src={detail.previewUrl}
+        poster={detail.thumbnailUrl}
+        className="aspect-[4/5] w-full rounded-lg bg-gray-100 object-cover"
+        autoPlay
+        controls
+        loop
+        muted
+        playsInline
+        preload="metadata"
+      />
+    );
+  }
+
+  return (
+    <img
+      src={detail.previewUrl}
+      alt=""
+      className="aspect-[4/5] w-full rounded-lg bg-gray-100 object-cover"
+    />
+  );
+}
+
+function TemplateDetailModal({
+  detail,
+  error,
+  isLoading,
+  locale,
+  onClose,
+  template,
+}: {
+  detail: PublicTemplateDetailItem | null;
+  error: boolean;
+  isLoading: boolean;
+  locale: Locale;
+  onClose: () => void;
+  template: PublicTemplateItem;
+}) {
+  const content = publicTemplatesPageContent[locale];
+  const title = detail?.title ?? template.title;
+
+  return (
+    <div className="fixed inset-0 z-50 bg-gray-950/50 px-4 py-6 backdrop-blur-sm">
+      <div className="mx-auto grid max-h-[calc(100dvh-48px)] max-w-4xl overflow-hidden rounded-lg bg-white shadow-2xl">
+        <div className="flex items-center justify-between gap-4 border-b border-gray-200 px-5 py-4">
+          <div className="min-w-0">
+            <h2 className="truncate text-lg font-semibold text-gray-950">
+              {title}
+            </h2>
+            <p className="mt-1 truncate font-mono text-xs text-gray-500">
+              {template.id}
+            </p>
+          </div>
+          <button
+            type="button"
+            onClick={onClose}
+            className="grid size-9 shrink-0 place-items-center rounded-md text-gray-500 hover:bg-gray-100 hover:text-gray-950"
+          >
+            <X className="size-5" />
+          </button>
+        </div>
+        <div className="overflow-y-auto p-5">
+          {isLoading ? (
+            <div className="grid min-h-[420px] place-items-center text-sm font-semibold text-gray-500">
+              <span className="inline-flex items-center gap-2">
+                <Loader2 className="size-4 animate-spin" />
+                {content.loading}
+              </span>
+            </div>
+          ) : error || !detail ? (
+            <div className="grid min-h-[360px] place-items-center text-center">
+              <div>
+                <p className="text-sm font-semibold text-gray-950">
+                  {content.error}
+                </p>
+                <button
+                  type="button"
+                  onClick={onClose}
+                  className="mt-4 inline-flex h-10 items-center rounded-md border border-gray-300 px-4 text-sm font-semibold text-gray-900"
+                >
+                  {content.clearFilters}
+                </button>
+              </div>
+            </div>
+          ) : (
+            <div className="grid gap-5 md:grid-cols-[minmax(0,0.85fr)_minmax(0,1fr)]">
+              <DetailMedia detail={detail} />
+              <div className="grid content-between gap-5">
+                <div>
+                  <div className="mb-3 inline-flex rounded-md bg-gray-100 px-2.5 py-1 text-xs font-semibold text-gray-700">
+                    {detail.type}
+                  </div>
+                  <h3 className="text-sm font-semibold uppercase text-gray-500">
+                    {content.promptLabel}
+                  </h3>
+                  <p className="mt-3 whitespace-pre-wrap rounded-lg bg-gray-50 p-4 text-sm leading-6 text-gray-800">
+                    {detail.prompt}
+                  </p>
+                </div>
+                <Link
+                  href={getLocalizedHref(
+                    locale,
+                    `/login?redirect=${encodeURIComponent(getTemplateWorkbenchPath(template))}`
+                  )}
+                  className="inline-flex h-11 items-center justify-center gap-2 rounded-md bg-gray-950 px-4 text-sm font-semibold text-white transition hover:bg-gray-800"
+                >
+                  {content.useTemplate}
+                  <ArrowRight className="size-4" />
+                </Link>
+              </div>
+            </div>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function CategoryChip({
   active,
-  count,
   label,
   onClick,
 }: {
   active: boolean;
-  count: number;
   label: string;
   onClick: () => void;
 }) {
@@ -194,161 +347,118 @@ function FilterChip({
           : 'border-gray-200 bg-white text-gray-700 hover:border-gray-300 hover:bg-gray-50'
       )}
     >
-      {active ? <Check className="size-3.5" /> : null}
       <span>{label}</span>
-      <span
-        className={cn(
-          'rounded bg-gray-100 px-1.5 py-0.5 text-[11px]',
-          active && 'bg-white/15 text-white'
-        )}
-      >
-        {count}
-      </span>
     </button>
   );
 }
 
-function FilterGroup({
-  activeTags,
-  group,
-  locale,
-  tagCounts,
-  onToggle,
-}: {
-  activeTags: Set<string>;
-  group: TemplateTagGroup;
-  locale: Locale;
-  tagCounts: Map<string, number>;
-  onToggle: (tag: string) => void;
-}) {
-  const options = templateTagOptions.filter((tag) => tag.group === group);
-
+function TemplateGridSkeleton({ label }: { label: string }) {
   return (
-    <div className="border-b border-gray-200 py-5 last:border-b-0">
-      <div className="mb-3 flex items-center gap-2 text-sm font-semibold text-gray-950">
-        <Filter className="size-4 text-orange-600" />
-        {getTemplateTagGroupLabel(group, locale)}
-      </div>
-      <div className="flex flex-wrap gap-2">
-        {options.map((tag) => {
-          const count = tagCounts.get(tag.slug) ?? 0;
-          if (count === 0) {
-            return null;
-          }
-
-          return (
-            <FilterChip
-              key={tag.slug}
-              active={activeTags.has(tag.slug)}
-              count={count}
-              label={tag.labels[locale]}
-              onClick={() => onToggle(tag.slug)}
-            />
-          );
-        })}
+    <div aria-busy="true" aria-label={label}>
+      <div className="sr-only">{label}</div>
+      <div className="grid gap-5 sm:grid-cols-2 xl:grid-cols-3">
+        {Array.from({ length: 6 }).map((_, index) => (
+          <div
+            key={index}
+            className="overflow-hidden rounded-lg border border-gray-200 bg-white shadow-sm"
+          >
+            <div className="aspect-[4/5] animate-pulse bg-gray-200" />
+            <div className="space-y-4 p-5">
+              <div className="h-5 w-2/3 animate-pulse rounded bg-gray-200" />
+              <div className="h-10 animate-pulse rounded-lg bg-gray-200" />
+            </div>
+          </div>
+        ))}
       </div>
     </div>
   );
 }
 
 export function MarketingTemplatesPage({ locale }: { locale: Locale }) {
-  const content = templatesPageContent[locale];
-  const starterTemplates = useMemo(() => getStarterTemplates(locale), [locale]);
-  const [templates, setTemplates] = useState<TemplateCatalogItem[]>([]);
-  const [activeCategory, setActiveCategory] =
-    useState<TemplateCategory | null>(null);
-  const [activeTags, setActiveTags] = useState<Set<string>>(new Set());
+  const content = publicTemplatesPageContent[locale];
+  const [templates, setTemplates] = useState<PublicTemplateItem[]>([]);
+  const [categories, setCategories] = useState<string[]>([
+    ...imageToVideoTemplateCategories,
+  ]);
+  const [activeCategory, setActiveCategory] = useState<string>(
+    defaultTemplateCategory
+  );
   const [search, setSearch] = useState('');
-  const [sort, setSort] = useState<SortKey>('featured');
   const [page, setPage] = useState(1);
-  const [total, setTotal] = useState(0);
   const [hasMore, setHasMore] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
-  const activeTagKey = useMemo(
-    () => Array.from(activeTags).sort().join(','),
-    [activeTags]
-  );
+  const [error, setError] = useState(false);
+  const [reloadKey, setReloadKey] = useState(0);
+  const [detailTemplate, setDetailTemplate] =
+    useState<PublicTemplateItem | null>(null);
+  const [templateDetail, setTemplateDetail] =
+    useState<PublicTemplateDetailItem | null>(null);
+  const [isLoadingDetail, setIsLoadingDetail] = useState(false);
+  const [detailError, setDetailError] = useState(false);
 
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
-    const initialCategory = normalizeTemplateCategory(params.get('category'));
+    const initialType = params.get('type');
+    const initialCategory = params.get('category')?.trim() ?? '';
 
-    if (initialCategory) {
-      setActiveCategory(initialCategory);
+    if (initialType && initialType !== templateType) {
+      params.set('type', templateType);
+      window.history.replaceState(null, '', `?${params.toString()}`);
     }
+
+    setActiveCategory(initialCategory || defaultTemplateCategory);
   }, []);
 
   useEffect(() => {
     let ignore = false;
+    const controller = new AbortController();
 
     async function loadTemplates() {
       setIsLoading(true);
+      setError(false);
+
       try {
         const params = new URLSearchParams({
           page: String(page),
           pageSize: '12',
-          sort,
+          type: 'image_to_video',
+          locale,
         });
-        const query = search.trim();
-        if (query) {
-          params.set('search', query);
-        }
-        if (activeCategory) {
-          params.set('category', activeCategory);
-        }
-        for (const tag of activeTagKey.split(',').filter(Boolean)) {
-          params.append('tag', tag);
-        }
+        if (activeCategory) params.set('category', activeCategory);
+        if (search.trim()) params.set('search', search.trim());
+        const response = await fetch(`/api/templates?${params.toString()}`, {
+          signal: controller.signal,
+        });
 
-        const response = await fetch(`/api/templates?${params.toString()}`);
         if (!response.ok) {
-          return;
+          throw new Error('template-load-failed');
         }
 
-        const data = (await response.json()) as TemplatesApiResponse;
-        const remoteTemplates = data.list ?? [];
+        const data = (await response.json()) as PublicTemplatesApiResponse;
+        const remoteTemplates = normalizePublicTemplateItems(data);
+        const remoteCategories = normalizePublicTemplateCategories(data);
 
         if (!ignore) {
-          const normalizedRemoteTemplates = remoteTemplates.map((template) => ({
-            ...template,
-            source: 'admin' as const,
-          }));
-          const starterFallbackTemplates = activeCategory
-            ? starterTemplates.filter(
-                (template) => template.category === activeCategory
-              )
-            : starterTemplates;
-          const shouldUseStarterFallback =
-            page === 1 &&
-            normalizedRemoteTemplates.length === 0 &&
-            !query &&
-            !activeTagKey;
-
+          if (remoteCategories.length) {
+            setCategories(remoteCategories);
+            if (!activeCategory || !remoteCategories.includes(activeCategory)) {
+              setActiveCategory(remoteCategories[0]);
+              setPage(1);
+            }
+          }
           setTemplates((current) =>
             page === 1
-              ? uniqueById(
-                  shouldUseStarterFallback
-                    ? starterFallbackTemplates
-                    : normalizedRemoteTemplates
-                )
-              : uniqueById([...current, ...normalizedRemoteTemplates])
+              ? remoteTemplates
+              : uniquePublicTemplates([...current, ...remoteTemplates])
           );
-          setTotal(
-            shouldUseStarterFallback
-              ? starterFallbackTemplates.length
-              : data.total ?? normalizedRemoteTemplates.length
-          );
-          setHasMore(shouldUseStarterFallback ? false : Boolean(data.hasMore));
+          setHasMore(Boolean(data.hasMore));
         }
       } catch {
-        if (!ignore && page === 1 && !search.trim() && !activeTagKey) {
-          const starterFallbackTemplates = activeCategory
-            ? starterTemplates.filter(
-                (template) => template.category === activeCategory
-              )
-            : starterTemplates;
-          setTemplates(starterFallbackTemplates);
-          setTotal(starterFallbackTemplates.length);
+        if (!ignore) {
+          if (page === 1) {
+            setTemplates([]);
+          }
+          setError(true);
           setHasMore(false);
         }
       } finally {
@@ -362,46 +472,73 @@ export function MarketingTemplatesPage({ locale }: { locale: Locale }) {
 
     return () => {
       ignore = true;
+      controller.abort();
     };
-  }, [activeCategory, activeTagKey, locale, page, search, sort, starterTemplates]);
+  }, [activeCategory, locale, page, reloadKey, search]);
 
-  const tagCounts = useMemo(() => {
-    const counts = new Map<string, number>();
+  useEffect(() => {
+    if (!detailTemplate) return;
 
-    for (const template of templates) {
-      for (const tag of template.tags) {
-        counts.set(tag, (counts.get(tag) ?? 0) + 1);
+    const templateId = detailTemplate.id;
+    let ignore = false;
+    const controller = new AbortController();
+
+    async function loadTemplateDetail() {
+      setIsLoadingDetail(true);
+      setDetailError(false);
+      setTemplateDetail(null);
+
+      try {
+        const params = new URLSearchParams({ locale });
+        const response = await fetch(`/api/templates/${templateId}?${params}`, {
+          signal: controller.signal,
+        });
+
+        if (!response.ok) {
+          throw new Error('template-detail-load-failed');
+        }
+
+        const detail = normalizePublicTemplateDetail(await response.json());
+        if (!detail) {
+          throw new Error('template-detail-invalid');
+        }
+
+        if (!ignore) {
+          setTemplateDetail(detail);
+        }
+      } catch {
+        if (!ignore) {
+          setDetailError(true);
+        }
+      } finally {
+        if (!ignore) {
+          setIsLoadingDetail(false);
+        }
       }
     }
 
-    return counts;
-  }, [templates]);
-
-  function toggleTag(tag: string) {
-    setActiveTags((current) => {
-      const next = new Set(current);
-      if (next.has(tag)) {
-        next.delete(tag);
-      } else {
-        next.add(tag);
-      }
-      return next;
-    });
-    setPage(1);
-  }
-
-  function toggleCategory(category: TemplateCategory) {
-    setActiveCategory((current) => (current === category ? null : category));
-    setPage(1);
-  }
+    loadTemplateDetail();
+    return () => {
+      ignore = true;
+      controller.abort();
+    };
+  }, [detailTemplate, locale]);
 
   function clearFilters() {
-    setActiveCategory(null);
-    setActiveTags(new Set());
+    setActiveCategory(categories[0] ?? defaultTemplateCategory);
     setSearch('');
-    setSort('featured');
     setPage(1);
   }
+
+  function retry() {
+    setPage(1);
+    setReloadKey((value) => value + 1);
+  }
+
+  const showInitialLoading = templates.length === 0 && isLoading && !error;
+  const activeCategoryLabel = activeCategory
+    ? getTemplateCategoryLabel(activeCategory, locale)
+    : content.categoryFilterLabel;
 
   return (
     <main className="bg-white">
@@ -419,79 +556,49 @@ export function MarketingTemplatesPage({ locale }: { locale: Locale }) {
             </p>
           </div>
           <div className="grid content-end gap-3 lg:justify-end">
-            <div className="grid grid-cols-3 gap-2 rounded-lg border border-white/10 bg-white/[0.06] p-2">
-              {(['goal', 'channel', 'cost'] as TemplateTagGroup[]).map(
-                (group) => (
-                  <div key={group} className="rounded-md bg-white/8 p-3">
-                    <div className="text-2xl font-semibold">
-                      {
-                        templateTagOptions.filter((tag) => tag.group === group)
-                          .length
-                      }
-                    </div>
-                    <div className="mt-1 text-xs text-white/50">
-                      {getTemplateTagGroupLabel(group, locale)}
-                    </div>
-                  </div>
-                )
-              )}
+            <div className="rounded-lg border border-white/10 bg-white/[0.06] p-4">
+              <div className="text-sm font-semibold text-white">
+                {content.defaultCategory}
+              </div>
+              <div className="mt-1 text-xs uppercase text-white/50">
+                {templateType}
+              </div>
             </div>
           </div>
         </div>
       </section>
 
-      <section className="mx-auto grid max-w-7xl gap-8 px-6 py-8 lg:grid-cols-[280px_1fr] lg:px-8 lg:py-10">
-        <aside className="self-start rounded-lg border border-gray-200 bg-gray-50 p-4 lg:sticky lg:top-24">
-          <div className="mb-4 flex items-center justify-between gap-3">
-            <div className="flex items-center gap-2 text-sm font-semibold text-gray-950">
-              <SlidersHorizontal className="size-4 text-orange-600" />
-              Templates
-            </div>
-            <button
-              type="button"
-              onClick={clearFilters}
-              className="text-xs font-semibold text-gray-500 transition hover:text-gray-950"
-            >
-              {content.clearFilters}
-            </button>
-          </div>
-          <div className="border-b border-gray-200 pb-5">
-            <div className="mb-3 flex items-center gap-2 text-sm font-semibold text-gray-950">
-              <Filter className="size-4 text-orange-600" />
-              {content.categoryFilterLabel}
+      <section className="mx-auto max-w-7xl px-6 py-8 lg:px-8 lg:py-10">
+        <div className="mb-6 grid gap-4 rounded-lg border border-gray-200 bg-gray-50 p-4 lg:grid-cols-[minmax(0,1fr)_minmax(320px,0.85fr)]">
+          <div>
+            <div className="mb-3 flex items-center justify-between gap-3">
+              <div className="text-sm font-semibold text-gray-950">
+                {content.categoryFilterLabel}
+              </div>
+              <button
+                type="button"
+                onClick={clearFilters}
+                className="text-xs font-semibold text-gray-500 transition hover:text-gray-950"
+              >
+                {content.clearFilters}
+              </button>
             </div>
             <div className="flex flex-wrap gap-2">
-              {templateCategories.map((category) => (
-                <button
+              {categories.map((category) => (
+                <CategoryChip
                   key={category}
-                  type="button"
-                  onClick={() => toggleCategory(category)}
-                  className={cn(
-                    'inline-flex h-9 items-center rounded-md border px-3 text-sm font-medium transition',
-                    activeCategory === category
-                      ? 'border-gray-950 bg-gray-950 text-white'
-                      : 'border-gray-200 bg-white text-gray-700 hover:border-gray-300 hover:bg-gray-50'
-                  )}
-                >
-                  {content.categoryLabels[category]}
-                </button>
+                  active={activeCategory === category}
+                  label={getTemplateCategoryLabel(category, locale)}
+                  onClick={() => {
+                    setActiveCategory(category);
+                    setPage(1);
+                  }}
+                />
               ))}
             </div>
           </div>
-          {templateTagGroups.map(({ group }) => (
-            <FilterGroup
-              key={group}
-              activeTags={activeTags}
-              group={group}
-              locale={locale}
-              tagCounts={tagCounts}
-              onToggle={toggleTag}
-            />
-          ))}
-        </aside>
 
-        <div>
-          <div className="mb-6 grid gap-3 md:grid-cols-[1fr_auto]">
+          <div className="self-end">
             <label className="relative block">
               <Search className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-gray-400" />
               <input
@@ -516,105 +623,74 @@ export function MarketingTemplatesPage({ locale }: { locale: Locale }) {
                 </button>
               ) : null}
             </label>
-            <label className="flex h-11 items-center gap-2 rounded-lg border border-gray-200 bg-white px-3 text-sm text-gray-700">
-              <span className="whitespace-nowrap text-xs font-semibold uppercase text-gray-400">
-                {content.sortLabel}
-              </span>
-              <select
-                value={sort}
-                onChange={(event) => {
-                  setSort(event.target.value as SortKey);
-                  setPage(1);
-                }}
-                className="h-full min-w-36 bg-transparent text-sm font-medium text-gray-950 outline-none"
-              >
-                {Object.entries(content.sortOptions).map(([key, label]) => (
-                  <option key={key} value={key}>
-                    {label}
-                  </option>
-                ))}
-              </select>
-            </label>
           </div>
+        </div>
 
-          <div className="mb-5 flex flex-wrap items-center gap-2 text-sm text-gray-600">
-            <span className="font-medium text-gray-950">
-              {total || templates.length}
-            </span>
-            <span>{content.results}</span>
-            {activeCategory ? (
-              <button
-                type="button"
-                onClick={() => toggleCategory(activeCategory)}
-                className="inline-flex h-7 items-center gap-1 rounded-md bg-gray-100 px-2 text-xs font-medium text-gray-700 hover:bg-gray-200"
-              >
-                {content.categoryLabels[activeCategory]}
-                <X className="size-3" />
-              </button>
-            ) : null}
-            {Array.from(activeTags).map((tag) => (
-              <button
-                key={tag}
-                type="button"
-                onClick={() => toggleTag(tag)}
-                className="inline-flex h-7 items-center gap-1 rounded-md bg-gray-100 px-2 text-xs font-medium text-gray-700 hover:bg-gray-200"
-              >
-                {getTemplateTagLabel(tag, locale)}
-                <X className="size-3" />
-              </button>
+        <div className="mb-5 flex flex-wrap items-center gap-2 text-sm text-gray-600">
+          <span className="font-medium text-gray-950">
+            {content.categoryFilterLabel}: {activeCategoryLabel}
+          </span>
+        </div>
+
+        {showInitialLoading ? (
+          <TemplateGridSkeleton label={content.loading} />
+        ) : templates.length > 0 ? (
+          <div className="grid gap-5 sm:grid-cols-2 xl:grid-cols-3">
+            {templates.map((template) => (
+              <TemplateCard
+                key={template.id}
+                locale={locale}
+                onDetails={setDetailTemplate}
+                template={template}
+              />
             ))}
           </div>
-
-          {templates.length > 0 ? (
-            <div className="grid gap-5 sm:grid-cols-2 xl:grid-cols-3">
-              {templates.map((template) => (
-                <TemplateCard
-                  key={`${template.source}-${template.id}`}
-                  content={content}
-                  locale={locale}
-                  template={template}
-                />
-              ))}
-            </div>
-          ) : (
-            <div className="grid min-h-[420px] place-items-center rounded-lg border border-dashed border-gray-300 bg-gray-50 p-8 text-center">
-              <div>
-                <h2 className="text-lg font-semibold text-gray-950">
-                  {content.emptyTitle}
-                </h2>
-                <p className="mt-2 max-w-sm text-sm leading-6 text-gray-600">
-                  {content.emptyText}
-                </p>
-                <button
-                  type="button"
-                  onClick={clearFilters}
-                  className="mt-5 inline-flex h-10 items-center rounded-md bg-gray-950 px-4 text-sm font-semibold text-white"
-                >
-                  {content.clearFilters}
-                </button>
-              </div>
-            </div>
-          )}
-          {hasMore ? (
-            <div className="mt-8 flex justify-center">
+        ) : (
+          <div className="grid min-h-[420px] place-items-center rounded-lg border border-dashed border-gray-300 bg-gray-50 p-8 text-center">
+            <div>
+              <h2 className="text-lg font-semibold text-gray-950">
+                {error ? content.error : content.emptyTitle}
+              </h2>
+              <p className="mt-2 max-w-sm text-sm leading-6 text-gray-600">
+                {content.emptyText}
+              </p>
               <button
                 type="button"
-                onClick={() => setPage((value) => value + 1)}
-                disabled={isLoading}
-                className="inline-flex h-11 items-center justify-center rounded-md border border-gray-300 bg-white px-5 text-sm font-semibold text-gray-900 transition hover:bg-gray-50 disabled:cursor-not-allowed disabled:opacity-60"
+                onClick={error ? retry : clearFilters}
+                className="mt-5 inline-flex h-10 items-center rounded-md bg-gray-950 px-4 text-sm font-semibold text-white"
               >
-                {isLoading
-                  ? locale === 'zh'
-                    ? '加载中...'
-                    : 'Loading...'
-                  : locale === 'zh'
-                    ? '加载更多'
-                    : 'Load more'}
+                {error ? content.retry : content.clearFilters}
               </button>
             </div>
-          ) : null}
-        </div>
+          </div>
+        )}
+        {hasMore ? (
+          <div className="mt-8 flex justify-center">
+            <button
+              type="button"
+              onClick={() => setPage((value) => value + 1)}
+              disabled={isLoading}
+              className="inline-flex h-11 items-center justify-center rounded-md border border-gray-300 bg-white px-5 text-sm font-semibold text-gray-900 transition hover:bg-gray-50 disabled:cursor-not-allowed disabled:opacity-60"
+            >
+              {isLoading ? content.loadingMore : content.loadMore}
+            </button>
+          </div>
+        ) : null}
       </section>
+      {detailTemplate ? (
+        <TemplateDetailModal
+          detail={templateDetail}
+          error={detailError}
+          isLoading={isLoadingDetail}
+          locale={locale}
+          onClose={() => {
+            setDetailTemplate(null);
+            setTemplateDetail(null);
+            setDetailError(false);
+          }}
+          template={detailTemplate}
+        />
+      ) : null}
     </main>
   );
 }
