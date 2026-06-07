@@ -4,11 +4,9 @@ alter table generation_jobs
   drop constraint if exists generation_jobs_attempt_count_check,
   drop constraint if exists generation_jobs_provider_poll_count_check,
   drop constraint if exists generation_jobs_final_image_asset_id_assets_id_fk,
-  drop constraint if exists generation_jobs_final_video_asset_id_assets_id_fk,
-  drop constraint if exists generation_jobs_template_id_templates_id_fk;
+  drop constraint if exists generation_jobs_final_video_asset_id_assets_id_fk;
 
 drop index if exists generation_jobs_status_next_poll_idx;
-drop index if exists generation_jobs_template_id_idx;
 
 alter table generation_jobs
   add column if not exists output_asset_id uuid;
@@ -38,7 +36,6 @@ alter table generation_jobs
   drop column if exists final_image_asset_id,
   drop column if exists final_video_asset_id,
   drop column if exists provider_status,
-  drop column if exists template_id,
   drop column if exists provider_poll_count,
   drop column if exists attempt_count,
   drop column if exists submitted_at,

@@ -15,7 +15,6 @@ CHECK ("type" IN ('upload', 'final_image', 'final_video'));
 ALTER TABLE "generation_jobs" DROP CONSTRAINT IF EXISTS "generation_jobs_status_check";
 ALTER TABLE "generation_jobs" DROP CONSTRAINT IF EXISTS "generation_jobs_aspect_ratio_check";
 ALTER TABLE "generation_jobs" DROP CONSTRAINT IF EXISTS "generation_jobs_duration_seconds_check";
-ALTER TABLE "generation_jobs" DROP CONSTRAINT IF EXISTS "generation_jobs_template_slug_check";
 DROP INDEX IF EXISTS "generation_jobs_provider_job_id_unique";
 
 ALTER TABLE "generation_jobs"
@@ -50,11 +49,8 @@ SET
       'headline', "headline",
       'sellingPoint', "selling_point",
       'priceText', "price_text",
-      'ctaText', "cta_text",
       'aspectRatio', "aspect_ratio",
-      'durationSeconds', "duration_seconds",
-      'templateSlug', "template_slug",
-      'templateId', "template_id"::text
+      'durationSeconds', "duration_seconds"
     ))
   END;
 
@@ -101,9 +97,6 @@ DROP COLUMN IF EXISTS "product_name",
 DROP COLUMN IF EXISTS "headline",
 DROP COLUMN IF EXISTS "selling_point",
 DROP COLUMN IF EXISTS "price_text",
-DROP COLUMN IF EXISTS "cta_text",
 DROP COLUMN IF EXISTS "aspect_ratio",
 DROP COLUMN IF EXISTS "duration_seconds",
-DROP COLUMN IF EXISTS "template_slug",
-DROP COLUMN IF EXISTS "template_id",
 DROP COLUMN IF EXISTS "started_at";

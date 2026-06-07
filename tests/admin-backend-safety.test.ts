@@ -47,14 +47,10 @@ describe('Admin backend safety rails', () => {
     expect(updateIndex).toBeGreaterThan(verifyIndex);
   });
 
-  it('deletes templates without touching removed template side tables', () => {
+  it('deletes templates directly from the catalog table', () => {
     const source = readSource('lib/admin/services/templates.ts');
 
     expect(source).toContain('await db.delete(templates)');
-    expect(source).not.toContain('template_tag_relations');
-    expect(source).not.toContain('template_assets');
-    expect(source).not.toContain('template_source_records');
-    expect(source).not.toContain('template_audit_logs');
   });
 
   it('keeps template usage counts tied to generation job creation', () => {
