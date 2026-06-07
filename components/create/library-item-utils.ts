@@ -4,7 +4,6 @@ export type WorkbenchLibraryItem = {
   name?: string;
   title?: string;
   description?: string | null;
-  slug?: string;
   prompt?: string | null;
   source?: string | null;
   generationType?: string | null;
@@ -54,7 +53,7 @@ export function getLibraryItemImage(item: WorkbenchLibraryItem | null | undefine
 }
 
 export function getLibraryItemLabel(item: WorkbenchLibraryItem) {
-  return item.title ?? item.name ?? item.slug ?? String(item.id ?? 'Asset');
+  return item.title ?? item.name ?? String(item.id ?? 'Asset');
 }
 
 export function getLibraryItemAssetId(
@@ -78,5 +77,5 @@ export function normalizeLibraryItems(value: unknown): WorkbenchLibraryItem[] {
 }
 
 export function libraryItemKey(item: WorkbenchLibraryItem) {
-  return String(item.id ?? item.slug ?? getLibraryItemLabel(item));
+  return String(item.id ?? getLibraryItemLabel(item));
 }

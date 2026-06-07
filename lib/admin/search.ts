@@ -1,6 +1,6 @@
 export type AdminSearchArea =
   | 'users'
-  | 'assets'
+  | 'user-media'
   | 'generation-jobs'
   | 'templates'
   | 'library-assets'
@@ -11,7 +11,18 @@ export const ADMIN_OPERATIONAL_SEARCH_FIELDS: Record<
   readonly string[]
 > = {
   users: ['email', 'name', 'role', 'subscriptionStatus', 'accountStatus'],
-  assets: ['type', 'status', 'mimeType'],
+  'user-media': [
+    'userEmail',
+    'userName',
+    'title',
+    'source',
+    'generationType',
+    'visibility',
+    'role',
+    'libraryTitle',
+    'jobStatus',
+    'mimeType',
+  ],
   'generation-jobs': [
     'inputSummary',
     'status',
@@ -128,6 +139,5 @@ export function getAdminJobInputSearchValues(input: unknown) {
     stringFromRecord(input, 'headline'),
     stringFromRecord(input, 'sellingPoint'),
     stringFromRecord(input, 'priceText'),
-    stringFromRecord(input, 'ctaText'),
   ]);
 }

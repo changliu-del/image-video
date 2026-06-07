@@ -17,4 +17,4 @@ Updated: 2026-06-03
 
 - API route integration tests are thin.
 - Browser smoke coverage is not yet codified.
-- Admin/template empty-state behavior depends on `ADMIN_API_URL` and `ADMIN_API_TOKEN`.
+- The legacy `/api/creative-templates` proxy returns an empty list unless `ADMIN_API_URL` and `ADMIN_API_TOKEN` are configured. Local Admin template/library/user-media management should use local DB-backed services instead.

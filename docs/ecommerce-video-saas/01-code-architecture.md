@@ -1,6 +1,6 @@
 # 电商图生视频 SaaS 前后端代码设计方案
 
-更新时间：2026-05-26
+更新时间：2026-06-05
 
 ## 1. 目标和技术栈
 
@@ -8,9 +8,8 @@
 
 ```text
 用户上传一张商品图
--> 填商品名、卖点、价格、CTA、比例
+-> 选择模板或填写 prompt、比例、时长
 -> 系统生成电商短视频
--> 自动加价格牌、卖点、CTA、logo
 -> 用户预览和下载
 ```
 
@@ -21,8 +20,7 @@ Next.js SaaS Starter + Vercel
 Neon Postgres
 Trigger.dev Cloud
 Cloudflare R2 + Cloudflare DNS/CDN
-fal.ai 图生视频 API
-FFmpeg 后期渲染
+Wanxiang 图生视频、商品图、试衣 API
 Stripe 支付
 Resend 邮件
 Sentry + PostHog 监控分析
@@ -46,17 +44,16 @@ Sentry + PostHog 监控分析
 ```text
 用户登录
 -> 上传商品图到 Cloudflare R2
--> 填商品名/卖点/价格/CTA/比例/时长
+-> 选择模板或填写 prompt/比例/时长
 -> Next.js API 创建 generation_job
 -> 冻结用户 credits
 -> 触发 Trigger.dev 后台任务
--> Trigger.dev 调用 fal.ai 图生视频模型
--> 下载 raw video
--> FFmpeg 套电商模板
--> 上传 final video 和 thumbnail 到 R2
+-> Trigger.dev `generate-wanxiang` worker 调用 Wanxiang submit/query
+-> 成功后创建 final image/video asset
+-> 上传或记录 final asset 到 R2/DB
 -> 更新任务状态
 -> 捕获 credits 或失败返还 credits
--> 用户在任务页预览/下载视频
+-> 用户在工作台内联预览/下载结果
 ```
 
 运行时职责：
@@ -73,21 +70,20 @@ Trigger.dev:
   - 长任务
   - 队列
   - 重试
-  - fal.ai 调用
-  - FFmpeg 渲染
-  - R2 上传
+  - Wanxiang submit/query
+  - output asset 创建
+  - credit capture/refund
 
 Neon:
-  - 用户、任务、资产、credits、支付、provider 调用记录
+  - 用户、任务、资产、素材库、用户历史素材、credits、支付、provider 调用记录
 
 Cloudflare R2:
   - 用户上传图片
-  - AI 原始视频
-  - 最终视频
-  - 缩略图
+  - 官方素材库文件
+  - 生成输出文件
 
-fal.ai:
-  - 图生视频模型推理
+Wanxiang:
+  - 图生视频、商品图、智能试衣 provider 推理
 ```
 
 ## 3. 项目基座
@@ -118,7 +114,7 @@ RBAC
 credits 系统
 provider adapter
 Trigger.dev task
-FFmpeg 电商模板
+Wanxiang provider adapter
 R2 存储适配
 PostHog 生成漏斗事件
 Sentry 错误上报
@@ -141,7 +137,8 @@ lib/providers/wanxiang/img-to-video.ts
 lib/providers/wanxiang/cloth.ts
 lib/providers/wanxiang/starlink.ts
 lib/credits.ts
-lib/templates/ecommerce.ts
+lib/templates/catalog.ts
+lib/templates/query.ts
 lib/analytics/events.ts
 
 trigger/generate-wanxiang.ts
@@ -235,14 +232,11 @@ storageKey 必须带 userId，避免覆盖其他用户文件
 ```json
 {
   "inputAssetId": "asset_...",
-  "productName": "Velvet Matte Lipstick",
-  "headline": "New Arrival",
-  "sellingPoint": "Long-lasting color with a soft matte finish",
-  "priceText": "$19.99",
-  "ctaText": "Shop Now",
+  "generationType": "image_to_video",
+  "prompt": "Create a premium product video with a clean ecommerce composition.",
   "aspectRatio": "9:16",
   "durationSeconds": 5,
-  "templateSlug": "flash_sale"
+  "templateId": "template_uuid"
 }
 ```
 
@@ -296,7 +290,7 @@ storageKey 必须带 userId，避免覆盖其他用户文件
 ```text
 id
 user_id
-type: upload | raw_video | final_video | thumbnail | template_asset
+type: upload | raw_video | final_video | thumbnail
 status: pending | uploaded | failed
 storage_key
 public_url
@@ -400,32 +394,42 @@ ComfyUIProvider
 KlingOfficialProvider
 ```
 
-## 8. fal.ai provider 行为
+## 8. Wanxiang provider 行为
 
-文件：`lib/providers/video/fal.ts`
+文件：
+
+```text
+lib/providers/wanxiang/img-to-video.ts
+lib/providers/wanxiang/cloth.ts
+lib/providers/wanxiang/starlink.ts
+lib/providers/wanxiang/models.ts
+```
 
 输入：
 
 ```text
-imageUrl: R2 public URL 或 signed read URL
-prompt: 电商场景化 prompt
-durationSeconds: 5/8/10
-aspectRatio: 9:16/1:1/16:9
+image_to_video: imageUrl, prompt, durationSeconds, aspectRatio
+apparel_image: imageUrl, prompt, strength, variants
+try_on: modelUrl, garment image URLs, mode, aspectRatio
 ```
 
-默认模型：
+环境变量：
 
 ```text
-FAL_DEFAULT_MODEL=fal-ai/wan/v2.7/image-to-video
+WANXIANG_APPCODE
+WANXIANG_IMG_TO_VIDEO_SUBMIT_URL / WANXIANG_IMG_TO_VIDEO_QUERY_URL
+WANXIANG_CLOTH_SUBMIT_URL / WANXIANG_CLOTH_QUERY_URL
+WANXIANG_TRY_ON_SINGLE_SUBMIT_URL / WANXIANG_TRY_ON_MULTI_SUBMIT_URL / WANXIANG_TRY_ON_QUERY_URL
+WANXIANG_MODEL_CATALOG_URL
 ```
 
 实现要求：
 
 ```text
-不要在前端暴露 FAL_KEY
-在 generation_jobs 记录 provider 和 provider_job_id
+不要在前端暴露 WANXIANG_APPCODE
+在 generation_jobs 记录 provider 和 provider_task_id
 请求失败时抛出标准错误
-等待结果时设置最大超时，例如 15 分钟
+Worker 轮询到终态或超时失败并 refund credits
 ```
 
 ## 9. Trigger.dev 任务设计
@@ -471,38 +475,20 @@ payload：
   - 上报 Sentry
 ```
 
-## 10. FFmpeg 电商模板
+## 10. Disabled legacy fal/FFmpeg runner
 
-MVP 只做一个固定模板 `flash_sale`。
+旧 `trigger/generate-video.ts` 和 `lib/generations/runner.ts` 只保留为 disabled legacy。不要把它们配置成生产 active task。
 
-输出规格：
+当前主线不跑 FFmpeg 后期模板，不再依赖 fal.ai 生成 raw video 后再套商业贴片。商品文案、模板、prompt、成本和来源信息保存在 `input_json`、模板表和素材库中；生成输出以 Wanxiang 结果为准。
 
-```text
-9:16: 1080x1920
-1:1: 1080x1080
-16:9: 1920x1080
-format: mp4
-codec: h264/aac
-pix_fmt: yuv420p
-```
-
-模板图层：
+如果未来要恢复 FFmpeg 或 fal.ai 路径，必须先重新设计：
 
 ```text
-background video: cover 裁切
-top headline: 顶部居中
-middle selling point: 中下区域
-bottom price: 底部安全区
-bottom CTA: price 下方
-logo: 左上角，可选
-```
-
-文字原则：
-
-```text
-AI 视频里不生成价格、优惠、CTA
-价格、CTA、字幕全部由 FFmpeg 后期叠加
-避免视频模型生成错误文字
+schema/migrations
+generation job status model
+credit reserve/capture/refund
+frontend status/result fields
+deployment docs and cost model
 ```
 
 ## 11. Credits 设计
@@ -545,8 +531,7 @@ Sentry 上报：
 ```text
 API route exception
 Trigger.dev task exception
-fal.ai provider exception
-FFmpeg render exception
+Wanxiang provider exception
 Stripe webhook exception
 ```
 
@@ -559,9 +544,8 @@ Stripe webhook exception
 用户可以上传商品图
 用户可以创建图生视频任务
 任务可以进入 Trigger.dev
-fal.ai 可以返回 raw video
-FFmpeg 可以输出带价格/CTA 的 MP4
-最终视频可以上传到 R2
+Wanxiang 可以返回终态结果
+最终 image/video asset 可以写入 DB/R2
 用户可以预览和下载
 Stripe test payment 后 credits 增加
 失败任务会返还 credits

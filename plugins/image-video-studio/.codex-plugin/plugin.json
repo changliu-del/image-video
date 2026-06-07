@@ -9,7 +9,7 @@
   "interface": {
     "displayName": "Image Video Studio",
     "shortDescription": "Project mode only for image-video.",
-    "longDescription": "Image Video Studio gives Codex project-specific context, KB navigation, and a multi-agent development mode for /Users/changliu/workspace/src/github.com/image-video.",
+    "longDescription": "Image Video Studio gives Codex project-specific context, KB navigation, and a single-agent default workflow for /Users/changliu/workspace/src/github.com/image-video. Multi-agent delegation is opt-in only when the user explicitly asks for it.",
     "developerName": "Chang Liu",
     "category": "Productivity",
     "capabilities": [
@@ -17,9 +17,9 @@
     ],
     "brandColor": "#6366F1",
     "defaultPrompt": [
-      "Use image-video-studio mode to plan this change.",
+      "Use image-video-studio mode for this change.",
       "Use the project KB before modifying this SaaS.",
-      "Run frontend, backend, and QA agents for this task."
+      "Keep the main implementation in the current agent unless I explicitly ask for multi-agent delegation."
     ]
   }
 }

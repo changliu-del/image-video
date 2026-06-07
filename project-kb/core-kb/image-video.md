@@ -40,7 +40,7 @@ frontend workbench
 -> final asset rows and capture/refund credits
 ```
 
-There is also older fal.ai/FFmpeg runner code in `lib/generations/runner.ts` and `trigger/generate-video.ts`. It does not currently match the active `generation_jobs` schema and should be treated as inactive legacy code.
+There is also older fal.ai/FFmpeg runner code in `lib/generations/runner.ts` and `trigger/generate-video.ts`. It is a disabled legacy path and should not be used unless it is intentionally rebuilt against the active `generation_jobs` schema.
 
 ## Stable Decisions
 
@@ -53,4 +53,4 @@ There is also older fal.ai/FFmpeg runner code in `lib/generations/runner.ts` and
 
 ## Open Architecture Decisions
 
-- Whether to remove/retire the legacy fal.ai + FFmpeg runner, or revive it with matching migrations.
+- Whether to remove/retire the disabled legacy fal.ai + FFmpeg runner, or intentionally revive it with matching migrations, worker code, docs, and frontend status/result contracts.

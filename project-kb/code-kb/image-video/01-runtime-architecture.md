@@ -40,8 +40,6 @@ Key tables are defined in `lib/db/schema.ts`:
 - `users`
 - `assets`
 - `templates`
-- `template_tags`
-- `template_assets`
 - `library_assets`
 - `model_catalog_assets`
 - `generation_jobs`

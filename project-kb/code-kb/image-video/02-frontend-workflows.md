@@ -24,18 +24,27 @@ For the default rendering contract, route/data ownership rules, and frontend rev
 
 Each workbench handles upload, payload construction, generation submission, polling, and result rendering.
 
-Workbench library loading combines published templates with uploaded first-party
-library assets:
+Workbench library loading separates official material catalogs from private user
+history:
 
-- `/create/video` loads `image_to_video` templates plus `/api/library-assets?category=image_to_video`.
-- `/create/apparel` loads image templates plus `/api/library-assets?category=apparel_image`; library assets are used for inspiration/examples while template IDs remain template-only payload fields.
-- `/create/try-on` loads image templates, `/api/model-assets`, and `/api/library-assets?category=try_on`.
+- `/create/video` loads `image_to_video` templates plus `/api/library-assets?category=image_to_video` for official inspiration, and `/api/user-media?generationType=image_to_video` for the user's private history.
+- `/create/apparel` loads image templates plus `/api/library-assets?category=apparel_image`; library assets are used for inspiration/examples while template IDs remain template-only payload fields. The history tab uses `/api/user-media?generationType=apparel_image`.
+- `/create/try-on` loads image templates, `/api/model-assets`, and `/api/library-assets?category=try_on` for official material/model choices. The history tab uses `/api/user-media?generationType=try_on`.
 
-Admin has a dedicated `Library Assets` tab for reusable product, model,
-garment, scene, example image, and example video materials. It supports
-R2-backed upload, metadata editing, category routing, sort weight, and admin
-removal. `category` is the single workbench routing field; the old multi-use
-field is not a separate frontend filter.
+Admin exposes two material surfaces:
+
+- `Library Assets` is the official reusable material library for product, model,
+  garment, scene, example image, and example video materials. It supports
+  R2-backed upload, metadata editing, category routing, sort weight, and admin
+  removal.
+- `User History` is the private per-user material history from
+  `user_media_history`. It is for support and operations inspection, not for
+  replacing the public official catalog.
+
+`assets` remains a technical substrate. Do not reintroduce a generic Admin
+`assets` table as a primary management surface. `category` is the single
+workbench routing field for official library assets; the old multi-use field is
+not a separate frontend filter.
 
 ## Frontend Optimization Candidates
 

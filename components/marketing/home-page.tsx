@@ -23,7 +23,6 @@ import { cn } from '@/lib/utils';
 
 type MarketingContent = ReturnType<typeof getMarketingContent>;
 type HomeContent = MarketingContent['home'];
-type StaticTemplateItem = HomeContent['templates']['items'][number];
 type TemplateItem = {
   id: string;
   name: string;
@@ -31,7 +30,7 @@ type TemplateItem = {
   mediaType: 'image' | 'video';
   category: string;
   cost: string;
-  hook: string;
+  summary: string;
   useCase: string;
 };
 
@@ -41,6 +40,59 @@ type TemplatesApiResponse = {
   page?: number;
   pageSize?: number;
   hasMore?: boolean;
+};
+
+const templateGalleryStatusCopy: Record<
+  Locale,
+  {
+    loading: string;
+    empty: string;
+    error: string;
+    retry: string;
+    categoryLabels: Record<TemplateCatalogItem['category'], string>;
+    credit: string;
+    credits: string;
+  }
+> = {
+  pt: {
+    loading: 'Carregando templates...',
+    empty: 'Nenhum template publicado ainda.',
+    error: 'Nao foi possivel carregar os templates.',
+    retry: 'Tentar novamente',
+    categoryLabels: {
+      image_to_image: 'Imagem',
+      image_to_video: 'Imagem para video',
+      try_on: 'Provador',
+    },
+    credit: 'credito',
+    credits: 'creditos',
+  },
+  en: {
+    loading: 'Loading templates...',
+    empty: 'No published templates yet.',
+    error: 'Could not load templates.',
+    retry: 'Try again',
+    categoryLabels: {
+      image_to_image: 'Image',
+      image_to_video: 'Image to video',
+      try_on: 'Try-on',
+    },
+    credit: 'credit',
+    credits: 'credits',
+  },
+  zh: {
+    loading: '正在加载模板...',
+    empty: '暂无已发布模板。',
+    error: '模板加载失败。',
+    retry: '重试',
+    categoryLabels: {
+      image_to_image: '图片',
+      image_to_video: '图生视频',
+      try_on: '智能试衣',
+    },
+    credit: '算力值',
+    credits: '算力值',
+  },
 };
 
 function Eyebrow({
@@ -211,7 +263,7 @@ function TemplateCard({
           </span>
         </div>
         <p className="mt-4 rounded-lg bg-gray-50 p-3 text-sm font-medium leading-6 text-gray-800">
-          "{item.hook}"
+          "{item.summary}"
         </p>
         <p className="mt-3 min-h-12 text-sm leading-6 text-gray-600">
           {item.useCase}
@@ -228,6 +280,29 @@ function TemplateCard({
   );
 }
 
+function TemplateGallerySkeleton({ label }: { label: string }) {
+  return (
+    <div aria-busy="true" aria-label={label}>
+      <div className="sr-only">{label}</div>
+      <div className="grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-3">
+        {Array.from({ length: 6 }).map((_, index) => (
+          <div
+            key={index}
+            className="overflow-hidden rounded-lg border border-gray-200 bg-white shadow-sm"
+          >
+            <div className="aspect-[4/5] animate-pulse bg-gray-200" />
+            <div className="space-y-4 p-5">
+              <div className="h-5 w-2/3 animate-pulse rounded bg-gray-200" />
+              <div className="h-20 animate-pulse rounded-lg bg-gray-100" />
+              <div className="h-10 animate-pulse rounded-lg bg-gray-200" />
+            </div>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
 function TemplateGallery({
   content,
   locale,
@@ -236,13 +311,15 @@ function TemplateGallery({
   locale: Locale;
 }) {
   const sectionRef = useRef<HTMLElement>(null);
-  const [items, setItems] = useState<TemplateItem[]>(
-    content.items.map(mapStaticTemplateItem)
-  );
+  const [items, setItems] = useState<TemplateItem[]>([]);
   const [page, setPage] = useState(1);
   const [hasMore, setHasMore] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
+  const [hasLoaded, setHasLoaded] = useState(false);
+  const [error, setError] = useState(false);
+  const [reloadKey, setReloadKey] = useState(0);
   const [shouldLoadRemote, setShouldLoadRemote] = useState(false);
+  const statusCopy = templateGalleryStatusCopy[locale];
 
   useEffect(() => {
     const section = sectionRef.current;
@@ -277,6 +354,7 @@ function TemplateGallery({
 
     async function loadTemplates() {
       setIsLoading(true);
+      setError(false);
       try {
         const params = new URLSearchParams({
           page: String(page),
@@ -287,27 +365,31 @@ function TemplateGallery({
           signal: controller.signal,
         });
         if (!response.ok) {
-          return;
+          throw new Error('Failed to load templates');
         }
 
         const data = (await response.json()) as TemplatesApiResponse;
-        const remoteItems = (data.list ?? []).map(mapCatalogTemplateItem);
+        const remoteItems = (data.list ?? []).map((template) =>
+          mapCatalogTemplateItem(template, locale)
+        );
 
         if (!ignore) {
           setItems((current) => {
             if (page === 1) {
-              return remoteItems.length > 0
-                ? remoteItems
-                : content.items.map(mapStaticTemplateItem);
+              return remoteItems;
             }
 
             return uniqueHomeItems([...current, ...remoteItems]);
           });
           setHasMore(Boolean(data.hasMore));
+          setHasLoaded(true);
         }
       } catch {
-        if (!ignore && page === 1) {
-          setItems(content.items.map(mapStaticTemplateItem));
+        if (!ignore) {
+          if (page === 1) {
+            setItems([]);
+          }
+          setError(true);
           setHasMore(false);
         }
       } finally {
@@ -323,7 +405,10 @@ function TemplateGallery({
       ignore = true;
       controller.abort();
     };
-  }, [content.items, locale, page, shouldLoadRemote]);
+  }, [locale, page, reloadKey, shouldLoadRemote]);
+
+  const showInitialLoading =
+    items.length === 0 && !error && (!hasLoaded || isLoading);
 
   return (
     <section
@@ -346,16 +431,41 @@ function TemplateGallery({
           </p>
         </div>
 
-        <div className="grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-3">
-          {items.map((item) => (
-            <TemplateCard
-              key={item.id}
-              item={item}
-              actionLabel={content.actionLabel}
-              locale={locale}
-            />
-          ))}
-        </div>
+        {items.length > 0 ? (
+          <div className="grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-3">
+            {items.map((item) => (
+              <TemplateCard
+                key={item.id}
+                item={item}
+                actionLabel={content.actionLabel}
+                locale={locale}
+              />
+            ))}
+          </div>
+        ) : null}
+        {showInitialLoading ? (
+          <TemplateGallerySkeleton label={statusCopy.loading} />
+        ) : null}
+        {!showInitialLoading && items.length === 0 ? (
+          <div className="rounded-lg border border-gray-200 bg-white px-5 py-8 text-center shadow-sm">
+            <p className="text-sm font-semibold text-gray-950">
+              {error ? statusCopy.error : statusCopy.empty}
+            </p>
+            {error ? (
+              <button
+                type="button"
+                onClick={() => {
+                  setPage(1);
+                  setShouldLoadRemote(true);
+                  setReloadKey((value) => value + 1);
+                }}
+                className="mt-4 inline-flex h-10 items-center justify-center rounded-md border border-gray-300 bg-white px-4 text-sm font-semibold text-gray-900 transition hover:bg-gray-50"
+              >
+                {statusCopy.retry}
+              </button>
+            ) : null}
+          </div>
+        ) : null}
         {hasMore ? (
           <div className="mt-8 flex justify-center">
             <button
@@ -379,33 +489,22 @@ function TemplateGallery({
   );
 }
 
-function mapStaticTemplateItem(item: StaticTemplateItem): TemplateItem {
-  return {
-    id: item.title,
-    name: item.title,
-    asset: item.asset,
-    mediaType: item.mediaType,
-    category: item.category,
-    cost: item.cost,
-    hook: item.hook,
-    useCase: item.useCase,
-  };
-}
+function mapCatalogTemplateItem(
+  template: TemplateCatalogItem,
+  locale: Locale
+): TemplateItem {
+  const statusCopy = templateGalleryStatusCopy[locale];
+  const costUnit =
+    template.costCredits === 1 ? statusCopy.credit : statusCopy.credits;
 
-function mapCatalogTemplateItem(template: TemplateCatalogItem): TemplateItem {
   return {
     id: template.id,
     name: template.name,
     asset: template.asset,
     mediaType: template.mediaType,
-    category:
-      template.category === 'image_to_video'
-        ? 'Image to video'
-        : template.category === 'try_on'
-          ? 'Try-on'
-          : 'Image to image',
-    cost: `${template.costCredits} ${template.costCredits === 1 ? 'credit' : 'credits'}`,
-    hook: template.description,
+    category: statusCopy.categoryLabels[template.category],
+    cost: `${template.costCredits} ${costUnit}`,
+    summary: template.description,
     useCase: template.description,
   };
 }

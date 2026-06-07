@@ -18,21 +18,33 @@ export const adminStatusLabels: Record<AdminLocale, Record<string, string>> = {
     failed: 'Falhou',
     final_image: 'Imagem final',
     final_video: 'Vídeo final',
+    false: 'Não',
+    garment: 'Roupa',
+    generated_image: 'Imagem gerada',
+    generated_video: 'Vídeo gerado',
+    hidden: 'Oculto',
     inactive: 'Inativo',
     image_to_video: 'Imagem para vídeo',
+    input: 'Entrada',
     member: 'Membro',
+    model: 'Modelo',
     ops: 'Operações',
+    ops_library_used: 'Biblioteca usada',
+    output: 'Saída',
     pending: 'Pendente',
     purchase: 'Compra',
     published: 'Publicado',
     queued: 'Na fila',
+    reference: 'Referência',
     rendering: 'Renderizando',
     reserve: 'Reserva',
     refund: 'Reembolso',
     running: 'Executando',
     submitting: 'Enviando',
     succeeded: 'Concluído',
+    true: 'Sim',
     try_on: 'Provador',
+    user_upload: 'Upload do usuário',
     upload: 'Upload',
     uploaded: 'Enviado',
   },
@@ -48,21 +60,33 @@ export const adminStatusLabels: Record<AdminLocale, Record<string, string>> = {
     failed: 'Failed',
     final_image: 'Final image',
     final_video: 'Final video',
+    false: 'No',
+    garment: 'Garment',
+    generated_image: 'Generated image',
+    generated_video: 'Generated video',
+    hidden: 'Hidden',
     inactive: 'Inactive',
     image_to_video: 'Image to video',
+    input: 'Input',
     member: 'Member',
+    model: 'Model',
     ops: 'Ops',
+    ops_library_used: 'Library used',
+    output: 'Output',
     pending: 'Pending',
     purchase: 'Purchase',
     published: 'Published',
     queued: 'Queued',
+    reference: 'Reference',
     rendering: 'Rendering',
     reserve: 'Reserve',
     refund: 'Refund',
     running: 'Running',
     submitting: 'Submitting',
     succeeded: 'Succeeded',
+    true: 'Yes',
     try_on: 'Try-on',
+    user_upload: 'User upload',
     upload: 'Upload',
     uploaded: 'Uploaded',
   },
@@ -78,21 +102,33 @@ export const adminStatusLabels: Record<AdminLocale, Record<string, string>> = {
     failed: '失败',
     final_image: '成品图',
     final_video: '成品视频',
+    false: '否',
+    garment: '服饰',
+    generated_image: '生成图片',
+    generated_video: '生成视频',
+    hidden: '已隐藏',
     inactive: '停用',
     image_to_video: '图生视频',
+    input: '输入',
     member: '成员',
+    model: '模特',
     ops: '运营',
+    ops_library_used: '使用官方素材',
+    output: '输出',
     pending: '待处理',
     purchase: '充值',
     published: '已发布',
     queued: '排队中',
+    reference: '参考',
     rendering: '渲染中',
     reserve: '预留',
     refund: '返还',
     running: '运行中',
     submitting: '提交中',
     succeeded: '成功',
+    true: '是',
     try_on: '智能试衣',
+    user_upload: '用户上传',
     upload: '用户上传',
     uploaded: '已上传',
   },
@@ -156,7 +192,6 @@ type AdminTemplatesCopy = {
   columns: Record<string, string>;
   fields: Record<string, string>;
   categoryOptions: Record<string, string>;
-  uploadRoleOptions: Record<string, string>;
   errors: Record<string, string>;
 };
 
@@ -262,8 +297,8 @@ export const ADMIN_TAB_KEYS = [
   'overview',
   'templates',
   'library-assets',
+  'user-media',
   'users',
-  'assets',
   'generation-jobs',
   'credit-ledger',
   'help',
@@ -313,7 +348,7 @@ export type AdminContent = {
   tabs: Record<AdminTabKey, string>;
   dashboard: AdminDashboardCopy;
   management: Record<
-    'users' | 'assets' | 'generation-jobs' | 'credit-ledger',
+    'users' | 'user-media' | 'generation-jobs' | 'credit-ledger',
     AdminManagementCopy
   >;
   templates: AdminTemplatesCopy;
@@ -365,8 +400,8 @@ export const adminContent: Record<AdminLocale, AdminContent> = {
       overview: 'Visão geral',
       templates: 'Templates',
       'library-assets': 'Biblioteca',
+      'user-media': 'Histórico do usuário',
       users: 'Usuários',
-      assets: 'Arquivos',
       'generation-jobs': 'Gerações',
       'credit-ledger': 'Créditos',
       help: 'Ajuda',
@@ -534,29 +569,39 @@ export const adminContent: Record<AdminLocale, AdminContent> = {
           subscriptionStatus: 'Status da assinatura',
         },
       },
-      assets: {
-        title: 'Arquivos',
+      'user-media': {
+        title: 'Histórico do usuário',
         description:
-          'Mídias enviadas, ativos de template, arquivos gerados e metadados.',
-        searchPlaceholder: 'Tipo, status, usuário, ID...',
+          'Mídias privadas que usuários enviaram, geraram ou reutilizaram nos workbenches.',
+        searchPlaceholder: 'Email, título, origem, fluxo...',
         columns: {
           preview: 'Preview',
-          type: 'Tipo',
-          mimeType: 'Tipo MIME',
-          sizeBytes: 'Bytes',
-          createdAt: 'Criado em',
+          assetId: 'ID do material',
+          title: 'Material',
+          userEmail: 'Email do usuário',
+          source: 'Origem',
+          generationType: 'Fluxo',
+          visibility: 'Visibilidade',
+          usedCount: 'Uso',
+          lastUsedAt: 'Último uso',
           updatedAt: 'Atualizado em',
         },
         fields: {
           previewUrl: 'Preview',
           previewMimeType: 'MIME do preview',
           mediaKind: 'Mídia',
-          status: 'Status',
-          publicUrl: 'URL pública',
-          mimeType: 'Tipo MIME',
-          width: 'Largura',
-          height: 'Altura',
-          durationSeconds: 'Duração em segundos',
+          title: 'Título',
+          userEmail: 'Email do usuário',
+          userName: 'Nome do usuário',
+          source: 'Origem',
+          generationType: 'Fluxo',
+          role: 'Papel',
+          visibility: 'Visibilidade',
+          isFavorite: 'Favorito',
+          usedCount: 'Uso',
+          libraryTitle: 'Material oficial vinculado',
+          jobStatus: 'Status da geração',
+          lastUsedAt: 'Último uso',
           createdAt: 'Criado em',
           updatedAt: 'Atualizado em',
         },
@@ -567,6 +612,7 @@ export const adminContent: Record<AdminLocale, AdminContent> = {
           'Status de geração, entradas de prompt, créditos e campos de recuperação.',
         searchPlaceholder: 'Prompt, status, user...',
         columns: {
+          id: 'gen_id',
           inputPreview: 'Entrada',
           finalPreview: 'Resultado',
           generationType: 'Tipo',
@@ -587,7 +633,6 @@ export const adminContent: Record<AdminLocale, AdminContent> = {
           headline: 'Título',
           sellingPoint: 'Diferencial',
           priceText: 'Texto de preço',
-          ctaText: 'Texto do CTA',
           errorMessage: 'Mensagem de erro',
           durationSeconds: 'Duração',
           creditReserved: 'Créditos reservados',
@@ -666,11 +711,6 @@ export const adminContent: Record<AdminLocale, AdminContent> = {
         image_to_video: 'Imagem para vídeo',
         try_on: 'Provador',
       },
-      uploadRoleOptions: {
-        preview: 'Preview',
-        source: 'Fonte',
-        example: 'Exemplo',
-      },
       errors: {
         load: 'Falha ao carregar',
         save: 'Falha ao salvar',
@@ -698,6 +738,7 @@ export const adminContent: Record<AdminLocale, AdminContent> = {
       openAssetUrl: 'Abrir URL do ativo',
       confirmRemove: (title) => `Remover ${title} da biblioteca?`,
       columns: {
+        assetId: 'ID do material',
         assetUrl: 'Preview',
         title: 'Material',
         category: 'Categoria',
@@ -741,7 +782,7 @@ export const adminContent: Record<AdminLocale, AdminContent> = {
       principles: [
         'Abra Ajuda antes de operar uma área nova e leia a aba como processo, não como tabela técnica.',
         'Cada aba segue uso, ações diárias, campos principais e riscos; isso ajuda a transformar dado em decisão.',
-        'Na primeira leitura, priorize preview, status, data, usuário, custo e erro; IDs longos ficam para investigação.',
+        'Na primeira leitura, priorize IDs, status, data, usuário, custo e erro; previews ficam nos detalhes.',
         'Ao encontrar problema, classifique primeiro como conteúdo, mídia, geração, créditos ou acesso.',
       ],
       rhythmTitle: 'Ritmo recomendado',
@@ -810,7 +851,7 @@ export const adminContent: Record<AdminLocale, AdminContent> = {
 
 ## Uso
 
-Templates sao receitas de criacao. Operacao usa esta pagina para manter nome, categoria, descricao, prompt, custo, tags e midias de preview que aparecem nos workbenches.
+Templates orientam a escolha do usuario. Operacao usa esta pagina para deixar claro o cenario, o resultado esperado, o prompt padrao, o formato, a duracao, o custo e as midias de preview que aparecem na biblioteca e nos workbenches.
 
 ## Onde operar e conferir
 
@@ -820,7 +861,7 @@ Templates sao receitas de criacao. Operacao usa esta pagina para manter nome, ca
 
 - Use a busca para encontrar por nome, categoria ou tag antes de criar outro template parecido.
 - A tabela mostra categoria, custo, duracao, tags, uso e ultima atualizacao para decidir o que revisar primeiro.
-- O botao Criar abre o formulario. Upload de preview, source ou example fica dentro do detalhe ou edicao.
+- O botao Criar abre o formulario. Upload de preview fica dentro do detalhe ou edicao.
 
 ### Formulario de criacao e edicao
 
@@ -828,7 +869,7 @@ Templates sao receitas de criacao. Operacao usa esta pagina para manter nome, ca
 
 - Preencha primeiro nome, categoria e descricao.
 - Depois revise prompt, prompt negativo, custo, duracao, proporcoes, tags e sortWeight.
-- Em templates ja salvos, envie preview, source ou example para explicar o resultado esperado.
+- Em templates ja salvos, envie preview para explicar o resultado esperado.
 
 ### Biblioteca de templates no frontend
 
@@ -849,13 +890,13 @@ Templates sao receitas de criacao. Operacao usa esta pagina para manter nome, ca
 ## Campos que a operacao precisa revisar
 
 - Nome: texto claro para Admin, busca e frontend.
-- ID: identificador tecnico usado por links, tarefas e busca. O sistema gera e usa esse valor; operacao nao precisa criar slug.
+- ID: identificador gerado pelo sistema para links, tarefas e busca. Use para localizar um template em suporte ou investigacao.
 - Categoria: define o fluxo de criacao em que o template deve ser conferido.
-- Descricao: explica cenario de uso, limite e resultado esperado; tambem substitui o antigo hook.
+- Descricao: explica cenario de uso, limite e resultado esperado para o usuario decidir se deve escolher esse template.
 - Prompt e prompt negativo: instrucoes reais para geracao; nao publique texto temporario.
 - Custo, duracao e proporcoes: expectativa de credito, tempo de video e formato visual.
 - Tags e sortWeight: busca, filtro, organizacao e prioridade.
-- Preview, source e example: midias que ajudam o usuario e a operacao a reconhecer o template.
+- Preview: midia que ajuda o usuario e a operacao a reconhecer o template.
 
 ## Checklist
 
@@ -867,7 +908,7 @@ Templates sao receitas de criacao. Operacao usa esta pagina para manter nome, ca
             'Manter receitas de geração e mídias de preview que viram entradas visíveis nos workbenches.',
           dailyActions: [
             'Criar ou editar templates com nome, categoria, descrição e prompt completos.',
-            'Enviar preview, fonte ou exemplo para explicar o resultado.',
+            'Enviar preview para explicar o resultado.',
             'Revisar custo, duração, proporção e tags antes de usar em campanhas.',
           ],
           keyFields: [
@@ -936,14 +977,35 @@ Ativos da biblioteca sao midias reutilizaveis. O upload cria o registro no Admin
             'Remover materiais obsoletos quando não devem aparecer no frontend.',
           ],
           keyFields: [
-            'Preview, título, categoria e descrição.',
+            'ID do material, título, categoria e descrição.',
             'Peso de ordenação e uso.',
-            'URL do ativo e metadados de mídia nos detalhes.',
+            'Preview, URL do ativo e metadados de mídia nos detalhes.',
           ],
           riskSignals: [
             'Vídeos precisam de tratamento próprio e não devem virar imagem quebrada.',
             'Categoria incorreta coloca material no workbench errado.',
             'Materiais obsoletos devem ser removidos da biblioteca.',
+          ],
+        },
+        {
+          key: 'user-media',
+          title: 'Histórico do usuário',
+          purpose:
+            'Consultar mídias privadas que usuários enviaram, geraram ou reutilizaram, sem operar a tabela técnica de assets.',
+          dailyActions: [
+            'Buscar por email, título, origem ou fluxo antes de responder suporte.',
+            'Abrir detalhes para conferir preview, origem, visibilidade e último uso.',
+            'Ocultar ou remover do histórico quando houver pedido de suporte ou material inválido.',
+          ],
+          keyFields: [
+            'ID do material, usuário, título, origem e fluxo.',
+            'Visibilidade, favorito, uso e último uso.',
+            'Material oficial vinculado e status da geração nos detalhes.',
+          ],
+          riskSignals: [
+            'Este histórico é dado privado de usuário; não use cache público nem trate como catálogo oficial.',
+            'Excluir no Admin deve ser soft delete por visibilidade.',
+            'A tabela assets é apenas base técnica; operação deve usar Biblioteca ou Histórico do usuário.',
           ],
         },
         {
@@ -968,38 +1030,18 @@ Ativos da biblioteca sao midias reutilizaveis. O upload cria o registro no Admin
           ],
         },
         {
-          key: 'assets',
-          title: 'Arquivos',
-          purpose:
-            'Rastrear uploads, ativos de template, arquivos gerados e metadados de mídia para triagem técnica.',
-          dailyActions: [
-            'Buscar por tipo, status, MIME, usuário ou ID do arquivo.',
-            'Conferir preview antes de mexer em metadados.',
-            'Usar detalhes para validar dimensões, duração e URL quando houver recuperação.',
-          ],
-          keyFields: [
-            'Preview, tipo, status, MIME, tamanho e datas.',
-            'Largura, altura, duração e tipo de mídia.',
-            'URL pública apenas nos detalhes de investigação.',
-          ],
-          riskSignals: [
-            'Arquivo pendente ou com falha não deve alimentar template ou biblioteca.',
-            'Storage key e URL longa não são bons campos de primeira leitura.',
-            'Preview ausente pode ser formato não suportado ou upload incompleto.',
-          ],
-        },
-        {
           key: 'generation-jobs',
           title: 'Gerações',
           purpose:
             'Investigar cada geração do input ao resultado, incluindo status, template, custo e erro do provider.',
           dailyActions: [
             'Pesquisar por produto, prompt, template, status, usuário ou erro.',
-            'Comparar preview de entrada e resultado antes de diagnosticar.',
+            'Abrir detalhes para comparar preview de entrada e resultado antes de diagnosticar.',
             'Acompanhar filas, execuções longas e falhas recentes.',
           ],
           keyFields: [
-            'Input, resultado, tipo, status e resumo.',
+            'gen_id, tipo, status e resumo.',
+            'Input e resultado ficam nos detalhes.',
             'Template, créditos reservados, duração e datas.',
             'Mensagem de erro e campos de recuperação nos detalhes.',
           ],
@@ -1097,8 +1139,8 @@ Ativos da biblioteca sao midias reutilizaveis. O upload cria o registro no Admin
       overview: 'Overview',
       templates: 'Templates',
       'library-assets': 'Library Assets',
+      'user-media': 'User History',
       users: 'Users',
-      assets: 'Assets',
       'generation-jobs': 'Generation Jobs',
       'credit-ledger': 'Credit Ledger',
       help: 'Help',
@@ -1265,30 +1307,39 @@ Ativos da biblioteca sao midias reutilizaveis. O upload cria o registro no Admin
           subscriptionStatus: 'Subscription status',
         },
       },
-      assets: {
-        title: 'Assets',
+      'user-media': {
+        title: 'User History',
         description:
-          'Uploaded media, template assets, generated files, and metadata.',
-        searchPlaceholder: 'Type, status, user, ID...',
+          'Private media users uploaded, generated, or reused in workbenches.',
+        searchPlaceholder: 'Email, title, source, flow...',
         columns: {
           preview: 'Preview',
-          type: 'Type',
-          storageKey: 'Storage Key',
-          mimeType: 'MIME Type',
-          sizeBytes: 'Size Bytes',
-          createdAt: 'Created At',
+          assetId: 'Material ID',
+          title: 'Material',
+          userEmail: 'User email',
+          source: 'Source',
+          generationType: 'Flow',
+          visibility: 'Visibility',
+          usedCount: 'Uses',
+          lastUsedAt: 'Last used',
           updatedAt: 'Updated At',
         },
         fields: {
           previewUrl: 'Preview',
           previewMimeType: 'Preview MIME',
           mediaKind: 'Media',
-          status: 'Status',
-          publicUrl: 'Public URL',
-          mimeType: 'MIME type',
-          width: 'Width',
-          height: 'Height',
-          durationSeconds: 'Duration seconds',
+          title: 'Title',
+          userEmail: 'User email',
+          userName: 'User name',
+          source: 'Source',
+          generationType: 'Flow',
+          role: 'Role',
+          visibility: 'Visibility',
+          isFavorite: 'Favorite',
+          usedCount: 'Uses',
+          libraryTitle: 'Linked official material',
+          jobStatus: 'Generation status',
+          lastUsedAt: 'Last used',
           createdAt: 'Created At',
           updatedAt: 'Updated At',
         },
@@ -1299,6 +1350,7 @@ Ativos da biblioteca sao midias reutilizaveis. O upload cria o registro no Admin
           'Generation status, prompt inputs, credits, and recovery fields.',
         searchPlaceholder: 'Prompt, status, user...',
         columns: {
+          id: 'gen_id',
           inputPreview: 'Input',
           finalPreview: 'Result',
           generationType: 'Type',
@@ -1319,7 +1371,6 @@ Ativos da biblioteca sao midias reutilizaveis. O upload cria o registro no Admin
           headline: 'Headline',
           sellingPoint: 'Selling point',
           priceText: 'Price text',
-          ctaText: 'CTA text',
           errorMessage: 'Error message',
           durationSeconds: 'Duration',
           creditReserved: 'Reserved credits',
@@ -1398,11 +1449,6 @@ Ativos da biblioteca sao midias reutilizaveis. O upload cria o registro no Admin
         image_to_video: 'Image to video',
         try_on: 'Try-on',
       },
-      uploadRoleOptions: {
-        preview: 'Preview',
-        source: 'Source',
-        example: 'Example',
-      },
       errors: {
         load: 'Load failed',
         save: 'Save failed',
@@ -1430,6 +1476,7 @@ Ativos da biblioteca sao midias reutilizaveis. O upload cria o registro no Admin
       openAssetUrl: 'Open asset URL',
       confirmRemove: (title) => `Remove ${title} from the library?`,
       columns: {
+        assetId: 'Material ID',
         assetUrl: 'Preview',
         title: 'Material',
         category: 'Category',
@@ -1473,7 +1520,7 @@ Ativos da biblioteca sao midias reutilizaveis. O upload cria o registro no Admin
       principles: [
         'Open Help before operating an unfamiliar area and read each tab as a workflow, not a raw table.',
         'Each tab follows purpose, daily actions, key fields, and risks so operators can turn data into decisions.',
-        'For first-pass scanning, prioritize preview, status, date, user, cost, and error; long IDs belong in investigations.',
+        'For first-pass scanning, prioritize IDs, status, date, user, cost, and error; previews belong in details.',
         'When something looks wrong, classify it first as content, media, generation, credits, or access.',
       ],
       rhythmTitle: 'Recommended operating rhythm',
@@ -1542,7 +1589,7 @@ Ativos da biblioteca sao midias reutilizaveis. O upload cria o registro no Admin
 
 ## Purpose
 
-Templates are creation recipes. Operators use this page to maintain the name, category, description, prompt, cost, tags, and preview media that appear in workbenches.
+Templates guide the user's creation choice. Operators use this page to make the scenario, expected result, default prompt, format, duration, cost, and preview media clear in the template library and matching workbenches.
 
 ## Where to operate and verify
 
@@ -1552,7 +1599,7 @@ Templates are creation recipes. Operators use this page to maintain the name, ca
 
 - Search by name, category, or tag before creating another similar template.
 - The table shows category, credit cost, duration, tags, usage, and last update so operators can decide what to review first.
-- Create opens the form. Preview, source, or example uploads happen from detail or edit views.
+- Create opens the form. Preview uploads happen from detail or edit views.
 
 ### Create and edit form
 
@@ -1560,7 +1607,7 @@ Templates are creation recipes. Operators use this page to maintain the name, ca
 
 - Fill name, category, and description first.
 - Then review prompt, negative prompt, cost, duration, aspect ratios, tags, and sortWeight.
-- For saved templates, upload preview, source, or example media to explain the expected result.
+- For saved templates, upload preview media to explain the expected result.
 
 ### Frontend template library
 
@@ -1581,13 +1628,13 @@ Templates are creation recipes. Operators use this page to maintain the name, ca
 ## Fields operators need to review
 
 - Name: clear text for Admin, search, and frontend.
-- ID: technical identifier used by links, tasks, and search. The system generates and uses this value; operations does not need to create a slug.
+- ID: system-generated identifier for links, tasks, and search. Use it to locate a template in support or investigation.
 - Category: creation flow where the template should be verified.
-- Description: scenario, limitation, and expected result; it also replaces the old hook.
+- Description: scenario, limitation, and expected result so users can decide whether to choose this template.
 - Prompt and negative prompt: real generation instructions; do not publish placeholder text.
 - Cost, duration, and aspect ratios: credit expectation, video length, and visual format.
 - Tags and sortWeight: search, filtering, organization, and priority.
-- Preview, source, and example: media that helps users and operators recognize the template.
+- Preview media: helps users and operators recognize the template.
 
 ## Checklist
 
@@ -1599,7 +1646,7 @@ Templates are creation recipes. Operators use this page to maintain the name, ca
             'Maintain generation recipes and preview media that become visible workbench entry points.',
           dailyActions: [
             'Create or edit templates with complete name, category, description, and prompt.',
-            'Upload preview, source, or example media to explain the result.',
+            'Upload preview media to explain the result.',
             'Review cost, duration, aspect ratio, and tags before using templates in campaigns.',
           ],
           keyFields: [
@@ -1668,14 +1715,35 @@ Library assets are reusable media. Uploading creates the Admin record; the categ
             'Remove outdated materials when they should not appear on the frontend.',
           ],
           keyFields: [
-            'Preview, title, category, and description.',
+            'Material ID, title, category, and description.',
             'Sort weight and usage count.',
-            'Asset URL and media metadata in the detail view.',
+            'Preview, asset URL, and media metadata in the detail view.',
           ],
           riskSignals: [
             'Videos need their own handling and should not render as broken images.',
             'A wrong category places material on the wrong workbench.',
             'Outdated materials should be removed from the library.',
+          ],
+        },
+        {
+          key: 'user-media',
+          title: 'User History',
+          purpose:
+            'Inspect private media that users uploaded, generated, or reused without operating the technical assets table.',
+          dailyActions: [
+            'Search by email, title, source, or generation flow before answering support.',
+            'Open details to check preview, source, visibility, and last use.',
+            'Hide or remove history entries when support requests it or the material is invalid.',
+          ],
+          keyFields: [
+            'Material ID, user, title, source, and generation flow.',
+            'Visibility, favorite flag, usage count, and last use.',
+            'Linked official library material and generation status in details.',
+          ],
+          riskSignals: [
+            'This history is private user data; do not cache it publicly or treat it as the official catalog.',
+            'Deleting from Admin should be a soft delete through visibility.',
+            'The assets table is only the technical substrate; operators should use Library Assets or User History.',
           ],
         },
         {
@@ -1700,38 +1768,18 @@ Library assets are reusable media. Uploading creates the Admin record; the categ
           ],
         },
         {
-          key: 'assets',
-          title: 'Assets',
-          purpose:
-            'Trace uploads, template media, generated files, and media metadata for technical triage.',
-          dailyActions: [
-            'Search by type, status, MIME, user, or asset ID.',
-            'Check the preview before editing metadata.',
-            'Use details to validate dimensions, duration, and URL during recovery.',
-          ],
-          keyFields: [
-            'Preview, type, status, MIME, size, and timestamps.',
-            'Width, height, duration, and media kind.',
-            'Public URL only in investigation details.',
-          ],
-          riskSignals: [
-            'Pending or failed assets should not feed templates or the library.',
-            'Storage keys and long URLs are not good first-scan fields.',
-            'Missing preview can mean unsupported format or incomplete upload.',
-          ],
-        },
-        {
           key: 'generation-jobs',
           title: 'Generation Jobs',
           purpose:
             'Investigate each generation from input to result, including status, template, cost, and provider error.',
           dailyActions: [
             'Search by product, prompt, template, status, user, or error.',
-            'Compare input and result previews before diagnosing.',
+            'Open details to compare input and result previews before diagnosing.',
             'Watch queues, long-running jobs, and recent failures.',
           ],
           keyFields: [
-            'Input, result, type, status, and summary.',
+            'gen_id, type, status, and summary.',
+            'Input and result previews live in the detail view.',
             'Template, reserved credits, duration, and timestamps.',
             'Error message and recovery fields in the detail view.',
           ],
@@ -1828,8 +1876,8 @@ Library assets are reusable media. Uploading creates the Admin record; the categ
       overview: '总览',
       templates: '模板',
       'library-assets': '素材库',
+      'user-media': '用户历史素材',
       users: '用户',
-      assets: '媒体文件',
       'generation-jobs': '生成任务',
       'credit-ledger': '算力流水',
       help: '帮助',
@@ -1996,29 +2044,39 @@ Library assets are reusable media. Uploading creates the Admin record; the categ
           subscriptionStatus: '订阅状态',
         },
       },
-      assets: {
-        title: '媒体文件',
-        description: '管理用户上传、模板素材、生成文件和媒体元数据。',
-        searchPlaceholder: '搜索类型、状态、用户或 ID...',
+      'user-media': {
+        title: '用户历史素材',
+        description:
+          '管理用户上传、生成或复用过的私有历史素材。',
+        searchPlaceholder: '搜索邮箱、标题、来源、流程...',
         columns: {
           preview: '预览',
-          type: '类型',
-          storageKey: '存储 Key',
-          mimeType: 'MIME 类型',
-          sizeBytes: '字节数',
-          createdAt: '创建时间',
+          assetId: '素材 ID',
+          title: '素材',
+          userEmail: '用户邮箱',
+          source: '来源',
+          generationType: '流程',
+          visibility: '可见性',
+          usedCount: '使用次数',
+          lastUsedAt: '最近使用',
           updatedAt: '更新时间',
         },
         fields: {
           previewUrl: '预览',
           previewMimeType: '预览 MIME',
           mediaKind: '媒体',
-          status: '状态',
-          publicUrl: '公开链接',
-          mimeType: 'MIME 类型',
-          width: '宽度',
-          height: '高度',
-          durationSeconds: '时长秒数',
+          title: '标题',
+          userEmail: '用户邮箱',
+          userName: '用户姓名',
+          source: '来源',
+          generationType: '流程',
+          role: '角色',
+          visibility: '可见性',
+          isFavorite: '收藏',
+          usedCount: '使用次数',
+          libraryTitle: '关联官方素材',
+          jobStatus: '生成状态',
+          lastUsedAt: '最近使用',
           createdAt: '创建时间',
           updatedAt: '更新时间',
         },
@@ -2028,6 +2086,7 @@ Library assets are reusable media. Uploading creates the Admin record; the categ
         description: '查看生成状态、提示词输入、算力消耗和恢复字段。',
         searchPlaceholder: '搜索提示词、状态或用户...',
         columns: {
+          id: 'gen_id',
           inputPreview: '输入图',
           finalPreview: '成品',
           generationType: '类型',
@@ -2048,7 +2107,6 @@ Library assets are reusable media. Uploading creates the Admin record; the categ
           headline: '标题',
           sellingPoint: '卖点',
           priceText: '价格文案',
-          ctaText: 'CTA 文案',
           errorMessage: '错误信息',
           durationSeconds: '时长',
           creditReserved: '预留算力',
@@ -2127,11 +2185,6 @@ Library assets are reusable media. Uploading creates the Admin record; the categ
         image_to_video: '图生视频',
         try_on: '智能试衣',
       },
-      uploadRoleOptions: {
-        preview: '预览',
-        source: '源文件',
-        example: '示例',
-      },
       errors: {
         load: '加载失败',
         save: '保存失败',
@@ -2158,6 +2211,7 @@ Library assets are reusable media. Uploading creates the Admin record; the categ
       openAssetUrl: '打开素材链接',
       confirmRemove: (title) => `确认从素材库移除 ${title}？`,
       columns: {
+        assetId: '素材 ID',
         assetUrl: '预览',
         title: '素材',
         category: '类别',
@@ -2275,14 +2329,14 @@ Library assets are reusable media. Uploading creates the Admin record; the categ
 
 ### 编写目的
 
-本文用于指导运营在管理后台维护模板。模板是一套生成配方，会按类别作为用户的一键创作入口出现在模板库或对应创作工作台里。
+本文用于指导运营在管理后台维护模板。模板是用户选择创作方向的入口：它告诉用户适合什么商品和场景、预期生成什么效果，并把默认提示词、画幅、时长和算力成本带到对应工作台。
 
 ### 注意事项
 
-- 模板不是素材。模板控制生成配方、提示词、画幅、时长和算力成本；素材库管理可复用图片或视频。
+- 先从用户视角判断模板：用户能不能一眼看懂用途、预览效果和适合的商品场景。
 - 模板保存后要按用户路径检查：先看前台模板库页面是否方便发现和理解，再看对应创作工作台能否正确选择并生成。
-- 一张模板表维护名称、描述、类别、提示词、成本、画幅、时长、标签和预览素材，不再维护 slug、语言、状态、hook、CTA 或 JSON 预设。
-- 类别控制模板进入哪个工作台，标签主要服务用户浏览和运营筛选。
+- 类别决定模板进入哪个创作工作台；标签帮助用户浏览筛选，也帮助运营做活动分组。
+- 名称、描述和预览负责降低用户选择成本；提示词、画幅、时长和算力成本负责生成结果与扣费预期。
 - 算力成本、时长和画幅比例必须和真实生成规则一致，不能只为了展示好看而随意填写。
 
 ## 二、系统整体界面介绍
@@ -2298,15 +2352,15 @@ Library assets are reusable media. Uploading creates the Admin record; the categ
 
 ![模板管理列表页](/admin-help/placements/template-admin-list.png)
 
-模板管理列表是运营每天查找、创建和复核模板的入口。截图里本地环境暂无模板，但页面结构就是线上运营要看的结构：搜索框用于按名称、ID、类别或标签定位模板；“创建”用于新增模板；列表列位用于快速判断模板类别、消耗算力、时长、标签、使用量和更新时间；操作列用于查看、编辑、上传素材或删除。
+模板管理列表是运营每天查找、创建和复核模板的入口。截图里本地环境暂无模板，但页面结构就是线上运营要看的结构：搜索框用于按名称、ID、类别或标签定位模板；“创建”用于新增模板；列表列位用于快速判断模板类别、消耗算力、时长、标签、使用量和更新时间；操作列用于查看、编辑、上传预览媒体或删除。
 
-运营在列表页先看三件事：是否已经有相似模板、模板类别是否符合工作台入口、更新时间和使用量是否需要复核。不要只凭名称判断模板能不能上线，必须进详情或编辑表单看提示词、成本和预览素材。
+运营在列表页先看三件事：是否已经有相似模板、模板类别是否符合工作台入口、更新时间和使用量是否需要复核。不要只凭名称判断模板能不能上线，必须进详情或编辑表单看提示词、成本和预览效果。
 
 ### 模板编辑表单页面介绍
 
 ![模板编辑表单](/admin-help/placements/template-admin-form.png)
 
-模板编辑表单是补齐字段和生成配置的地方。顶部字段负责前台展示和基础归类：名称、类别、描述。继续向下滚动后会看到提示词、负向提示词、成本、时长、排序权重、画幅比例、标签和上传素材。只有已保存模板才能上传 preview、source 或 example。
+模板编辑表单是补齐展示信息和生成配置的地方。顶部字段负责前台展示和基础归类：名称、类别、描述。继续向下滚动后会看到提示词、负向提示词、成本、时长、排序权重、画幅比例、标签和预览媒体。只有已保存模板才能上传 preview 预览媒体。
 
 ### 前台模板库页面介绍
 
@@ -2326,23 +2380,23 @@ Library assets are reusable media. Uploading creates the Admin record; the categ
 
 - 新建模板时先填写名称、类别和描述。
 - 再填写提示词、负向提示词、成本、画幅、时长、排序权重和标签。
-- 需要解释效果时，上传 preview、source 或 example。
+- 需要解释效果时，上传 preview 预览媒体。
 - 保存后检查预览和字段是否完整，再到对应工作台验证。
 
 ### 字段说明
 
 - 名称：运营和用户都能看到的模板名称。要写成可理解的结果或用途，不要只写内部代号。
-- ID：系统生成的模板唯一标识，用于跳转、任务记录和定位。运营不需要额外维护 slug。
+- ID：系统生成的模板唯一标识，用于跳转、任务记录和定位。创建后自动产生，运营复制给技术或客服定位即可。
 - 类别：决定模板要去哪个工作台验证。image_to_video 看图生视频；image_to_image 看图片生成；try_on 看智能试衣。类别填错时，运营会在错误页面找模板。
-- 描述：解释适合的商品、渠道、活动目标或限制条件，也承担原来 hook 的浏览说明作用。描述太泛会影响用户选择。
+- 描述：解释适合的商品、渠道、活动目标或限制条件，帮助用户确认要不要选择这个模板。描述太泛会影响用户选择。
 - 提示词：正向生成要求，是模板效果的核心。不能只写展示文案，必须能指导真实生成。
 - 负向提示词：用于排除不想要的画面、风格或错误结果。常见问题可以沉淀在这里。
 - 成本：用户生成时看到和预留的算力成本说明，必须和后端真实扣费规则一致。
 - 时长：视频模板的默认时长。图片模板通常不需要时长；视频时长要和 provider 支持能力一致。
-- 画幅比例：用户可选或默认生成比例。保存前要确认预览素材和生成结果都适配这些比例。
+- 画幅比例：用户可选或默认生成比例。保存前要确认预览媒体和生成结果都适配这些比例。
 - 标签：用于搜索、筛选、活动分组和运营排查。用短标签，不要写成长句。
 - 排序权重：同类模板的人工排序加权。活动主推可以临时调高，活动结束后要调回。
-- 上传素材：preview 用于展示结果预期，source 用于源素材，example 用于示例结果。重要模板没有清晰预览时不要放到活动入口。
+- 预览媒体：preview 用于展示结果预期。重要模板没有清晰预览时不要放到活动入口。
 - 使用量和更新时间：用于判断模板是否还在被用户使用，以及最近是否有人改动。高使用模板修改前要更谨慎。
 
 ### 保存和验证模板
@@ -2355,7 +2409,7 @@ Library assets are reusable media. Uploading creates the Admin record; the categ
 
 ### 如何管理模板
 
-新增模板：进入“模板”页面，点击创建，填写名称、类别、描述、提示词、画幅、时长、标签和算力成本，再补齐 preview、source 或 example。
+新增模板：进入“模板”页面，点击创建，填写名称、类别、描述、提示词、画幅、时长、标签和算力成本，再补齐 preview 预览媒体。
 
 查询模板：通过名称、ID、类别或标签查找模板。找不到时先确认是否在正确工作台类别下查询。
 
@@ -2365,10 +2419,10 @@ Library assets are reusable media. Uploading creates the Admin record; the categ
 
 保存后验证：保存后先看前台模板库是否能被搜索和筛选到，再进入对应创作工作台检查模板入口、默认提示词、画幅时长和算力说明是否正确。`,
           purpose:
-            '维护用户在工作台看到的创作入口和生成配方。模板会按类别进入对应创作页面的模板/灵感列表，影响名称、预览、提示词、画幅、时长和消耗算力。',
+            '维护用户在模板库和工作台看到的创作入口。模板会把名称、预览、默认提示词、画幅、时长和算力成本带到用户选择和生成流程。',
           dailyActions: [
             '点击“创建”维护名称、类别、描述和提示词。',
-            '进入已保存模板，上传 preview、source 或 example，让用户能看懂结果预期。',
+            '进入已保存模板，上传 preview 预览媒体，让用户能看懂结果预期。',
             '复核成本、时长、画幅比例和标签后再用于活动入口。',
             '保存后到对应工作台查看模板是否出现，过期模板降低排序或删除。',
           ],
@@ -2509,6 +2563,28 @@ Library assets are reusable media. Uploading creates the Admin record; the categ
           ],
         },
         {
+          key: 'user-media',
+          title: '用户历史素材',
+          purpose:
+            '查看用户自己上传、生成或复用过的私域素材记录。这里回答“某个用户历史里有什么、来源是什么、是否还可见”，不再让运营直接操作底层 assets 表。',
+          dailyActions: [
+            '客服排查前先按邮箱、标题、来源或生成类型搜索，确认是同一个用户的素材。',
+            '打开详情看预览、来源、可见性和最后使用时间，再判断是上传问题、生成问题还是素材复用问题。',
+            '用户要求隐藏或素材明显无效时，通过可见性做软删除，不要误动官方素材库。',
+          ],
+          keyFields: [
+            '素材 ID、用户、标题、来源和生成类型：快速确认素材是谁的、从哪里来的。',
+            '预览只在详情里看，避免列表页加载大量图片。',
+            '可见性、收藏、使用次数和最后使用时间：判断素材是否还在用户历史里活跃。',
+            '关联运营素材和生成任务状态：在详情里定位是否来自官方素材库或某次生成。',
+          ],
+          riskSignals: [
+            '用户历史素材是用户私域数据，不能按官方素材库缓存或展示。',
+            'Admin 删除应落到可见性的软删除，避免误删底层文件和其他引用。',
+            'assets 表只是技术底座；运营日常只看“运营素材库”和“用户历史素材”。',
+          ],
+        },
+        {
           key: 'users',
           title: '用户',
           purpose:
@@ -2534,44 +2610,20 @@ Library assets are reusable media. Uploading creates the Admin record; the categ
           ],
         },
         {
-          key: 'assets',
-          title: '媒体文件',
-          purpose:
-            '排查所有底层媒体文件，包括用户上传、模板媒体、素材库上传和生成结果。它告诉你文件是否真的上传成功、能不能预览、MIME 和尺寸是否合理。',
-          dailyActions: [
-            '按上传类型、状态、MIME、用户或文件 ID 搜索。',
-            '先看预览，再看 status 是否 uploaded。',
-            '如果模板或素材库看不到图，回到这里确认对应 asset 是否 pending 或 failed。',
-            '恢复问题文件时只在详情里查看公开链接、尺寸、时长和媒体类型。',
-          ],
-          keyFields: [
-            '预览：判断文件是否能被前台展示。',
-            '类型：区分普通上传、模板素材、生成结果或素材库文件。',
-            '状态：pending 未完成，uploaded 可用，failed 不可用。',
-            'MIME 和大小：判断格式是否符合上传入口要求。',
-            '宽度、高度、时长和媒体类型：用于排查比例、视频时长和渲染问题。',
-            '公开链接：只用于恢复和技术排查，不是运营扫表字段。',
-          ],
-          riskSignals: [
-            'pending 或 failed 文件不能拿去发布模板或素材库。',
-            '没有预览可能是格式不支持，也可能是上传还没完成。',
-            '不要把存储 key 或长 URL 当作运营判断依据。',
-          ],
-        },
-        {
           key: 'generation-jobs',
           title: '生成任务',
           purpose:
             '排查每一次生成从用户输入到最终结果的链路。它回答“用户点了什么、用了哪个模板、扣了多少算力、服务商返回什么错误、结果在哪里”。',
           dailyActions: [
             '按用户、商品、提示词、模板、状态或错误信息搜索。',
-            '先对比输入预览和成品预览，再判断是素材问题还是服务商问题。',
+            '打开详情对比输入预览和成品预览，再判断是素材问题还是服务商问题。',
             'queued、submitting、running 太久时，优先查 provider 和队列。',
             '失败任务要看是否预留或结算了算力，必要时到算力流水核对。',
           ],
           keyFields: [
-            '输入预览：用户提交的图、视频或关键输入，排查质量问题先看这里。',
-            '成品预览：生成成功后用户看到的结果。',
+            'gen_id：列表首列，用来定位具体生成任务。',
+            '输入预览：详情里看用户提交的图、视频或关键输入。',
+            '成品预览：详情里看生成成功后用户看到的结果。',
             '生成类型：图生视频、商品图、智能试衣等，用来定位对应工作台。',
             '状态：queued、submitting、running 是处理中，succeeded 成功，failed 失败。',
             '输入摘要：快速看商品名、提示词、模板 ID、画幅等，不替代原始素材。',
@@ -2580,7 +2632,7 @@ Library assets are reusable media. Uploading creates the Admin record; the categ
             '错误信息：provider 或系统返回的失败原因。',
           ],
           riskSignals: [
-            '不要只看状态文字，必须结合输入预览、成品预览和错误信息。',
+            '不要只看状态文字，必须进入详情结合输入预览、成品预览和错误信息。',
             '失败但扣费异常时，不能手动猜，要到算力流水查 delta 和 reason。',
             '模板、素材、provider、用户输入都可能导致失败，按链路逐步排查。',
           ],

@@ -129,4 +129,4 @@ For frontend-visible changes, verify the relevant route at `http://localhost:301
 - `references/kb-navigation.md`: KB map and update rules.
 - `project-kb/code-kb/image-video/07-library-assets-and-admin.md`: first-party reusable material library and Admin flow.
 - `project-kb/`: project-owned knowledge base.
-- `docs/ecommerce-video-saas/`: product, deployment, cost, crawler, and audit docs.
+- `docs/ecommerce-video-saas/`: product, deployment, cost, and audit docs.

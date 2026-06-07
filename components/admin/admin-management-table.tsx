@@ -88,7 +88,6 @@ export function formatAdminLabel(value: string) {
     .replace(/\bid\b/gi, 'ID')
     .replace(/\bjson\b/gi, 'JSON')
     .replace(/\burl\b/gi, 'URL')
-    .replace(/\bcta\b/gi, 'CTA')
     .replace(/\bpdp\b/gi, 'PDP')
     .replace(/\b\w/g, (char) => char.toUpperCase());
 }

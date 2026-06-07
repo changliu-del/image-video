@@ -26,16 +26,6 @@ type ExampleItem = {
   asset?: string;
 };
 
-type TemplateItem = {
-  title: string;
-  category: string;
-  hook: string;
-  useCase: string;
-  cost: string;
-  mediaType: 'video' | 'image';
-  asset: string;
-};
-
 type ProcessItem = {
   stat: string;
   label: string;
@@ -134,7 +124,6 @@ type MarketingContent = {
       title: string;
       description: string;
       actionLabel: string;
-      items: TemplateItem[];
     };
     workflow: {
       eyebrow: string;
@@ -539,189 +528,6 @@ const zhImageExamples: ExampleItem[] = [
   },
 ];
 
-const ptTemplateItems: TemplateItem[] = [
-  {
-    title: 'Promoção Pix',
-    category: 'Promoção',
-    hook: 'Só hoje com desconto no Pix',
-    useCase:
-      'Preço em destaque, CTA direto e ritmo rápido para ofertas relâmpago.',
-    cost: 'Imagem 1 crédito',
-    mediaType: 'image',
-    asset: '/resources/example4.png',
-  },
-  {
-    title: 'Produto em Uso',
-    category: 'Demonstração',
-    hook: 'Veja como fica na rotina',
-    useCase:
-      'Transforma uma foto limpa em uma cena de uso para moda, casa e beleza.',
-    cost: 'Video quando fizer sentido',
-    mediaType: 'video',
-    asset: '/resources/example2.mp4',
-  },
-  {
-    title: 'Antes e Depois',
-    category: 'Confiança',
-    hook: 'O detalhe que muda o resultado',
-    useCase:
-      'Mostra problema, solução e benefício visual sem precisar editar do zero.',
-    cost: 'Imagem 1 crédito',
-    mediaType: 'image',
-    asset: '/resources/example3.png',
-  },
-  {
-    title: 'Review de Cliente',
-    category: 'Prova social',
-    hook: 'Quem comprou recomenda',
-    useCase:
-      'Cria um criativo com tom de indicação para WhatsApp, Reels e loja.',
-    cost: 'Vídeo 15 créditos',
-    mediaType: 'video',
-    asset: '/resources/example1.mp4',
-  },
-  {
-    title: 'Detalhe PDP',
-    category: 'Marketplace',
-    hook: 'Detalhes que vendem mais',
-    useCase:
-      'Destaca material, embalagem, textura e benefícios para página de produto.',
-    cost: 'Imagem 1 crédito',
-    mediaType: 'image',
-    asset: '/resources/example1.png',
-  },
-  {
-    title: 'Banner Promocional',
-    category: 'Campanha',
-    hook: 'Oferta pronta para anunciar',
-    useCase:
-      'Gera base visual para campanha, lançamento, cupom ou frete grátis.',
-    cost: 'Imagem 1 crédito',
-    mediaType: 'image',
-    asset: '/resources/example5.png',
-  },
-];
-
-const enTemplateItems: TemplateItem[] = [
-  {
-    title: 'Pix Promotion',
-    category: 'Promotion',
-    hook: 'Today only with Pix discount',
-    useCase:
-      'Highlighted price, direct CTA, and fast pacing for limited-time offers.',
-    cost: 'Image 1 credit',
-    mediaType: 'image',
-    asset: '/resources/example4.png',
-  },
-  {
-    title: 'Product in Use',
-    category: 'Demo',
-    hook: 'See how it fits the routine',
-    useCase:
-      'Turns a clean product photo into a usage scene for fashion, home, and beauty.',
-    cost: 'Video when useful',
-    mediaType: 'video',
-    asset: '/resources/example2.mp4',
-  },
-  {
-    title: 'Before and After',
-    category: 'Trust',
-    hook: 'The detail that changes the result',
-    useCase:
-      'Shows problem, solution, and visual benefit without editing from scratch.',
-    cost: 'Image 1 credit',
-    mediaType: 'image',
-    asset: '/resources/example3.png',
-  },
-  {
-    title: 'Customer Review',
-    category: 'Social proof',
-    hook: 'Recommended by real buyers',
-    useCase:
-      'Creates a recommendation-style creative for WhatsApp, Reels, and stores.',
-    cost: 'Video 15 credits',
-    mediaType: 'video',
-    asset: '/resources/example1.mp4',
-  },
-  {
-    title: 'PDP Detail',
-    category: 'Marketplace',
-    hook: 'Details that sell more',
-    useCase:
-      'Highlights material, packaging, texture, and benefits for product pages.',
-    cost: 'Image 1 credit',
-    mediaType: 'image',
-    asset: '/resources/example1.png',
-  },
-  {
-    title: 'Promo Banner',
-    category: 'Campaign',
-    hook: 'An offer ready to launch',
-    useCase:
-      'Generates a visual base for campaigns, launches, coupons, or free shipping.',
-    cost: 'Image 1 credit',
-    mediaType: 'image',
-    asset: '/resources/example5.png',
-  },
-];
-
-const zhTemplateItems: TemplateItem[] = [
-  {
-    title: 'Pix 促销',
-    category: '促销',
-    hook: '今天使用 Pix 享折扣',
-    useCase: '突出价格、折扣和直接 CTA，适合限时促销。',
-    cost: '图片 1 算力值',
-    mediaType: 'image',
-    asset: '/resources/example4.png',
-  },
-  {
-    title: '商品使用场景',
-    category: '演示',
-    hook: '看看它如何融入日常',
-    useCase: '把干净商品图转成适合服饰、家居、美妆的使用场景。',
-    cost: '需要时转视频',
-    mediaType: 'video',
-    asset: '/resources/example2.mp4',
-  },
-  {
-    title: '前后对比',
-    category: '信任',
-    hook: '一个细节改变效果',
-    useCase: '展示问题、解决方案和视觉收益，不需要从零剪辑。',
-    cost: '图片 1 算力值',
-    mediaType: 'image',
-    asset: '/resources/example3.png',
-  },
-  {
-    title: '客户评价',
-    category: '社会证明',
-    hook: '买过的人都推荐',
-    useCase: '生成适合 WhatsApp、Reels 和店铺的推荐口吻素材。',
-    cost: '视频 15 算力值',
-    mediaType: 'video',
-    asset: '/resources/example1.mp4',
-  },
-  {
-    title: '详情页细节',
-    category: 'Marketplace',
-    hook: '更会卖货的细节',
-    useCase: '突出材质、包装、纹理和利益点，服务商品详情页。',
-    cost: '图片 1 算力值',
-    mediaType: 'image',
-    asset: '/resources/example1.png',
-  },
-  {
-    title: '促销横幅',
-    category: '活动',
-    hook: '一张图启动活动',
-    useCase: '为活动、上新、优惠券或免运费生成视觉基础。',
-    cost: '图片 1 算力值',
-    mediaType: 'image',
-    asset: '/resources/example5.png',
-  },
-];
-
 const pt: MarketingContent = {
   locale: 'pt',
   localeLabel: 'Português',
@@ -814,16 +620,16 @@ const pt: MarketingContent = {
       secondaryAction: 'Ver templates de imagem',
       previewTitle: 'Prompt editável',
       previewText:
-        'Cada modelo abre com hook, CTA e estrutura prontos para o mercado brasileiro.',
+        'Cada modelo abre com prompt editável e direção criativa pronta para o mercado brasileiro.',
       previewItems: [
-        'Hooks em português brasileiro para ofertas, prova social e lançamento.',
-        'CTA para Pix, WhatsApp, marketplace e loja própria.',
+        'Prompts em português brasileiro para ofertas, prova social e lançamento.',
+        'Direções de compra para Pix, WhatsApp, marketplace e loja própria.',
         'Templates livres para editar antes de gastar créditos em vídeo.',
       ],
       stats: [
-        { stat: '6', label: 'templates iniciais' },
+        { stat: '12', label: 'templates iniciais' },
         { stat: '1', label: 'crédito para imagem' },
-        { stat: 'PT-BR', label: 'hooks locais' },
+        { stat: 'PT-BR', label: 'prompts locais' },
       ],
     },
     examples: {
@@ -840,9 +646,8 @@ const pt: MarketingContent = {
       eyebrow: 'Biblioteca de templates',
       title: 'Comece pelo tipo de vídeo que vende o produto',
       description:
-        'Cada modelo traz hook, CTA e direção visual. O vendedor escolhe, troca pelo próprio produto e edita o prompt sem ficar preso a regras rígidas.',
+        'Cada modelo traz descrição, prompt e direção visual. O vendedor escolhe, troca pelo próprio produto e edita o prompt sem ficar preso a regras rígidas.',
       actionLabel: 'Usar modelo',
-      items: ptTemplateItems,
     },
     workflow: {
       eyebrow: 'Caminho de baixo custo',
@@ -856,7 +661,7 @@ const pt: MarketingContent = {
         },
         {
           title: 'Edite o prompt livremente',
-          text: 'O template sugere hook, CTA e estrutura, mas o usuário pode reescrever tudo.',
+          text: 'O template sugere prompt e estrutura, mas o usuário pode reescrever tudo.',
         },
         {
           title: 'Transforme em vídeo',
@@ -959,7 +764,7 @@ const pt: MarketingContent = {
         {
           question: 'Os templates limitam o prompt?',
           answer:
-            'Não. O template só preenche uma boa base com hook, CTA e direção visual. O usuário pode editar o prompt inteiro.',
+            'Não. O template só preenche uma boa base com descrição, prompt e direção visual. O usuário pode editar o prompt inteiro.',
         },
         {
           question: 'Preciso gerar vídeo logo no primeiro passo?',
@@ -1292,16 +1097,16 @@ const en: MarketingContent = {
       secondaryAction: 'Explore image templates',
       previewTitle: 'Editable prompt',
       previewText:
-        'Every template starts with a hook, CTA, and structure for the Brazilian market.',
+        'Every template starts with an editable prompt and creative direction for the Brazilian market.',
       previewItems: [
-        'Brazilian Portuguese hooks for offers, social proof, and launches.',
-        'CTA ideas for Pix, WhatsApp, marketplaces, and DTC stores.',
+        'Brazilian Portuguese prompts for offers, social proof, and launches.',
+        'Buying-direction ideas for Pix, WhatsApp, marketplaces, and DTC stores.',
         'Templates stay editable before you spend credits on video.',
       ],
       stats: [
-        { stat: '6', label: 'starter templates' },
+        { stat: '12', label: 'starter templates' },
         { stat: '1', label: 'image credit' },
-        { stat: 'PT-BR', label: 'local hooks' },
+        { stat: 'PT-BR', label: 'local prompts' },
       ],
     },
     examples: {
@@ -1320,9 +1125,8 @@ const en: MarketingContent = {
       eyebrow: 'Template library',
       title: 'Start with the kind of video that sells the product',
       description:
-        'Each model includes a hook, CTA, and visual direction. Sellers choose one, swap in their product, and freely edit the prompt.',
+        'Each model includes a description, prompt, and visual direction. Sellers choose one, swap in their product, and freely edit the prompt.',
       actionLabel: 'Use template',
-      items: enTemplateItems,
     },
     workflow: {
       ...pt.home.workflow,
@@ -1337,7 +1141,7 @@ const en: MarketingContent = {
         },
         {
           title: 'Edit the prompt freely',
-          text: 'The template suggests a hook, CTA, and structure, but the user can rewrite everything.',
+          text: 'The template suggests a prompt and structure, but the user can rewrite everything.',
         },
         {
           title: 'Turn it into video',
@@ -1351,7 +1155,7 @@ const en: MarketingContent = {
         {
           question: 'Do templates limit the prompt?',
           answer:
-            'No. A template only fills a strong starting point with hook, CTA, and visual direction. Users can edit the entire prompt.',
+            'No. A template only fills a strong starting point with description, prompt, and visual direction. Users can edit the entire prompt.',
         },
         {
           question: 'Do I need to generate video first?',
@@ -1642,14 +1446,14 @@ const zh: MarketingContent = {
       primaryAction: '浏览模板',
       secondaryAction: '查看图片模板',
       previewTitle: '可编辑提示词',
-      previewText: '每个模板都预置适合巴西市场的卖点文案、CTA 和创意结构。',
+      previewText: '每个模板都预置适合巴西市场的提示词和创意结构。',
       previewItems: [
-        '面向促销、用户口碑和上新的巴西葡语卖点文案。',
-        '适合 Pix、WhatsApp、电商平台和独立站的 CTA。',
+        '面向促销、用户口碑和上新的巴西葡语提示词。',
+        '适合 Pix、WhatsApp、电商平台和独立站的购买方向。',
         '在消耗视频算力值前，模板和提示词都可以自由修改。',
       ],
       stats: [
-        { stat: '6', label: '初始模板' },
+        { stat: '12', label: '初始模板' },
         { stat: '1', label: '图片算力值' },
         { stat: 'PT-BR', label: '本地话术' },
       ],
@@ -1670,9 +1474,8 @@ const zh: MarketingContent = {
       eyebrow: '模板库',
       title: '先选择最适合卖这个商品的视频类型',
       description:
-        '每个模板都包含卖点文案、CTA 和视觉方向。卖家选择模板、换成自己的商品，并且可以自由编辑提示词。',
+        '每个模板都包含说明、提示词和视觉方向。卖家选择模板、换成自己的商品，并且可以自由编辑提示词。',
       actionLabel: '使用模板',
-      items: zhTemplateItems,
     },
     workflow: {
       ...pt.home.workflow,
@@ -1687,7 +1490,7 @@ const zh: MarketingContent = {
         },
         {
           title: '自由编辑提示词',
-          text: '模板提供卖点文案、CTA 和结构，但用户可以重写全部内容。',
+          text: '模板提供提示词和结构，但用户可以重写全部内容。',
         },
         {
           title: '升级成视频',
@@ -1701,7 +1504,7 @@ const zh: MarketingContent = {
         {
           question: '模板会限制提示词吗？',
           answer:
-            '不会。模板只是预填一个好的起点，包括卖点文案、CTA 和视觉方向，用户可以编辑完整提示词。',
+            '不会。模板只是预填一个好的起点，包括说明、提示词和视觉方向，用户可以编辑完整提示词。',
         },
         {
           question: '必须一开始就生成视频吗？',

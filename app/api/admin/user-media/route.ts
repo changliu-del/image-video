@@ -1,5 +1,9 @@
 import { type NextRequest, NextResponse } from 'next/server';
-import { listAssets, removeAsset, updateAsset } from '@/lib/admin/services';
+import {
+  listAdminUserMedia,
+  softDeleteAdminUserMedia,
+  updateAdminUserMedia,
+} from '@/lib/admin/services';
 import { parsePagination } from '@/lib/admin/services/shared';
 import { adminRouteError, readJsonBody } from '../_utils';
 
@@ -8,9 +12,11 @@ export async function GET(request: NextRequest) {
     const { search, page, pageSize } = parsePagination(
       request.nextUrl.searchParams
     );
-    return NextResponse.json(await listAssets({ search, page, pageSize }));
+    return NextResponse.json(
+      await listAdminUserMedia({ search, page, pageSize })
+    );
   } catch (error) {
-    return adminRouteError(error, 'Failed to list assets');
+    return adminRouteError(error, 'Failed to list user media');
   }
 }
 
@@ -22,9 +28,9 @@ export async function PUT(request: NextRequest) {
       throw new Error('id required');
     }
 
-    return NextResponse.json(await updateAsset(id, data));
+    return NextResponse.json(await updateAdminUserMedia(id, data));
   } catch (error) {
-    return adminRouteError(error, 'Failed to update asset');
+    return adminRouteError(error, 'Failed to update user media');
   }
 }
 
@@ -35,9 +41,9 @@ export async function DELETE(request: NextRequest) {
       throw new Error('id required');
     }
 
-    await removeAsset(body.id);
+    await softDeleteAdminUserMedia(body.id);
     return NextResponse.json({ success: true });
   } catch (error) {
-    return adminRouteError(error, 'Failed to delete asset');
+    return adminRouteError(error, 'Failed to delete user media');
   }
 }

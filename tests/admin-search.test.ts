@@ -41,6 +41,15 @@ describe('Admin operational search fields', () => {
     expect(ADMIN_OPERATIONAL_SEARCH_FIELDS['library-assets']).toEqual(
       expect.arrayContaining(['title', 'category', 'assetId', 'mimeType'])
     );
+    expect(ADMIN_OPERATIONAL_SEARCH_FIELDS['user-media']).toEqual(
+      expect.arrayContaining([
+        'userEmail',
+        'title',
+        'source',
+        'generationType',
+        'visibility',
+      ])
+    );
     expect(ADMIN_OPERATIONAL_SEARCH_FIELDS['generation-jobs']).toEqual(
       expect.arrayContaining(['inputSummary', 'status', 'generationType'])
     );

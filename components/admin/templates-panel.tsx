@@ -54,7 +54,6 @@ type TemplateFormState = {
   tagSlugs: string[];
 };
 
-type UploadRole = 'preview' | 'source' | 'example';
 type ModalMode = 'create' | 'view' | 'edit';
 
 type PaginatedTemplates = {
@@ -170,7 +169,6 @@ export function TemplatesPanel({
   const [selectedTemplate, setSelectedTemplate] =
     useState<AdminTemplate | null>(null);
   const [modalMode, setModalMode] = useState<ModalMode | null>(null);
-  const [uploadRole, setUploadRole] = useState<UploadRole>('preview');
   const [uploadFile, setUploadFile] = useState<File | null>(null);
   const [loading, setLoading] = useState(false);
   const [saving, setSaving] = useState(false);
@@ -407,7 +405,7 @@ export function TemplatesPanel({
     }
   }
 
-  async function uploadTemplateAsset() {
+  async function uploadTemplatePreview() {
     if (!form.id || !uploadFile) {
       setError(copy.selectSavedTemplate);
       return;
@@ -420,7 +418,7 @@ export function TemplatesPanel({
         assetId: string;
         uploadUrl: string;
         storageKey: string;
-      }>('/api/admin/template-assets/presign', {
+      }>('/api/admin/template-preview/presign', {
         method: 'POST',
         body: JSON.stringify({
           templateId: form.id,
@@ -440,13 +438,12 @@ export function TemplatesPanel({
         throw new Error(copy.errors.upload);
       }
 
-      await requestJson('/api/admin/template-assets/complete', {
+      await requestJson('/api/admin/template-preview/complete', {
         method: 'POST',
         body: JSON.stringify({
           templateId: form.id,
           assetId: presign.assetId,
           storageKey: presign.storageKey,
-          role: uploadRole,
         }),
       }, copy.errors.completeUpload);
 
@@ -793,22 +790,7 @@ export function TemplatesPanel({
                   </a>
                 ) : null}
               </div>
-              <div className="grid gap-3 md:grid-cols-[180px_1fr_auto]">
-                <select
-                  value={uploadRole}
-                  onChange={(event) =>
-                    setUploadRole(event.target.value as UploadRole)
-                  }
-                  className="h-10 rounded-md border border-gray-200 bg-white px-3 text-sm"
-                >
-                  <option value="preview">
-                    {copy.uploadRoleOptions.preview}
-                  </option>
-                  <option value="source">{copy.uploadRoleOptions.source}</option>
-                  <option value="example">
-                    {copy.uploadRoleOptions.example}
-                  </option>
-                </select>
+              <div className="grid gap-3 md:grid-cols-[1fr_auto]">
                 <Input
                   type="file"
                   accept="image/png,image/jpeg,image/webp,video/mp4,video/webm"
@@ -819,7 +801,7 @@ export function TemplatesPanel({
                 />
                 <Button
                   type="button"
-                  onClick={uploadTemplateAsset}
+                  onClick={uploadTemplatePreview}
                   disabled={!form.id || !uploadFile || uploading}
                 >
                   {uploading ? (

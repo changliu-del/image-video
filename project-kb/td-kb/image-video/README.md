@@ -8,5 +8,4 @@ Updated: 2026-06-03
 
 ## Usage
 
-Create a new file here when a feature needs an implementation plan, module ownership split, validation plan, or multi-agent plan. Keep it practical and project-local.
-
+Create a new file here when a feature needs an implementation plan, module ownership split, validation plan, or explicitly requested delegation plan. Keep it practical and project-local.

@@ -252,16 +252,10 @@ export function LibraryAssetsPanel({
   const columns = useMemo<AdminTableColumn<AdminLibraryAsset>[]>(
     () => [
       {
-        key: 'assetUrl',
-        label: copy.columns.assetUrl,
-        width: 96,
-        render: (asset) => (
-          <MediaPreview
-            url={asset.assetUrl}
-            mimeType={asset.mimeType}
-            className="size-14"
-          />
-        ),
+        key: 'assetId',
+        label: copy.columns.assetId,
+        kind: 'id',
+        width: 220,
       },
       {
         key: 'title',
@@ -661,6 +655,7 @@ export function LibraryAssetsPanel({
               fieldLabels={{ ...copy.fields, ...copy.columns }}
               statusLabels={content.statusLabels}
               columns={[
+                'assetId',
                 'title',
                 'category',
                 'description',

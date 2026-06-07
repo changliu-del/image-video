@@ -12,11 +12,20 @@ Updated: 2026-06-04
 - `R2_SECRET_ACCESS_KEY`
 - `R2_BUCKET`
 - `R2_PUBLIC_BASE_URL`
+- `WANXIANG_APPCODE`
+- `WANXIANG_IMG_TO_VIDEO_SUBMIT_URL`
+- `WANXIANG_IMG_TO_VIDEO_QUERY_URL`
+- `WANXIANG_CLOTH_SUBMIT_URL`
+- `WANXIANG_CLOTH_QUERY_URL`
+- `WANXIANG_TRY_ON_SINGLE_SUBMIT_URL`
+- `WANXIANG_TRY_ON_MULTI_SUBMIT_URL`
+- `WANXIANG_TRY_ON_QUERY_URL`
+- `WANXIANG_MODEL_CATALOG_URL`
+- `TRIGGER_GENERATION_CONCURRENCY_LIMIT`
 - `STRIPE_SECRET_KEY`
 - `STRIPE_WEBHOOK_SECRET`
 - `PAYMENTS_MOCK`
-- `ADMIN_API_URL`
-- `ADMIN_API_TOKEN`
+- `ADMIN_API_URL` and `ADMIN_API_TOKEN` only for the legacy `/api/creative-templates` proxy; local Admin template/library/user-media management does not depend on them.
 - `NEXT_PUBLIC_POSTHOG_KEY`
 - `NEXT_PUBLIC_POSTHOG_HOST`
 - `NEXT_PUBLIC_SENTRY_DSN`
@@ -34,4 +43,3 @@ Updated: 2026-06-04
 - Deployment runbook: `docs/ecommerce-video-saas/03-deployment-runbook.md`
 - Purchase checklist: `docs/ecommerce-video-saas/02-deployment-purchase-checklist.md`
 - Cost path: `docs/ecommerce-video-saas/04-cost-and-growth-path.md`
-- Template crawler: `docs/ecommerce-video-saas/05-template-crawler-runbook.md`

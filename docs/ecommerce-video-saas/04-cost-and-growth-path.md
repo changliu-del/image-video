@@ -1,6 +1,6 @@
 # 电商图生视频 SaaS 成本和扩展路线
 
-更新时间：2026-05-26
+更新时间：2026-06-05
 
 本文用于判断第一阶段成本、何时需要租服务器、何时从托管服务迁移到自建。
 
@@ -18,7 +18,7 @@ Resend: $0-$20/month
 Sentry: $0 起
 PostHog: $0 起
 Stripe: 按交易抽成
-fal.ai: 按视频生成量消耗 credits
+Wanxiang: 按图生视频、商品图、试衣生成量消耗
 ```
 
 推荐预算：
@@ -49,8 +49,8 @@ fal.ai: 按视频生成量消耗 credits
 数据库: Neon
 后台任务和队列: Trigger.dev Cloud
 媒体文件: Cloudflare R2
-视频模型: fal.ai
-后期渲染: Trigger.dev worker 里跑 FFmpeg
+生成模型: Wanxiang
+任务编排: Trigger.dev worker 做 submit/query、asset 写入和 credits 结算
 支付: Stripe
 邮件: Resend
 监控: Sentry + PostHog
@@ -73,7 +73,7 @@ fal.ai: 按视频生成量消耗 credits
 变量成本主要来自：
 
 ```text
-fal.ai 视频生成
+Wanxiang 生成任务
 Trigger.dev 任务运行时间
 Cloudflare R2 存储和请求
 Vercel 超出用量
@@ -120,7 +120,7 @@ Stripe 抽成
 
 ## 4. Credits 定价建议
 
-不要把 fal.ai token 或真实成本暴露给用户。用户购买平台 credits。
+不要把 Wanxiang APPCODE 或真实成本暴露给用户。用户购买平台 credits。
 
 MVP credits 规则：
 
@@ -142,11 +142,11 @@ Business: $99.99 -> 1000 credits
 上线前必须做一次成本校准：
 
 ```text
-1. 用真实商品图生成 30 条视频
-2. 记录每条 fal.ai 成本
-3. 记录失败率
+1. 用真实商品图分别跑图生视频、商品图、试衣样本
+2. 记录每种生成类型的 Wanxiang 成本和成功率
+3. 记录失败率和重试率
 4. 记录平均 Trigger.dev 执行时间
-5. 计算单条视频平均成本
+5. 计算每种生成类型的平均成本
 6. 调整 credits 定价
 ```
 
@@ -155,7 +155,7 @@ Business: $99.99 -> 1000 credits
 必须设置：
 
 ```text
-fal.ai 每日预算提醒
+Wanxiang 每日预算提醒或供应商用量提醒
 Vercel spend limit
 Trigger.dev usage alert
 PostHog billing limit
@@ -171,7 +171,7 @@ Stripe radar 基础风控
 未付费用户: 最多 1-3 次免费生成
 付费用户: 按 credits 消耗
 单用户并发生成: 1-2 个
-全局并发生成: 根据 fal.ai concurrency 和预算设置
+全局并发生成: 根据 Wanxiang endpoint capacity、Trigger.dev concurrency 和预算设置
 最大视频时长: 10 秒
 最大上传图片: 10 MB
 ```
@@ -186,8 +186,8 @@ Stripe radar 基础风控
 
 ```text
 每日稳定 500+ 个生成任务
-FFmpeg 渲染占用大量 Trigger.dev 执行时间
-Trigger.dev 月账单超过自建 CPU worker 2-3 倍
+Wanxiang query/poll 占用大量 Trigger.dev 执行时间
+Trigger.dev 月账单超过自建 worker 2-3 倍
 ```
 
 迁移方案：
@@ -196,25 +196,25 @@ Trigger.dev 月账单超过自建 CPU worker 2-3 倍
 保留 Vercel + Neon + R2
 新增一台 CPU worker
 用 BullMQ + Redis 或 Trigger.dev self-hosted
-FFmpeg 转到自建 worker
+submit/query、asset 写入和 credit settlement 转到自建 worker
 ```
 
-### 情况 2: FFmpeg 渲染量很大
+### 情况 2: 自定义后期渲染成为核心需求
 
 触发信号：
 
 ```text
-大部分任务时间花在 FFmpeg
-视频尺寸和模板越来越复杂
-需要批量导出多个比例
+客户明确需要价格牌、字幕、行动按钮、logo、批量多比例导出
+Wanxiang 输出后还必须做稳定后处理
+后处理耗时和失败率开始影响交付
 ```
 
 迁移方案：
 
 ```text
 租 CPU 服务器或容器服务
-专门跑 render worker
-保留模型生成在 fal.ai
+专门跑 render worker 或恢复 FFmpeg/Remotion 方案
+保留模型生成在 Wanxiang 或其他 provider
 ```
 
 ### 情况 3: 要自己跑开源视频模型
@@ -222,7 +222,7 @@ FFmpeg 转到自建 worker
 触发信号：
 
 ```text
-fal.ai 单条成本过高
+Wanxiang 单条成本过高
 每日生成量稳定
 有明确模型选择，例如 LTX/Wan/ComfyUI
 有工程能力维护 GPU 镜像
@@ -276,7 +276,7 @@ S3/CloudFront 或继续 R2
 技术：
 
 ```text
-Vercel + Neon + Trigger.dev + R2 + fal.ai + FFmpeg
+Vercel + Neon + Trigger.dev + R2 + Wanxiang
 ```
 
 ### v2: 多模型供应商
@@ -295,6 +295,7 @@ Vercel + Neon + Trigger.dev + R2 + fal.ai + FFmpeg
 ReplicateVideoProvider
 RunPodVideoProvider
 KlingOfficialProvider
+WanxiangProvider
 provider routing
 provider fallback
 模型成本报表
@@ -313,8 +314,8 @@ provider fallback
 目标：
 
 ```text
-降低 FFmpeg 成本
-提高渲染可控性
+降低长轮询/状态处理成本
+提高任务可控性
 减少 Trigger.dev 执行时长
 ```
 
@@ -323,7 +324,7 @@ provider fallback
 ```text
 CPU worker service
 Redis/BullMQ 或 Trigger.dev self-hosted
-render queue
+generation queue
 worker autoscaling
 ```
 
@@ -333,7 +334,7 @@ worker autoscaling
 Vercel
 Neon
 R2
-fal.ai
+Wanxiang
 Stripe
 ```
 
@@ -430,7 +431,7 @@ R2 存储增长
 
 ## 9. 决策规则
 
-何时继续用 fal.ai：
+何时继续用 Wanxiang：
 
 ```text
 单条成本可控
@@ -443,16 +444,16 @@ R2 存储增长
 何时增加第二供应商：
 
 ```text
-fal.ai 失败率高
+Wanxiang 失败率高
 队列等待时间长
 单一模型质量不稳定
 用户对质量有明显不满
 ```
 
-何时自建 FFmpeg worker：
+何时自建后处理 worker：
 
 ```text
-FFmpeg 成本超过模型成本的 20%-30%
+后处理成本超过模型成本的 20%-30%
 多尺寸导出成为核心功能
 Trigger.dev 账单明显上涨
 ```
@@ -465,4 +466,3 @@ Trigger.dev 账单明显上涨
 有能力维护 GPU 镜像和模型缓存
 预计自建后节省超过 40%
 ```
-

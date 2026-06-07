@@ -19,7 +19,7 @@ import type { AdminCommonCopy } from '@/lib/admin/content';
 
 export type AdminTableKey =
   | 'users'
-  | 'assets'
+  | 'user-media'
   | 'generation-jobs'
   | 'credit-ledger';
 
@@ -362,6 +362,9 @@ export function ManagementPanel({
         'generationType',
         'type',
         'reason',
+        'source',
+        'visibility',
+        'isFavorite',
       ].includes(key);
       const isTime = key.endsWith('At') || key.endsWith('_at');
       const isNumber = [
@@ -371,6 +374,7 @@ export function ManagementPanel({
         'balanceAfter',
         'sizeBytes',
         'durationSeconds',
+        'usedCount',
       ].includes(key);
 
       return {

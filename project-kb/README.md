@@ -10,7 +10,7 @@ Read this file first, then choose one section:
 |---|---|
 | Stable architecture, project identity, technical direction | [core-kb](core-kb/README.md) |
 | Code structure, APIs, data models, validation, risky areas | [code-kb](code-kb/README.md) |
-| Feature plans, implementation plans, multi-agent execution notes | [td-kb](td-kb/README.md) |
+| Feature plans, implementation plans, validation notes, optional delegation notes | [td-kb](td-kb/README.md) |
 | Product scope, user workflows, pricing, credits, business rules | [business-kb](business-kb/README.md) |
 
 ## Project Quick Entry
@@ -29,4 +29,3 @@ Read this file first, then choose one section:
 ## Boundaries
 
 This KB is not SRA-KB and should not inherit company workflow gates. It borrows the useful structure: core, code, TD, and business knowledge separated by lifecycle.
-

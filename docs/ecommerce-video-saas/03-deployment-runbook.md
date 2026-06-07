@@ -220,41 +220,47 @@ R2_PUBLIC_BASE_URL=https://cdn.yourdomain.com
 storage_key 必须包含 userId
 ```
 
-## 6. 创建 fal.ai API key
+## 6. 配置 Wanxiang API
 
 操作：
 
 ```text
-1. 打开 https://fal.ai
-2. Sign up / Log in
-3. 进入 Billing
-4. 充值 prepaid credits
-5. 进入 Keys 或 API Keys
-6. Create API Key
-7. 保存 key
+1. 获取 Wanxiang APPCODE
+2. 确认图生视频、商品图、单件试衣、多件试衣、模特素材 catalog endpoint
+3. 在服务端环境保存 APPCODE 和必要 endpoint override
+4. 用一张公开可访问图片分别测试 submit/query
+5. 记录一次图生视频、商品图、试衣的实际成本和平均耗时
 ```
 
 环境变量：
 
 ```text
-FAL_KEY=
-FAL_DEFAULT_MODEL=fal-ai/wan/v2.7/image-to-video
+WANXIANG_APPCODE=
+WANXIANG_IMG_TO_VIDEO_SUBMIT_URL=
+WANXIANG_IMG_TO_VIDEO_QUERY_URL=
+WANXIANG_CLOTH_SUBMIT_URL=
+WANXIANG_CLOTH_QUERY_URL=
+WANXIANG_TRY_ON_SINGLE_SUBMIT_URL=
+WANXIANG_TRY_ON_MULTI_SUBMIT_URL=
+WANXIANG_TRY_ON_QUERY_URL=
+WANXIANG_MODEL_CATALOG_URL=
 ```
 
 验证方式：
 
 ```text
-1. 在 fal.ai playground 测试 image-to-video
-2. 确认模型可以接受 image_url
-3. 确认输出视频 URL 可下载
-4. 记录一次 5 秒视频的实际成本
+1. 运行 provider 单测或手动调用 Wanxiang submit/query
+2. 确认 APPCODE 鉴权成功
+3. 确认 submit 返回 providerTaskId
+4. 确认 query 可以返回 running/succeeded/failed 终态
+5. 确认输出 URL 可被 worker 记录为 final asset
 ```
 
 注意：
 
 ```text
-FAL_KEY 只配置在 Vercel server env 和 Trigger.dev env。
-不要使用 NEXT_PUBLIC_FAL_KEY。
+WANXIANG_APPCODE 只配置在 Vercel server env 和 Trigger.dev env。
+不要使用 NEXT_PUBLIC_WANXIANG_APPCODE。
 ```
 
 ## 7. 创建 Trigger.dev project
@@ -279,13 +285,9 @@ pnpm add @trigger.dev/sdk @trigger.dev/build
 
 ```ts
 import { defineConfig } from "@trigger.dev/sdk";
-import { ffmpeg } from "@trigger.dev/build/extensions/core";
 
 export default defineConfig({
   project: "your-project-ref",
-  build: {
-    extensions: [ffmpeg({ version: "7" })],
-  },
 });
 ```
 
@@ -293,8 +295,15 @@ Trigger.dev 环境变量：
 
 ```text
 POSTGRES_URL=
-FAL_KEY=
-FAL_DEFAULT_MODEL=
+WANXIANG_APPCODE=
+WANXIANG_IMG_TO_VIDEO_SUBMIT_URL=
+WANXIANG_IMG_TO_VIDEO_QUERY_URL=
+WANXIANG_CLOTH_SUBMIT_URL=
+WANXIANG_CLOTH_QUERY_URL=
+WANXIANG_TRY_ON_SINGLE_SUBMIT_URL=
+WANXIANG_TRY_ON_MULTI_SUBMIT_URL=
+WANXIANG_TRY_ON_QUERY_URL=
+WANXIANG_MODEL_CATALOG_URL=
 R2_ACCOUNT_ID=
 R2_ACCESS_KEY_ID=
 R2_SECRET_ACCESS_KEY=
@@ -320,10 +329,10 @@ npx trigger.dev@latest deploy
 验证：
 
 ```text
-1. 在 Trigger.dev dashboard 看到 generate-video task
+1. 在 Trigger.dev dashboard 看到 generate-wanxiang task
 2. 手动触发一个测试 job
 3. 查看 logs
-4. 确认 FFmpeg 可执行
+4. 确认 job 可以从 queued/submitting/running 进入 succeeded 或 failed
 ```
 
 ## 8. 配置 Stripe
@@ -354,7 +363,7 @@ Pro: $39.99
 Business: $99.99
 ```
 
-实际价格应根据 fal.ai 单条视频成本调整。
+实际价格应根据 Wanxiang 各生成类型成本和失败重试摊销调整。
 
 创建 webhook：
 
@@ -455,8 +464,8 @@ Next.js frontend
 Next.js API routes
 Trigger.dev task
 Stripe webhook
-fal.ai provider
-FFmpeg render
+Wanxiang provider
+generation job credit settlement
 ```
 
 验证：
@@ -547,8 +556,16 @@ NEXT_PUBLIC_POSTHOG_HOST=https://app.posthog.com
 ```text
 POSTGRES_URL=
 
-FAL_KEY=
-FAL_DEFAULT_MODEL=fal-ai/wan/v2.7/image-to-video
+WANXIANG_APPCODE=
+WANXIANG_IMG_TO_VIDEO_SUBMIT_URL=
+WANXIANG_IMG_TO_VIDEO_QUERY_URL=
+WANXIANG_CLOTH_SUBMIT_URL=
+WANXIANG_CLOTH_QUERY_URL=
+WANXIANG_TRY_ON_SINGLE_SUBMIT_URL=
+WANXIANG_TRY_ON_MULTI_SUBMIT_URL=
+WANXIANG_TRY_ON_QUERY_URL=
+WANXIANG_MODEL_CATALOG_URL=
+TRIGGER_GENERATION_CONCURRENCY_LIMIT=5
 
 R2_ACCOUNT_ID=
 R2_ACCESS_KEY_ID=
@@ -576,12 +593,11 @@ R2 signed upload 成功
 图片 public URL 可访问
 创建 generation_job 成功
 Trigger.dev 收到 task
-fal.ai 返回 raw video
-FFmpeg 输出 MP4
-final video 上传 R2
+Wanxiang 返回终态结果
+final image/video asset 写入 DB/R2
+user_media_history 写入 upload/generated 历史
 任务状态变为 succeeded
-用户可以预览 final video
-用户可以下载 final video
+用户可以预览和下载 final result
 失败任务会返还 credits
 Sentry 收到测试错误
 PostHog 收到关键事件
@@ -607,32 +623,30 @@ signed URL 是否过期
 处理：
 
 ```text
-不要在 Vercel API 里跑视频生成或 FFmpeg。
+不要在 Vercel API 里跑 provider submit/query。
 Vercel API 只创建任务并触发 Trigger.dev。
 ```
 
-### fal.ai 生成失败
+### Wanxiang 生成失败
 
 检查：
 
 ```text
-FAL_KEY 是否正确
-credits 是否足够
-模型 endpoint 是否仍可用
+WANXIANG_APPCODE 是否正确
+对应 submit/query endpoint 是否仍可用
+Trigger.dev worker env 是否包含 Wanxiang、Postgres、R2 变量
 image_url 是否公开可访问
 prompt 是否过长或违规
 ```
 
-### FFmpeg 失败
+### Legacy generate-video 被误触发
 
 检查：
 
 ```text
-Trigger.dev 是否启用 ffmpeg extension
-输入视频是否下载完整
-字体文件路径是否存在
-输出目录是否可写
-drawtext 是否正确转义
+Trigger.dev dashboard 是否错误部署或手动触发了 generate-video
+生产配置是否仍引用旧 task id
+应该使用 generate-wanxiang；旧 runner 是 disabled legacy
 ```
 
 ### Stripe webhook 不生效

@@ -1,6 +1,6 @@
 # 电商图生视频 SaaS 部署购买清单
 
-更新时间：2026-05-26
+更新时间：2026-06-05
 
 本清单用于第一阶段 MVP。原则是最快上线、少运维、保留未来扩展空间。
 
@@ -16,7 +16,7 @@
 | 数据库 | Neon Postgres | https://neon.com | Free 起步，上线后 Launch | 否 |
 | 后台任务 | Trigger.dev Cloud | https://trigger.dev | Free/Hobby 起步，上线后 Pro | 否 |
 | 文件存储 | Cloudflare R2 | https://www.cloudflare.com/products/r2/ | Standard Storage | 否 |
-| 视频模型 | fal.ai | https://fal.ai | 充值 prepaid credits | 否 |
+| 生成模型 | Wanxiang API | 按供应商账号/合同入口 | 开通图生视频、商品图、试衣 API 和 APPCODE | 否 |
 | 支付 | Stripe | https://stripe.com | 标准账户 | 否 |
 | 邮件 | Resend | https://resend.com | Free 起步，Pro 视发送量升级 | 否 |
 | 错误监控 | Sentry | https://sentry.io | Developer 免费，团队用 Team | 否 |
@@ -172,13 +172,12 @@ https://vercel.com/pricing
 Vercel 不负责：
 
 ```text
-长时间视频生成
-FFmpeg 长任务
+provider submit/query 长轮询
 GPU 推理
 大文件永久存储
 ```
 
-这些交给 Trigger.dev、fal.ai、R2。
+这些交给 Trigger.dev、Wanxiang、R2。
 
 需要配置的环境变量示例：
 
@@ -302,25 +301,26 @@ https://trigger.dev/pricing/
 任务重试
 长时间运行
 任务日志
-调用 fal.ai
-下载 raw video
-运行 FFmpeg
-上传最终视频到 R2
-```
-
-FFmpeg 支持：
-
-```text
-Trigger.dev 有 FFmpeg build extension。
-官方文档: https://trigger.dev/docs/config/extensions/ffmpeg
+调用 Wanxiang submit/query
+写入 final image/video asset
+执行 credit capture/refund
+记录 user_media_history
 ```
 
 需要配置的环境变量：
 
 ```text
 POSTGRES_URL=
-FAL_KEY=
-FAL_DEFAULT_MODEL=
+WANXIANG_APPCODE=
+WANXIANG_IMG_TO_VIDEO_SUBMIT_URL=
+WANXIANG_IMG_TO_VIDEO_QUERY_URL=
+WANXIANG_CLOTH_SUBMIT_URL=
+WANXIANG_CLOTH_QUERY_URL=
+WANXIANG_TRY_ON_SINGLE_SUBMIT_URL=
+WANXIANG_TRY_ON_MULTI_SUBMIT_URL=
+WANXIANG_TRY_ON_QUERY_URL=
+WANXIANG_MODEL_CATALOG_URL=
+TRIGGER_GENERATION_CONCURRENCY_LIMIT=5
 R2_ACCOUNT_ID=
 R2_ACCESS_KEY_ID=
 R2_SECRET_ACCESS_KEY=
@@ -331,58 +331,56 @@ EMAIL_FROM=
 SENTRY_DSN=
 ```
 
-## 7. fal.ai
+## 7. Wanxiang API
 
-官网：
-
-```text
-https://fal.ai
-```
-
-购买方式：
+开通方式：
 
 ```text
-注册账号
-绑定支付方式
-充值 prepaid credits
-创建 API key
+确认供应商账号或合同入口
+开通 APPCODE
+确认图生视频、商品图、单件试衣、多件试衣、模特素材 catalog endpoint
+用公开图片做 submit/query 联调
 ```
 
 用途：
 
 ```text
-调用图生视频模型
-第一版接 Wan 或 Kling image-to-video
-后续可切换其他模型
+图生视频 image_to_video
+商品图 apparel_image
+智能试衣 try_on
+官方模特素材 catalog 同步
 ```
 
 计费方式：
 
 ```text
-不同模型价格不同。
-视频模型通常按生成视频秒数或每条视频计费。
-fal 文档说明：只对成功输出计费，server errors 和排队等待不收费。
-```
-
-官方计费文档：
-
-```text
-https://fal.ai/docs/documentation/model-apis/pricing
+不同生成类型价格不同。
+图生视频通常按时长或任务计费。
+商品图和试衣通常按任务计费。
+需要单独记录成功、失败、重试、平均耗时和 provider 侧错误率。
 ```
 
 推荐环境变量：
 
 ```text
-FAL_KEY=
-FAL_DEFAULT_MODEL=fal-ai/wan/v2.7/image-to-video
+WANXIANG_APPCODE=
+WANXIANG_IMG_TO_VIDEO_SUBMIT_URL=
+WANXIANG_IMG_TO_VIDEO_QUERY_URL=
+WANXIANG_CLOTH_SUBMIT_URL=
+WANXIANG_CLOTH_QUERY_URL=
+WANXIANG_TRY_ON_SINGLE_SUBMIT_URL=
+WANXIANG_TRY_ON_MULTI_SUBMIT_URL=
+WANXIANG_TRY_ON_QUERY_URL=
+WANXIANG_MODEL_CATALOG_URL=
 ```
 
 注意：
 
 ```text
-FAL_KEY 只能存在服务端环境变量中。
+WANXIANG_APPCODE 只能存在服务端环境变量中。
 不要放到 NEXT_PUBLIC_ 变量。
 不要传给浏览器。
+旧 fal.ai/FFmpeg runner 不是当前 active path；不要按旧 runner 采购或部署。
 ```
 
 ## 8. Stripe
@@ -539,8 +537,8 @@ https://sentry.io/pricing/
 API route 错误监控
 Trigger.dev task 错误监控
 Stripe webhook 错误监控
-fal.ai provider 错误监控
-FFmpeg 渲染错误监控
+Wanxiang provider 错误监控
+generation job credit settlement 错误监控
 ```
 
 环境变量：
@@ -634,7 +632,6 @@ Vercel 已经托管前端和短 API
 Trigger.dev 已经托管队列和 worker
 Neon 已经托管数据库
 R2 已经托管媒体文件
-fal.ai 已经托管 GPU 推理
-FFmpeg 可以在 Trigger.dev worker 里跑
+Wanxiang 已经托管 GPU 推理
+Trigger.dev worker 只负责 submit/query、状态更新、asset 和 credits 结算
 ```
-

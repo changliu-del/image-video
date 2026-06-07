@@ -5,8 +5,6 @@ import { db } from '@/lib/db/drizzle';
 import {
   type Asset,
   type Template,
-  type TemplateTag,
-  templateTags,
   templates,
 } from '@/lib/db/schema';
 import type {
@@ -16,7 +14,6 @@ import type {
 
 type TemplateRecord = Template & {
   previewAsset: Asset | null;
-  tagRelations: Array<{ tag: TemplateTag }>;
 };
 
 export type PublishedTemplateSort = 'featured' | 'newest' | 'lowCost';
@@ -79,7 +76,7 @@ export function mapTemplateRecordToCatalogItem(
   row: TemplateRecord
 ): TemplateCatalogItem {
   const previewAsset = row.previewAsset;
-  const tags = new Set(row.tagRelations.map((relation) => relation.tag.slug));
+  const tags = new Set(row.tagsJson);
   tags.add(categoryToTag(row.category));
 
   for (const ratio of row.aspectRatiosJson) {
@@ -155,13 +152,7 @@ function buildWhere(input: {
   }
 
   for (const tag of input.tags) {
-    conditions.push(sql`exists (
-      select 1
-      from template_tag_relations ttr
-      inner join ${templateTags} tt on tt.id = ttr.tag_id
-      where ttr.template_id = ${templates.id}
-        and tt.slug = ${tag}
-    )`);
+    conditions.push(sql`${templates.tagsJson} ? ${tag}`);
   }
 
   return conditions.length ? sql.join(conditions, sql` and `) : undefined;
@@ -198,11 +189,6 @@ export async function listPublishedTemplates(
       where,
       with: {
         previewAsset: true,
-        tagRelations: {
-          with: {
-            tag: true,
-          },
-        },
       },
       orderBy: getOrderBy(sort),
       limit: pageSize,
@@ -231,11 +217,6 @@ export async function listAllTemplates() {
   const rows = await db.query.templates.findMany({
     with: {
       previewAsset: true,
-      tagRelations: {
-        with: {
-          tag: true,
-        },
-      },
     },
     orderBy: [desc(templates.sortWeight), desc(templates.updatedAt), asc(templates.name)],
   });

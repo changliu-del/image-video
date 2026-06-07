@@ -1,8 +1,8 @@
 interface:
   display_name: "Image Video Studio"
-  short_description: "Project KB and multi-agent development mode for the image-video SaaS"
+  short_description: "Project KB and single-agent default workflow for the image-video SaaS"
   brand_color: "#6366F1"
-  default_prompt: "Use $image-video-studio, load the project KB, and run substantive image-video development with the standard case-search, reference-code, frontend, backend, and QA agent workflow."
+  default_prompt: "Use $image-video-studio, load the project KB, and keep substantive image-video development in the current agent unless I explicitly ask for multi-agent delegation."
 
 policy:
   allow_implicit_invocation: true

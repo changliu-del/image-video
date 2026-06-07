@@ -18,8 +18,8 @@ const EXPECTED_ADMIN_TAB_KEYS = [
   'overview',
   'templates',
   'library-assets',
+  'user-media',
   'users',
-  'assets',
   'generation-jobs',
   'credit-ledger',
   'help',
@@ -29,8 +29,8 @@ const EXISTING_ADMIN_TAB_KEYS = [
   'overview',
   'templates',
   'library-assets',
+  'user-media',
   'users',
-  'assets',
   'generation-jobs',
   'credit-ledger',
 ] as const;
@@ -302,21 +302,11 @@ describe('Admin Help tab coverage', () => {
         '/api/'
       );
       expect(templates?.markdown, `${locale}.templates.markdown`).not.toContain(
-        '/admin-help/placements/template-library-fields.svg'
-      );
-      expect(templates?.markdown, `${locale}.templates.markdown`).not.toContain(
-        '/admin-help/placements/template-workbench-fields.svg'
-      );
-      expect(templates?.markdown, `${locale}.templates.markdown`).not.toContain(
-        '/admin-help/templates-form.svg'
-      );
-      expect(templates?.markdown, `${locale}.templates.markdown`).not.toContain(
         'numbered screenshots'
       );
       expect(templates?.markdown, `${locale}.templates.markdown`).not.toContain(
         'numeros das imagens'
       );
-
       if (locale === 'zh') {
         expect(templates?.markdown, `${locale}.templates.markdown`).toContain(
           '模板保存后要按用户路径检查'
@@ -325,7 +315,7 @@ describe('Admin Help tab coverage', () => {
           '### 字段说明'
         );
         expect(templates?.markdown, `${locale}.templates.markdown`).toContain(
-          '上传素材：preview 用于展示结果预期'
+          '预览媒体：preview 用于展示结果预期'
         );
         expect(templates?.markdown, `${locale}.templates.markdown`).toContain(
           '模板管理列表页'
@@ -335,6 +325,12 @@ describe('Admin Help tab coverage', () => {
         );
         expect(templates?.markdown, `${locale}.templates.markdown`).not.toContain(
           '模板没有被拆成两份'
+        );
+        expect(templates?.markdown, `${locale}.templates.markdown`).not.toContain(
+          '模板不是素材'
+        );
+        expect(templates?.markdown, `${locale}.templates.markdown`).not.toContain(
+          '不再维护'
         );
         expect(templates?.markdown, `${locale}.templates.markdown`).not.toContain(
           '同一条模板记录'
@@ -405,10 +401,6 @@ describe('Admin Help tab coverage', () => {
         libraryAssets?.markdown,
         `${locale}.library-assets.markdown`
       ).not.toContain('/admin-help/placements/apparel-workbench.png');
-      expect(
-        libraryAssets?.markdown,
-        `${locale}.library-assets.markdown`
-      ).not.toContain('/admin-help/library-assets-form.svg');
     }
 
     const zhTemplates = adminContent.zh.help.items.find(
@@ -423,9 +415,6 @@ describe('Admin Help tab coverage', () => {
     );
     expect(zhTemplates?.markdown).not.toContain('如何管理素材库');
     expect(zhTemplates?.markdown).not.toContain('新增素材');
-    expect(zhLibraryAssets?.markdown).not.toContain(
-      '/admin-help/placements/template-library-fields.svg'
-    );
     expect(zhLibraryAssets?.markdown).not.toContain(
       '/admin-help/placements/template-admin-list.png'
     );

@@ -36,7 +36,7 @@ type VerifyUploadedObjectInput = {
   sizeBytes?: number | null;
 };
 
-export const TEMPLATE_ASSET_MIME_TYPES = [
+export const ADMIN_MEDIA_MIME_TYPES = [
   'image/png',
   'image/jpeg',
   'image/webp',
@@ -44,9 +44,9 @@ export const TEMPLATE_ASSET_MIME_TYPES = [
   'video/webm',
 ] as const;
 
-export type TemplateAssetMimeType = (typeof TEMPLATE_ASSET_MIME_TYPES)[number];
+export type AdminMediaMimeType = (typeof ADMIN_MEDIA_MIME_TYPES)[number];
 
-const TEMPLATE_ASSET_MIME_EXTENSIONS: Record<TemplateAssetMimeType, string> = {
+const ADMIN_MEDIA_MIME_EXTENSIONS: Record<AdminMediaMimeType, string> = {
   'image/png': 'png',
   'image/jpeg': 'jpg',
   'image/webp': 'webp',
@@ -119,31 +119,31 @@ export function buildPublicUrl(storageKey: string) {
   return `${config.publicBaseUrl}/${storageKey}`;
 }
 
-export function getTemplateAssetExtension(mimeType: TemplateAssetMimeType) {
-  return TEMPLATE_ASSET_MIME_EXTENSIONS[mimeType];
+export function getAdminMediaExtension(mimeType: AdminMediaMimeType) {
+  return ADMIN_MEDIA_MIME_EXTENSIONS[mimeType];
 }
 
-export function isTemplateAssetMimeType(
+export function isAdminMediaMimeType(
   mimeType: string
-): mimeType is TemplateAssetMimeType {
-  return TEMPLATE_ASSET_MIME_TYPES.includes(
-    mimeType as TemplateAssetMimeType
+): mimeType is AdminMediaMimeType {
+  return ADMIN_MEDIA_MIME_TYPES.includes(
+    mimeType as AdminMediaMimeType
   );
 }
 
-export function buildTemplateAssetStorageKey(
+export function buildTemplatePreviewStorageKey(
   templateId: string,
   assetId: string,
-  mimeType: TemplateAssetMimeType
+  mimeType: AdminMediaMimeType
 ) {
-  return `templates/${templateId}/${assetId}.${getTemplateAssetExtension(mimeType)}`;
+  return `templates/${templateId}/${assetId}.${getAdminMediaExtension(mimeType)}`;
 }
 
 export function buildLibraryAssetStorageKey(
   assetId: string,
-  mimeType: TemplateAssetMimeType
+  mimeType: AdminMediaMimeType
 ) {
-  return `library-assets/${assetId}.${getTemplateAssetExtension(mimeType)}`;
+  return `library-assets/${assetId}.${getAdminMediaExtension(mimeType)}`;
 }
 
 export function storageKeyBelongsToUser(userId: number, storageKey: string) {
@@ -170,7 +170,7 @@ export function storageKeyMatchesUploadAsset(
   return storageKey.startsWith(prefix) && allowedExtensions.has(extension);
 }
 
-export function storageKeyMatchesTemplateAsset(
+export function storageKeyMatchesTemplatePreview(
   templateId: string,
   assetId: string,
   storageKey: string
@@ -184,7 +184,7 @@ export function storageKeyMatchesTemplateAsset(
   }
 
   const allowedExtensions = new Set(
-    Object.values(TEMPLATE_ASSET_MIME_EXTENSIONS)
+    Object.values(ADMIN_MEDIA_MIME_EXTENSIONS)
   );
   const prefix = `templates/${templateId}/${assetId}.`;
   const extension = storageKey.slice(prefix.length);
@@ -205,7 +205,7 @@ export function storageKeyMatchesLibraryAsset(
   }
 
   const allowedExtensions = new Set(
-    Object.values(TEMPLATE_ASSET_MIME_EXTENSIONS)
+    Object.values(ADMIN_MEDIA_MIME_EXTENSIONS)
   );
   const prefix = `library-assets/${assetId}.`;
   const extension = storageKey.slice(prefix.length);
@@ -231,14 +231,14 @@ export async function createSignedPutUrl({
   });
 }
 
-export async function createSignedTemplateAssetPutUrl({
+export async function createSignedAdminMediaPutUrl({
   storageKey,
   mimeType,
   sizeBytes,
   expiresInSeconds = 300,
 }: SignedPutUrlInput) {
-  if (!isTemplateAssetMimeType(mimeType)) {
-    throw new Error(`Unsupported template asset MIME type: ${mimeType}`);
+  if (!isAdminMediaMimeType(mimeType)) {
+    throw new Error(`Unsupported admin media MIME type: ${mimeType}`);
   }
 
   return createSignedPutUrlForMime({

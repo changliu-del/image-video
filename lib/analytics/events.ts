@@ -25,10 +25,11 @@ export type ImageUploadedProperties = AnalyticsProperties & {
 
 export type GenerationStartedProperties = AnalyticsProperties & {
   jobId: string;
+  generationType: string;
   inputAssetId: string;
   aspectRatio: '9:16' | '1:1' | '16:9';
   durationSeconds: 5 | 8 | 10;
-  templateSlug: string;
+  templateId?: string | null;
   source: 'generate_form';
 };
 
@@ -40,9 +41,10 @@ export type VideoDownloadedProperties = AnalyticsProperties & {
 export type GenerationSucceededProperties = AnalyticsProperties & {
   jobId: string;
   userId: string | number;
+  generationType: string;
   aspectRatio: '9:16' | '1:1' | '16:9';
   durationSeconds: number;
-  templateSlug: string;
+  templateId?: string | null;
   creditSpent: number;
   source: 'trigger_runner';
 };

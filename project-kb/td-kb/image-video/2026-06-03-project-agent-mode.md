@@ -4,7 +4,7 @@ Date: 2026-06-03
 
 ## Goal
 
-Create a project-specific Codex mode for this personal image-video SaaS. It should understand project background, load the project KB, and coordinate multiple specialized agents when the user wants broad development help without token-limit concerns.
+Create a project-specific Codex mode for this personal image-video SaaS. It should understand project background, load the project KB, and keep normal development in one lead agent. Multi-agent coordination is an optional escalation path only when the user explicitly asks for it.
 
 ## Non-Goals
 
@@ -19,10 +19,10 @@ Lead agent:
 - Loads `project-kb/README.md`.
 - Chooses relevant KB files.
 - Keeps critical path local.
-- Delegates independent sidecar work only.
+- Delegates independent sidecar work only when multi-agent mode is explicitly requested.
 - Integrates results and validates.
 
-Optional agents:
+Optional agents, only for explicitly requested multi-agent work:
 
 - Frontend
 - Backend
@@ -37,4 +37,3 @@ Optional agents:
 - KB exists under `project-kb`.
 - Plugin validates.
 - Skill validates.
-

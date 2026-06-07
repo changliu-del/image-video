@@ -127,6 +127,13 @@
       "when": 1780000015000,
       "tag": "0018_simplify_generation_jobs",
       "breakpoints": true
+    },
+    {
+      "idx": 18,
+      "version": "7",
+      "when": 1780000016000,
+      "tag": "0019_single_template_table",
+      "breakpoints": true
     }
   ]
 }

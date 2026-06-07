@@ -15,12 +15,12 @@
 | 官网/营销页 | 多语言首页、模板页、价格页已有 | 可继续打磨转化文案和真实案例 |
 | 登录和 dashboard | SaaS starter 登录、dashboard shell、多语言导航、真实余额展示、订阅/算力工作台已有 | 可用，后续重点是移动端 smoke 和设置页细节 |
 | 创作工作台 | 图生视频、商品图、智能试衣三个入口已有 | 主流程基本成型，API schema 已补齐当前 payload 兼容 |
-| 上传/R2 | presign、浏览器直传、complete 落库已有 | 可用，建议 complete 阶段增加对象存在性校验 |
-| 生成任务 | 当前主线是万相 submit/query + DB 轮询 | 可跑通 provider 轮询型任务，但并发和任务原子性需收敛 |
-| Trigger/fal/FFmpeg runner | 旧设计代码仍在仓库 | 与当前 DB schema 不完全一致，需要决定保留、迁移或移除 |
+| 上传/R2 | presign、浏览器直传、complete 落库已有，complete 已做 R2 对象 metadata 校验 | 可用，后续重点是 route 测试和生产 R2 smoke |
+| 生成任务 | 当前主线是 DB-first queued job + Trigger.dev `generate-wanxiang` worker + 万相 submit/query | 主链路已避开 provider submit 先于本地落库的问题，后续重点是生产 worker/env/并发验证 |
+| Trigger/fal/FFmpeg runner | 旧 `generate-video` runner 已 disabled | 不在 active path；后续应删除归档或按简化 schema 重建 |
 | 支付/积分 | Stripe webhook、mock payments、credit ledger、reserve/capture/refund 已有 | 主体完整，仍需真实 price metadata 和生产 webhook 联调 |
-| 模板/素材 | 模板表、标签、素材库表、管理 API、爬虫 runbook、模型素材同步已有 | 素材库管理闭环第一版完成，下一步重点是真实素材填充、批量运营和质量闭环 |
-| 测试 | Vitest 覆盖 validation、limits、credits、payments、provider input | 有基础单测，缺 API route 和端到端 smoke |
+| 模板/素材 | 模板表、标签、官方素材库、用户历史素材、管理 API、爬虫 runbook、模型素材同步已有 | 素材/历史管理闭环第一版完成，下一步重点是真实素材填充、批量运营和质量闭环 |
+| 测试 | Vitest 覆盖 validation、limits、credits、payments、provider input、Admin 素材/搜索安全 | 有基础单测，仍缺更多 DB-backed API route 和端到端 smoke |
 | 部署文档 | 01-05 文档覆盖架构、成本、部署、爬虫 | 缺少当前实现进度和风险清单，本文补齐 |
 
 ## 2. 已实现能力
@@ -36,13 +36,14 @@
   - `/create/try-on` -> `components/create/try-on-workbench.tsx`
 - Admin 入口：`app/(dashboard)/admin/page.tsx`、`components/admin/*`、`lib/admin/services/*`。
 - 素材库管理：`components/admin/library-assets-panel.tsx`、`app/api/admin/library-assets/*`。
+- 用户历史素材管理：`app/api/user-media/*`、`app/api/admin/user-media/route.ts`、`lib/user-media/service.ts`、`lib/admin/services/user-media.ts`。
 
 ### 2.2 API 和服务层
 
 - 资产上传：`app/api/assets/presign/route.ts`、`app/api/assets/complete/route.ts`、`lib/storage/r2.ts`。
 - 生成创建和查询：`app/api/generations/route.ts`、`app/api/generations/[id]/status/route.ts`、`lib/generations/jobs.ts`。
 - 兼容旧 job 查询：`app/api/jobs/[id]/route.ts` 仍作为三个工作台的状态查询 fallback。
-- 模板、素材库和模型素材：`app/api/templates/route.ts`、`app/api/library-assets/route.ts`、`app/api/model-assets/route.ts`、`lib/templates/query.ts`、`lib/library-assets/query.ts`、`lib/model-assets/catalog.ts`。
+- 模板、素材库、用户历史素材和模型素材：`app/api/templates/route.ts`、`app/api/library-assets/route.ts`、`app/api/user-media/*`、`app/api/model-assets/route.ts`、`lib/templates/query.ts`、`lib/library-assets/query.ts`、`lib/user-media/service.ts`、`lib/model-assets/catalog.ts`。
 - 支付：`app/api/stripe/checkout/route.ts`、`app/api/stripe/webhook/route.ts`、`lib/payments/stripe.ts`、`lib/payments/mock.ts`。
 
 ### 2.3 数据模型
@@ -53,6 +54,7 @@
 - 用户资产 `assets`。
 - 模板、标签、模板资产、审计日志。
 - 一等素材库 `library_assets`，引用 `assets`，并保存 `category`、标题、描述、排序权重、使用量和创建/更新审计。
+- 私域用户历史素材 `user_media_history`，引用 `assets`，可关联 `library_assets` 或 `generation_jobs`，保存来源、用途、可见性、收藏、使用次数和最近使用时间。
 - 模板爬虫 ingestion run 和 source record。
 - 万相模型素材 catalog。
 - 生成任务 `generation_jobs`。
@@ -60,19 +62,19 @@
 
 ## 3. 主要风险和缺口
 
-### P0: 生成任务原子性需要收敛
+### P0: 生产 deploy/migrate/worker 环境需要一起收敛
 
-当前 `createGenerationForUser` 的顺序是：校验资产和额度 -> 调 provider submit -> 插入 running job 并扣 credits。若 provider submit 成功但 DB 写入或扣款失败，可能出现 provider 侧已有任务但本地无任务记录的孤儿任务。并发下，limit 检查和最终扣款也不是同一个事务窗口。
+当前 `createGenerationForUser` 已经是 DB-first：先创建 `queued` 的 `generation_jobs` 并 reserve credits，再 enqueue Trigger.dev `generate-wanxiang` worker。Wanxiang submit/query、终态更新、输出 asset、用户历史素材、capture/refund 都在 worker 或 worker 周边完成。
 
-建议下一步改为：先在 DB 内创建 `queued/submitting` 任务并 reserve credits，再提交 provider，最后更新 providerTaskId 和 status。失败时可落库并退款，避免任务丢失。
+上线风险从“provider submit 先于本地落库”转移为“部署时 schema、Trigger.dev worker、Wanxiang env、R2 env、credit ledger 事务必须一致”。部署/migrate/worker env 不能拆开验证。
 
-### P0: 两套生成架构并存
+### P0: 旧 Trigger/fal/FFmpeg runner 只能作为 disabled legacy
 
-`lib/generations/runner.ts` 和 `trigger/generate-video.ts` 仍保留 Trigger/fal/FFmpeg 旧链路，但当前 `generation_jobs` schema 只有 `running/succeeded/failed`，不再包含 runner 里引用的 `queued/rendering/raw_video_asset_id/thumbnail_asset_id/product_name/provider_job_id` 等字段。
+`lib/generations/runner.ts` 现在是 disabled stub，`trigger/generate-video.ts` 会调用该 stub 并报错提示使用 `generate-wanxiang`。它不应被部署配置、文档或测试当作 active task。
 
 建议明确方向：
 
-- 若主线切到万相 submit/query：移除或归档旧 runner，文档改成万相轮询链路。
+- 若主线继续万相 submit/query：移除或归档旧 runner，并从部署/成本文档里清掉 fal/FFmpeg 主流程。
 - 若仍要 Trigger/fal/FFmpeg：补 migration 和 API，让 schema、runner、前端状态完全一致。
 
 ### P1: 前端渲染架构需要持续执行默认约束
@@ -83,9 +85,9 @@
 
 三个新版 workbench 都各自实现了 `readResponseError`、`postJson`、`uploadAsset`、`fetchJobStatus`、`normalizeItems`、图片校验和结果 URL 选择。建议抽到 `components/create/workbench-client.ts` 或 `lib/services/generation-api.ts` 的浏览器安全版本，减少后续 API 字段变更时漏改。
 
-### P1: R2 complete 缺少对象存在性确认
+### P1: R2 complete 仍需要生产环境 smoke
 
-`/api/assets/complete` 会校验 assetId、userId、storageKey 格式和归属，但没有对 R2 做 HEAD/metadata 校验。若上传 PUT 失败但客户端仍调用 complete，DB 可能把资产标成 uploaded。建议增加 R2 HEAD 校验，至少校验对象存在、size 和 content type。
+`/api/assets/complete` 已经在落库前调用 `verifyUploadedObject` 校验 R2 object metadata，并在成功后 best-effort upsert `user_media_history`。下一步风险是生产 R2 bucket、public URL、content type、size metadata 在真实上传链路中的 smoke，而不是代码里完全没有 HEAD 校验。
 
 ### P2: 生产联调和工程化缺口
 
@@ -125,7 +127,7 @@ pnpm test tests/generations-validation.test.ts
 - `image-video-studio` skill 增加前端默认架构入口，后续前端开发应先加载该 KB。
 - 旧前端实现已清理：`components/create/create-workbench.tsx`、`components/video-generation/*`、`components/landing/*`、旧 `/jobs/[id]` 页面已删除；`/api/jobs/[id]` 仍保留为工作台状态查询兼容回退。
 
-### 4.2 素材库管理第一版
+### 4.2 素材库与用户历史管理第一版
 
 已新增本地一等素材库能力：
 
@@ -143,13 +145,18 @@ pnpm test tests/generations-validation.test.ts
   - 图生视频加载 `category=image_to_video` 素材。
   - 商品图加载 `category=apparel_image` 素材作为灵感/示例，模板 ID 仍只来自模板记录。
   - 试衣加载 `category=try_on` 素材，并与模板、官方 model catalog 共同构成素材区。
+- 已新增 `user_media_history`：
+  - 用户上传完成后写入 `user_upload` 历史。
+  - 生成成功后 best-effort 写入 `generated_image` 或 `generated_video` 历史。
+  - 三个工作台用“官方素材 / 我的历史”分开展示。
+  - Admin 用 `User History` tab 做支持/运营查看，generic `assets` Admin route/service 已移除，`assets` 只保留为技术底座。
 
 ## 5. 下一步优先级
 
-1. 收敛生成任务架构，优先处理 provider submit 和 DB reserve 的原子性。
-2. 决定 Trigger/fal/FFmpeg runner 是否继续作为主线，并同步 schema/migration/docs。
-3. 填充 50-100 条高质量素材库记录，覆盖商品图、模特图、服装图、场景图、成片案例和短视频案例。
+1. 做一次生产式 deploy/migrate/Trigger.dev worker/Wanxiang/R2/Stripe 联合 smoke，确认 queued job、provider submit、poll、output asset、history、capture/refund 全链路。
+2. 移除或归档 disabled `generate-video` / fal / FFmpeg runner，并同步 01-04 部署、成本和架构文档。
+3. 填充 50-100 条高质量官方素材记录，覆盖商品图、模特图、服装图、场景图、成片案例和短视频案例。
 4. 抽取 workbench 客户端共享工具，减少重复请求和错误处理逻辑。
-5. 为 workbench 的模板/素材库加载增加局部 retry/error UI，并加入更完整的素材选择器筛选。
-6. 为 `/api/assets/*`、`/api/library-assets/*`、`/api/generations/*`、Stripe webhook 增加 route 级测试。
+5. 为 workbench 的官方素材/历史素材加载增加局部 retry/error UI，并加入更完整的素材选择器筛选。
+6. 为 `/api/assets/*`、`/api/library-assets/*`、`/api/user-media/*`、`/api/generations/*`、Stripe webhook 增加 DB-backed route 级测试。
 7. 完成一次带真实 env 的 `pnpm typecheck`、`pnpm build`、上传生成、支付回调 smoke。

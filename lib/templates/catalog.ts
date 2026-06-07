@@ -39,7 +39,7 @@ export type TemplateTagOption = {
   labels: LocalizedText;
 };
 
-type StarterTemplateSeed = {
+export type StarterTemplateSeed = {
   id: string;
   name: string;
   description: string;
@@ -349,7 +349,7 @@ const assets = [
   '/resources/example5.png',
 ] as const;
 
-const ptStarterTemplates: StarterTemplateSeed[] = [
+export const starterTemplateSeeds: StarterTemplateSeed[] = [
   {
     id: 'promocao-pix-relampago',
     name: 'Promocao Pix Relampago',
@@ -713,7 +713,7 @@ const translations: Record<
 };
 
 export function getStarterTemplates(locale: Locale): TemplateCatalogItem[] {
-  return ptStarterTemplates.map((template) => {
+  return starterTemplateSeeds.map((template) => {
     const translated =
       translations[locale as Exclude<Locale, 'pt'>]?.[template.id] ?? {};
     return {

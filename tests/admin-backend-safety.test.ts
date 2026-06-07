@@ -1,4 +1,4 @@
-import { readFileSync } from 'node:fs';
+import { existsSync, readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { describe, expect, it } from 'vitest';
 
@@ -38,7 +38,7 @@ describe('Admin backend safety rails', () => {
     expect(source).not.toContain('update.status = parsed.status');
   });
 
-  it('verifies template asset objects in R2 before marking them uploaded', () => {
+  it('verifies template preview objects in R2 before marking them uploaded', () => {
     const source = readSource('lib/admin/services/templates.ts');
     const verifyIndex = source.indexOf('verifyUploadedObject({');
     const updateIndex = source.indexOf('.update(assets)', verifyIndex);
@@ -47,16 +47,14 @@ describe('Admin backend safety rails', () => {
     expect(updateIndex).toBeGreaterThan(verifyIndex);
   });
 
-  it('detaches template dependents before deleting a template', () => {
+  it('deletes templates without touching removed template side tables', () => {
     const source = readSource('lib/admin/services/templates.ts');
 
-    expect(source).toContain('await client.begin');
-    expect(source).toContain('template_deleted');
-    expect(source).toContain('delete from template_tag_relations');
-    expect(source).toContain('delete from template_assets');
-    expect(source).toContain('update template_source_records');
-    expect(source).toContain('update template_audit_logs');
-    expect(source).toContain('delete from templates');
+    expect(source).toContain('await db.delete(templates)');
+    expect(source).not.toContain('template_tag_relations');
+    expect(source).not.toContain('template_assets');
+    expect(source).not.toContain('template_source_records');
+    expect(source).not.toContain('template_audit_logs');
   });
 
   it('keeps template usage counts tied to generation job creation', () => {
@@ -80,5 +78,38 @@ describe('Admin backend safety rails', () => {
     expect(source).toContain(
       'estimated from user uploads and generation jobs'
     );
+  });
+
+  it('keeps Admin user media on the split history table with soft deletion', () => {
+    const source = readSource('lib/admin/services/user-media.ts');
+
+    expect(source).toContain('from(userMediaHistory)');
+    expect(source).toContain('requireOpsOrAdmin()');
+    expect(source).toContain('requireAdmin()');
+    expect(source).toContain('innerJoin(users');
+    expect(source).toContain('innerJoin(assets');
+    expect(source).toContain("visibility: 'deleted'");
+  });
+
+  it('keeps user media Admin routes private and uncached', () => {
+    const source = readSource('app/api/admin/user-media/route.ts');
+
+    expect(source).toContain('listAdminUserMedia');
+    expect(source).toContain('updateAdminUserMedia');
+    expect(source).toContain('softDeleteAdminUserMedia');
+    expect(source).not.toContain('Cache-Control');
+    expect(source).not.toContain('public,');
+  });
+
+  it('does not expose the technical assets table as an Admin management API', () => {
+    const serviceIndex = readSource('lib/admin/services/index.ts');
+
+    expect(existsSync(join(process.cwd(), 'app/api/admin/assets/route.ts'))).toBe(
+      false
+    );
+    expect(existsSync(join(process.cwd(), 'lib/admin/services/assets.ts'))).toBe(
+      false
+    );
+    expect(serviceIndex).not.toContain("from './assets'");
   });
 });

@@ -17,9 +17,9 @@ Use this page when a task mentions materials, material library, example media, w
 | Storage helpers | `lib/storage/r2.ts` (`buildLibraryAssetStorageKey`, `storageKeyMatchesLibraryAsset`) |
 | Public query | `lib/library-assets/query.ts`, `app/api/library-assets/route.ts` |
 | Private user history query | `lib/user-media/service.ts`, `app/api/user-media/route.ts`, `app/api/user-media/[id]/route.ts` |
-| Admin service | `lib/admin/services/library-assets.ts` |
-| Admin API | `app/api/admin/library-assets/**` |
-| Admin UI | `components/admin/library-assets-panel.tsx`, `app/(dashboard)/admin/components/admin-shell.tsx` |
+| Admin services | `lib/admin/services/library-assets.ts`, `lib/admin/services/user-media.ts` |
+| Admin APIs | `app/api/admin/library-assets/**`, `app/api/admin/user-media/route.ts` |
+| Admin UI | `components/admin/library-assets-panel.tsx`, `components/admin/management-panel.tsx`, `app/(dashboard)/admin/components/admin-shell.tsx` |
 | Workbench consumers | `components/create/image-video-workbench.tsx`, `components/create/apparel-workbench.tsx`, `components/create/try-on-workbench.tsx` |
 
 ## Data Model
@@ -39,8 +39,10 @@ The DB uniqueness rule is `(asset_id, category)`, not bare `asset_id`.
 
 As of 2026-06-05, first-party materials and personal user history are separate product surfaces:
 
-- `library_assets` is the ops/admin curated official library. It is public catalog data, category-routed, reusable across users, and maintained through Admin.
-- `user_media_history` is the private per-user history layer. It references uploaded/generated rows in `assets`, can optionally point back to a `library_assets` row or `generation_jobs` row, and stores user-specific state such as visibility, favorite, usage count, and last-used time.
+- `library_assets` is the ops/admin curated official library. It is public catalog data, category-routed, reusable across users, and maintained through the Admin Library Assets tab.
+- `user_media_history` is the private per-user history layer. It references uploaded/generated rows in `assets`, can optionally point back to a `library_assets` row or `generation_jobs` row, and stores user-specific state such as visibility, favorite, usage count, and last-used time. Admin exposes it through the User History tab for support/ops inspection.
+
+Admin should treat `assets` as a technical substrate only. Operators manage official materials through `library_assets` and inspect user-private material history through `user_media_history`; the generic `assets` Admin route/service should stay removed instead of being reintroduced as a visible management surface.
 
 Do not merge these two concepts into one public material table. Workbenches should expose them as separate source tabs, for example official materials and my history. Official material APIs can use the shared public catalog cache policy. User history APIs must use current-user auth and `Cache-Control: no-store`.
 
@@ -112,7 +114,14 @@ grids.
 
 ## Admin UX
 
-The Admin shell exposes a dedicated `Library Assets` tab. Expected controls:
+The Admin shell exposes two material management surfaces:
+
+- `Library Assets`: official/operator-uploaded reusable materials.
+- `User History`: private user-uploaded, generated, or reused materials from `user_media_history`.
+
+The generic `assets` table is intentionally absent from Admin navigation and Admin management APIs.
+
+Expected `Library Assets` controls:
 
 - upload file
 - preview media
@@ -127,7 +136,7 @@ This UI is operational, so keep it dense, predictable, and task-first rather tha
 
 - Generic Admin tables should not behave like raw database browsers. Default table columns should show operator-readable fields; IDs, storage keys, Stripe identifiers, provider task IDs, and raw JSON should stay out of the main table unless they are needed for a recovery workflow.
 - User management defaults to email, name, account status, role, credit balance, subscription, plan, and creation time. Admin access is role-based; soft-delete timestamps and Stripe IDs are not first-scan fields.
-- Asset and generation job tables are for triage. Asset rows should start with an image/video preview, then show media type/status/format/size/timestamps. Generation rows should expose input and output media previews when available, then show generation type, status, input summary, template, credits, and timestamps; product/template summaries are derived from `inputJson`.
+- User History, Library Assets, and generation job tables are for triage. Main list rows should start with stable IDs (`assetId` for material surfaces and `gen_id`/job `id` for generation jobs) plus operator-scan fields such as title, user, source, generation type, status, credits, and timestamps. Media previews belong in detail modals, not first-scan tables; product/template summaries are derived from `inputJson`.
 - Credit ledger defaults to amount, reason, resulting balance, and creation time. User ID, job ID, Stripe event ID, and metadata remain detail/filter fields.
 - Library asset upload should give immediate file feedback, infer a sensible category from the file, auto-fill a readable title when empty, and keep sort weight as the only low-frequency ranking field.
 - Library asset details should not expose R2 `storageKey` or long asset URLs as primary operational content; use the preview and open-link affordance instead.
@@ -138,7 +147,7 @@ This UI is operational, so keep it dense, predictable, and task-first rather tha
 
 - Templates and library assets serve different jobs. Templates are generation recipes: name, description, category, prompt, cost, duration, aspect ratio, tags, and preview media. Library assets are reusable media inventory that feeds one workbench category.
 - Admin keyword search should be anchored on operator-facing fields. Templates search name, category, and tag labels/slugs, with ID available for exact lookup. Library assets search title, description, category, asset ID, and MIME format.
-- Generic assets search upload type, status, MIME format, user/file ID, and keeps storage keys or public URLs out of default keyword search.
+- User History search supports user email/name, title, source, generation type, visibility, role, linked official material title, generation job status, and MIME format. Keep storage keys and public URLs out of default keyword search.
 - Generation jobs search product/prompt summary, template ID, status, generation type, provider/status, user email/name, error text, and whitelisted input fields such as product name, headline, prompt, template ID, and aspect ratio. Do not search whole raw JSON or media URLs by default.
 - Credit ledger search supports user email/name, credit reason, Stripe event/payment identifiers, job status/type, package/source metadata, and admin notes; user ID, job ID, and date remain explicit filters for reconciliation.
 
@@ -153,6 +162,7 @@ This UI is operational, so keep it dense, predictable, and task-first rather tha
 - The old multi-use field is intentionally removed. `category` is the single workbench routing field; migration keeps old multi-use-case records by copying them into one row per `(assetId, category)`.
 - Apply `0017_user_media_history.sql` before enabling user history in a target database.
 - `/api/user-media` is private account data. It must keep `getUser()` auth, `user_id` filtering, uploaded-asset filtering, and `Cache-Control: no-store`.
+- `/api/admin/user-media` is also private Admin data. List access requires ops/admin; edit and delete require admin. Delete is a soft delete by setting `user_media_history.visibility = deleted`, not an `assets` deletion.
 
 ## Validation
 
@@ -160,7 +170,7 @@ For code changes that affect this area, prefer:
 
 ```bash
 pnpm typecheck
-pnpm test tests/user-media-backend.test.ts tests/library-item-utils.test.ts
+pnpm test tests/user-media-backend.test.ts tests/admin-help-tab.test.ts tests/admin-search.test.ts tests/admin-backend-safety.test.ts tests/library-item-utils.test.ts
 pnpm test tests/generations-validation.test.ts
 pnpm test
 pnpm build
@@ -172,10 +182,11 @@ For frontend-visible changes, browser-smoke:
 - `http://localhost:30115/create/apparel?locale=pt`
 - `http://localhost:30115/create/try-on?locale=pt`
 - `http://localhost:30115/admin?tab=library-assets`
+- `http://localhost:30115/admin?tab=user-media`
 
 ## Next Improvements
 
-- Add batch import/crawler support so Admin can seed many assets at once.
+- Add batch import support so Admin can seed many assets at once.
 - Add richer review signals when needed, such as dimensions, duration, aspect ratio, background, product family, and visual risk flags.
 - Add Admin affordances for intentionally adding/removing extra category rows that reuse an existing uploaded file.
 - Add API route tests around admin role boundaries and public filtering.

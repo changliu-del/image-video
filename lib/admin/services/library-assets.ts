@@ -20,11 +20,11 @@ import {
 import {
   buildLibraryAssetStorageKey,
   buildPublicUrl,
-  createSignedTemplateAssetPutUrl,
-  isTemplateAssetMimeType,
+  createSignedAdminMediaPutUrl,
+  isAdminMediaMimeType,
   storageKeyMatchesLibraryAsset,
   verifyUploadedObject,
-  type TemplateAssetMimeType,
+  type AdminMediaMimeType,
 } from '@/lib/storage/r2';
 import {
   exactCol,
@@ -186,15 +186,15 @@ export async function createLibraryAssetPresign(input: unknown) {
   const user = await requireOpsOrAdmin();
   const payload = presignLibraryAssetSchema.parse(input);
 
-  if (!isTemplateAssetMimeType(payload.mimeType)) {
+  if (!isAdminMediaMimeType(payload.mimeType)) {
     throw new Error('Unsupported library asset MIME type');
   }
 
   const assetId = randomUUID();
-  const mimeType = payload.mimeType as TemplateAssetMimeType;
+  const mimeType = payload.mimeType as AdminMediaMimeType;
   const storageKey = buildLibraryAssetStorageKey(assetId, mimeType);
   const publicUrl = buildPublicUrl(storageKey);
-  const uploadUrl = await createSignedTemplateAssetPutUrl({
+  const uploadUrl = await createSignedAdminMediaPutUrl({
     storageKey,
     mimeType,
     sizeBytes: payload.sizeBytes,

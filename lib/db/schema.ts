@@ -2,7 +2,6 @@ import {
   check,
   index,
   jsonb,
-  primaryKey,
   pgTable,
   serial,
   uniqueIndex,
@@ -60,24 +59,6 @@ export const TEMPLATE_CATEGORIES = [
   'try_on',
 ] as const;
 export type TemplateCategory = (typeof TEMPLATE_CATEGORIES)[number];
-
-export const TEMPLATE_TAG_GROUPS = [
-  'goal',
-  'type',
-  'industry',
-  'channel',
-  'funnel',
-  'cost',
-  'aspect_ratio',
-] as const;
-export type TemplateTagGroup = (typeof TEMPLATE_TAG_GROUPS)[number];
-
-export const TEMPLATE_ASSET_ROLES = [
-  'preview',
-  'source',
-  'example',
-] as const;
-export type TemplateAssetRole = (typeof TEMPLATE_ASSET_ROLES)[number];
 
 export const LIBRARY_ASSET_CATEGORIES = [
   'image_to_video',
@@ -255,6 +236,10 @@ export const templates = pgTable(
     prompt: text('prompt').notNull(),
     negativePrompt: text('negative_prompt'),
     previewAssetId: uuid('preview_asset_id').references(() => assets.id),
+    tagsJson: jsonb('tags_json')
+      .$type<string[]>()
+      .notNull()
+      .default(sql`'[]'::jsonb`),
     costCredits: integer('cost_credits').notNull().default(1),
     aspectRatiosJson: jsonb('aspect_ratios_json')
       .$type<VideoAspectRatio[]>()
@@ -281,176 +266,6 @@ export const templates = pgTable(
       'templates_duration_seconds_check',
       sql`${table.durationSeconds} is null or ${table.durationSeconds} in (5, 8, 10)`
     ),
-  ]
-);
-
-export const templateTags = pgTable(
-  'template_tags',
-  {
-    id: serial('id').primaryKey(),
-    slug: varchar('slug', { length: 80 }).notNull(),
-    group: varchar('group', { length: 40 }).$type<TemplateTagGroup>().notNull(),
-    labelPt: varchar('label_pt', { length: 80 }).notNull(),
-    labelEn: varchar('label_en', { length: 80 }).notNull(),
-    labelZh: varchar('label_zh', { length: 80 }).notNull(),
-    sortWeight: integer('sort_weight').notNull().default(0),
-    createdAt: timestamp('created_at').notNull().defaultNow(),
-  },
-  (table) => [
-    uniqueIndex('template_tags_slug_unique').on(table.slug),
-    index('template_tags_group_idx').on(table.group),
-    check(
-      'template_tags_group_check',
-      sql`${table.group} in ('goal', 'type', 'industry', 'channel', 'funnel', 'cost', 'aspect_ratio')`
-    ),
-  ]
-);
-
-export const templateTagRelations = pgTable(
-  'template_tag_relations',
-  {
-    templateId: uuid('template_id')
-      .notNull()
-      .references(() => templates.id, { onDelete: 'cascade' }),
-    tagId: integer('tag_id')
-      .notNull()
-      .references(() => templateTags.id),
-  },
-  (table) => [
-    primaryKey({ columns: [table.templateId, table.tagId] }),
-    index('template_tag_relations_tag_id_idx').on(table.tagId),
-  ]
-);
-
-export const templateAssets = pgTable(
-  'template_assets',
-  {
-    id: uuid('id').defaultRandom().primaryKey(),
-    templateId: uuid('template_id')
-      .notNull()
-      .references(() => templates.id, { onDelete: 'cascade' }),
-    assetId: uuid('asset_id')
-      .notNull()
-      .references(() => assets.id),
-    role: varchar('role', { length: 24 }).$type<TemplateAssetRole>().notNull(),
-    createdAt: timestamp('created_at').notNull().defaultNow(),
-  },
-  (table) => [
-    uniqueIndex('template_assets_template_asset_role_unique').on(
-      table.templateId,
-      table.assetId,
-      table.role
-    ),
-    index('template_assets_template_id_idx').on(table.templateId),
-    index('template_assets_asset_id_idx').on(table.assetId),
-    check(
-      'template_assets_role_check',
-      sql`${table.role} in ('preview', 'source', 'example')`
-    ),
-  ]
-);
-
-export const templateAuditLogs = pgTable(
-  'template_audit_logs',
-  {
-    id: uuid('id').defaultRandom().primaryKey(),
-    templateId: uuid('template_id').references(() => templates.id, {
-      onDelete: 'set null',
-    }),
-    actorId: integer('actor_id').references(() => users.id),
-    action: varchar('action', { length: 60 }).notNull(),
-    beforeJson: jsonb('before_json')
-      .$type<Record<string, unknown>>()
-      .notNull()
-      .default(sql`'{}'::jsonb`),
-    afterJson: jsonb('after_json')
-      .$type<Record<string, unknown>>()
-      .notNull()
-      .default(sql`'{}'::jsonb`),
-    createdAt: timestamp('created_at').notNull().defaultNow(),
-  },
-  (table) => [
-    index('template_audit_logs_template_id_idx').on(table.templateId),
-    index('template_audit_logs_actor_id_idx').on(table.actorId),
-  ]
-);
-
-export const TEMPLATE_INGESTION_RUN_STATUSES = [
-  'running',
-  'succeeded',
-  'failed',
-] as const;
-export type TemplateIngestionRunStatus =
-  (typeof TEMPLATE_INGESTION_RUN_STATUSES)[number];
-
-export const templateIngestionRuns = pgTable(
-  'template_ingestion_runs',
-  {
-    id: uuid('id').defaultRandom().primaryKey(),
-    source: varchar('source', { length: 80 }).notNull(),
-    status: varchar('status', { length: 24 })
-      .$type<TemplateIngestionRunStatus>()
-      .notNull()
-      .default('running'),
-    dryRun: boolean('dry_run').notNull().default(false),
-    startedAt: timestamp('started_at').notNull().defaultNow(),
-    finishedAt: timestamp('finished_at'),
-    statsJson: jsonb('stats_json')
-      .$type<Record<string, unknown>>()
-      .notNull()
-      .default(sql`'{}'::jsonb`),
-    errorMessage: text('error_message'),
-    createdBy: integer('created_by').references(() => users.id),
-  },
-  (table) => [
-    index('template_ingestion_runs_source_started_idx').on(
-      table.source,
-      table.startedAt
-    ),
-    check(
-      'template_ingestion_runs_status_check',
-      sql`${table.status} in ('running', 'succeeded', 'failed')`
-    ),
-  ]
-);
-
-export const templateSourceRecords = pgTable(
-  'template_source_records',
-  {
-    id: uuid('id').defaultRandom().primaryKey(),
-    runId: uuid('run_id').references(() => templateIngestionRuns.id, {
-      onDelete: 'set null',
-    }),
-    templateId: uuid('template_id').references(() => templates.id, {
-      onDelete: 'set null',
-    }),
-    assetId: uuid('asset_id').references(() => assets.id, {
-      onDelete: 'set null',
-    }),
-    source: varchar('source', { length: 80 }).notNull(),
-    sourceUrl: text('source_url').notNull(),
-    sourceAssetUrl: text('source_asset_url'),
-    contentHash: varchar('content_hash', { length: 128 }).notNull(),
-    prompt: text('prompt').notNull(),
-    promptSource: varchar('prompt_source', { length: 40 }).notNull(),
-    licenseNote: text('license_note'),
-    metadataJson: jsonb('metadata_json')
-      .$type<Record<string, unknown>>()
-      .notNull()
-      .default(sql`'{}'::jsonb`),
-    createdAt: timestamp('created_at').notNull().defaultNow(),
-    updatedAt: timestamp('updated_at').notNull().defaultNow(),
-  },
-  (table) => [
-    uniqueIndex('template_source_records_source_url_unique').on(
-      table.source,
-      table.sourceUrl
-    ),
-    uniqueIndex('template_source_records_content_hash_unique').on(
-      table.contentHash
-    ),
-    index('template_source_records_template_id_idx').on(table.templateId),
-    index('template_source_records_run_id_idx').on(table.runId),
   ]
 );
 
@@ -748,7 +563,6 @@ export const usersRelations = relations(users, ({ many }) => ({
   updatedTemplates: many(templates, { relationName: 'templateUpdater' }),
   createdLibraryAssets: many(libraryAssets, { relationName: 'libraryAssetCreator' }),
   updatedLibraryAssets: many(libraryAssets, { relationName: 'libraryAssetUpdater' }),
-  templateAuditLogs: many(templateAuditLogs),
 }));
 
 export const assetsRelations = relations(assets, ({ one, many }) => ({
@@ -759,12 +573,11 @@ export const assetsRelations = relations(assets, ({ one, many }) => ({
   inputForJobs: many(generationJobs, { relationName: 'inputAsset' }),
   outputForJobs: many(generationJobs, { relationName: 'outputAsset' }),
   previewForTemplates: many(templates, { relationName: 'templatePreviewAsset' }),
-  templateAssets: many(templateAssets),
   libraryAssetRecords: many(libraryAssets),
   userMediaHistory: many(userMediaHistory),
 }));
 
-export const templatesRelations = relations(templates, ({ one, many }) => ({
+export const templatesRelations = relations(templates, ({ one }) => ({
   previewAsset: one(assets, {
     fields: [templates.previewAssetId],
     references: [assets.id],
@@ -780,82 +593,7 @@ export const templatesRelations = relations(templates, ({ one, many }) => ({
     references: [users.id],
     relationName: 'templateUpdater',
   }),
-  tagRelations: many(templateTagRelations),
-  assetRelations: many(templateAssets),
-  auditLogs: many(templateAuditLogs),
 }));
-
-export const templateTagsRelations = relations(templateTags, ({ many }) => ({
-  templateRelations: many(templateTagRelations),
-}));
-
-export const templateTagRelationsRelations = relations(
-  templateTagRelations,
-  ({ one }) => ({
-    template: one(templates, {
-      fields: [templateTagRelations.templateId],
-      references: [templates.id],
-    }),
-    tag: one(templateTags, {
-      fields: [templateTagRelations.tagId],
-      references: [templateTags.id],
-    }),
-  })
-);
-
-export const templateAssetsRelations = relations(templateAssets, ({ one }) => ({
-  template: one(templates, {
-    fields: [templateAssets.templateId],
-    references: [templates.id],
-  }),
-  asset: one(assets, {
-    fields: [templateAssets.assetId],
-    references: [assets.id],
-  }),
-}));
-
-export const templateAuditLogsRelations = relations(
-  templateAuditLogs,
-  ({ one }) => ({
-    template: one(templates, {
-      fields: [templateAuditLogs.templateId],
-      references: [templates.id],
-    }),
-    actor: one(users, {
-      fields: [templateAuditLogs.actorId],
-      references: [users.id],
-    }),
-  })
-);
-
-export const templateIngestionRunsRelations = relations(
-  templateIngestionRuns,
-  ({ one, many }) => ({
-    creator: one(users, {
-      fields: [templateIngestionRuns.createdBy],
-      references: [users.id],
-    }),
-    sourceRecords: many(templateSourceRecords),
-  })
-);
-
-export const templateSourceRecordsRelations = relations(
-  templateSourceRecords,
-  ({ one }) => ({
-    run: one(templateIngestionRuns, {
-      fields: [templateSourceRecords.runId],
-      references: [templateIngestionRuns.id],
-    }),
-    template: one(templates, {
-      fields: [templateSourceRecords.templateId],
-      references: [templates.id],
-    }),
-    asset: one(assets, {
-      fields: [templateSourceRecords.assetId],
-      references: [assets.id],
-    }),
-  })
-);
 
 export const libraryAssetsRelations = relations(libraryAssets, ({ one, many }) => ({
   asset: one(assets, {
@@ -935,18 +673,6 @@ export type Asset = typeof assets.$inferSelect;
 export type NewAsset = typeof assets.$inferInsert;
 export type Template = typeof templates.$inferSelect;
 export type NewTemplate = typeof templates.$inferInsert;
-export type TemplateTag = typeof templateTags.$inferSelect;
-export type NewTemplateTag = typeof templateTags.$inferInsert;
-export type TemplateTagRelation = typeof templateTagRelations.$inferSelect;
-export type NewTemplateTagRelation = typeof templateTagRelations.$inferInsert;
-export type TemplateAsset = typeof templateAssets.$inferSelect;
-export type NewTemplateAsset = typeof templateAssets.$inferInsert;
-export type TemplateAuditLog = typeof templateAuditLogs.$inferSelect;
-export type NewTemplateAuditLog = typeof templateAuditLogs.$inferInsert;
-export type TemplateIngestionRun = typeof templateIngestionRuns.$inferSelect;
-export type NewTemplateIngestionRun = typeof templateIngestionRuns.$inferInsert;
-export type TemplateSourceRecord = typeof templateSourceRecords.$inferSelect;
-export type NewTemplateSourceRecord = typeof templateSourceRecords.$inferInsert;
 export type LibraryAsset = typeof libraryAssets.$inferSelect;
 export type NewLibraryAsset = typeof libraryAssets.$inferInsert;
 export type GenerationJob = typeof generationJobs.$inferSelect;

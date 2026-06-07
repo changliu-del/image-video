@@ -1,13 +1,16 @@
-# Image Video Studio Multi-Agent Mode
+# Image Video Studio Opt-In Multi-Agent Mode
 
-Use this reference when the user asks for no-token-limit development, "多 agent", broad project planning, or any substantive image-video implementation task.
+This is historical and opt-in guidance. Use it only when the user explicitly asks for "多 agent", multi-agent delegation, no-token-limit development, or a delegated plan in the current turn.
+
+Default image-video work stays in the current agent. The current agent should load the relevant KB, implement the coherent patch, validate it, and update docs or KB when project facts change.
 
 ## Lead Agent Responsibilities
 
 - Own the critical path and integration.
 - Read the relevant KB first.
 - Keep user-facing updates concise.
-- Default substantive development to five specialist agents: case-search, reference-code, frontend implementation, backend implementation, and QA implementation.
+- Spawn specialist agents only after the user explicitly asks for delegated multi-agent work.
+- For broad delegated work, the usual specialist set is case-search, reference-code, frontend implementation, backend implementation, and QA implementation.
 - Add Product or KB/doc agents only when scope, pricing, documentation, or durable project memory needs them.
 - Split only independent sidecar work with explicit write scopes.
 - Avoid delegating the next blocking action.
@@ -77,7 +80,7 @@ Goal: implement or update focused tests for <task>, run the narrowest useful val
 
 - Assign disjoint write sets.
 - Keep shared schema/API changes in the lead agent or a single backend agent.
-- Start case-search and reference-code first when the task needs discovery; their handoffs should shape frontend/backend implementation.
+- If multi-agent mode is explicitly enabled, start case-search and reference-code first when the task needs discovery; their handoffs should shape frontend/backend implementation.
 - Ask QA to verify after implementation has a stable diff, or to prepare tests in parallel when behavior is already clear.
 - Let KB/doc agent update docs after facts are confirmed, not before.
 - If two agents return conflicting recommendations, prefer tested behavior and existing project patterns.
