@@ -3,16 +3,12 @@ import type { TemplateType } from '@/lib/templates/catalog';
 const categoryPattern = /^[a-z0-9][a-z0-9_-]*$/;
 
 export const imageToVideoTemplateCategories = [
-  'product',
   'fashion',
-  'food',
   'beauty',
   'electronics',
   'appliances',
   'home',
   'sports',
-  'social',
-  'marketplace',
   'general',
 ] as const;
 

@@ -45,7 +45,7 @@ export const templateTypes: TemplateType[] = [
 
 export const templateTypeLabels: Record<TemplateType, LocalizedText> = {
   image_to_video: {
-    pt: 'Imagem para video',
+    pt: 'Imagem para vídeo',
     en: 'Image to video',
     zh: '图生视频',
   },
@@ -60,9 +60,9 @@ export const templateCategoryLabels: Record<string, LocalizedText> = {
   product: { pt: 'Produto', en: 'Product', zh: '商品' },
   fashion: { pt: 'Moda', en: 'Fashion', zh: '服饰' },
   food: { pt: 'Alimentos', en: 'Food', zh: '食品' },
-  beauty: { pt: 'Beleza', en: 'Beauty', zh: '美妆' },
-  electronics: { pt: 'Eletronicos', en: 'Electronics', zh: '电子' },
-  appliances: { pt: 'Eletrodomesticos', en: 'Appliances', zh: '家用电器' },
+  beauty: { pt: 'Beleza e cuidados', en: 'Beauty and personal care', zh: '美妆个护' },
+  electronics: { pt: 'Eletrônicos', en: 'Electronics', zh: '3C数码' },
+  appliances: { pt: 'Eletrodomésticos', en: 'Appliances', zh: '家用电器' },
   home: { pt: 'Casa', en: 'Home', zh: '家居' },
   sports: { pt: 'Esportes', en: 'Sports', zh: '运动' },
   social: { pt: 'Social', en: 'Social', zh: '社媒' },

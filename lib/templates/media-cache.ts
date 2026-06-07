@@ -1,8 +1,8 @@
 import 'server-only';
 
-import { eq, inArray } from 'drizzle-orm';
+import { inArray } from 'drizzle-orm';
 import { db } from '@/lib/db/drizzle';
-import { assets } from '@/lib/db/schema';
+import { assets, templates } from '@/lib/db/schema';
 import { getObjectFromR2 } from '@/lib/storage/r2';
 
 type TemplateMediaCacheEntry = {
@@ -17,6 +17,7 @@ type TemplateMediaCacheEntry = {
 
 type TemplateMediaCacheState = {
   entries: Map<string, TemplateMediaCacheEntry>;
+  preloadPromise: Promise<TemplateMediaCacheRefreshResult> | null;
   totalBytes: number;
 };
 
@@ -37,6 +38,14 @@ type CachedMediaResponse = {
   body: Uint8Array | null;
   headers: Headers;
   status: number;
+};
+
+type TemplateMediaCacheRefreshResult = {
+  cached: number;
+  failed: number;
+  requested: number;
+  skipped: number;
+  totalBytes: number;
 };
 
 const MiB = 1024 * 1024;
@@ -71,6 +80,7 @@ function cacheState() {
   if (!globalScope[globalCacheKey]) {
     globalScope[globalCacheKey] = {
       entries: new Map(),
+      preloadPromise: null,
       totalBytes: 0,
     };
   }
@@ -154,6 +164,21 @@ async function getTemplateMediaAssets(assetIds: string[]) {
     .where(inArray(assets.id, ids));
 }
 
+async function getAllTemplateMediaAssetIds() {
+  const rows = await db
+    .select({
+      thumbnailAssetId: templates.thumbnailAssetId,
+      previewAssetId: templates.previewAssetId,
+    })
+    .from(templates);
+
+  return Array.from(
+    new Set(
+      rows.flatMap((row) => [row.thumbnailAssetId, row.previewAssetId])
+    )
+  );
+}
+
 async function cacheTemplateMediaAsset(asset: TemplateMediaAssetRow) {
   const state = cacheState();
 
@@ -191,16 +216,46 @@ async function cacheTemplateMediaAsset(asset: TemplateMediaAssetRow) {
   return true;
 }
 
+async function cacheTemplateMediaAssets(assetIds: string[]) {
+  const ids = Array.from(new Set(assetIds.filter(Boolean)));
+  const assetRows = await getTemplateMediaAssets(ids);
+  const foundAssetIds = new Set(assetRows.map((asset) => asset.id));
+  const result: TemplateMediaCacheRefreshResult = {
+    cached: 0,
+    failed: 0,
+    requested: ids.length,
+    skipped: ids.filter((assetId) => !foundAssetIds.has(assetId)).length,
+    totalBytes: cacheState().totalBytes,
+  };
+
+  for (const asset of assetRows) {
+    try {
+      const cached = await cacheTemplateMediaAsset(asset);
+      if (cached) {
+        result.cached += 1;
+      } else {
+        result.skipped += 1;
+      }
+    } catch (error) {
+      result.failed += 1;
+      deleteTemplateMediaCacheEntries([asset.id]);
+      console.error('Failed to cache template media asset', {
+        assetId: asset.id,
+        error,
+      });
+    }
+  }
+
+  result.totalBytes = cacheState().totalBytes;
+  return result;
+}
+
 export function getTemplateMediaCacheEntry(assetId: string) {
   return cacheState().entries.get(assetId) ?? null;
 }
 
 export async function refreshTemplateMediaCache(assetIds: string[]) {
-  const assetRows = await getTemplateMediaAssets(assetIds);
-
-  for (const asset of assetRows) {
-    await cacheTemplateMediaAsset(asset);
-  }
+  return cacheTemplateMediaAssets(assetIds);
 }
 
 export async function refreshTemplateMediaCacheForAsset(assetId: string) {
@@ -211,6 +266,29 @@ export async function refreshTemplateMediaCacheForAsset(assetId: string) {
   }
 
   await cacheTemplateMediaAsset(asset);
+}
+
+export function startTemplateMediaCachePreload() {
+  const state = cacheState();
+  if (state.preloadPromise) return state.preloadPromise;
+
+  state.preloadPromise = (async () => {
+    const assetIds = await getAllTemplateMediaAssetIds();
+    const result = await cacheTemplateMediaAssets(assetIds);
+
+    console.info('Template media memory cache preloaded', {
+      ...result,
+      totalMiB: Number((result.totalBytes / MiB).toFixed(2)),
+    });
+
+    return result;
+  })().catch((error) => {
+    state.preloadPromise = null;
+    console.error('Failed to preload template media memory cache', error);
+    throw error;
+  });
+
+  return state.preloadPromise;
 }
 
 export function deleteTemplateMediaCacheEntries(assetIds: string[]) {
@@ -287,7 +365,7 @@ export function createCachedTemplateMediaResponse(
   }
 
   if (range) {
-    const body = entry.body.slice(range.start, range.end + 1);
+    const body = entry.body.subarray(range.start, range.end + 1);
     headers.set('Content-Length', String(body.byteLength));
     headers.set('Content-Range', `bytes ${range.start}-${range.end}/${size}`);
     return {

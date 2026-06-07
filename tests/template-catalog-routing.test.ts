@@ -66,8 +66,7 @@ describe('template catalog routing contract', () => {
     expect(templatesPage).toContain('normalizePublicTemplateCategories');
     expect(templatesPage).not.toContain('label={content.allCategories}');
     expect(templatesPage).not.toContain("setActiveCategory('')");
-    expect(categoryConfig).toContain("'product'");
-    expect(categoryConfig).toContain("'food'");
+    expect(categoryConfig).toContain('return category;');
     expect(route).not.toContain("getAll('tag')");
     expect(route).not.toContain("get('tags')");
     expect(route).not.toContain("get('sort')");
@@ -112,7 +111,8 @@ describe('template catalog routing contract', () => {
     expect(mediaRoute).not.toContain('deleteTemplateMediaCacheEntries');
   });
 
-  it('updates template media memory cache only through admin template writes', () => {
+  it('preloads template media memory cache on startup and updates it through admin template writes', () => {
+    const instrumentation = readSource('instrumentation.ts');
     const mediaCache = readSource('lib/templates/media-cache.ts');
     const adminTemplates = readSource('lib/admin/services/templates.ts');
     const publicTemplateList = readSource('app/api/templates/route.ts');
@@ -120,8 +120,11 @@ describe('template catalog routing contract', () => {
       'app/api/templates/[id]/route.ts',
     ]);
 
+    expect(instrumentation).toContain('startTemplateMediaCachePreload');
     expect(mediaCache).toContain('getTemplateMediaCacheEntry');
+    expect(mediaCache).toContain('getAllTemplateMediaAssetIds');
     expect(mediaCache).toContain('refreshTemplateMediaCache');
+    expect(mediaCache).toContain('preloadPromise');
     expect(mediaCache).toContain('deleteTemplateMediaCacheEntries');
     expect(adminTemplates).toContain('refreshTemplateMediaCacheAfterAdminWrite');
     expect(adminTemplates).toContain(

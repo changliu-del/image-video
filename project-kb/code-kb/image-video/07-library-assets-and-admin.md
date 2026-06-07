@@ -58,6 +58,11 @@ the browser. The public list shape is `id`, localized `title`, `type`,
 `category`, and `thumbnailUrl`. Template detail adds `previewUrl` and localized
 `prompt`; the raw translation JSON fields stay private/Admin-only.
 
+Bulk template imports load localized `title` and `prompt` text from
+`scripts/template-catalog-translations.json`, keyed by `<source category>/<txt
+file basename>`. The Chinese source title and prompt remain the base fallback;
+the JSON currently carries Portuguese and English user-facing text.
+
 `type` selects the workflow. The homepage template gallery, public template
 library, and image-to-video workbench all reuse the image-to-video catalog via
 `/api/templates?type=image_to_video`.
@@ -142,6 +147,11 @@ only. When a user opens a template detail or applies it in the workbench, fetch
 the detail by template id so the UI gets `previewUrl` and `prompt` only when
 needed.
 
+Public template browsing should show real business categories returned by
+`/api/templates`, not a synthetic total/all category. The page should keep one
+category selected so users actively browse by product/business class while the
+API keeps `total` only as pagination metadata.
+
 Workbench image grids must not render video URLs through `<img>`. Video assets
 should either expose a real image thumbnail/poster or be omitted from image-only
 grids.
@@ -162,12 +172,14 @@ grids.
   media changes, so R2/CDN media responses can use long cache headers without
   breaking replacement flows.
 - Template image/video bytes also have a process-local memory cache in
-  `lib/templates/media-cache.ts`. Public media reads may serve cached bytes and
-  fall back to DB/R2 on cache miss, but public reads must not refresh the memory
-  cache. Only Admin template writes update it: create/update refresh the current
-  thumbnail and preview assets, delete purges the template assets, and template
-  preview upload completion refreshes the newly uploaded asset while removing
-  the replaced one.
+  `lib/templates/media-cache.ts`. `instrumentation.ts` starts an async
+  best-effort preload after the Node server starts, loading all template
+  thumbnail and preview assets without blocking startup. Public media reads may
+  serve cached bytes and fall back to DB/R2 on cache miss, but public reads must
+  not refresh the memory cache. Admin template writes keep the warmed cache
+  current: create/update refresh the current thumbnail and preview assets,
+  delete purges the template assets, and template preview upload completion
+  refreshes the newly uploaded asset while removing the replaced one.
 - Do not reuse this public cache header for account, billing, credits, jobs, or
   any response containing user-specific/private data.
 
