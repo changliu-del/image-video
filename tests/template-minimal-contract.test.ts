@@ -15,6 +15,7 @@ const EXPECTED_TEMPLATE_MODEL_FIELDS = [
   'previewAssetId',
   'prompt',
   'promptTranslations',
+  'sortOrder',
   'createdAt',
   'updatedAt',
 ] as const;
@@ -29,6 +30,7 @@ const EXPECTED_TEMPLATE_SQL_COLUMNS = [
   'preview_asset_id',
   'prompt',
   'prompt_translations_json',
+  'sort_order',
   'created_at',
   'updated_at',
 ] as const;
@@ -72,6 +74,7 @@ const REMOVED_PUBLIC_TEMPLATE_FIELDS = [
   'aspectRatiosJson',
   'durationSeconds',
   'sortWeight',
+  'sortOrder',
   'usageCount',
   'createdBy',
   'updatedBy',
@@ -83,10 +86,10 @@ const EXPECTED_PUBLIC_TEMPLATE_LIST_FIELDS = [
   'type',
   'category',
   'thumbnailUrl',
+  'previewUrl',
 ] as const;
 
 const EXPECTED_PUBLIC_TEMPLATE_DETAIL_FIELDS = [
-  'previewUrl',
   'prompt',
 ] as const;
 
@@ -135,9 +138,6 @@ describe('minimal template catalog contract', () => {
     expect(listItem, 'list items should not expose prompt').not.toMatch(
       /\bprompt\??:/
     );
-    expect(listItem, 'list items should not expose previewUrl').not.toMatch(
-      /\bpreviewUrl\??:/
-    );
 
     expect(source).toContain(
       'normalizePublicTemplateItems(value: unknown): PublicTemplateListItem[]'
@@ -174,7 +174,7 @@ describe('minimal template catalog contract', () => {
     const detailRoute = readSource(detailRoutePath);
 
     expect(listRoute).toContain("searchParams.get('type')");
-    expect(listRoute).toContain('templateCatalogReadHeaders');
+    expect(listRoute).toContain('templateCatalogListReadHeaders');
     expect(detailRoute).toContain('templateCatalogReadHeaders');
     expect(listRoute).not.toContain("searchParams.get('id')");
     expect(listRoute).not.toContain('getTemplateDetail');

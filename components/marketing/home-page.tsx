@@ -23,6 +23,7 @@ import {
   type PublicTemplateItem,
   type PublicTemplatesApiResponse,
 } from '@/lib/templates/public-client';
+import { homepageHeroPreviewVideo } from '@/lib/marketing/homepage-materials';
 import { cn } from '@/lib/utils';
 
 type MarketingContent = ReturnType<typeof getMarketingContent>;
@@ -166,7 +167,7 @@ function TemplateHero({
           </div>
           <div className="relative mx-auto aspect-[9/16] w-full max-w-[300px] overflow-hidden rounded-lg border border-white/15 bg-gray-950 shadow-2xl">
             <video
-              src="/aivideo.mp4"
+              src={homepageHeroPreviewVideo}
               className="size-full object-cover"
               loop
               autoPlay

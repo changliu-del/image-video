@@ -3,19 +3,61 @@ import type { TemplateType } from '@/lib/templates/catalog';
 const categoryPattern = /^[a-z0-9][a-z0-9_-]*$/;
 
 export const imageToVideoTemplateCategories = [
-  'fashion',
   'beauty',
-  'electronics',
-  'appliances',
+  'fashion',
   'home',
   'sports',
-  'general',
+  'electronics',
+  'appliances',
+  'common',
+] as const;
+
+export const imageToImageTemplateCategories = [
+  'goods_display_window',
+  'goods_nature',
+  'goods_festival',
+  'goods_architecture',
+  'goods_abstract',
+  'goods_interior',
+] as const;
+
+export const tryOnTemplateCategories = [
+  'tryon_solid_background',
+  'tryon_outdoor_commercial',
+  'tryon_indoor_commercial',
+  'tryon_outdoor_casual',
+  'tryon_indoor_casual',
 ] as const;
 
 const templateCategoryOptionsByType: Partial<
   Record<TemplateType, readonly string[]>
 > = {
   image_to_video: imageToVideoTemplateCategories,
+  image_to_image: imageToImageTemplateCategories,
+  try_on: tryOnTemplateCategories,
+};
+
+const templateCategoryAliasesByType: Partial<
+  Record<TemplateType, Record<string, string>>
+> = {
+  image_to_video: {
+    general: 'common',
+  },
+  image_to_image: {
+    display_window: 'goods_display_window',
+    nature: 'goods_nature',
+    festival: 'goods_festival',
+    architecture: 'goods_architecture',
+    abstract: 'goods_abstract',
+    interior: 'goods_interior',
+  },
+  try_on: {
+    solid_background: 'tryon_solid_background',
+    outdoor_commercial: 'tryon_outdoor_commercial',
+    indoor_commercial: 'tryon_indoor_commercial',
+    outdoor_casual: 'tryon_outdoor_casual',
+    indoor_casual: 'tryon_indoor_casual',
+  },
 };
 
 export function normalizeTemplateCategoryValue(value: string | null | undefined) {
@@ -30,11 +72,11 @@ export function getTemplateCategoriesForType(type: TemplateType) {
 }
 
 export function normalizeTemplateCategoryForType(
-  _type: TemplateType,
+  type: TemplateType,
   value: string | null | undefined
 ) {
   const category = normalizeTemplateCategoryValue(value);
   if (!category) return null;
 
-  return category;
+  return templateCategoryAliasesByType[type]?.[category] ?? category;
 }

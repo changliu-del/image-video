@@ -3,9 +3,12 @@
 import { useEffect, useMemo, useState } from 'react';
 import type { ReactNode } from 'react';
 import {
+  ArrowDown,
+  ArrowUp,
   Edit3,
   Eye,
   ImagePlus,
+  ListOrdered,
   Loader2,
   Plus,
   Save,
@@ -24,16 +27,19 @@ import {
 } from '@/components/admin/admin-management-table';
 import type { AdminContent, AdminLocale } from '@/lib/admin/content';
 import {
+  getTemplateCategoryLabel,
   templateTypeLabels,
   type TemplateCatalogDetailItem,
   type TemplateType,
 } from '@/lib/templates/catalog';
+import { getTemplateCategoriesForType } from '@/lib/templates/category-config';
 
 type AdminTemplate = TemplateCatalogDetailItem & {
   titleTranslations: Record<string, string>;
   promptTranslations: Record<string, string>;
   thumbnailAssetId: string;
   previewAssetId: string;
+  sortOrder: number;
   createdAt: string;
   updatedAt: string;
 };
@@ -59,16 +65,34 @@ type PaginatedTemplates = {
   pageSize: number;
 };
 
+type TemplateOrderResponse = {
+  type: TemplateType;
+  category: string;
+  list: AdminTemplate[];
+  total: number;
+};
+
+type TemplateOrderFormState = {
+  type: TemplateType;
+  category: string;
+};
+
 const emptyForm: TemplateFormState = {
   title: '',
   titleTranslations: '{}',
   type: 'image_to_video',
-  category: 'general',
+  category: 'common',
   thumbnailAssetId: '',
   previewAssetId: '',
   prompt: '',
   promptTranslations: '{}',
 };
+
+const defaultOrderType: TemplateType = 'image_to_video';
+
+function defaultCategoryForType(type: TemplateType) {
+  return getTemplateCategoriesForType(type)[0] ?? 'common';
+}
 
 function freshEmptyForm(): TemplateFormState {
   return { ...emptyForm };
@@ -226,9 +250,20 @@ export function TemplatesPanel({
   const [saving, setSaving] = useState(false);
   const [uploading, setUploading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [orderModalOpen, setOrderModalOpen] = useState(false);
+  const [orderForm, setOrderForm] = useState<TemplateOrderFormState>({
+    type: defaultOrderType,
+    category: defaultCategoryForType(defaultOrderType),
+  });
+  const [orderedTemplates, setOrderedTemplates] = useState<AdminTemplate[]>([]);
+  const [loadingOrder, setLoadingOrder] = useState(false);
+  const [savingOrder, setSavingOrder] = useState(false);
+  const [orderError, setOrderError] = useState<string | null>(null);
 
   const typeLabel = (type: TemplateType) =>
     templateTypeLabels[type]?.[locale] ?? type;
+
+  const orderCategoryOptions = getTemplateCategoriesForType(orderForm.type);
 
   const columns = useMemo<AdminTableColumn<AdminTemplate>[]>(
     () => [
@@ -263,6 +298,16 @@ export function TemplatesPanel({
         label: copy.columns.category,
         kind: 'status',
         width: 140,
+      },
+      {
+        key: 'sortOrder',
+        label: copy.columns.sortOrder ?? 'Order',
+        width: 96,
+        render: (template) => (
+          <span className="text-sm tabular-nums text-gray-700">
+            {template.sortOrder}
+          </span>
+        ),
       },
       {
         key: 'prompt',
@@ -491,6 +536,101 @@ export function TemplatesPanel({
     }
   }
 
+  async function loadTemplateOrder(nextForm = orderForm) {
+    setLoadingOrder(true);
+    setOrderError(null);
+    try {
+      const params = new URLSearchParams({
+        type: nextForm.type,
+        category: nextForm.category,
+      });
+      const result = await requestJson<TemplateOrderResponse>(
+        `/api/admin/templates/order?${params}`,
+        { method: 'GET' },
+        copy.errors.loadOrder ?? copy.errors.load
+      );
+
+      setOrderForm({
+        type: result.type,
+        category: result.category,
+      });
+      setOrderedTemplates(result.list);
+    } catch (loadError) {
+      setOrderedTemplates([]);
+      setOrderError(
+        loadError instanceof Error
+          ? loadError.message
+          : copy.errors.loadOrder ?? copy.errors.load
+      );
+    } finally {
+      setLoadingOrder(false);
+    }
+  }
+
+  function openOrderManager() {
+    setOrderModalOpen(true);
+    setOrderError(null);
+    void loadTemplateOrder();
+  }
+
+  function updateOrderType(type: TemplateType) {
+    const nextForm = {
+      type,
+      category: defaultCategoryForType(type),
+    };
+    setOrderForm(nextForm);
+    void loadTemplateOrder(nextForm);
+  }
+
+  function updateOrderCategory(category: string) {
+    const nextForm = {
+      ...orderForm,
+      category,
+    };
+    setOrderForm(nextForm);
+    void loadTemplateOrder(nextForm);
+  }
+
+  function moveOrderedTemplate(index: number, direction: -1 | 1) {
+    const targetIndex = index + direction;
+    if (targetIndex < 0 || targetIndex >= orderedTemplates.length) return;
+
+    setOrderedTemplates((current) => {
+      const next = [...current];
+      [next[index], next[targetIndex]] = [next[targetIndex], next[index]];
+      return next;
+    });
+  }
+
+  async function saveTemplateOrder() {
+    setSavingOrder(true);
+    setOrderError(null);
+    try {
+      const result = await requestJson<TemplateOrderResponse>(
+        '/api/admin/templates/order',
+        {
+          method: 'PATCH',
+          body: JSON.stringify({
+            type: orderForm.type,
+            category: orderForm.category,
+            templateIds: orderedTemplates.map((template) => template.id),
+          }),
+        },
+        copy.errors.saveOrder ?? copy.errors.save
+      );
+      setOrderedTemplates(result.list);
+      await loadTemplates(data.page);
+    } catch (saveError) {
+      setOrderError(
+        saveError instanceof Error
+          ? saveError.message
+          : copy.errors.saveOrder ?? copy.errors.save
+      );
+    } finally {
+      setSavingOrder(false);
+    }
+  }
+
   function resetSearch() {
     setSearch('');
     setAppliedSearch('');
@@ -566,14 +706,20 @@ export function TemplatesPanel({
           onPageChange: loadTemplates,
         }}
         primaryAction={
-          <Button
-            type="button"
-            className="bg-orange-600 text-white hover:bg-orange-700"
-            onClick={openCreate}
-          >
-            <Plus className="size-4" />
-            {copy.create}
-          </Button>
+          <>
+            <Button type="button" variant="outline" onClick={openOrderManager}>
+              <ListOrdered className="size-4" />
+              {copy.reorder ?? 'Reorder'}
+            </Button>
+            <Button
+              type="button"
+              className="bg-orange-600 text-white hover:bg-orange-700"
+              onClick={openCreate}
+            >
+              <Plus className="size-4" />
+              {copy.create}
+            </Button>
+          </>
         }
         rowKey={(template, index) => String(template.id ?? index)}
         rows={data.list}
@@ -584,6 +730,151 @@ export function TemplatesPanel({
         tableMinWidth={1000}
         title={copy.title}
       />
+
+      <AdminModal
+        open={orderModalOpen}
+        title={copy.orderModalTitle ?? 'Template order'}
+        closeLabel={common.close}
+        maxWidth="max-w-3xl"
+        onClose={() => setOrderModalOpen(false)}
+        footer={
+          <>
+            <Button
+              type="button"
+              variant="outline"
+              onClick={() => setOrderModalOpen(false)}
+            >
+              {common.close}
+            </Button>
+            <Button
+              type="button"
+              onClick={saveTemplateOrder}
+              disabled={savingOrder || loadingOrder}
+            >
+              {savingOrder ? (
+                <Loader2 className="size-4 animate-spin" />
+              ) : (
+                <Save className="size-4" />
+              )}
+              {copy.saveOrder ?? common.save}
+            </Button>
+          </>
+        }
+      >
+        <div className="grid gap-4">
+          {copy.orderDescription ? (
+            <p className="text-sm leading-6 text-gray-500">
+              {copy.orderDescription}
+            </p>
+          ) : null}
+
+          <div className="grid gap-4 md:grid-cols-2">
+            <Field label={copy.fields.type ?? 'Type'}>
+              <select
+                value={orderForm.type}
+                onChange={(event) =>
+                  updateOrderType(event.target.value as TemplateType)
+                }
+                className="h-9 rounded-md border border-gray-200 bg-white px-3 text-sm"
+              >
+                <option value="image_to_video">
+                  {templateTypeLabels.image_to_video[locale]}
+                </option>
+                <option value="image_to_image">
+                  {templateTypeLabels.image_to_image[locale]}
+                </option>
+                <option value="try_on">
+                  {templateTypeLabels.try_on[locale]}
+                </option>
+              </select>
+            </Field>
+            <Field label={copy.fields.category}>
+              <select
+                value={orderForm.category}
+                onChange={(event) => updateOrderCategory(event.target.value)}
+                className="h-9 rounded-md border border-gray-200 bg-white px-3 text-sm"
+              >
+                {orderCategoryOptions.map((category) => (
+                  <option key={category} value={category}>
+                    {getTemplateCategoryLabel(category, locale)}
+                  </option>
+                ))}
+              </select>
+            </Field>
+          </div>
+
+          {orderError ? (
+            <div className="rounded-md border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700">
+              {orderError}
+            </div>
+          ) : null}
+
+          {loadingOrder ? (
+            <div className="flex min-h-40 items-center justify-center gap-2 rounded-lg border border-dashed border-gray-200 text-sm font-semibold text-gray-400">
+              <Loader2 className="size-4 animate-spin" />
+              {common.loading}
+            </div>
+          ) : orderedTemplates.length === 0 ? (
+            <div className="rounded-lg border border-dashed border-gray-200 px-3 py-8 text-center text-sm text-gray-400">
+              {copy.orderEmpty ?? copy.emptyText}
+            </div>
+          ) : (
+            <div className="max-h-[52vh] overflow-y-auto rounded-lg border border-gray-200">
+              {orderedTemplates.map((template, index) => (
+                <div
+                  key={template.id}
+                  className="flex items-center gap-3 border-b border-gray-100 px-3 py-3 last:border-b-0"
+                >
+                  <div className="w-8 text-center text-xs font-semibold tabular-nums text-gray-400">
+                    {index + 1}
+                  </div>
+                  <div className="size-14 shrink-0 overflow-hidden rounded-md bg-gray-100">
+                    <img
+                      src={template.thumbnailUrl}
+                      alt=""
+                      className="size-full object-cover"
+                    />
+                  </div>
+                  <div className="min-w-0 flex-1">
+                    <div className="truncate text-sm font-semibold text-gray-950">
+                      {template.title}
+                    </div>
+                    <div className="mt-1 truncate text-xs text-gray-500">
+                      {template.id}
+                    </div>
+                  </div>
+                  <div className="flex shrink-0 items-center gap-1">
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="icon"
+                      className="size-8"
+                      disabled={index === 0}
+                      onClick={() => moveOrderedTemplate(index, -1)}
+                      aria-label={copy.moveUp ?? 'Move up'}
+                      title={copy.moveUp ?? 'Move up'}
+                    >
+                      <ArrowUp className="size-4" />
+                    </Button>
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="icon"
+                      className="size-8"
+                      disabled={index === orderedTemplates.length - 1}
+                      onClick={() => moveOrderedTemplate(index, 1)}
+                      aria-label={copy.moveDown ?? 'Move down'}
+                      title={copy.moveDown ?? 'Move down'}
+                    >
+                      <ArrowDown className="size-4" />
+                    </Button>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+      </AdminModal>
 
       <AdminModal
         open={Boolean(modalMode)}
@@ -642,6 +933,7 @@ export function TemplatesPanel({
                 'titleTranslations',
                 'type',
                 'category',
+                'sortOrder',
                 'thumbnailAssetId',
                 'previewAssetId',
                 'thumbnailUrl',
@@ -678,6 +970,9 @@ export function TemplatesPanel({
                   </option>
                   <option value="image_to_image">
                     {templateTypeLabels.image_to_image[locale]}
+                  </option>
+                  <option value="try_on">
+                    {templateTypeLabels.try_on[locale]}
                   </option>
                 </select>
               </Field>

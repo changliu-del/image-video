@@ -39,9 +39,11 @@ Fixed in this pass:
 - `/admin` also uses session-first rendering. `app/(dashboard)/admin/page.tsx` only redirects unauthenticated sessions; `AdminShell` fetches `/api/user` client-side before showing ops/admin tabs or the forbidden state. Admin data APIs remain server-authorized.
 - Marketing home template catalog refresh is deferred with `IntersectionObserver`, so users who click into the workspace immediately are not competing with `/api/templates`.
 - Template catalog lists are stable public data. Cache list results by `type` and
-  business `category`, render thumbnails from `thumbnailUrl`, and fetch detail
-  by template id only when a user opens or applies a template so `previewUrl`
-  and `prompt` do not bloat the first list response.
+  business `category`, render thumbnails from `thumbnailUrl`, and keep
+  `previewUrl` in the list response so card hover can play the warmed template
+  video without first opening detail. Fetch detail by template id only when a
+  user opens or applies a template so `prompt` does not bloat the first list
+  response.
 - Template text is locale-aware. The API accepts `locale` and resolves
   `title_translations_json` and `prompt_translations_json` before returning
   `title` and detail `prompt`; `category` stays a stable code and UI surfaces

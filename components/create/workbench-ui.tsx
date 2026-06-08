@@ -86,12 +86,14 @@ export function CanvasStage({
           </div>
         ) : null}
         {banner ? <div className="mx-auto mb-10 w-full max-w-[880px]">{banner}</div> : null}
-        <div className="mb-6 text-center">
-          <h1 className="text-3xl font-bold tracking-tight text-gray-950">{title}</h1>
-          {subtitle ? (
-            <p className="mt-2 text-sm font-medium text-gray-500">{subtitle}</p>
-          ) : null}
-        </div>
+        {title ? (
+          <div className="mb-6 text-center">
+            <h1 className="text-3xl font-bold tracking-tight text-gray-950">{title}</h1>
+            {subtitle ? (
+              <p className="mt-2 text-sm font-medium text-gray-500">{subtitle}</p>
+            ) : null}
+          </div>
+        ) : null}
         {children}
       </div>
     </section>
@@ -108,12 +110,12 @@ export function BlueBanner({
   images?: string[];
 }) {
   return (
-    <div className="flex h-24 items-center justify-between overflow-hidden rounded-lg border border-amber-100 bg-amber-50 px-8 shadow-sm">
+    <div className="flex h-24 items-center justify-between overflow-hidden rounded-lg border border-blue-100 bg-[linear-gradient(120deg,#dbeafe,#e0e7ff_48%,#dbeafe)] px-8 shadow-sm">
       <div>
-        <p className="text-3xl font-black text-gray-950">
+        <p className="text-3xl font-black text-indigo-700 drop-shadow-sm">
           {title}
         </p>
-        <p className="mt-2 inline-flex rounded-full bg-white px-5 py-1 text-sm font-semibold text-indigo-600 shadow-sm">
+        <p className="mt-2 inline-flex rounded-full bg-white/85 px-5 py-1 text-sm font-semibold text-indigo-600 shadow-sm">
           {label}
         </p>
       </div>

@@ -36,6 +36,72 @@ function errorStatus(error: unknown) {
   return metadata?.httpStatusCode ?? null;
 }
 
+async function proxyExternalTemplateMedia(input: {
+  mimeType: string | null;
+  publicUrl: string;
+  range: string | null;
+}) {
+  let url: URL;
+  try {
+    url = new URL(input.publicUrl);
+  } catch {
+    return NextResponse.json(
+      { error: 'Template media not found' },
+      { status: 404 }
+    );
+  }
+
+  if (url.protocol !== 'https:' && url.protocol !== 'http:') {
+    return NextResponse.json(
+      { error: 'Template media not found' },
+      { status: 404 }
+    );
+  }
+
+  const upstreamHeaders = new Headers();
+  if (input.range) {
+    upstreamHeaders.set('Range', input.range);
+  }
+
+  const upstream = await fetch(url, {
+    headers: upstreamHeaders,
+    next: { revalidate: 300 },
+  });
+
+  if (!upstream.ok || !upstream.body) {
+    return NextResponse.json(
+      { error: 'Template media not found' },
+      { status: upstream.status === 404 ? 404 : 502 }
+    );
+  }
+
+  const headers = new Headers({
+    'Accept-Ranges': 'bytes',
+    'Cache-Control': 'public, max-age=300, stale-while-revalidate=3600',
+  });
+  const contentType = upstream.headers.get('Content-Type') ?? input.mimeType;
+  if (contentType) {
+    headers.set('Content-Type', contentType);
+  }
+
+  for (const header of [
+    'Content-Length',
+    'Content-Range',
+    'ETag',
+    'Last-Modified',
+  ]) {
+    const value = upstream.headers.get(header);
+    if (value) {
+      headers.set(header, value);
+    }
+  }
+
+  return new Response(upstream.body, {
+    status: upstream.status,
+    headers,
+  });
+}
+
 export async function GET(
   request: NextRequest,
   { params }: { params: Promise<{ assetId: string }> }
@@ -60,6 +126,7 @@ export async function GET(
     const [asset] = await db
       .select({
         mimeType: assets.mimeType,
+        publicUrl: assets.publicUrl,
         status: assets.status,
         storageKey: assets.storageKey,
       })
@@ -67,15 +134,26 @@ export async function GET(
       .where(eq(assets.id, assetId))
       .limit(1);
 
-    if (
-      !asset ||
-      asset.status !== 'uploaded' ||
-      !asset.storageKey.startsWith('templates/')
-    ) {
+    if (!asset || asset.status !== 'uploaded') {
       return NextResponse.json(
         { error: 'Template media not found' },
         { status: 404 }
       );
+    }
+
+    if (!asset.storageKey.startsWith('templates/')) {
+      if (!asset.storageKey.startsWith('external/')) {
+        return NextResponse.json(
+          { error: 'Template media not found' },
+          { status: 404 }
+        );
+      }
+
+      return proxyExternalTemplateMedia({
+        mimeType: asset.mimeType,
+        publicUrl: asset.publicUrl,
+        range: requestRange,
+      });
     }
 
     const object = await getObjectFromR2({

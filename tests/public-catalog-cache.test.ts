@@ -2,7 +2,11 @@ import { describe, expect, it } from 'vitest';
 
 import {
   PUBLIC_CATALOG_CACHE_CONTROL,
+  TEMPLATE_CATALOG_DETAIL_CACHE_CONTROL,
+  TEMPLATE_CATALOG_LIST_CACHE_CONTROL,
   publicCatalogReadHeaders,
+  templateCatalogListReadHeaders,
+  templateCatalogReadHeaders,
 } from '../lib/http/cache-control';
 
 describe('public catalog cache headers', () => {
@@ -12,6 +16,21 @@ describe('public catalog cache headers', () => {
     );
     expect(publicCatalogReadHeaders).toEqual({
       'Cache-Control': PUBLIC_CATALOG_CACHE_CONTROL,
+    });
+  });
+
+  it('keeps template list cache shorter than template detail cache', () => {
+    expect(TEMPLATE_CATALOG_LIST_CACHE_CONTROL).toBe(
+      'public, max-age=30, s-maxage=60, stale-while-revalidate=300'
+    );
+    expect(TEMPLATE_CATALOG_DETAIL_CACHE_CONTROL).toBe(
+      'public, max-age=300, s-maxage=86400, stale-while-revalidate=604800'
+    );
+    expect(templateCatalogListReadHeaders).toEqual({
+      'Cache-Control': TEMPLATE_CATALOG_LIST_CACHE_CONTROL,
+    });
+    expect(templateCatalogReadHeaders).toEqual({
+      'Cache-Control': TEMPLATE_CATALOG_DETAIL_CACHE_CONTROL,
     });
   });
 });

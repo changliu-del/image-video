@@ -155,6 +155,20 @@
       "when": 1780000019000,
       "tag": "0022_template_prompt_translations",
       "breakpoints": true
+    },
+    {
+      "idx": 22,
+      "version": "7",
+      "when": 1780000020000,
+      "tag": "0023_template_try_on_type",
+      "breakpoints": true
+    },
+    {
+      "idx": 23,
+      "version": "7",
+      "when": 1780000021000,
+      "tag": "0024_template_sort_order",
+      "breakpoints": true
     }
   ]
 }

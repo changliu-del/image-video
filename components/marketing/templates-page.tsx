@@ -2,7 +2,7 @@
 
 import Link from 'next/link';
 import { useEffect, useState } from 'react';
-import { ArrowRight, Eye, Loader2, Search, Video, X } from 'lucide-react';
+import { ArrowRight, Eye, Loader2, Video, X } from 'lucide-react';
 import {
   getLocalizedHref,
   type Locale,
@@ -36,61 +36,17 @@ function categoryLabel(template: PublicTemplateItem, locale: Locale) {
     (template.category
       ? getTemplateCategoryLabel(template.category, locale)
       : null) ||
-    publicTemplatesPageContent[locale].defaultCategory
+    publicTemplatesPageContent[locale].categoryFallback
   );
 }
 
 function TemplateMedia({
-  locale,
   template,
 }: {
-  locale: Locale;
   template: PublicTemplateItem;
 }) {
   const mediaUrl = getPublicTemplateMediaUrl(template);
   const [isHovering, setIsHovering] = useState(false);
-  const [previewUrl, setPreviewUrl] = useState('');
-  const [previewLoadFailed, setPreviewLoadFailed] = useState(false);
-
-  useEffect(() => {
-    if (!isHovering || previewUrl || previewLoadFailed) return;
-
-    let ignore = false;
-    const controller = new AbortController();
-
-    async function loadPreview() {
-      try {
-        const params = new URLSearchParams({ locale });
-        const response = await fetch(`/api/templates/${template.id}?${params}`, {
-          signal: controller.signal,
-        });
-
-        if (!response.ok) {
-          throw new Error('template-preview-load-failed');
-        }
-
-        const detail = normalizePublicTemplateDetail(await response.json());
-        if (!detail?.previewUrl) {
-          throw new Error('template-preview-invalid');
-        }
-
-        if (!ignore) {
-          setPreviewUrl(detail.previewUrl);
-        }
-      } catch {
-        if (!ignore) {
-          setPreviewLoadFailed(true);
-        }
-      }
-    }
-
-    loadPreview();
-
-    return () => {
-      ignore = true;
-      controller.abort();
-    };
-  }, [isHovering, locale, previewLoadFailed, previewUrl, template.id]);
 
   if (!mediaUrl) {
     return (
@@ -100,7 +56,7 @@ function TemplateMedia({
     );
   }
 
-  const previewIsActive = isHovering && previewUrl;
+  const previewIsActive = isHovering && template.previewUrl;
 
   return (
     <div
@@ -128,8 +84,8 @@ function TemplateMedia({
       )}
       {previewIsActive ? (
         <video
-          key={previewUrl}
-          src={previewUrl}
+          key={template.previewUrl}
+          src={template.previewUrl}
           poster={template.thumbnailUrl}
           className="absolute inset-0 size-full object-cover"
           autoPlay
@@ -158,7 +114,7 @@ function TemplateCard({
   return (
     <article className="group overflow-hidden rounded-lg border border-gray-200 bg-white shadow-sm transition hover:-translate-y-1 hover:border-gray-300 hover:shadow-lg">
       <div className="relative aspect-[4/5] overflow-hidden bg-gray-100">
-        <TemplateMedia locale={locale} template={template} />
+        <TemplateMedia template={template} />
         <div className="absolute left-3 top-3 inline-flex h-8 items-center gap-1.5 rounded-md bg-white/92 px-2.5 text-xs font-semibold text-gray-900 shadow-sm backdrop-blur">
           <Video className="size-3.5 text-orange-600" />
           {category}
@@ -166,14 +122,6 @@ function TemplateCard({
       </div>
       <div className="grid min-h-[190px] content-between gap-5 p-5">
         <div>
-          <div className="mb-3 flex items-center justify-between gap-3">
-            <span className="rounded-md bg-gray-100 px-2.5 py-1 text-xs font-semibold text-gray-700">
-              {template.type}
-            </span>
-            <span className="max-w-[12rem] truncate text-xs font-medium text-gray-500">
-              {content.idLabel}: {template.id}
-            </span>
-          </div>
           <h2 className="text-lg font-semibold tracking-tight text-gray-950">
             {template.title}
           </h2>
@@ -258,9 +206,6 @@ function TemplateDetailModal({
             <h2 className="truncate text-lg font-semibold text-gray-950">
               {title}
             </h2>
-            <p className="mt-1 truncate font-mono text-xs text-gray-500">
-              {template.id}
-            </p>
           </div>
           <button
             type="button"
@@ -298,9 +243,6 @@ function TemplateDetailModal({
               <DetailMedia detail={detail} />
               <div className="grid content-between gap-5">
                 <div>
-                  <div className="mb-3 inline-flex rounded-md bg-gray-100 px-2.5 py-1 text-xs font-semibold text-gray-700">
-                    {detail.type}
-                  </div>
                   <h3 className="text-sm font-semibold uppercase text-gray-500">
                     {content.promptLabel}
                   </h3>
@@ -383,7 +325,6 @@ export function MarketingTemplatesPage({ locale }: { locale: Locale }) {
   const [activeCategory, setActiveCategory] = useState<string>(
     defaultTemplateCategory
   );
-  const [search, setSearch] = useState('');
   const [page, setPage] = useState(1);
   const [hasMore, setHasMore] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
@@ -416,16 +357,20 @@ export function MarketingTemplatesPage({ locale }: { locale: Locale }) {
     async function loadTemplates() {
       setIsLoading(true);
       setError(false);
+      if (page === 1) {
+        setTemplates([]);
+        setHasMore(false);
+      }
 
       try {
         const params = new URLSearchParams({
+          media: 'preview',
           page: String(page),
           pageSize: '12',
           type: 'image_to_video',
           locale,
         });
         if (activeCategory) params.set('category', activeCategory);
-        if (search.trim()) params.set('search', search.trim());
         const response = await fetch(`/api/templates?${params.toString()}`, {
           signal: controller.signal,
         });
@@ -474,7 +419,7 @@ export function MarketingTemplatesPage({ locale }: { locale: Locale }) {
       ignore = true;
       controller.abort();
     };
-  }, [activeCategory, locale, page, reloadKey, search]);
+  }, [activeCategory, locale, page, reloadKey]);
 
   useEffect(() => {
     if (!detailTemplate) return;
@@ -526,7 +471,6 @@ export function MarketingTemplatesPage({ locale }: { locale: Locale }) {
 
   function clearFilters() {
     setActiveCategory(categories[0] ?? defaultTemplateCategory);
-    setSearch('');
     setPage(1);
   }
 
@@ -543,7 +487,7 @@ export function MarketingTemplatesPage({ locale }: { locale: Locale }) {
   return (
     <main className="bg-white">
       <section className="border-b border-white/10 bg-gray-950 text-white">
-        <div className="mx-auto grid max-w-7xl gap-10 px-6 py-14 lg:grid-cols-[1.1fr_0.9fr] lg:px-8 lg:py-16">
+        <div className="mx-auto max-w-7xl px-6 py-14 lg:px-8 lg:py-16">
           <div>
             <div className="mb-4 inline-flex rounded-md bg-white/10 px-3 py-1 text-xs font-semibold uppercase text-white/70">
               {content.eyebrow}
@@ -555,33 +499,16 @@ export function MarketingTemplatesPage({ locale }: { locale: Locale }) {
               {content.description}
             </p>
           </div>
-          <div className="grid content-end gap-3 lg:justify-end">
-            <div className="rounded-lg border border-white/10 bg-white/[0.06] p-4">
-              <div className="text-sm font-semibold text-white">
-                {content.defaultCategory}
-              </div>
-              <div className="mt-1 text-xs uppercase text-white/50">
-                {templateType}
-              </div>
-            </div>
-          </div>
         </div>
       </section>
 
       <section className="mx-auto max-w-7xl px-6 py-8 lg:px-8 lg:py-10">
-        <div className="mb-6 grid gap-4 rounded-lg border border-gray-200 bg-gray-50 p-4 lg:grid-cols-[minmax(0,1fr)_minmax(320px,0.85fr)]">
+        <div className="mb-6 rounded-lg border border-gray-200 bg-gray-50 p-4">
           <div>
-            <div className="mb-3 flex items-center justify-between gap-3">
+            <div className="mb-3">
               <div className="text-sm font-semibold text-gray-950">
                 {content.categoryFilterLabel}
               </div>
-              <button
-                type="button"
-                onClick={clearFilters}
-                className="text-xs font-semibold text-gray-500 transition hover:text-gray-950"
-              >
-                {content.clearFilters}
-              </button>
             </div>
             <div className="flex flex-wrap gap-2">
               {categories.map((category) => (
@@ -596,33 +523,6 @@ export function MarketingTemplatesPage({ locale }: { locale: Locale }) {
                 />
               ))}
             </div>
-          </div>
-
-          <div className="self-end">
-            <label className="relative block">
-              <Search className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-gray-400" />
-              <input
-                value={search}
-                onChange={(event) => {
-                  setSearch(event.target.value);
-                  setPage(1);
-                }}
-                placeholder={content.searchPlaceholder}
-                className="h-11 w-full rounded-lg border border-gray-200 bg-white pl-10 pr-10 text-sm text-gray-950 outline-none transition placeholder:text-gray-400 focus:border-gray-400"
-              />
-              {search ? (
-                <button
-                  type="button"
-                  onClick={() => {
-                    setSearch('');
-                    setPage(1);
-                  }}
-                  className="absolute right-3 top-1/2 grid size-6 -translate-y-1/2 place-items-center rounded-md text-gray-400 hover:bg-gray-100 hover:text-gray-950"
-                >
-                  <X className="size-4" />
-                </button>
-              ) : null}
-            </label>
           </div>
         </div>
 

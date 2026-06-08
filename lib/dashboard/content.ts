@@ -7,6 +7,7 @@ type DashboardContent = {
   nav: {
     home: string;
     tools: string;
+    allTools: string;
     imageVideo: string;
     apparel: string;
     tryOn: string;
@@ -45,6 +46,7 @@ export const dashboardContent: Record<DashboardLocale, DashboardContent> = {
     nav: {
       home: 'Início',
       tools: 'Área de criação',
+      allTools: 'Todos os fluxos',
       imageVideo: 'Imagem para vídeo',
       apparel: 'Imagem de produto',
       tryOn: 'Provador virtual',
@@ -79,6 +81,7 @@ export const dashboardContent: Record<DashboardLocale, DashboardContent> = {
     nav: {
       home: 'Home',
       tools: 'Creation workspace',
+      allTools: 'All tools',
       imageVideo: 'Image to video',
       apparel: 'Product image',
       tryOn: 'Virtual try-on',
@@ -113,6 +116,7 @@ export const dashboardContent: Record<DashboardLocale, DashboardContent> = {
     nav: {
       home: '首页',
       tools: '创作工作台',
+      allTools: '全部工具',
       imageVideo: '图生视频',
       apparel: '商品图',
       tryOn: '智能试衣',

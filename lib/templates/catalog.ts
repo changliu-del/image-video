@@ -1,6 +1,6 @@
 import type { Locale } from '@/lib/marketing/content';
 
-export type TemplateType = 'image_to_image' | 'image_to_video';
+export type TemplateType = 'image_to_image' | 'image_to_video' | 'try_on';
 
 export type TemplateCatalogListItem = {
   id: string;
@@ -8,12 +8,12 @@ export type TemplateCatalogListItem = {
   type: TemplateType;
   category: string;
   thumbnailUrl: string;
+  previewUrl: string;
   createdAt: string;
   updatedAt: string;
 };
 
 export type TemplateCatalogDetailItem = TemplateCatalogListItem & {
-  previewUrl: string;
   prompt: string;
   promptTranslations?: Partial<LocalizedText>;
 };
@@ -41,6 +41,7 @@ export type StarterTemplateSeed = {
 export const templateTypes: TemplateType[] = [
   'image_to_video',
   'image_to_image',
+  'try_on',
 ];
 
 export const templateTypeLabels: Record<TemplateType, LocalizedText> = {
@@ -54,20 +55,37 @@ export const templateTypeLabels: Record<TemplateType, LocalizedText> = {
     en: 'Image',
     zh: '生图',
   },
+  try_on: {
+    pt: 'Provador virtual',
+    en: 'Try-on',
+    zh: '智能试衣',
+  },
 };
 
 export const templateCategoryLabels: Record<string, LocalizedText> = {
   product: { pt: 'Produto', en: 'Product', zh: '商品' },
-  fashion: { pt: 'Moda', en: 'Fashion', zh: '服饰' },
+  fashion: { pt: 'Moda', en: 'Fashion', zh: '服饰时尚' },
   food: { pt: 'Alimentos', en: 'Food', zh: '食品' },
   beauty: { pt: 'Beleza e cuidados', en: 'Beauty and personal care', zh: '美妆个护' },
   electronics: { pt: 'Eletrônicos', en: 'Electronics', zh: '3C数码' },
   appliances: { pt: 'Eletrodomésticos', en: 'Appliances', zh: '家用电器' },
-  home: { pt: 'Casa', en: 'Home', zh: '家居' },
-  sports: { pt: 'Esportes', en: 'Sports', zh: '运动' },
+  home: { pt: 'Casa', en: 'Home', zh: '家居家装' },
+  sports: { pt: 'Esportes', en: 'Sports', zh: '运动户外' },
   social: { pt: 'Social', en: 'Social', zh: '社媒' },
   marketplace: { pt: 'Marketplace', en: 'Marketplace', zh: '平台电商' },
-  general: { pt: 'Geral', en: 'General', zh: '通用' },
+  common: { pt: 'Geral', en: 'Common', zh: '通用' },
+  general: { pt: 'Geral', en: 'Common', zh: '通用' },
+  goods_display_window: { pt: 'Vitrine de produto', en: 'Product display', zh: '展台橱窗' },
+  goods_nature: { pt: 'Natureza', en: 'Nature', zh: '自然景观' },
+  goods_festival: { pt: 'Datas comemorativas', en: 'Festive', zh: '节日氛围' },
+  goods_architecture: { pt: 'Arquitetura', en: 'Architecture', zh: '人文建筑' },
+  goods_abstract: { pt: 'Conceito abstrato', en: 'Abstract concept', zh: '抽象概念' },
+  goods_interior: { pt: 'Interior', en: 'Indoor space', zh: '室内空间' },
+  tryon_solid_background: { pt: 'Fundo solido', en: 'Solid background', zh: '纯色背景' },
+  tryon_outdoor_commercial: { pt: 'Comercial externo', en: 'Outdoor commercial', zh: '户外商拍' },
+  tryon_indoor_commercial: { pt: 'Comercial interno', en: 'Indoor commercial', zh: '室内商拍' },
+  tryon_outdoor_casual: { pt: 'Externo casual', en: 'Outdoor casual', zh: '户外随拍' },
+  tryon_indoor_casual: { pt: 'Interno casual', en: 'Indoor casual', zh: '室内随拍' },
 };
 
 export function getTemplateCategoryLabel(category: string, locale: Locale) {

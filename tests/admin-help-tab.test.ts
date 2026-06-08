@@ -41,6 +41,7 @@ const MINIMAL_TEMPLATE_HELP_FIELDS = [
   'thumbnail_asset_id',
   'preview_asset_id',
   'prompt',
+  'sort_order',
   'created_at',
   'updated_at',
 ] as const;

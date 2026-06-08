@@ -12,6 +12,7 @@ import {
   ImageIcon,
   ShieldCheck,
   Shirt,
+  Sparkles,
   UserRound,
   Video,
 } from 'lucide-react';
@@ -124,6 +125,12 @@ export function AppShell({
   const locale = useDashboardLocale();
   const content = getDashboardContent(locale);
   const toolItems: ShellItem[] = [
+    {
+      href: '/create',
+      icon: Sparkles,
+      label: content.nav.allTools,
+      match: 'exact',
+    },
     { href: '/create/video', icon: Video, label: content.nav.imageVideo },
     { href: '/create/apparel', icon: ImageIcon, label: content.nav.apparel },
     { href: '/create/try-on', icon: Shirt, label: content.nav.tryOn },

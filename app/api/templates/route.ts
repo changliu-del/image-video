@@ -1,5 +1,5 @@
 import { type NextRequest, NextResponse } from 'next/server';
-import { templateCatalogReadHeaders } from '@/lib/http/cache-control';
+import { templateCatalogListReadHeaders } from '@/lib/http/cache-control';
 import { listPublishedTemplates } from '@/lib/templates/query';
 import {
   templateTypes,
@@ -38,7 +38,7 @@ export async function GET(request: NextRequest) {
       type,
       category,
     });
-    return NextResponse.json(result, { headers: templateCatalogReadHeaders });
+    return NextResponse.json(result, { headers: templateCatalogListReadHeaders });
   } catch (error) {
     console.error('Failed to list templates', error);
     return NextResponse.json(

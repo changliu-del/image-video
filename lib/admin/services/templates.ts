@@ -1,7 +1,7 @@
 import 'server-only';
 
 import { randomUUID } from 'crypto';
-import { and, desc, eq, or, sql } from 'drizzle-orm';
+import { and, asc, desc, eq, or, sql } from 'drizzle-orm';
 import { alias } from 'drizzle-orm/pg-core';
 import { z } from 'zod';
 import { db } from '@/lib/db/drizzle';
@@ -15,7 +15,11 @@ import {
   requireOpsOrAdmin,
   requireAdmin,
 } from '@/lib/db/queries';
-import { type TemplateCatalogDetailItem } from '@/lib/templates/catalog';
+import {
+  type TemplateCatalogDetailItem,
+  type TemplateType,
+} from '@/lib/templates/catalog';
+import { normalizeTemplateCategoryForType } from '@/lib/templates/category-config';
 import {
   buildPublicUrl,
   buildTemplatePreviewStorageKey,
@@ -30,6 +34,7 @@ import {
   refreshTemplateMediaCache,
   refreshTemplateMediaCacheForAsset,
 } from '@/lib/templates/media-cache';
+import { clearPublishedTemplateCatalogCache } from '@/lib/templates/query';
 import { normalizeAdminSearchQuery } from '@/lib/admin/search';
 import {
   exactCol,
@@ -43,6 +48,18 @@ const templateIdSchema = z.string().uuid();
 const adminThumbnailAsset = alias(assets, 'admin_template_thumbnail_asset');
 const adminPreviewAsset = alias(assets, 'admin_template_preview_asset');
 const localeSchema = z.enum(['pt', 'en', 'zh']);
+const templateTypeSchema = z.enum([
+  'image_to_image',
+  'image_to_video',
+  'try_on',
+]);
+const templateCategorySchema = z
+  .string()
+  .trim()
+  .toLowerCase()
+  .min(1)
+  .max(80)
+  .regex(/^[a-z0-9][a-z0-9_-]*$/);
 const titleTranslationsSchema = z
   .record(localeSchema, z.string().trim().min(1).max(140))
   .optional()
@@ -57,6 +74,7 @@ export type AdminTemplateListItem = TemplateCatalogDetailItem & {
   promptTranslations: Record<string, string>;
   thumbnailAssetId: string;
   previewAssetId: string;
+  sortOrder: number;
   createdAt: string;
   updatedAt: string;
 };
@@ -70,20 +88,27 @@ type AdminTemplateRecord = {
 const templatePayloadSchema = z
   .object({
     id: z.string().uuid().optional(),
-    type: z.enum(['image_to_image', 'image_to_video']),
-    category: z
-      .string()
-      .trim()
-      .toLowerCase()
-      .min(1)
-      .max(80)
-      .regex(/^[a-z0-9][a-z0-9_-]*$/),
+    type: templateTypeSchema,
+    category: templateCategorySchema,
     title: z.string().trim().min(1).max(140),
     titleTranslations: titleTranslationsSchema,
     thumbnailAssetId: z.string().uuid(),
     previewAssetId: z.string().uuid(),
     prompt: z.string().trim().min(4).max(5000),
     promptTranslations: promptTranslationsSchema,
+  })
+  .strict();
+
+const templateGroupSchema = z
+  .object({
+    type: templateTypeSchema,
+    category: templateCategorySchema,
+  })
+  .strict();
+
+const templateOrderPayloadSchema = templateGroupSchema
+  .extend({
+    templateIds: z.array(z.string().uuid()).max(500),
   })
   .strict();
 
@@ -105,7 +130,42 @@ const completeTemplatePreviewSchema = z
   .strict();
 
 function normalizeTemplatePayload(input: unknown) {
-  return templatePayloadSchema.parse(input);
+  const payload = templatePayloadSchema.parse(input);
+  return {
+    ...payload,
+    category:
+      normalizeTemplateCategoryForType(payload.type, payload.category) ??
+      payload.category,
+  };
+}
+
+function normalizeTemplateGroup(input: unknown) {
+  const group = templateGroupSchema.parse(input);
+  return {
+    ...group,
+    category:
+      normalizeTemplateCategoryForType(group.type, group.category) ??
+      group.category,
+  };
+}
+
+async function getNextTemplateSortOrder(input: {
+  category: string;
+  type: TemplateType;
+}) {
+  const [row] = await db
+    .select({
+      nextSortOrder: sql<number>`coalesce(max(${templates.sortOrder}), 0)::int + 1`,
+    })
+    .from(templates)
+    .where(
+      and(
+        eq(templates.type, input.type),
+        eq(templates.category, input.category)
+      )
+    );
+
+  return Number(row?.nextSortOrder ?? 1);
 }
 
 async function getUploadedAsset(assetId: string) {
@@ -184,6 +244,7 @@ function adminTemplateRecordToListItem(
     previewAssetId: row.template.previewAssetId,
     prompt: row.template.prompt,
     promptTranslations: row.template.promptTranslations,
+    sortOrder: row.template.sortOrder,
     createdAt: row.template.createdAt.toISOString(),
     updatedAt: row.template.updatedAt.toISOString(),
   };
@@ -299,10 +360,108 @@ export async function listAdminTemplates(params: {
   };
 }
 
+export async function listAdminTemplateOrder(input: unknown) {
+  await requireOpsOrAdmin();
+  const group = normalizeTemplateGroup(input);
+  const rows = await db
+    .select({
+      template: templates,
+      thumbnailAsset: {
+        publicUrl: adminThumbnailAsset.publicUrl,
+        mimeType: adminThumbnailAsset.mimeType,
+        status: adminThumbnailAsset.status,
+      },
+      previewAsset: {
+        publicUrl: adminPreviewAsset.publicUrl,
+        mimeType: adminPreviewAsset.mimeType,
+        status: adminPreviewAsset.status,
+      },
+    })
+    .from(templates)
+    .innerJoin(
+      adminThumbnailAsset,
+      eq(templates.thumbnailAssetId, adminThumbnailAsset.id)
+    )
+    .innerJoin(
+      adminPreviewAsset,
+      eq(templates.previewAssetId, adminPreviewAsset.id)
+    )
+    .where(
+      and(
+        eq(templates.type, group.type),
+        eq(templates.category, group.category)
+      )
+    )
+    .orderBy(
+      asc(templates.sortOrder),
+      asc(templates.createdAt),
+      asc(templates.id)
+    );
+
+  return {
+    ...group,
+    list: rows.map(adminTemplateRecordToListItem),
+    total: rows.length,
+  };
+}
+
+export async function updateAdminTemplateOrder(input: unknown) {
+  await requireOpsOrAdmin();
+  const payload = templateOrderPayloadSchema.parse(input);
+  const group = normalizeTemplateGroup({
+    type: payload.type,
+    category: payload.category,
+  });
+  const current = await listAdminTemplateOrder(group);
+  const expectedIds = current.list.map((template) => template.id);
+  const expectedIdSet = new Set(expectedIds);
+  const seenIds = new Set<string>();
+
+  if (payload.templateIds.length !== expectedIds.length) {
+    throw new Error(
+      'Invalid template order: templateIds must include every template in this type/category.'
+    );
+  }
+
+  for (const templateId of payload.templateIds) {
+    if (seenIds.has(templateId)) {
+      throw new Error('Invalid template order: duplicate template id.');
+    }
+
+    if (!expectedIdSet.has(templateId)) {
+      throw new Error(
+        'Invalid template order: template id is outside this type/category.'
+      );
+    }
+
+    seenIds.add(templateId);
+  }
+
+  await db.transaction(async (tx) => {
+    const updatedAt = new Date();
+    for (let index = 0; index < payload.templateIds.length; index += 1) {
+      await tx
+        .update(templates)
+        .set({
+          sortOrder: index + 1,
+          updatedAt,
+        })
+        .where(eq(templates.id, payload.templateIds[index]));
+    }
+  });
+
+  clearPublishedTemplateCatalogCache();
+  return listAdminTemplateOrder(group);
+}
+
 export async function createTemplate(input: unknown) {
   await requireOpsOrAdmin();
   const payload = normalizeTemplatePayload(input);
   await assertTemplateAssets(payload);
+  const sortOrder = await getNextTemplateSortOrder({
+    type: payload.type,
+    category: payload.category,
+  });
 
   const [row] = await db
     .insert(templates)
@@ -315,6 +474,7 @@ export async function createTemplate(input: unknown) {
       previewAssetId: payload.previewAssetId,
       prompt: payload.prompt,
       promptTranslations: payload.promptTranslations,
+      sortOrder,
     })
     .returning();
 
@@ -322,6 +482,7 @@ export async function createTemplate(input: unknown) {
     [payload.thumbnailAssetId, payload.previewAssetId],
     'template create'
   );
+  clearPublishedTemplateCatalogCache();
 
   return getAdminTemplateDetail(row.id);
 }
@@ -334,6 +495,9 @@ export async function updateTemplate(id: string, input: unknown) {
   const [existing] = await db
     .select({
       id: templates.id,
+      type: templates.type,
+      category: templates.category,
+      sortOrder: templates.sortOrder,
       thumbnailAssetId: templates.thumbnailAssetId,
       previewAssetId: templates.previewAssetId,
     })
@@ -344,6 +508,15 @@ export async function updateTemplate(id: string, input: unknown) {
   if (!existing) {
     throw new Error('Template not found');
   }
+
+  const movedGroup =
+    existing.type !== payload.type || existing.category !== payload.category;
+  const sortOrder = movedGroup
+    ? await getNextTemplateSortOrder({
+        type: payload.type,
+        category: payload.category,
+      })
+    : existing.sortOrder;
 
   const [row] = await db
     .update(templates)
@@ -356,6 +529,7 @@ export async function updateTemplate(id: string, input: unknown) {
       previewAssetId: payload.previewAssetId,
       prompt: payload.prompt,
       promptTranslations: payload.promptTranslations,
+      sortOrder,
       updatedAt: new Date(),
     })
     .where(eq(templates.id, templateId))
@@ -371,6 +545,7 @@ export async function updateTemplate(id: string, input: unknown) {
     nextAssetIds,
     'template update'
   );
+  clearPublishedTemplateCatalogCache();
 
   return getAdminTemplateDetail(row.id);
 }
@@ -399,6 +574,7 @@ export async function removeTemplate(id: string) {
     existing.thumbnailAssetId,
     existing.previewAssetId,
   ]);
+  clearPublishedTemplateCatalogCache();
 }
 
 export async function createTemplatePreviewPresign(input: unknown) {
@@ -531,6 +707,7 @@ export async function completeTemplatePreviewUpload(input: unknown) {
     asset.id,
     'template preview upload complete'
   );
+  clearPublishedTemplateCatalogCache();
 
   return {
     assetId: payload.assetId,

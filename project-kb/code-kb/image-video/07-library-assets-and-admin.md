@@ -1,6 +1,6 @@
 # Library Assets and Admin
 
-Updated: 2026-06-05
+Updated: 2026-06-08
 
 ## Purpose
 
@@ -49,6 +49,7 @@ material inventory. The template model is intentionally minimal:
 - `preview_asset_id`
 - `prompt`
 - `prompt_translations_json`
+- `sort_order`
 - `created_at`
 - `updated_at`
 
@@ -74,11 +75,16 @@ Store `category` as a stable code and localize its display through
 `getTemplateCategoryLabel`; do not store translated category names on every
 template row.
 
+`sort_order` is the Admin-controlled template order inside one `(type,
+category)` group. Public APIs apply it when listing templates but do not expose
+it as a user-facing field or support a public `sort` parameter. Bulk imports set
+initial sort order for new rows and must not overwrite operator-adjusted order
+on conflict.
+
 Template semantics should not reintroduce tag JSON, tag slugs, publication
-status, sort/order fields, direct URL columns, negative prompts, reverse
-prompts, or preset JSON blocks. If the Admin UI needs ordering, filtering, or
-helper explanation, keep that behavior outside the template model unless the
-model contract is changed explicitly.
+status, direct URL columns, negative prompts, reverse prompts, or preset JSON
+blocks. Template ordering is the explicit exception: keep it as the narrow
+`sort_order` field scoped to `(type, category)`.
 
 ## Library vs User History
 
@@ -128,12 +134,40 @@ The history write path must not fail upload completion, job success, or credit s
 
 ## Workbench Consumption
 
-Workbench libraries combine image-to-video templates with first-party library assets:
+Workbench libraries combine workflow templates with first-party library assets:
 
 - `/create/video`: `/api/templates?type=image_to_video` plus `/api/library-assets?category=image_to_video`.
 - Public homepage/template library: `/api/templates?type=image_to_video`.
-- `/create/apparel`: `/api/library-assets?category=apparel_image`.
-- `/create/try-on`: `/api/model-assets` plus `/api/library-assets?category=try_on`.
+- `/create/apparel`: `/api/templates?type=image_to_image` plus `/api/library-assets?category=apparel_image`.
+- `/create/try-on`: `/api/templates?type=try_on` plus `/api/model-assets` plus `/api/library-assets?category=try_on`.
+
+Try-on input semantics:
+
+- Garment upload is split into upper garment and lower garment slots. The
+  paired-apparel mode requires both slots; the one-piece mode only uses the
+  upper/main garment slot.
+- The model is not a local image upload in the try-on workbench. It should come
+  from the model library/catalog flow (`/api/model-assets`) and be sent as
+  `modelCatalogAssetId` in generation requests.
+- Do not reintroduce a local model-image upload control on `/create/try-on`
+  unless the product model changes explicitly.
+
+2026-06-08 Wanxiang template import:
+
+- Wanxiang product-image scene templates are imported into the single `templates`
+  table with `type=image_to_image`.
+- Wanxiang try-on pose/background templates are imported into the single
+  `templates` table with `type=try_on`.
+- These imports use the minimal template fields plus type/category-scoped
+  `sort_order`: title, one image asset reused as both thumbnail and preview,
+  and prompt.
+- `components/create/template-prompt-picker.tsx` is the shared workbench picker
+  for product-image and try-on prompt templates. It loads cached template lists
+  by type/category, fetches detail by id on apply, and passes the template id
+  through generation requests.
+- Product-image and try-on workbench template UI follows the Wanxiang-style
+  left category rail plus thumbnail grid, while keeping the repository's
+  existing prompt-detail fetch and generation request contracts.
 
 Each workbench should keep official library materials and user history visually separated:
 
@@ -142,15 +176,18 @@ Each workbench should keep official library materials and user history visually 
 
 Keep template IDs and library asset IDs separate. Library assets are inspiration/examples unless the generation payload explicitly supports them as template inputs.
 
-Template list views should use the cached list response and show thumbnails
-only. When a user opens a template detail or applies it in the workbench, fetch
-the detail by template id so the UI gets `previewUrl` and `prompt` only when
-needed.
+Template list views should use the cached list response, show thumbnails from
+`thumbnailUrl`, and include `previewUrl` so card hover can play warmed template
+videos without first opening detail. When a user opens a template detail or
+applies it in the workbench, fetch the detail by template id so the UI gets the
+localized `prompt` only when needed.
 
 Public template browsing should show real business categories returned by
 `/api/templates`, not a synthetic total/all category. The page should keep one
 category selected so users actively browse by product/business class while the
-API keeps `total` only as pagination metadata.
+API keeps `total` only as pagination metadata. The public template page should
+not expose search, template IDs, or raw template type labels such as
+`image_to_video`; those remain internal routing details for applying a template.
 
 Workbench image grids must not render video URLs through `<img>`. Video assets
 should either expose a real image thumbnail/poster or be omitted from image-only
@@ -212,7 +249,7 @@ This UI is operational, so keep it dense, predictable, and task-first rather tha
 - Library asset upload should give immediate file feedback, infer a sensible category from the file, auto-fill a readable title when empty, and keep sort weight as the only low-frequency ranking field.
 - Library asset details should not expose R2 `storageKey` or long asset URLs as primary operational content; use the preview and open-link affordance instead.
 - Admin Help is a practical tab-level operation manual rendered from Markdown. The Help dropdown chooses one page guide, and the renderer only displays that guide's Markdown plus referenced static images from `public/admin-help/`.
-- Keep Template Help and Library Asset Help as separate Markdown documents for operators. Chinese operation manuals should follow the four-part structure: introduction, system/interface overview, feature introduction, and business operation guide. Template Help should use real UI screenshots for the Admin template list, Admin edit form, frontend templates page, and matching workbench; avoid abstract field-card/SVG explanations. It should explain only the minimal template fields: `id`, `type`, `category`, `thumbnail_asset_id`, `preview_asset_id`, `prompt`, `created_at`, and `updated_at`, while noting that APIs output `thumbnailUrl` and `previewUrl` for the browser. Library Asset Help should explain asset fields with cropped workbench material-entry screenshots. Do not add template explanations to the Library Asset page or library asset explanations to the Template page.
+- Keep Template Help and Library Asset Help as separate Markdown documents for operators. Chinese operation manuals should follow the four-part structure: introduction, system/interface overview, feature introduction, and business operation guide. Template Help should use real UI screenshots for the Admin template list, Admin edit form, frontend templates page, and matching workbench; avoid abstract field-card/SVG explanations. It should explain only the minimal template fields: `id`, `type`, `category`, `thumbnail_asset_id`, `preview_asset_id`, `prompt`, `sort_order`, `created_at`, and `updated_at`, while noting that APIs output `thumbnailUrl` and `previewUrl` for the browser and apply `sort_order` without exposing it publicly. Library Asset Help should explain asset fields with cropped workbench material-entry screenshots. Do not add template explanations to the Library Asset page or library asset explanations to the Template page.
 
 2026-06-04 Admin operational search:
 

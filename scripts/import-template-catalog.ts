@@ -17,7 +17,7 @@ const categoryMap = {
   '家居': 'home',
   '家用电器': 'appliances',
   '美妆个护': 'beauty',
-  '通用': 'general',
+  '通用': 'common',
   '运动': 'sports',
 } as const;
 
@@ -54,6 +54,7 @@ type TemplateImportItem = {
   previewAsset: ImportAsset;
   prompt: string;
   promptTranslations: Record<string, string>;
+  sortOrder: number;
 };
 
 type ImportAsset = {
@@ -359,6 +360,7 @@ async function scanTemplateCatalog(sourceRoot: string): Promise<ScanResult> {
 
   const publicBaseUrl = process.env.R2_PUBLIC_BASE_URL ?? 'https://example.invalid';
   const items: TemplateImportItem[] = [];
+  const sortOrderByCategory = new Map<TemplateCategory, number>();
 
   for (const group of groups.sort((a, b) =>
     `${a.category}:${a.baseName}`.localeCompare(`${b.category}:${b.baseName}`)
@@ -430,6 +432,8 @@ async function scanTemplateCatalog(sourceRoot: string): Promise<ScanResult> {
       'image/jpeg'
     );
     const previewStorageKey = storageKeyFor(templateId, previewAssetId, 'video/mp4');
+    const sortOrder = (sortOrderByCategory.get(group.category) ?? 0) + 1;
+    sortOrderByCategory.set(group.category, sortOrder);
 
     items.push({
       id: templateId,
@@ -440,6 +444,7 @@ async function scanTemplateCatalog(sourceRoot: string): Promise<ScanResult> {
       baseName: group.baseName,
       prompt,
       promptTranslations: translation.prompt ?? {},
+      sortOrder,
       thumbnailAsset: {
         id: thumbnailAssetId,
         storageKey: thumbnailStorageKey,
@@ -606,6 +611,7 @@ async function ensureFinalTemplateSchema(sql: postgres.Sql) {
     'preview_asset_id',
     'prompt',
     'prompt_translations_json',
+    'sort_order',
     'created_at',
     'updated_at',
   ];
@@ -735,6 +741,7 @@ async function applyImport(result: ScanResult, args: CliArgs) {
       preview_asset_id: item.previewAsset.id,
       prompt: item.prompt,
       prompt_translations_json: item.promptTranslations,
+      sort_order: item.sortOrder,
       created_at: now,
       updated_at: now,
     }));
@@ -784,6 +791,7 @@ async function applyImport(result: ScanResult, args: CliArgs) {
           'preview_asset_id',
           'prompt',
           'prompt_translations_json',
+          'sort_order',
           'created_at',
           'updated_at'
         )}

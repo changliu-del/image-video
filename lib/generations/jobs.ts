@@ -35,7 +35,7 @@ const UUID_PATTERN =
   /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 type QueryableSql = postgres.Sql;
 
-type TemplateType = 'image_to_video' | 'image_to_image';
+type TemplateType = 'image_to_video' | 'image_to_image' | 'try_on';
 
 const TEMPLATE_TYPE_BY_GENERATION_TYPE: Partial<Record<
   GenerationType,
@@ -43,6 +43,7 @@ const TEMPLATE_TYPE_BY_GENERATION_TYPE: Partial<Record<
 >> = {
   image_to_video: 'image_to_video',
   apparel_image: 'image_to_image',
+  try_on: 'try_on',
 };
 
 type AssetRecord = {
@@ -350,6 +351,28 @@ function getInputAssetIds(generation: GenerationRequest) {
   const ids = new Set<string>();
   ids.add(generation.inputAssetId);
 
+  if (generation.generationType === 'image_to_video') {
+    for (const assetId of generation.inputAssetIds ?? []) {
+      ids.add(assetId);
+    }
+
+    for (const assetId of generation.referenceAssetIds ?? []) {
+      ids.add(assetId);
+    }
+
+    for (const assetId of generation.referenceImageAssetIds ?? []) {
+      ids.add(assetId);
+    }
+
+    for (const assetId of generation.referenceVideoAssetIds ?? []) {
+      ids.add(assetId);
+    }
+
+    for (const assetId of generation.referenceAudioAssetIds ?? []) {
+      ids.add(assetId);
+    }
+  }
+
   if (generation.generationType === 'try_on') {
     if (generation.modelAssetId) {
       ids.add(generation.modelAssetId);
@@ -369,7 +392,24 @@ function buildProviderInputAssets(
   modelCatalogAsset?: ModelCatalogAssetItem | null
 ): Record<string, string | string[]> {
   switch (generation.generationType) {
-    case 'image_to_video':
+    case 'image_to_video': {
+      const inputImageUrls = (generation.inputAssetIds ?? [generation.inputAssetId])
+        .map((assetId) => assetsById.get(assetId)!.publicUrl);
+      const referenceImageUrls = (generation.referenceImageAssetIds ?? [])
+        .map((assetId) => assetsById.get(assetId)!.publicUrl);
+      const referenceVideoUrls = (generation.referenceVideoAssetIds ?? [])
+        .map((assetId) => assetsById.get(assetId)!.publicUrl);
+      const referenceAudioUrls = (generation.referenceAudioAssetIds ?? [])
+        .map((assetId) => assetsById.get(assetId)!.publicUrl);
+
+      return {
+        inputImageUrl: inputImageUrls[0],
+        ...(inputImageUrls.length > 1 ? { inputImageUrls } : {}),
+        ...(referenceImageUrls.length ? { referenceImageUrls } : {}),
+        ...(referenceVideoUrls.length ? { referenceVideoUrls } : {}),
+        ...(referenceAudioUrls.length ? { referenceAudioUrls } : {}),
+      };
+    }
     case 'apparel_image':
       return {
         inputImageUrl: assetsById.get(generation.inputAssetId)!.publicUrl,

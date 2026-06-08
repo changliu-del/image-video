@@ -43,7 +43,7 @@ export type GenerationType = (typeof GENERATION_TYPES)[number];
 export const TRY_ON_MODES = ['single', 'multi'] as const;
 export type TryOnMode = (typeof TRY_ON_MODES)[number];
 
-export const VIDEO_ASPECT_RATIOS = ['9:16', '1:1', '16:9'] as const;
+export const VIDEO_ASPECT_RATIOS = ['9:16', '3:4', '1:1', '16:9'] as const;
 export type VideoAspectRatio = (typeof VIDEO_ASPECT_RATIOS)[number];
 
 export const USER_ROLES = ['member', 'ops', 'admin'] as const;
@@ -56,6 +56,7 @@ export type EmailVerificationPurpose =
 export const TEMPLATE_TYPES = [
   'image_to_image',
   'image_to_video',
+  'try_on',
 ] as const;
 export type TemplateType = (typeof TEMPLATE_TYPES)[number];
 
@@ -247,21 +248,29 @@ export const templates = pgTable(
       .$type<Record<string, string>>()
       .notNull()
       .default(sql`'{}'::jsonb`),
+    sortOrder: integer('sort_order').notNull().default(0),
     createdAt: timestamp('created_at').notNull().defaultNow(),
     updatedAt: timestamp('updated_at').notNull().defaultNow(),
   },
   (table) => [
     index('templates_type_idx').on(table.type),
     index('templates_type_category_idx').on(table.type, table.category),
+    index('templates_type_category_sort_order_idx').on(
+      table.type,
+      table.category,
+      table.sortOrder,
+      table.id
+    ),
     index('templates_type_title_idx').on(table.type, table.title),
     index('templates_thumbnail_asset_id_idx').on(table.thumbnailAssetId),
     index('templates_preview_asset_id_idx').on(table.previewAssetId),
     check(
       'templates_type_check',
-      sql`${table.type} in ('image_to_video', 'image_to_image')`
+      sql`${table.type} in ('image_to_video', 'image_to_image', 'try_on')`
     ),
     check('templates_title_not_empty_check', sql`length(trim(${table.title})) > 0`),
     check('templates_category_not_empty_check', sql`length(trim(${table.category})) > 0`),
+    check('templates_sort_order_check', sql`${table.sortOrder} >= 0`),
   ]
 );
 

@@ -28,6 +28,16 @@ export const ALLOWED_UPLOAD_MIME_TYPES = [
   'image/png',
   'image/jpeg',
   'image/webp',
+  'video/mp4',
+  'video/webm',
+  'video/quicktime',
+  'audio/mpeg',
+  'audio/mp4',
+  'audio/wav',
+  'audio/x-wav',
+  'audio/aac',
+  'audio/ogg',
+  'audio/webm',
 ] as const;
 
 export type UploadMimeType = (typeof ALLOWED_UPLOAD_MIME_TYPES)[number];
@@ -36,14 +46,24 @@ export const UPLOAD_MIME_EXTENSIONS: Record<UploadMimeType, string> = {
   'image/png': 'png',
   'image/jpeg': 'jpg',
   'image/webp': 'webp',
+  'video/mp4': 'mp4',
+  'video/webm': 'webm',
+  'video/quicktime': 'mov',
+  'audio/mpeg': 'mp3',
+  'audio/mp4': 'm4a',
+  'audio/wav': 'wav',
+  'audio/x-wav': 'wav',
+  'audio/aac': 'aac',
+  'audio/ogg': 'ogg',
+  'audio/webm': 'webm',
 };
 
-export const VIDEO_ASPECT_RATIOS = ['9:16', '1:1', '16:9'] as const;
+export const VIDEO_ASPECT_RATIOS = ['9:16', '3:4', '1:1', '16:9'] as const;
 export type VideoAspectRatio = (typeof VIDEO_ASPECT_RATIOS)[number];
 
-export const GENERATION_DURATIONS_SECONDS = [5, 8, 10] as const;
-export type GenerationDurationSeconds =
-  (typeof GENERATION_DURATIONS_SECONDS)[number];
+export const GENERATION_DURATION_SECONDS_MIN = 4;
+export const GENERATION_DURATION_SECONDS_MAX = 15;
+export type GenerationDurationSeconds = number;
 
 export const GENERATION_TYPES = [
   'image_to_video',
@@ -85,8 +105,15 @@ const durationSecondsSchema = z.preprocess(
 
     return value;
   },
-  z.union([z.literal(5), z.literal(8), z.literal(10)])
+  z
+    .number()
+    .int()
+    .min(GENERATION_DURATION_SECONDS_MIN)
+    .max(GENERATION_DURATION_SECONDS_MAX)
 );
+
+const qualityModeSchema = z.enum(['standard', 'high']);
+const assetIdArraySchema = z.array(idStringSchema).min(1).max(8);
 
 const apparelStrengthSchema = z.preprocess(
   (value) => {
@@ -181,11 +208,18 @@ export const imageToVideoGenerationRequestSchema = z
   .object({
     ...baseGenerationFields,
     inputAssetId: idStringSchema.optional(),
+    inputAssetIds: assetIdArraySchema.optional(),
     inputAsset: idStringSchema.optional(),
     prompt: optionalCleanPromptField,
     negativePrompt: z.string().trim().max(1000).optional(),
     aspectRatio: z.enum(VIDEO_ASPECT_RATIOS).optional(),
     durationSeconds: durationSecondsSchema.optional(),
+    qualityMode: qualityModeSchema.optional(),
+    audioSync: z.boolean().optional(),
+    referenceAssetIds: assetIdArraySchema.optional(),
+    referenceImageAssetIds: assetIdArraySchema.optional(),
+    referenceVideoAssetIds: assetIdArraySchema.optional(),
+    referenceAudioAssetIds: assetIdArraySchema.optional(),
   })
   .strict()
   .superRefine((value, context) => {
@@ -200,7 +234,7 @@ export const imageToVideoGenerationRequestSchema = z
       });
     }
 
-    if (!value.inputAssetId && !value.inputAsset) {
+    if (!value.inputAssetId && !value.inputAsset && !value.inputAssetIds?.length) {
       context.addIssue({
         code: z.ZodIssueCode.custom,
         message: 'inputAssetId is required',
@@ -208,11 +242,27 @@ export const imageToVideoGenerationRequestSchema = z
       });
     }
   })
-  .transform(({ generationType, inputAsset, inputAssetId, mode, ...value }) => ({
-    ...value,
-    generationType: 'image_to_video' as const,
-    inputAssetId: inputAssetId ?? inputAsset!,
-  }));
+  .transform(
+    ({ generationType, inputAsset, inputAssetId, inputAssetIds, mode, ...value }) => {
+      const primaryInputAssetId = inputAssetId ?? inputAsset ?? inputAssetIds![0];
+      const normalizedInputAssetIds = Array.from(
+        new Set([primaryInputAssetId, ...(inputAssetIds ?? [])])
+      );
+
+      return {
+        ...value,
+        aspectRatio: value.aspectRatio ?? '9:16',
+        durationSeconds: value.durationSeconds ?? 10,
+        qualityMode: value.qualityMode ?? 'standard',
+        audioSync: value.audioSync ?? true,
+        generationType: 'image_to_video' as const,
+        inputAssetId: primaryInputAssetId,
+        ...(inputAssetIds?.length
+          ? { inputAssetIds: normalizedInputAssetIds }
+          : {}),
+      };
+    }
+  );
 
 export const apparelImageGenerationRequestSchema = z
   .object({
@@ -346,7 +396,7 @@ export type GenerationApiRequest = z.infer<typeof generationApiRequestSchema>;
 export function getCreditCostForGeneration(generation: GenerationRequest) {
   switch (generation.generationType) {
     case 'image_to_video':
-      return getCreditCostForDuration(generation.durationSeconds ?? 5);
+      return getCreditCostForDuration(generation.durationSeconds);
     case 'apparel_image':
       return getApparelImageCreditCost();
     case 'try_on':

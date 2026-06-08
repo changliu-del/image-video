@@ -72,6 +72,7 @@ async function seedCodexAdminUser() {
 
 async function seedStarterTemplateCatalog() {
   const admin = await seedCodexAdminUser();
+  const sortOrderByGroup = new Map<string, number>();
 
   for (const template of starterTemplateSeeds) {
     const templateId = deterministicUuid(`template:${template.seedKey}`);
@@ -81,6 +82,9 @@ async function seedStarterTemplateCatalog() {
     const previewAssetId = deterministicUuid(
       `asset:${template.previewAssetSeedKey}`
     );
+    const sortOrderKey = `${template.type}:${template.category}`;
+    const sortOrder = (sortOrderByGroup.get(sortOrderKey) ?? 0) + 1;
+    sortOrderByGroup.set(sortOrderKey, sortOrder);
     const now = new Date();
 
     await db
@@ -128,6 +132,7 @@ async function seedStarterTemplateCatalog() {
         previewAssetId,
         prompt: template.prompt,
         promptTranslations: template.promptTranslations ?? {},
+        sortOrder,
       })
       .onConflictDoUpdate({
         target: templates.id,

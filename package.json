@@ -10,6 +10,7 @@
     "db:setup": "pnpm dlx tsx lib/db/setup.ts",
     "db:seed": "pnpm dlx tsx lib/db/seed.ts",
     "templates:import": "jiti scripts/import-template-catalog.ts",
+    "templates:import-wanxiang": "jiti scripts/import-wanxiang-templates.ts",
     "db:generate": "drizzle-kit generate",
     "db:migrate": "drizzle-kit migrate",
     "db:studio": "drizzle-kit studio"

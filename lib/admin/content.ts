@@ -187,6 +187,13 @@ type AdminTemplatesCopy = {
   currentAsset: string;
   uploadAsset: string;
   tags: string;
+  reorder: string;
+  orderModalTitle: string;
+  orderDescription: string;
+  saveOrder: string;
+  orderEmpty: string;
+  moveUp: string;
+  moveDown: string;
   selectSavedTemplate: string;
   confirmDelete: (name: string) => string;
   columns: Record<string, string>;
@@ -683,6 +690,14 @@ export const adminContent: Record<AdminLocale, AdminContent> = {
       currentAsset: 'Ativo atual',
       uploadAsset: 'Enviar ativo',
       tags: 'Tags',
+      reorder: 'Ordenar',
+      orderModalTitle: 'Ordenar templates',
+      orderDescription:
+        'A ordem vale apenas dentro do tipo e da categoria selecionados.',
+      saveOrder: 'Salvar ordem',
+      orderEmpty: 'Nenhum template neste tipo e categoria.',
+      moveUp: 'Mover para cima',
+      moveDown: 'Mover para baixo',
       selectSavedTemplate: 'Selecione um template salvo e um arquivo primeiro.',
       confirmDelete: (name) => `Excluir template ${name}?`,
       columns: {
@@ -691,6 +706,7 @@ export const adminContent: Record<AdminLocale, AdminContent> = {
         titleTranslations: 'Traducoes do titulo',
         type: 'Tipo',
         category: 'Categoria',
+        sortOrder: 'Ordem',
         prompt: 'Prompt',
         updatedAt: 'Atualizado em',
       },
@@ -705,6 +721,7 @@ export const adminContent: Record<AdminLocale, AdminContent> = {
         previewUrl: 'URL do preview',
         prompt: 'Prompt',
         promptTranslations: 'Traducoes do prompt',
+        sortOrder: 'Ordem',
       },
       categoryOptions: {
         image_to_image: 'Imagem',
@@ -715,6 +732,8 @@ export const adminContent: Record<AdminLocale, AdminContent> = {
         save: 'Falha ao salvar',
         upload: 'Falha no envio',
         delete: 'Falha ao excluir',
+        loadOrder: 'Falha ao carregar ordem',
+        saveOrder: 'Falha ao salvar ordem',
         prepareUpload: 'Não foi possível preparar o envio',
         completeUpload: 'Não foi possível concluir o envio',
       },
@@ -850,7 +869,7 @@ export const adminContent: Record<AdminLocale, AdminContent> = {
 
 ## Uso
 
-Templates agora sao registros pequenos de imagem para video. A tabela de templates guarda type, categoria de negocio, thumbnail_asset_id, preview_asset_id e prompt. A biblioteca da home reutiliza os mesmos registros do workbench de imagem para video, enquanto a API entrega URLs prontas para a interface.
+Templates agora sao registros pequenos de imagem para video. A tabela de templates guarda type, categoria de negocio, thumbnail_asset_id, preview_asset_id, prompt e sort_order. A biblioteca da home reutiliza os mesmos registros do workbench de imagem para video, enquanto a API entrega URLs prontas para a interface.
 
 ## Onde operar e conferir
 
@@ -859,8 +878,9 @@ Templates agora sao registros pequenos de imagem para video. A tabela de templat
 ![Admin template list](/admin-help/placements/template-admin-list.png)
 
 - Use a busca para encontrar por id, type, category ou prompt antes de criar outro template parecido.
-- A tabela mostra id, type, category, prompt e updated_at para decidir o que revisar primeiro.
+- A tabela mostra id, type, category, ordem, prompt e updated_at para decidir o que revisar primeiro.
 - O botao Criar abre o formulario. Upload de preview fica dentro do detalhe ou edicao.
+- O botao Ordenar abre a lista do type e category escolhidos para ajustar a sequencia visivel ao usuario.
 
 ### Formulario de criacao e edicao
 
@@ -869,6 +889,7 @@ Templates agora sao registros pequenos de imagem para video. A tabela de templat
 - Preencha type, category, thumbnail_asset_id, preview_asset_id e prompt.
 - type=image_to_video e o valor usado pela home e pelo workbench de video.
 - category e a classificacao de negocio dentro desse type, por exemplo product, fashion ou food.
+- sort_order e ajustado pela acao Ordenar e vale apenas dentro do mesmo type e category.
 - Em templates ja salvos, envie ou selecione a miniatura e o preview para explicar o resultado esperado.
 
 ### Biblioteca de templates no frontend
@@ -892,6 +913,7 @@ Templates agora sao registros pequenos de imagem para video. A tabela de templat
 - ID: identificador gerado pelo sistema para links, tarefas e busca. Use para localizar um template em suporte ou investigacao.
 - type: tipo de capacidade. Hoje a home e o workbench usam type=image_to_video.
 - category: classificacao de negocio. Nao use category para representar pagina ou workbench.
+- sort_order: ordem do template dentro do mesmo type e category; a API aplica a ordem na lista, mas nao publica esse campo.
 - thumbnail_asset_id: asset da miniatura da lista; a API publica como thumbnailUrl.
 - preview_asset_id: asset do video ou imagem principal; a API de detalhe publica como previewUrl.
 - prompt: instrucao real de geracao; nao publique texto temporario.
@@ -906,12 +928,12 @@ Templates agora sao registros pequenos de imagem para video. A tabela de templat
           purpose:
             'Manter templates mínimos de imagem para vídeo usados pela home e pelo workbench de vídeo.',
           dailyActions: [
-            'Criar ou editar templates com type, category, thumbnail_asset_id, preview_asset_id e prompt.',
+            'Criar, editar e ordenar templates por type e category.',
             'Enviar ou selecionar miniatura e preview para explicar o resultado.',
             'Conferir a biblioteca da home e o workbench de vídeo depois de salvar.',
           ],
           keyFields: [
-            'id, type, category, created_at e updated_at.',
+            'id, type, category, sort_order, created_at e updated_at.',
             'thumbnail_asset_id e preview_asset_id.',
             'prompt.',
           ],
@@ -1420,6 +1442,14 @@ Ativos da biblioteca sao midias reutilizaveis. O upload cria o registro no Admin
       currentAsset: 'Current asset',
       uploadAsset: 'Upload asset',
       tags: 'Tags',
+      reorder: 'Reorder',
+      orderModalTitle: 'Template order',
+      orderDescription:
+        'Order only applies inside the selected type and category.',
+      saveOrder: 'Save order',
+      orderEmpty: 'No templates in this type and category.',
+      moveUp: 'Move up',
+      moveDown: 'Move down',
       selectSavedTemplate: 'Select a saved template and a file first.',
       confirmDelete: (name) => `Delete template ${name}?`,
       columns: {
@@ -1428,6 +1458,7 @@ Ativos da biblioteca sao midias reutilizaveis. O upload cria o registro no Admin
         titleTranslations: 'Title translations',
         type: 'Type',
         category: 'Category',
+        sortOrder: 'Order',
         prompt: 'Prompt',
         updatedAt: 'Updated At',
       },
@@ -1442,6 +1473,7 @@ Ativos da biblioteca sao midias reutilizaveis. O upload cria o registro no Admin
         previewUrl: 'Preview URL',
         prompt: 'Prompt',
         promptTranslations: 'Prompt translations',
+        sortOrder: 'Order',
       },
       categoryOptions: {
         image_to_image: 'Image',
@@ -1452,6 +1484,8 @@ Ativos da biblioteca sao midias reutilizaveis. O upload cria o registro no Admin
         save: 'Save failed',
         upload: 'Upload failed',
         delete: 'Delete failed',
+        loadOrder: 'Order could not be loaded',
+        saveOrder: 'Order could not be saved',
         prepareUpload: 'Upload could not be prepared',
         completeUpload: 'Upload could not be completed',
       },
@@ -1587,7 +1621,7 @@ Ativos da biblioteca sao midias reutilizaveis. O upload cria o registro no Admin
 
 ## Purpose
 
-Templates are now small image-to-video records. The templates table stores type, business category, thumbnail_asset_id, preview_asset_id, and prompt. The homepage template library reuses the same records as the image-to-video workbench, while the API returns ready-to-render URLs.
+Templates are now small image-to-video records. The templates table stores type, business category, thumbnail_asset_id, preview_asset_id, prompt, and sort_order. The homepage template library reuses the same records as the image-to-video workbench, while the API returns ready-to-render URLs.
 
 ## Where to operate and verify
 
@@ -1596,8 +1630,9 @@ Templates are now small image-to-video records. The templates table stores type,
 ![Admin template list](/admin-help/placements/template-admin-list.png)
 
 - Search by id, type, category, or prompt before creating another similar template.
-- The table shows id, type, category, prompt, and updated_at so operators can decide what to review first.
+- The table shows id, type, category, order, prompt, and updated_at so operators can decide what to review first.
 - Create opens the form. Preview uploads happen from detail or edit views.
+- Reorder opens the selected type and category so operators can adjust the visible sequence.
 
 ### Create and edit form
 
@@ -1606,6 +1641,7 @@ Templates are now small image-to-video records. The templates table stores type,
 - Fill type, category, thumbnail_asset_id, preview_asset_id, and prompt.
 - type=image_to_video is the value used by the homepage and video workbench.
 - category is the business classification inside that type, for example product, fashion, or food.
+- sort_order is changed through Reorder and only applies inside the same type and category.
 - For saved templates, upload or select thumbnail and preview media to explain the expected result.
 
 ### Frontend template library
@@ -1629,6 +1665,7 @@ Templates are now small image-to-video records. The templates table stores type,
 - ID: system-generated identifier for links, tasks, and search. Use it to locate a template in support or investigation.
 - type: capability type. Today the homepage and workbench use type=image_to_video.
 - category: business classification. Do not use category to represent a page or workbench.
+- sort_order: order inside the same type and category; the API applies it to list results but does not publish the field.
 - thumbnail_asset_id: asset used for the list thumbnail; the API publishes it as thumbnailUrl.
 - preview_asset_id: asset used for the main video or image; the detail API publishes it as previewUrl.
 - prompt: real generation instruction; do not publish placeholder text.
@@ -1643,12 +1680,12 @@ Templates are now small image-to-video records. The templates table stores type,
           purpose:
             'Maintain minimal image-to-video templates used by the homepage and video workbench.',
           dailyActions: [
-            'Create or edit templates with type, category, thumbnail_asset_id, preview_asset_id, and prompt.',
+            'Create, edit, and reorder templates by type and category.',
             'Upload or select thumbnail and preview media to explain the result.',
             'Check the homepage library and video workbench after saving.',
           ],
           keyFields: [
-            'id, type, category, created_at, and updated_at.',
+            'id, type, category, sort_order, created_at, and updated_at.',
             'thumbnail_asset_id and preview_asset_id.',
             'prompt.',
           ],
@@ -2155,6 +2192,14 @@ Library assets are reusable media. Uploading creates the Admin record; the categ
       currentAsset: '当前素材',
       uploadAsset: '上传素材',
       tags: '标签',
+      reorder: '调整顺序',
+      orderModalTitle: '模板顺序',
+      orderDescription:
+        '顺序只在当前选择的类型和类目内生效，不会影响其他类型或类目。',
+      saveOrder: '保存顺序',
+      orderEmpty: '当前类型和类目下暂无模板。',
+      moveUp: '上移',
+      moveDown: '下移',
       selectSavedTemplate: '请先选择已保存的模板和文件。',
       confirmDelete: (name) => `确认删除模板 ${name}？`,
       columns: {
@@ -2163,6 +2208,7 @@ Library assets are reusable media. Uploading creates the Admin record; the categ
         titleTranslations: '标题翻译',
         type: '类型',
         category: '类目',
+        sortOrder: '顺序',
         prompt: '提示词',
         updatedAt: '更新时间',
       },
@@ -2177,6 +2223,7 @@ Library assets are reusable media. Uploading creates the Admin record; the categ
         previewUrl: '预览 URL',
         prompt: '提示词',
         promptTranslations: '提示词翻译',
+        sortOrder: '顺序',
       },
       categoryOptions: {
         image_to_image: '图片',
@@ -2187,6 +2234,8 @@ Library assets are reusable media. Uploading creates the Admin record; the categ
         save: '保存失败',
         upload: '上传失败',
         delete: '删除失败',
+        loadOrder: '加载顺序失败',
+        saveOrder: '保存顺序失败',
         prepareUpload: '无法准备上传',
         completeUpload: '无法完成上传',
       },
@@ -2334,6 +2383,7 @@ Library assets are reusable media. Uploading creates the Admin record; the categ
 - 模板保存后要按用户路径检查：先看前台模板库页面是否方便发现和理解，再看对应创作工作台能否正确选择并生成。
 - type 决定模板能力类型；category 是业务分类，不表示页面或工作台入口。
 - 缩略图和主预览都来自 assets 表，模板表只保存 thumbnail_asset_id 和 preview_asset_id。
+- sort_order 控制同一个 type 和 category 下的展示顺序，通过“调整顺序”维护。
 - API 对前台输出 thumbnailUrl、previewUrl 和 prompt，前台不直接依赖模板表里的 asset id。
 
 ## 二、系统整体界面介绍
@@ -2349,7 +2399,7 @@ Library assets are reusable media. Uploading creates the Admin record; the categ
 
 ![模板管理列表页](/admin-help/placements/template-admin-list.png)
 
-模板管理列表页是运营每天查找、创建和复核模板的入口。截图里本地环境暂无模板，但页面结构就是线上运营要看的结构：搜索框用于按 id、type、category 或 prompt 定位模板；“创建”用于新增模板；列表列位用于快速判断模板类型、业务类目、提示词和 updated_at；操作列用于查看、编辑、上传预览媒体或删除。
+模板管理列表页是运营每天查找、创建、排序和复核模板的入口。截图里本地环境暂无模板，但页面结构就是线上运营要看的结构：搜索框用于按 id、type、category 或 prompt 定位模板；“创建”用于新增模板；“调整顺序”用于维护当前 type 和 category 下的模板展示顺序；列表列位用于快速判断模板类型、业务类目、顺序、提示词和 updated_at；操作列用于查看、编辑、上传预览媒体或删除。
 
 运营在列表页先看三件事：是否已经有相似模板、type 是否是当前要展示的能力、category 是否是清晰的业务分类。不要把 category 当成页面或工作台入口，首页模板库和图生视频工作台复用 type=image_to_video 这一批模板。
 
@@ -2357,7 +2407,7 @@ Library assets are reusable media. Uploading creates the Admin record; the categ
 
 ![模板编辑表单](/admin-help/placements/template-admin-form.png)
 
-模板编辑表单只维护最小字段：type、category、thumbnail_asset_id、preview_asset_id 和 prompt。缩略图和主预览必须先作为 assets 上传或被选择，再由模板引用对应 asset id。
+模板编辑表单维护 type、category、thumbnail_asset_id、preview_asset_id 和 prompt。缩略图和主预览必须先作为 assets 上传或被选择，再由模板引用对应 asset id。排序不在单个编辑表单里改，通过列表上的“调整顺序”按 type/category 分组保存。
 
 ### 前台模板库页面介绍
 
@@ -2378,6 +2428,7 @@ Library assets are reusable media. Uploading creates the Admin record; the categ
 - 新建模板时填写 type、category、thumbnail_asset_id、preview_asset_id 和 prompt。
 - type 控制能力类型；当前首页模板库和图生视频都用 type=image_to_video。
 - category 是业务分类，例如 product、fashion、food。
+- sort_order 由“调整顺序”维护，只在同一个 type 和 category 下生效。
 - 需要解释效果时，上传或选择缩略图 asset 和 preview asset。
 - 模板保存后要按用户路径检查：首页模板库能看到，图生视频工作台能选中并带入 prompt。
 
@@ -2386,6 +2437,7 @@ Library assets are reusable media. Uploading creates the Admin record; the categ
 - ID：系统生成的模板唯一标识，用于跳转、任务记录和定位。创建后自动产生，运营复制给技术或客服定位即可。
 - type：能力类型。当前首页模板库和图生视频工作台都读取 type=image_to_video。
 - category：业务分类。category 是业务分类，不表示首页、工作台或展示位置。
+- sort_order：同一个 type 和 category 内的模板顺序。前台列表会应用这个顺序，但不会展示这个字段。
 - thumbnail_asset_id：卡片缩略图对应的 assets.id，列表 API 会输出为 thumbnailUrl。
 - preview_asset_id：模板主预览对应的 assets.id，详情 API 会输出为 previewUrl。
 - prompt：真实生成提示词，是模板效果的核心。不能只写展示文案，必须能指导真实生成。
@@ -2394,6 +2446,7 @@ Library assets are reusable media. Uploading creates the Admin record; the categ
 ### 保存和验证模板
 
 - 保存前检查 type、category、thumbnail_asset_id、preview_asset_id 和 prompt 是否完整。
+- 调整顺序前先确认 type 和 category，保存后只影响这一组模板。
 - 保存后到首页模板库和图生视频工作台验证是否出现。
 - 过期或错误模板可以删除；删除前确认没有还需要排查的历史任务。
 
@@ -2401,11 +2454,13 @@ Library assets are reusable media. Uploading creates the Admin record; the categ
 
 ### 如何管理模板
 
-新增模板：进入“模板”页面，点击创建，填写 type、category、thumbnail_asset_id、preview_asset_id 和 prompt，并确认两个 asset 都已上传完成。
+新增模板：进入“模板”页面，点击创建，填写 type、category、thumbnail_asset_id、preview_asset_id 和 prompt，并确认两个 asset 都已上传完成。新模板会追加到当前 type/category 的末尾。
 
 查询模板：通过 id、type、category 或 prompt 查找模板。找不到时先确认是否应该是 type=image_to_video。
 
 修改模板：先判断要改的是媒体还是生成提示。媒体通常替换 thumbnail_asset_id 或 preview_asset_id；生成效果通常修改 prompt；归类问题修改 category。
+
+调整模板顺序：点击“调整顺序”，选择 type 和 category，用上移/下移调整列表，再保存顺序。不要跨 type 或 category 排序。
 
 删除模板：删除前确认模板不是当前活动入口，也不会影响历史任务排查。
 
@@ -2413,13 +2468,14 @@ Library assets are reusable media. Uploading creates the Admin record; the categ
           purpose:
             '维护首页模板库和图生视频工作台共用的最小模板记录。',
           dailyActions: [
-            '点击“创建”维护 type、category、thumbnail_asset_id、preview_asset_id 和 prompt。',
+            '点击“创建”维护模板内容，点击“调整顺序”维护同一 type/category 下的展示顺序。',
             '进入已保存模板，上传或选择缩略图和主预览，让用户能看懂结果预期。',
             '保存后到首页模板库和图生视频工作台查看模板是否出现。',
           ],
           keyFields: [
             'ID：系统生成的模板唯一标识，用于跳转、任务记录和定位。',
             'type 和 category：type 是能力类型，category 是业务分类。',
+            'sort_order：同一 type/category 下的展示顺序。',
             'thumbnail_asset_id 和 preview_asset_id：分别引用卡片缩略图和主预览 asset。',
             'prompt：真正给生成流程使用的默认提示词。',
             'created_at 和 updated_at：用于判断创建和最近修改时间。',

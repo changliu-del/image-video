@@ -1,17 +1,14 @@
-export type BillableGenerationDurationSeconds = 5 | 8 | 10;
+export type BillableGenerationDurationSeconds = number;
 export type BillableTryOnMode = 'single' | 'multi';
 
 export function getCreditCostForDuration(
   durationSeconds: BillableGenerationDurationSeconds
 ) {
-  switch (durationSeconds) {
-    case 5:
-      return 10;
-    case 8:
-      return 18;
-    case 10:
-      return 25;
+  if (!Number.isInteger(durationSeconds) || durationSeconds < 4 || durationSeconds > 15) {
+    throw new Error(`Unsupported generation duration: ${durationSeconds}`);
   }
+
+  return Math.max(8, Math.round(durationSeconds * 3 - 5));
 }
 
 export function getApparelImageCreditCost() {

@@ -37,6 +37,7 @@ import {
   bannerCopy,
   commonWorkbenchCopy,
 } from '@/components/create/workbench-copy';
+import { TemplatePromptPicker } from '@/components/create/template-prompt-picker';
 import {
   getLibraryItemAssetId as getItemAssetId,
   getLibraryItemImage as getItemImage,
@@ -48,6 +49,7 @@ import {
 import { refreshDashboardUser } from '@/lib/dashboard/user-cache';
 import { useDashboardLocale } from '@/lib/dashboard/use-dashboard-locale';
 import { getApparelImageCreditCost } from '@/lib/generations/credit-costs';
+import type { PublicTemplateDetailItem } from '@/lib/templates/public-client';
 import { cn } from '@/lib/utils';
 
 type AspectRatio = '9:16' | '1:1' | '16:9';
@@ -383,12 +385,14 @@ export function ApparelWorkbench({
     useState<LibraryItem | null>(null);
   const [isLoadingLibrary, setIsLoadingLibrary] = useState(true);
   const [creationMode, setCreationMode] = useState<CreationMode>('quick');
-  const [activeIdeaGroup, setActiveIdeaGroup] = useState(0);
   const [modelType, setModelType] = useState<ApparelModelType>('fashion_model');
   const [scene, setScene] = useState<ApparelScene>('minimal_studio');
   const [style, setStyle] = useState<ApparelStyle>('clean_commercial');
   const [prompt, setPrompt] = useState(
     () => starterPrompt || copy.defaultPrompt
+  );
+  const [selectedTemplateId, setSelectedTemplateId] = useState<string | null>(
+    null
   );
   const [negativePrompt, setNegativePrompt] = useState(() => copy.defaultNegativePrompt);
   const [aspectRatio, setAspectRatio] = useState<AspectRatio>('9:16');
@@ -426,7 +430,6 @@ export function ApparelWorkbench({
     copy.modelTypes[modelTypeValues.indexOf(modelType)] ?? modelType;
   const selectedSceneLabel = copy.sceneOptions[sceneValues.indexOf(scene)] ?? scene;
   const selectedStyleLabel = copy.stylePresets[styleValues.indexOf(style)] ?? style;
-  const activePromptGroup = copy.promptIdeaGroups[activeIdeaGroup] ?? copy.promptIdeaGroups[0];
   const selectableAssets = useMemo(
     () => assets.filter((item) => getItemAssetId(item) && getItemImage(item)),
     [assets]
@@ -618,6 +621,7 @@ export function ApparelWorkbench({
           aspectRatio,
           strength,
           variants,
+          ...(selectedTemplateId ? { templateId: selectedTemplateId } : {}),
         },
         commonCopy.generationStartError
       );
@@ -646,8 +650,16 @@ export function ApparelWorkbench({
   }
 
   function applyPromptIdea(idea: string) {
+    setSelectedTemplateId(null);
     setCreationMode('quick');
     setPrompt(idea);
+  }
+
+  function applyTemplate(template: PublicTemplateDetailItem) {
+    setError(null);
+    setSelectedTemplateId(template.id);
+    setCreationMode('advanced');
+    setPrompt(template.prompt);
   }
 
   function applyLibraryAsset(asset: LibraryItem | null | undefined) {
@@ -728,7 +740,9 @@ export function ApparelWorkbench({
               type="button"
               onClick={() => {
                 setCreationMode('quick');
-                applyPromptIdea(activePromptGroup.prompts[0] ?? copy.defaultPrompt);
+                applyPromptIdea(
+                  copy.promptIdeaGroups[0]?.prompts[0] ?? copy.defaultPrompt
+                );
               }}
               className={cn(
                 'h-11 flex-1 rounded-l-lg text-sm font-bold transition',
@@ -768,39 +782,16 @@ export function ApparelWorkbench({
           <div className="mt-4">
             <div className="mb-2 text-sm">
               <span className="font-bold text-gray-900">{copy.promptIdeas}</span>
+              <span className="ml-2 text-xs font-bold text-indigo-500">
+                {copy.addFromTemplate}
+              </span>
             </div>
-            <div className="grid grid-cols-[78px_1fr] gap-3">
-              <div className="space-y-2 text-sm font-semibold text-gray-500">
-                {copy.promptIdeaGroups.map((group, index) => (
-                  <button
-                    key={group.category}
-                    type="button"
-                    onClick={() => {
-                      setActiveIdeaGroup(index);
-                      applyPromptIdea(group.prompts[0] ?? copy.defaultPrompt);
-                    }}
-                    className={cn(
-                      'block w-full rounded-lg px-2 py-1 text-left',
-                      activeIdeaGroup === index && 'bg-indigo-50 text-indigo-600'
-                    )}
-                  >
-                    {group.category}
-                  </button>
-                ))}
-              </div>
-              <div className="grid grid-cols-2 gap-2">
-                {activePromptGroup.prompts.map((idea) => (
-                  <button
-                    key={idea}
-                    type="button"
-                    onClick={() => applyPromptIdea(idea)}
-                    className="min-h-12 rounded-lg border border-gray-200 bg-white px-3 py-2 text-left text-xs font-semibold leading-5 text-gray-600 transition hover:border-indigo-200 hover:text-indigo-600"
-                  >
-                    {idea}
-                  </button>
-                ))}
-              </div>
-            </div>
+            <TemplatePromptPicker
+              type="image_to_image"
+              selectedTemplateId={selectedTemplateId}
+              disabled={isSubmitting}
+              onApply={applyTemplate}
+            />
           </div>
         </PanelSection>
 

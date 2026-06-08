@@ -1,4 +1,4 @@
-export const VIDEO_ASPECT_RATIOS = ['9:16', '1:1', '16:9'] as const;
+export const VIDEO_ASPECT_RATIOS = ['9:16', '3:4', '1:1', '16:9'] as const;
 
 export type VideoAspectRatio = (typeof VIDEO_ASPECT_RATIOS)[number];
 

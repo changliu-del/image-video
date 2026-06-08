@@ -1,5 +1,6 @@
-import { redirect } from 'next/navigation';
-import { firstDashboardParam, withDashboardLocale } from '@/lib/dashboard/locale-url';
+import { WorkbenchHome } from '@/components/create/workbench-home';
+import { normalizeDashboardLocale } from '@/lib/dashboard/content';
+import { firstDashboardParam } from '@/lib/dashboard/locale-url';
 
 type CreatePageProps = {
   searchParams?: Promise<{
@@ -9,5 +10,7 @@ type CreatePageProps = {
 
 export default async function CreatePage({ searchParams }: CreatePageProps) {
   const params = await searchParams;
-  redirect(withDashboardLocale('/create/video', firstDashboardParam(params?.locale)));
+  const locale = normalizeDashboardLocale(firstDashboardParam(params?.locale));
+
+  return <WorkbenchHome locale={locale} />;
 }

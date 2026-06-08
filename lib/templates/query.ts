@@ -1,6 +1,6 @@
 import 'server-only';
 
-import { asc, eq, ilike, or, sql } from 'drizzle-orm';
+import { asc, eq, sql } from 'drizzle-orm';
 import { alias } from 'drizzle-orm/pg-core';
 import { db } from '@/lib/db/drizzle';
 import { assets, templates } from '@/lib/db/schema';
@@ -17,6 +17,9 @@ import {
 
 const thumbnailAsset = alias(assets, 'template_thumbnail_asset');
 const previewAsset = alias(assets, 'template_preview_asset');
+const templateCatalogMetadataCacheKey =
+  '__imageVideoPublishedTemplateCatalogMetadataCache';
+const templateCatalogMetadataCacheTtlMs = 5 * 60 * 1000;
 
 type TemplateListRow = {
   id: string;
@@ -25,14 +28,27 @@ type TemplateListRow = {
   type: TemplateType;
   category: string;
   thumbnailAssetId: string;
+  previewAssetId: string;
+  sortOrder: number;
   createdAt: Date;
   updatedAt: Date;
 };
 
 type TemplateDetailRow = TemplateListRow & {
-  previewAssetId: string;
   prompt: string;
   promptTranslations: Record<string, string>;
+};
+
+type CachedPublishedTemplateMetadata = {
+  categories: string[];
+  expiresAt: number;
+  rows: TemplateDetailRow[];
+};
+
+type PublishedTemplateCatalogCacheState = {
+  records: Map<TemplateType, CachedPublishedTemplateMetadata>;
+  pending: Map<TemplateType, Promise<CachedPublishedTemplateMetadata>>;
+  version: number;
 };
 
 export type ListPublishedTemplatesInput = {
@@ -54,6 +70,22 @@ export type PublishedTemplatesResult = {
 };
 
 const supportedLocales = new Set<Locale>(['pt', 'en', 'zh']);
+
+function templateCatalogCacheState() {
+  const globalScope = globalThis as typeof globalThis & {
+    [templateCatalogMetadataCacheKey]?: PublishedTemplateCatalogCacheState;
+  };
+
+  if (!globalScope[templateCatalogMetadataCacheKey]) {
+    globalScope[templateCatalogMetadataCacheKey] = {
+      records: new Map(),
+      pending: new Map(),
+      version: 0,
+    };
+  }
+
+  return globalScope[templateCatalogMetadataCacheKey]!;
+}
 
 function normalizeTemplateLocale(value: string | null | undefined): Locale {
   return value && supportedLocales.has(value as Locale)
@@ -78,8 +110,10 @@ function mapTemplateListRow(
     id: row.id,
     title: resolveLocalizedText(row.title, row.titleTranslations, locale),
     type: row.type,
-    category: row.category,
+    category:
+      normalizeTemplateCategoryForType(row.type, row.category) ?? row.category,
     thumbnailUrl: `/api/template-media/${row.thumbnailAssetId}`,
+    previewUrl: `/api/template-media/${row.previewAssetId}`,
     createdAt: row.createdAt.toISOString(),
     updatedAt: row.updatedAt.toISOString(),
   };
@@ -91,7 +125,6 @@ function mapTemplateDetailRow(
 ): TemplateCatalogDetailItem {
   return {
     ...mapTemplateListRow(row, locale),
-    previewUrl: `/api/template-media/${row.previewAssetId}`,
     prompt: resolveLocalizedText(row.prompt, row.promptTranslations, locale),
   };
 }
@@ -112,53 +145,6 @@ function normalizePageSize(value: number | undefined) {
   return Math.min(48, Math.max(1, value));
 }
 
-function buildWhere(input: {
-  search: string;
-  type: TemplateType;
-  category?: string;
-}) {
-  const conditions = [
-    eq(templates.type, input.type),
-    eq(thumbnailAsset.status, 'uploaded' as const),
-  ];
-
-  if (input.category) {
-    conditions.push(eq(templates.category, input.category));
-  }
-
-  if (input.search) {
-    const search = `%${input.search}%`;
-    conditions.push(
-      or(
-        ilike(templates.category, search),
-        ilike(templates.title, search),
-        ilike(templates.prompt, search),
-        sql`${templates.titleTranslations}::text ilike ${search}`,
-        sql`${templates.promptTranslations}::text ilike ${search}`,
-        sql`${templates.id}::text ilike ${search}`
-      )!
-    );
-  }
-
-  return sql.join(conditions, sql` and `);
-}
-
-function baseTemplateListQuery() {
-  return db
-    .select({
-      id: templates.id,
-      title: templates.title,
-      titleTranslations: templates.titleTranslations,
-      type: templates.type,
-      category: templates.category,
-      thumbnailAssetId: thumbnailAsset.id,
-      createdAt: templates.createdAt,
-      updatedAt: templates.updatedAt,
-    })
-    .from(templates)
-    .innerJoin(thumbnailAsset, eq(templates.thumbnailAssetId, thumbnailAsset.id));
-}
-
 function baseTemplateDetailQuery() {
   return db
     .select({
@@ -171,6 +157,7 @@ function baseTemplateDetailQuery() {
       previewAssetId: previewAsset.id,
       prompt: templates.prompt,
       promptTranslations: templates.promptTranslations,
+      sortOrder: templates.sortOrder,
       createdAt: templates.createdAt,
       updatedAt: templates.updatedAt,
     })
@@ -194,22 +181,137 @@ function sortTemplateCategories(type: TemplateType, categories: string[]) {
   });
 }
 
-async function listTemplateCategoriesForType(type: TemplateType) {
-  const rows = await db
-    .select({ category: templates.category })
-    .from(templates)
-    .innerJoin(thumbnailAsset, eq(templates.thumbnailAssetId, thumbnailAsset.id))
-    .where(
-      sql`${templates.type} = ${type}
-        and ${thumbnailAsset.status} = 'uploaded'`
-    )
-    .groupBy(templates.category)
-    .orderBy(asc(templates.category));
+function sortTemplateRows<T extends TemplateListRow>(type: TemplateType, rows: T[]) {
+  const preferredCategories = getTemplateCategoriesForType(type);
+  const preferredRank = new Map(
+    preferredCategories.map((category, index) => [category, index])
+  );
+
+  return [...rows].sort((left, right) => {
+    const leftCategory =
+      normalizeTemplateCategoryForType(left.type, left.category) ?? left.category;
+    const rightCategory =
+      normalizeTemplateCategoryForType(right.type, right.category) ?? right.category;
+    const leftRank =
+      preferredRank.get(leftCategory) ?? Number.POSITIVE_INFINITY;
+    const rightRank =
+      preferredRank.get(rightCategory) ?? Number.POSITIVE_INFINITY;
+
+    if (leftRank !== rightRank) return leftRank - rightRank;
+    if (leftCategory !== rightCategory) {
+      return leftCategory.localeCompare(rightCategory);
+    }
+    if (left.sortOrder !== right.sortOrder) {
+      return left.sortOrder - right.sortOrder;
+    }
+
+    const createdAtDelta =
+      left.createdAt.getTime() - right.createdAt.getTime();
+    if (createdAtDelta !== 0) return createdAtDelta;
+
+    return left.id.localeCompare(right.id);
+  });
+}
+
+function categoriesFromTemplateRows(type: TemplateType, rows: TemplateDetailRow[]) {
+  const preferredCategories = getTemplateCategoriesForType(type);
+  if (preferredCategories.length > 0) {
+    return [...preferredCategories];
+  }
 
   return sortTemplateCategories(
     type,
-    rows.map((row) => row.category)
+    Array.from(new Set(rows.map((row) => row.category)))
   );
+}
+
+function templateMatchesSearch(row: TemplateDetailRow, search: string) {
+  if (!search) return true;
+
+  const normalized = search.toLowerCase();
+  const values = [
+    row.category,
+    row.id,
+    row.prompt,
+    row.title,
+    ...Object.values(row.promptTranslations ?? {}),
+    ...Object.values(row.titleTranslations ?? {}),
+  ];
+
+  return values.some((value) => value.toLowerCase().includes(normalized));
+}
+
+async function loadPublishedTemplateRowsForType(type: TemplateType) {
+  return baseTemplateDetailQuery()
+    .where(
+      sql`${templates.type} = ${type}
+        and ${thumbnailAsset.status} = 'uploaded'
+        and ${previewAsset.status} = 'uploaded'`
+    )
+    .orderBy(
+      asc(templates.category),
+      asc(templates.sortOrder),
+      asc(templates.createdAt),
+      asc(templates.id)
+    );
+}
+
+async function getCachedPublishedTemplateMetadataForType(type: TemplateType) {
+  const state = templateCatalogCacheState();
+  const now = Date.now();
+  const cached = state.records.get(type);
+
+  if (cached && cached.expiresAt > now) {
+    return cached;
+  }
+
+  const pending = state.pending.get(type);
+  if (pending) {
+    return pending;
+  }
+
+  const version = state.version;
+  const pendingLoad = loadPublishedTemplateRowsForType(type)
+    .then((rows) => {
+      const sortedRows = sortTemplateRows(type, rows);
+      const metadata: CachedPublishedTemplateMetadata = {
+        categories: categoriesFromTemplateRows(type, sortedRows),
+        expiresAt: Date.now() + templateCatalogMetadataCacheTtlMs,
+        rows: sortedRows,
+      };
+
+      if (state.version === version) {
+        state.records.set(type, metadata);
+      }
+
+      return metadata;
+    })
+    .finally(() => {
+      state.pending.delete(type);
+    });
+
+  state.pending.set(type, pendingLoad);
+  return pendingLoad;
+}
+
+function getCachedTemplateDetailById(id: string) {
+  const state = templateCatalogCacheState();
+  const now = Date.now();
+
+  for (const cached of state.records.values()) {
+    if (cached.expiresAt <= now) continue;
+    const row = cached.rows.find((template) => template.id === id);
+    if (row) return row;
+  }
+
+  return null;
+}
+
+export function clearPublishedTemplateCatalogCache() {
+  const state = templateCatalogCacheState();
+  state.version += 1;
+  state.records.clear();
+  state.pending.clear();
 }
 
 export async function listPublishedTemplates(
@@ -225,11 +327,12 @@ export async function listPublishedTemplates(
     ? (normalizeTemplateCategoryForType(type, requestedCategory) ?? undefined)
     : undefined;
 
+  const metadata = await getCachedPublishedTemplateMetadataForType(type);
+
   if (requestedCategory && !category) {
-    const categories = await listTemplateCategoriesForType(type);
     return {
       list: [],
-      categories,
+      categories: metadata.categories,
       total: 0,
       page,
       pageSize,
@@ -237,31 +340,22 @@ export async function listPublishedTemplates(
     };
   }
 
-  const where = buildWhere({
-    type,
-    category,
-    search,
-  });
+  const filteredRows: TemplateDetailRow[] = [];
+  for (const row of metadata.rows) {
+    const rowCategory =
+      normalizeTemplateCategoryForType(row.type, row.category) ?? row.category;
+    if (category && rowCategory !== category) continue;
+    if (!templateMatchesSearch(row, search)) continue;
+    filteredRows.push(row);
+  }
 
-  const [rows, totalRows, categories] = await Promise.all([
-    baseTemplateListQuery()
-      .where(where)
-      .orderBy(asc(templates.createdAt), asc(templates.id))
-      .limit(pageSize)
-      .offset((page - 1) * pageSize),
-    db
-      .select({ count: sql<number>`count(*)::int` })
-      .from(templates)
-      .innerJoin(thumbnailAsset, eq(templates.thumbnailAssetId, thumbnailAsset.id))
-      .where(where),
-    listTemplateCategoriesForType(type),
-  ]);
-
-  const total = Number(totalRows[0]?.count ?? 0);
+  const total = filteredRows.length;
+  const offset = (page - 1) * pageSize;
+  const rows = filteredRows.slice(offset, offset + pageSize);
 
   return {
     list: rows.map((row) => mapTemplateListRow(row, locale)),
-    categories,
+    categories: metadata.categories,
     total,
     page,
     pageSize,
@@ -271,6 +365,11 @@ export async function listPublishedTemplates(
 
 export async function getTemplateDetail(id: string, localeInput?: string | null) {
   const locale = normalizeTemplateLocale(localeInput);
+  const cachedRow = getCachedTemplateDetailById(id);
+  if (cachedRow) {
+    return mapTemplateDetailRow(cachedRow, locale);
+  }
+
   const [row] = await baseTemplateDetailQuery()
     .where(
       sql`${templates.id}::text = ${id}
@@ -284,6 +383,9 @@ export async function getTemplateDetail(id: string, localeInput?: string | null)
 
 export async function listAllTemplates() {
   const rows = await baseTemplateDetailQuery().orderBy(
+    asc(templates.type),
+    asc(templates.category),
+    asc(templates.sortOrder),
     asc(templates.createdAt),
     asc(templates.id)
   );

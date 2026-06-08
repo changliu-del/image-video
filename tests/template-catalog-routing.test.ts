@@ -48,7 +48,7 @@ describe('template catalog routing contract', () => {
     expect(workbench).not.toContain("category: 'image_to_video'");
   });
 
-  it('uses category only as a business filter, with no tag or sort semantics', () => {
+  it('uses category as a business filter and keeps order internal', () => {
     const route = readSource('app/api/templates/route.ts');
     const query = readSource('lib/templates/query.ts');
     const publicClient = readSource('lib/templates/public-client.ts');
@@ -59,19 +59,84 @@ describe('template catalog routing contract', () => {
     const categoryConfig = readSource('lib/templates/category-config.ts');
 
     expect(route).toContain("searchParams.get('category')");
-    expect(query).toContain('eq(templates.category');
+    expect(query).toContain('getCachedPublishedTemplateMetadataForType');
+    expect(query).toContain('for (const row of metadata.rows)');
+    expect(query).toContain('rowCategory !== category');
+    expect(query).toContain('filteredRows.length');
     expect(query).toContain('categories: string[]');
-    expect(query).toContain('listTemplateCategoriesForType');
+    expect(query).toContain('categoriesFromTemplateRows');
     expect(publicClient).toContain('normalizePublicTemplateCategories');
     expect(templatesPage).toContain('normalizePublicTemplateCategories');
     expect(templatesPage).not.toContain('label={content.allCategories}');
     expect(templatesPage).not.toContain("setActiveCategory('')");
-    expect(categoryConfig).toContain('return category;');
+    expect(categoryConfig).toContain('?? category;');
     expect(route).not.toContain("getAll('tag')");
     expect(route).not.toContain("get('tags')");
     expect(route).not.toContain("get('sort')");
     expect(query).not.toContain('tagsJson');
     expect(query).not.toContain('sortWeight');
+    expect(query).toContain('sortOrder');
+    expect(query).not.toContain('count(*)::int');
+  });
+
+  it('aligns public and image-to-video template categories', () => {
+    const categoryConfig = readSource('lib/templates/category-config.ts');
+    const catalog = readSource('lib/templates/catalog.ts');
+    const query = readSource('lib/templates/query.ts');
+    const importScript = readSource('scripts/import-template-catalog.ts');
+    const adminTemplates = readSource('components/admin/templates-panel.tsx');
+    const templatesPage = readFirstExistingSource([
+      'components/marketing/templates-page.tsx',
+      'app/[locale]/templates/page.tsx',
+    ]);
+    const workbench = readSource('components/create/image-video-workbench.tsx');
+
+    const beautyIndex = categoryConfig.indexOf("'beauty'");
+    const commonIndex = categoryConfig.indexOf("'common'");
+
+    expect(beautyIndex).toBeGreaterThanOrEqual(0);
+    expect(commonIndex).toBeGreaterThan(beautyIndex);
+    expect(categoryConfig).not.toContain("'general',");
+    expect(categoryConfig).toContain("general: 'common'");
+    expect(catalog).toContain("common: { pt: 'Geral', en: 'Common', zh: '通用' }");
+    expect(importScript).toContain("'通用': 'common'");
+    expect(adminTemplates).toContain("category: 'common'");
+    expect(query).toContain('return [...preferredCategories];');
+    expect(query).toContain('normalizeTemplateCategoryForType(row.type, row.category)');
+    expect(templatesPage).toContain('imageToVideoTemplateCategories');
+    expect(workbench).toContain('imageToVideoTemplateCategories');
+  });
+
+  it('keeps the public template page free of search and technical identifiers', () => {
+    const templatesPage = readFirstExistingSource([
+      'components/marketing/templates-page.tsx',
+      'app/[locale]/templates/page.tsx',
+    ]);
+    const publicContent = readSource('lib/templates/public-content.ts');
+
+    expect(templatesPage).not.toContain('Search,');
+    expect(templatesPage).not.toContain('setSearch');
+    expect(templatesPage).not.toContain("params.set('search'");
+    expect(templatesPage).not.toContain('content.searchPlaceholder');
+    expect(templatesPage).not.toContain('content.idLabel');
+    expect(templatesPage).not.toContain('{template.type}');
+    expect(templatesPage).not.toContain('{detail.type}');
+    expect(templatesPage).not.toContain('content.defaultCategory');
+    expect(templatesPage).not.toContain('font-mono');
+    expect(publicContent).not.toContain('searchPlaceholder');
+    expect(publicContent).not.toContain('idLabel');
+    expect(publicContent).not.toContain('defaultCategory');
+  });
+
+  it('clears stale template cards when a category reload starts', () => {
+    const templatesPage = readFirstExistingSource([
+      'components/marketing/templates-page.tsx',
+      'app/[locale]/templates/page.tsx',
+    ]);
+
+    expect(templatesPage).toContain('if (page === 1) {');
+    expect(templatesPage).toContain('setTemplates([]);');
+    expect(templatesPage).toContain('setHasMore(false);');
   });
 
   it('keeps public template list and detail data cacheable but split', () => {
@@ -81,11 +146,18 @@ describe('template catalog routing contract', () => {
     ]);
     const cacheControl = readSource('lib/http/cache-control.ts');
     const publicClient = readSource('lib/templates/public-client.ts');
+    const templatesPage = readFirstExistingSource([
+      'components/marketing/templates-page.tsx',
+      'app/[locale]/templates/page.tsx',
+    ]);
+    const query = readSource('lib/templates/query.ts');
 
-    expect(cacheControl).toContain('TEMPLATE_CATALOG_CACHE_CONTROL');
+    expect(cacheControl).toContain('TEMPLATE_CATALOG_LIST_CACHE_CONTROL');
+    expect(cacheControl).toContain('max-age=30');
+    expect(cacheControl).toContain('TEMPLATE_CATALOG_DETAIL_CACHE_CONTROL');
     expect(cacheControl).toContain('s-maxage=86400');
     expect(cacheControl).toContain('stale-while-revalidate=604800');
-    expect(listRoute).toContain('templateCatalogReadHeaders');
+    expect(listRoute).toContain('templateCatalogListReadHeaders');
     expect(detailRoute).toContain('templateCatalogReadHeaders');
     expect(listRoute).not.toContain("searchParams.get('id')");
     expect(listRoute).not.toContain('getTemplateDetail');
@@ -94,6 +166,31 @@ describe('template catalog routing contract', () => {
     expect(detailRoute).not.toContain('no-store');
     expect(publicClient).toContain('PublicTemplateListItem');
     expect(publicClient).toContain('PublicTemplateDetailItem');
+    expect(query).toContain('previewUrl: `/api/template-media/${row.previewAssetId}`');
+    expect(query).toContain('clearPublishedTemplateCatalogCache');
+    expect(templatesPage).toContain("media: 'preview'");
+    expect(templatesPage).toContain('src={template.previewUrl}');
+    expect(templatesPage).not.toContain('template-preview-load-failed');
+  });
+
+  it('keeps template ordering as an Admin-only type/category operation', () => {
+    const adminOrderRoute = readSource(
+      'app/api/admin/templates/order/route.ts'
+    );
+    const adminTemplates = readSource('lib/admin/services/templates.ts');
+    const adminPanel = readSource('components/admin/templates-panel.tsx');
+    const publicRoute = readSource('app/api/templates/route.ts');
+    const publicClient = readSource('lib/templates/public-client.ts');
+
+    expect(adminOrderRoute).toContain('listAdminTemplateOrder');
+    expect(adminOrderRoute).toContain('updateAdminTemplateOrder');
+    expect(adminTemplates).toContain('templateOrderPayloadSchema');
+    expect(adminTemplates).toContain('templateIds must include every template');
+    expect(adminTemplates).toContain('clearPublishedTemplateCatalogCache');
+    expect(adminPanel).toContain('/api/admin/templates/order');
+    expect(adminPanel).toContain('moveOrderedTemplate');
+    expect(publicRoute).not.toContain("searchParams.get('sort')");
+    expect(publicClient).not.toContain('sortOrder');
   });
 
   it('streams template media through the app route with range support', () => {
@@ -127,6 +224,7 @@ describe('template catalog routing contract', () => {
     expect(mediaCache).toContain('preloadPromise');
     expect(mediaCache).toContain('deleteTemplateMediaCacheEntries');
     expect(adminTemplates).toContain('refreshTemplateMediaCacheAfterAdminWrite');
+    expect(adminTemplates).toContain('clearPublishedTemplateCatalogCache');
     expect(adminTemplates).toContain(
       'refreshSingleTemplateMediaCacheAfterAdminWrite'
     );
@@ -141,6 +239,52 @@ describe('template catalog routing contract', () => {
     expect(source).toContain('selectedTemplateId');
     expect(source).toContain('templateId: selectedTemplateId');
     expect(source).toContain('setSelectedTemplate');
+  });
+
+  it('opens image-to-video workbench template details before applying a template', () => {
+    const source = readSource('components/create/image-video-workbench.tsx');
+
+    expect(source).toContain('TemplateDetailModal');
+    expect(source).toContain('openTemplateDetail(template)');
+    expect(source).toContain('applyTemplateDetail');
+    expect(source).toContain('setPrompt(templateDetail.prompt)');
+    expect(source).toContain('copy.previewTemplate');
+    expect(source).toContain('pointer-events-none absolute');
+    expect(source).toContain('opacity-0 shadow-sm');
+    expect(source).toContain('group-hover:opacity-100');
+    expect(source).not.toContain('absolute inset-x-1 bottom-1');
+  });
+
+  it('keeps the image-to-video specs toolbar compact', () => {
+    const source = readSource('components/create/image-video-workbench.tsx');
+
+    expect(source).toContain('RectangleHorizontal');
+    expect(source).toContain("type SpecsSection = 'aspect' | 'duration' | 'quality'");
+    expect(source).toContain("onClick={() => openSpecsSection('aspect')}");
+    expect(source).toContain("onClick={() => openSpecsSection('duration')}");
+    expect(source).toContain("onClick={() => openSpecsSection('quality')}");
+    expect(source).toContain('aria-label={`${copy.aspectRatio} ${aspectRatio}`}');
+    expect(source).toContain('aria-label={`${copy.videoDuration} ${durationSeconds}${copy.seconds}`}');
+    expect(source).toContain('aria-label={`${copy.quality} ${qualitySummary}`}');
+    expect(source).toContain('aspectSpecsRef');
+    expect(source).toContain('durationSpecsRef');
+    expect(source).toContain('qualitySpecsRef');
+    expect(source).toContain('overflow-x-auto whitespace-nowrap');
+    expect(source).toContain('bg-[#f4f6fb]');
+    expect(source).toContain('mx-3 h-5 w-px shrink-0 bg-gray-300');
+    expect(source).toContain('size-5 rounded-md accent-indigo-600');
+    expect(source).not.toContain('flex-wrap items-center gap-2 rounded-xl border border-gray-200 bg-gray-100');
+  });
+
+  it('keeps image reference upload single-select in the image-to-video workbench', () => {
+    const source = readSource('components/create/image-video-workbench.tsx');
+    const copy = readSource('components/create/workbench-copy.ts');
+
+    expect(source).toContain('const MAX_REFERENCE_IMAGE_FILE_COUNT = 1');
+    expect(source).toContain("multiple={action.kind !== 'image'}");
+    expect(source).toContain("kind === 'image'");
+    expect(source).toContain('setError(copy.referenceImageLimit)');
+    expect(copy).toContain('referenceImageLimit');
   });
 
   it('does not auto-bind the first template when a workbench has no requested template', () => {

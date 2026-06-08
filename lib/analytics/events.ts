@@ -27,8 +27,8 @@ export type GenerationStartedProperties = AnalyticsProperties & {
   jobId: string;
   generationType: string;
   inputAssetId: string;
-  aspectRatio: '9:16' | '1:1' | '16:9';
-  durationSeconds: 5 | 8 | 10;
+  aspectRatio: '9:16' | '3:4' | '1:1' | '16:9';
+  durationSeconds: number;
   templateId?: string | null;
   source: 'generate_form';
 };
@@ -42,7 +42,7 @@ export type GenerationSucceededProperties = AnalyticsProperties & {
   jobId: string;
   userId: string | number;
   generationType: string;
-  aspectRatio: '9:16' | '1:1' | '16:9';
+  aspectRatio: '9:16' | '3:4' | '1:1' | '16:9';
   durationSeconds: number;
   templateId?: string | null;
   creditSpent: number;

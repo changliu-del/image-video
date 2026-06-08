@@ -1,4 +1,4 @@
-export type PublicTemplateType = 'image_to_video';
+export type PublicTemplateType = 'image_to_video' | 'image_to_image' | 'try_on';
 
 export type PublicTemplateListItem = {
   id: string;
@@ -6,12 +6,12 @@ export type PublicTemplateListItem = {
   type: PublicTemplateType;
   category: string;
   thumbnailUrl: string;
+  previewUrl: string;
   createdAt: string | null;
   updatedAt: string | null;
 };
 
 export type PublicTemplateDetailItem = PublicTemplateListItem & {
-  previewUrl: string;
   prompt: string;
 };
 
@@ -27,7 +27,15 @@ export type PublicTemplatesApiResponse = {
   hasMore?: boolean;
 };
 
-const templateTypes = new Set(['image_to_video', 'image_to_image']);
+const templateTypes = new Set<PublicTemplateType>([
+  'image_to_video',
+  'image_to_image',
+  'try_on',
+]);
+
+function isPublicTemplateType(value: string): value is PublicTemplateType {
+  return templateTypes.has(value as PublicTemplateType);
+}
 
 function readString(record: Record<string, unknown>, ...keys: string[]) {
   for (const key of keys) {
@@ -47,10 +55,10 @@ function nullableString(record: Record<string, unknown>, ...keys: string[]) {
 
 function inferTemplateType(record: Record<string, unknown>) {
   const explicitType = readString(record, 'type');
-  if (explicitType) return explicitType;
+  if (isPublicTemplateType(explicitType)) return explicitType;
 
   const legacyCategory = readString(record, 'category');
-  return templateTypes.has(legacyCategory) ? legacyCategory : '';
+  return isPublicTemplateType(legacyCategory) ? legacyCategory : '';
 }
 
 function normalizeTemplateItem(
@@ -60,15 +68,16 @@ function normalizeTemplateItem(
 
   const record = value as Record<string, unknown>;
   const type = inferTemplateType(record);
-  if (type !== 'image_to_video') return null;
+  if (!type) return null;
 
   const id = readString(record, 'id');
   const thumbnailUrl = readString(record, 'thumbnailUrl', 'imageUrl');
+  const previewUrl = readString(record, 'previewUrl', 'videoUrl');
 
-  if (!id || !thumbnailUrl) return null;
+  if (!id || !thumbnailUrl || !previewUrl) return null;
 
   const rawCategory = readString(record, 'category');
-  const category = templateTypes.has(rawCategory) ? '' : rawCategory;
+  const category = isPublicTemplateType(rawCategory) ? '' : rawCategory;
   const title = readString(record, 'title', 'name') || category || id;
 
   return {
@@ -77,6 +86,7 @@ function normalizeTemplateItem(
     type,
     category,
     thumbnailUrl,
+    previewUrl,
     createdAt: nullableString(record, 'createdAt', 'created_at'),
     updatedAt: nullableString(record, 'updatedAt', 'updated_at'),
   };
@@ -89,14 +99,12 @@ export function normalizePublicTemplateDetail(
   if (!item || !value || typeof value !== 'object') return null;
 
   const record = value as Record<string, unknown>;
-  const previewUrl = readString(record, 'previewUrl', 'videoUrl');
   const prompt = readString(record, 'prompt');
 
-  if (!previewUrl || !prompt) return null;
+  if (!prompt) return null;
 
   return {
     ...item,
-    previewUrl,
     prompt,
   };
 }

@@ -13,7 +13,6 @@ import {
   Shirt,
   Sparkles,
   UploadCloud,
-  UserRound,
   WandSparkles,
 } from 'lucide-react';
 
@@ -36,6 +35,7 @@ import {
   commonWorkbenchCopy,
   tryOnWorkbenchCopy,
 } from '@/components/create/workbench-copy';
+import { TemplatePromptPicker } from '@/components/create/template-prompt-picker';
 import {
   getLibraryItemAssetId as getItemAssetId,
   getLibraryItemImage as getItemImage,
@@ -46,10 +46,11 @@ import {
 import { refreshDashboardUser } from '@/lib/dashboard/user-cache';
 import { useDashboardLocale } from '@/lib/dashboard/use-dashboard-locale';
 import { getTryOnCreditCost } from '@/lib/generations/credit-costs';
+import type { PublicTemplateDetailItem } from '@/lib/templates/public-client';
 import { cn } from '@/lib/utils';
 
 type TryOnMode = 'single' | 'multi';
-type ModelSource = 'library' | 'custom';
+type TryOnAspectRatio = '1:1' | '3:4' | '9:16';
 type MaterialPickerSource = 'official' | 'history';
 type PosePreset = 'auto' | 'front' | 'editorial' | 'runway';
 type BackgroundPreset = 'studio' | 'street' | 'minimal' | 'boutique';
@@ -94,7 +95,8 @@ type JobStatusResponse = {
 
 const MAX_IMAGE_BYTES = 10 * 1024 * 1024;
 const ACCEPTED_IMAGE_TYPES = ['image/png', 'image/jpeg', 'image/webp'];
-const modeValues: TryOnMode[] = ['single', 'multi'];
+const modeValues: TryOnMode[] = ['multi', 'single'];
+const tryOnAspectRatios: TryOnAspectRatio[] = ['1:1', '3:4', '9:16'];
 const poseValues: PosePreset[] = ['auto', 'front', 'editorial', 'runway'];
 const backgroundValues: BackgroundPreset[] = ['studio', 'street', 'minimal', 'boutique'];
 const fitValues: FitPreset[] = ['natural', 'tailored', 'relaxed'];
@@ -432,17 +434,21 @@ export function TryOnWorkbench({
   const banner = bannerCopy[locale];
   const materialCopy = materialPickerCopy[locale];
   const starterPrompt = initialPrompt.trim();
-  const [modelFile, setModelFile] = useState<File | null>(null);
-  const [garmentFiles, setGarmentFiles] = useState<File[]>([]);
-  const [modelPreview, setModelPreview] = useState<string | null>(null);
+  const [garmentFiles, setGarmentFiles] = useState<Array<File | null>>([
+    null,
+    null,
+  ]);
   const [garmentPreviews, setGarmentPreviews] = useState<string[]>([]);
-  const [modelSource, setModelSource] = useState<ModelSource>('library');
-  const [mode, setMode] = useState<TryOnMode>('single');
+  const [mode, setMode] = useState<TryOnMode>('multi');
+  const [aspectRatio, setAspectRatio] = useState<TryOnAspectRatio>('1:1');
   const [pose, setPose] = useState<PosePreset>('auto');
   const [background, setBackground] = useState<BackgroundPreset>('studio');
   const [fit, setFit] = useState<FitPreset>('natural');
   const [preserveFace, setPreserveFace] = useState(true);
   const [prompt, setPrompt] = useState(() => starterPrompt);
+  const [selectedTemplateId, setSelectedTemplateId] = useState<string | null>(
+    null
+  );
   const [assets, setAssets] = useState<LibraryItem[]>([]);
   const [modelAssets, setModelAssets] = useState<ModelCatalogItem[]>([]);
   const [materialSource, setMaterialSource] =
@@ -464,21 +470,15 @@ export function TryOnWorkbench({
 
   const isSubmitting = Boolean(submitLabel);
   const selectedResultUrl = resultUrl(jobStatus);
-  const selectedModelPreview =
-    modelSource === 'custom' ? modelPreview : getModelAssetImage(selectedModelAsset);
-  const selectedModelLabel =
-    modelSource === 'custom' ? modelFile?.name : selectedModelAsset?.title;
+  const localGarmentFiles = useMemo(
+    () => garmentFiles.filter((file): file is File => Boolean(file)),
+    [garmentFiles]
+  );
   const selectedGarmentAssetIds = useMemo(
     () => selectedGarmentAssets.map(getItemAssetId).filter(Boolean),
     [selectedGarmentAssets]
   );
   const selectedGarmentAsset = selectedGarmentAssets[0] ?? null;
-  const selectedGarmentPreview = selectedGarmentAsset
-    ? getItemImage(selectedGarmentAsset)
-    : '';
-  const selectedGarmentLabel = selectedGarmentAsset
-    ? getItemLabel(selectedGarmentAsset)
-    : undefined;
   const selectedGarmentPreviewTiles = selectedGarmentAssets
     .map((asset) => ({
       image: getItemImage(asset),
@@ -487,48 +487,44 @@ export function TryOnWorkbench({
     .filter((item) => item.image);
   const garmentPreviewTiles = [
     ...selectedGarmentPreviewTiles,
-    ...garmentPreviews.map((image, index) => ({
-      image,
-      title: garmentFiles[index]?.name,
-    })),
+    ...garmentFiles
+      .map((file, index) => ({
+        image: garmentPreviews[index] ?? '',
+        title: file?.name,
+      }))
+      .filter((item) => item.image),
   ];
+  const upperGarmentPreview =
+    garmentPreviews[0] || selectedGarmentPreviewTiles[0]?.image || '';
+  const lowerGarmentPreview =
+    garmentPreviews[1] || selectedGarmentPreviewTiles[1]?.image || '';
+  const upperGarmentLabel =
+    garmentFiles[0]?.name ?? selectedGarmentPreviewTiles[0]?.title;
+  const lowerGarmentLabel =
+    garmentFiles[1]?.name ?? selectedGarmentPreviewTiles[1]?.title;
   const garmentInputCount =
-    garmentFiles.length + selectedGarmentAssetIds.length;
+    localGarmentFiles.length + selectedGarmentAssetIds.length;
   const modeOptions = modeValues.map((value) => ({
     value,
     label: copy.modeOptions[value],
   }));
 
   const canSubmit = useMemo(() => {
-    const hasModel = modelSource === 'custom' ? Boolean(modelFile) : Boolean(selectedModelAsset);
-    if (isSubmitting || !hasModel) return false;
+    if (isSubmitting || !selectedModelAsset) return false;
     return mode === 'single'
       ? garmentInputCount >= 1
       : garmentInputCount >= 2;
-  }, [
-    garmentInputCount,
-    isSubmitting,
-    mode,
-    modelFile,
-    modelSource,
-    selectedModelAsset,
-  ]);
+  }, [garmentInputCount, isSubmitting, mode, selectedModelAsset]);
 
   useEffect(() => {
-    if (!modelFile) {
-      setModelPreview(null);
-      return;
-    }
-
-    const objectUrl = URL.createObjectURL(modelFile);
-    setModelPreview(objectUrl);
-    return () => URL.revokeObjectURL(objectUrl);
-  }, [modelFile]);
-
-  useEffect(() => {
-    const objectUrls = garmentFiles.map((file) => URL.createObjectURL(file));
+    const objectUrls = garmentFiles.map((file) =>
+      file ? URL.createObjectURL(file) : ''
+    );
     setGarmentPreviews(objectUrls);
-    return () => objectUrls.forEach((url) => URL.revokeObjectURL(url));
+    return () =>
+      objectUrls.forEach((url) => {
+        if (url) URL.revokeObjectURL(url);
+      });
   }, [garmentFiles]);
 
   useEffect(() => {
@@ -561,9 +557,6 @@ export function TryOnWorkbench({
           setAssets(nextAssets);
           setModelAssets(nextModelAssets);
           setSelectedModelAsset((current) => current ?? nextModelAssets[0] ?? null);
-          if (nextModelAssets.length === 0) {
-            setModelSource('custom');
-          }
         }
       } finally {
         if (!cancelled) setIsLoadingLibrary(false);
@@ -653,47 +646,51 @@ export function TryOnWorkbench({
     };
   }, [jobId, jobStatus?.nextPollMs, jobStatus?.status]);
 
-  function selectModelFile(files: FileList | null) {
+  function updateMode(nextMode: TryOnMode) {
+    setMode(nextMode);
+    if (nextMode === 'single') {
+      setGarmentFiles((files) => [files[0] ?? null, null]);
+      setSelectedGarmentAssets((assets) => assets.slice(0, 1));
+    }
+  }
+
+  function selectGarmentFileAt(slotIndex: 0 | 1, files: FileList | null) {
     setError(null);
     const file = files?.[0] ?? null;
+
     if (!file) {
-      setModelFile(null);
+      setGarmentFiles((current) => {
+        const nextFiles: Array<File | null> = [current[0] ?? null, current[1] ?? null];
+        nextFiles[slotIndex] = null;
+        return nextFiles;
+      });
       return;
     }
 
     const validationError = validateImage(file, commonCopy);
     if (validationError) {
-      setModelFile(null);
+      setGarmentFiles((current) => {
+        const nextFiles: Array<File | null> = [current[0] ?? null, current[1] ?? null];
+        nextFiles[slotIndex] = null;
+        return nextFiles;
+      });
       setError(validationError);
       return;
     }
 
-    setSelectedModelAsset(null);
-    setModelSource('custom');
-    setModelFile(file);
-  }
-
-  function selectGarmentFiles(files: FileList | null) {
-    setError(null);
-    const nextFiles = Array.from(files ?? []);
-    const validationError = nextFiles.map((file) => validateImage(file, commonCopy)).find(Boolean);
-
-    if (validationError) {
-      setGarmentFiles([]);
-      setError(validationError);
-      return;
-    }
-
-    setGarmentFiles(mode === 'single' ? nextFiles.slice(0, 1) : nextFiles.slice(0, 4));
+    setGarmentFiles((current) => {
+      const nextFiles: Array<File | null> = [current[0] ?? null, current[1] ?? null];
+      nextFiles[slotIndex] = file;
+      if (mode === 'single') nextFiles[1] = null;
+      return nextFiles;
+    });
     setSelectedGarmentAssets([]);
   }
 
   async function handleSubmit(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
 
-    const useCustomModel = modelSource === 'custom';
-
-    if ((useCustomModel && !modelFile) || (!useCustomModel && !selectedModelAsset)) {
+    if (!selectedModelAsset) {
       setError(copy.selectModelError);
       return;
     }
@@ -713,10 +710,9 @@ export function TryOnWorkbench({
     setJobStatus(null);
 
     try {
-      setSubmitLabel(useCustomModel ? copy.uploadingModel : copy.preparingModel);
-      const modelAssetId = useCustomModel && modelFile ? await uploadAsset(modelFile, commonCopy) : undefined;
+      setSubmitLabel(copy.preparingModel);
       const uploadedGarmentAssetIds = await Promise.all(
-        garmentFiles.map(async (file, index) => {
+        localGarmentFiles.map(async (file, index) => {
           setSubmitLabel(copy.uploadingGarment(index + 1));
           return uploadAsset(file, commonCopy);
         })
@@ -732,11 +728,11 @@ export function TryOnWorkbench({
         {
           generationType: 'try_on',
           tryOnMode: mode,
-          ...(modelAssetId
-            ? { modelAssetId }
-            : { modelCatalogAssetId: selectedModelAsset?.id }),
+          modelCatalogAssetId: selectedModelAsset.id,
           garmentAssetId: garmentAssetIds[0],
           garmentAssetIds,
+          ...(selectedTemplateId ? { templateId: selectedTemplateId } : {}),
+          aspectRatio,
           prompt: buildTryOnPrompt({
             prompt,
             pose,
@@ -772,15 +768,13 @@ export function TryOnWorkbench({
   }
 
   function selectLibraryModel(model: ModelCatalogItem) {
-    setModelSource('library');
-    setModelFile(null);
     setSelectedModelAsset(model);
   }
 
-  function useCustomModelUpload(inputId = 'try-on-model') {
-    setModelSource('custom');
-    setSelectedModelAsset(null);
-    document.getElementById(inputId)?.click();
+  function applyTemplate(template: PublicTemplateDetailItem) {
+    setError(null);
+    setSelectedTemplateId(template.id);
+    setPrompt(template.prompt);
   }
 
   function selectLibraryGarment(asset: LibraryItem | null | undefined) {
@@ -788,9 +782,7 @@ export function TryOnWorkbench({
 
     setError(null);
     setSelectedGarmentAssets([asset]);
-    if (mode === 'single') {
-      setGarmentFiles([]);
-    }
+    setGarmentFiles([null, null]);
     setPrompt((current) => {
       const label = getItemLabel(asset);
       const trimmed = current.trim();
@@ -803,6 +795,7 @@ export function TryOnWorkbench({
     if (!asset || !assetId) return;
 
     setError(null);
+    setGarmentFiles([null, null]);
     setSelectedGarmentAssets((current) => {
       const existingIndex = current.findIndex(
         (item) => getItemAssetId(item) === assetId
@@ -811,7 +804,7 @@ export function TryOnWorkbench({
         return current.filter((_, index) => index !== existingIndex);
       }
 
-      const maxSelectedAssets = Math.max(0, 4 - garmentFiles.length);
+      const maxSelectedAssets = mode === 'single' ? 1 : 2;
       if (current.length >= maxSelectedAssets) {
         return current;
       }
@@ -826,9 +819,6 @@ export function TryOnWorkbench({
   }
 
   function chooseFromLibrary() {
-    if (modelAssets[0]) {
-      selectLibraryModel(modelAssets[0]);
-    }
     if (mode === 'single') {
       const garmentAsset =
         selectedGarmentAsset ??
@@ -849,7 +839,7 @@ export function TryOnWorkbench({
       const selectedIds = new Set(selectedGarmentAssetIds);
       const availableSlots = Math.max(
         0,
-        4 - garmentFiles.length - selectedGarmentAssets.length
+        2 - selectedGarmentAssets.length
       );
       const additions = candidates
         .filter((asset) => !selectedIds.has(getItemAssetId(asset)))
@@ -874,8 +864,7 @@ export function TryOnWorkbench({
   );
   const displayedLibraryTiles =
     materialSource === 'history' ? selectableHistoryItems : selectableGarmentAssets;
-  const isChooseFromLibraryDisabled =
-    modelAssets.length === 0 && displayedLibraryTiles.length === 0;
+  const isChooseFromLibraryDisabled = displayedLibraryTiles.length === 0;
   const baseLibraryImages = assets.map(getItemImage).filter(Boolean);
   const libraryStart = baseLibraryImages.length ? exampleOffset % baseLibraryImages.length : 0;
   const libraryImages = [
@@ -883,10 +872,6 @@ export function TryOnWorkbench({
     ...baseLibraryImages.slice(0, libraryStart),
   ].slice(0, 6);
   const statusLabel = jobStatus?.progressLabel ?? jobStatus?.status ?? (jobId ? commonCopy.generating : null);
-  const garmentLabel =
-    garmentInputCount > 1
-      ? copy.garmentCount(garmentInputCount)
-      : garmentFiles[0]?.name ?? selectedGarmentLabel;
 
   return (
     <form
@@ -918,56 +903,72 @@ export function TryOnWorkbench({
         }
       >
         <PanelSection title={copy.uploadGarment} required>
-          <div className="grid gap-3">
-            <UploadDropzone
-              id="try-on-model"
-              preview={selectedModelPreview}
-              fileName={selectedModelLabel}
-              emptyText={copy.modelEmpty}
-              hint={copy.modelHint}
-              disabled={isSubmitting}
-              onChange={selectModelFile}
-            />
-            <UploadDropzone
-              id="try-on-garments"
-              preview={garmentPreviews[0] ?? selectedGarmentPreview}
-              fileName={garmentLabel}
-              emptyText={mode === 'single' ? copy.garmentSingleEmpty : copy.garmentMultiEmpty}
-              hint={copy.garmentHint}
-              multiple={mode === 'multi'}
-              disabled={isSubmitting}
-              onChange={selectGarmentFiles}
-            >
-              {garmentPreviewTiles.length > 1 ? (
-                <div className="mt-3 grid grid-cols-4 gap-2">
-                  {garmentPreviewTiles.map((item) => (
-                    <img
-                      key={item.image}
-                      src={item.image}
-                      alt=""
-                      className="aspect-square rounded-md border border-gray-200 object-cover"
-                      title={item.title}
-                    />
-                  ))}
-                </div>
-              ) : null}
-            </UploadDropzone>
+          <div className="grid grid-cols-2 gap-3">
+            <div>
+              <p className="mb-2 text-center text-xs font-bold text-gray-600">
+                {copy.upperGarment}
+              </p>
+              <UploadDropzone
+                id="try-on-upper-garment"
+                preview={upperGarmentPreview}
+                fileName={upperGarmentLabel}
+                emptyText={copy.upperGarmentEmpty}
+                hint={copy.garmentHint}
+                disabled={isSubmitting}
+                onChange={(files) => selectGarmentFileAt(0, files)}
+              />
+            </div>
+            <div>
+              <p className="mb-2 text-center text-xs font-bold text-gray-600">
+                {copy.lowerGarment}
+              </p>
+              <UploadDropzone
+                id="try-on-lower-garment"
+                preview={lowerGarmentPreview}
+                fileName={lowerGarmentLabel}
+                emptyText={
+                  mode === 'single'
+                    ? copy.lowerGarmentDisabled
+                    : copy.lowerGarmentEmpty
+                }
+                hint={mode === 'single' ? copy.onePieceHint : copy.garmentHint}
+                disabled={isSubmitting || mode === 'single'}
+                onChange={(files) => selectGarmentFileAt(1, files)}
+              />
+            </div>
           </div>
+          {garmentPreviewTiles.length > 1 ? (
+            <div className="mt-3 grid grid-cols-4 gap-2">
+              {garmentPreviewTiles.map((item) => (
+                <img
+                  key={item.image}
+                  src={item.image}
+                  alt=""
+                  className="aspect-square rounded-md border border-gray-200 object-cover"
+                  title={item.title}
+                />
+              ))}
+            </div>
+          ) : null}
         </PanelSection>
 
         <PanelSection title={copy.mode} required>
           <SegmentedOptions
             options={modeOptions}
             value={mode}
-            onChange={(nextMode) => {
-              setMode(nextMode);
-              setGarmentFiles((files) => (nextMode === 'single' ? files.slice(0, 1) : files));
-              setSelectedGarmentAssets((assets) =>
-                nextMode === 'single' ? assets.slice(0, 1) : assets
-              );
-            }}
+            onChange={updateMode}
             disabled={isSubmitting}
             columns={2}
+          />
+        </PanelSection>
+
+        <PanelSection title={copy.size} required>
+          <SegmentedOptions
+            options={tryOnAspectRatios}
+            value={aspectRatio}
+            onChange={setAspectRatio}
+            disabled={isSubmitting}
+            columns={3}
           />
         </PanelSection>
 
@@ -976,31 +977,22 @@ export function TryOnWorkbench({
             <button
               type="button"
               onClick={() => {
-                setModelSource('library');
-                setModelFile(null);
                 setSelectedModelAsset((current) => current ?? modelAssets[0] ?? null);
               }}
-              disabled={modelAssets.length === 0}
+              disabled={modelAssets.length === 0 || isSubmitting}
               className={cn(
                 'h-10 rounded-md text-sm font-bold transition disabled:cursor-not-allowed disabled:opacity-50',
-                modelSource === 'library'
-                  ? 'bg-white text-indigo-600 shadow-sm'
-                  : 'text-gray-600 hover:text-indigo-600'
+                'bg-white text-indigo-600 shadow-sm'
               )}
             >
               {copy.officialModel}
             </button>
             <button
               type="button"
-              onClick={() => useCustomModelUpload()}
-              className={cn(
-                'h-10 rounded-md text-sm font-bold transition',
-                modelSource === 'custom'
-                  ? 'bg-white text-indigo-600 shadow-sm'
-                  : 'text-gray-600 hover:text-indigo-600'
-              )}
+              disabled
+              className="h-10 cursor-not-allowed rounded-md text-sm font-bold text-gray-400"
             >
-              {copy.customModel}
+              {copy.modelLibraryComingSoon}
             </button>
           </div>
           <div className="grid grid-cols-4 gap-3">
@@ -1011,7 +1003,7 @@ export function TryOnWorkbench({
             ) : (
               modelAssets.slice(0, 8).map((model) => {
                 const image = getModelAssetImage(model);
-                const active = selectedModelAsset?.id === model.id && !modelFile;
+                const active = selectedModelAsset?.id === model.id;
 
                 return (
                   <button
@@ -1130,6 +1122,15 @@ export function TryOnWorkbench({
               className="size-4 accent-indigo-500"
             />
           </label>
+        </PanelSection>
+
+        <PanelSection title={copy.templateMaterials}>
+          <TemplatePromptPicker
+            type="try_on"
+            selectedTemplateId={selectedTemplateId}
+            disabled={isSubmitting}
+            onApply={applyTemplate}
+          />
         </PanelSection>
 
         <PanelSection
@@ -1251,41 +1252,90 @@ export function TryOnWorkbench({
               waitingLabel={commonCopy.waitingUpload}
             />
           ) : (
-            <div className="rounded-lg border border-gray-200 bg-white p-8 shadow-sm">
-              <div className="grid gap-4 md:grid-cols-2">
-                <UploadDropzone
-                  id="try-on-model-canvas"
-                  preview={selectedModelPreview}
-                  fileName={selectedModelLabel}
-                  emptyText={copy.modelCanvasEmpty}
-                  hint={copy.modelCanvasHint}
-                  disabled={isSubmitting}
-                  onChange={selectModelFile}
-                />
-                <UploadDropzone
-                  id="try-on-garments-canvas"
-                  preview={garmentPreviews[0] ?? selectedGarmentPreview}
-                  fileName={garmentLabel}
-                  emptyText={copy.garmentCanvasEmpty}
-                  hint={copy.garmentHint}
-                  multiple={mode === 'multi'}
-                  disabled={isSubmitting}
-                  onChange={selectGarmentFiles}
-                />
+            <div className="rounded-lg border border-gray-200 bg-white p-6 shadow-sm">
+              <div className="mb-4 grid grid-cols-2 rounded-lg bg-gray-100 p-1">
+                {modeOptions.map((option) => (
+                  <button
+                    key={option.value}
+                    type="button"
+                    disabled={isSubmitting}
+                    onClick={() => updateMode(option.value)}
+                    className={cn(
+                      'h-11 rounded-md text-sm font-bold transition disabled:cursor-not-allowed disabled:opacity-60',
+                      mode === option.value
+                        ? 'bg-white text-indigo-600 shadow-sm'
+                        : 'text-gray-500 hover:bg-white hover:text-indigo-600'
+                    )}
+                  >
+                    {option.label}
+                  </button>
+                ))}
               </div>
-              <div className="mt-5 grid gap-4 md:grid-cols-2">
-                <IconButtonCard
-                  icon={Images}
-                  label={commonCopy.chooseFromLibrary}
-                  onClick={chooseFromLibrary}
-                  disabled={isChooseFromLibraryDisabled}
-                />
-                <IconButtonCard
-                  icon={UploadCloud}
-                  label={commonCopy.uploadImage}
-                  onClick={() => useCustomModelUpload('try-on-model-canvas')}
-                  disabled={isSubmitting}
-                />
+              <div className="grid gap-5 rounded-lg bg-gray-50 p-4 md:grid-cols-2">
+                <div>
+                  <h2 className="mb-3 text-center text-sm font-bold text-gray-700">
+                    {copy.upperGarment}
+                  </h2>
+                  <UploadDropzone
+                    id="try-on-upper-canvas"
+                    preview={upperGarmentPreview}
+                    fileName={upperGarmentLabel}
+                    emptyText={copy.upperGarmentEmpty}
+                    hint={copy.garmentHint}
+                    disabled={isSubmitting}
+                    onChange={(files) => selectGarmentFileAt(0, files)}
+                  />
+                  <div className="mt-3 grid gap-3">
+                    <IconButtonCard
+                      icon={Images}
+                      label={commonCopy.chooseFromLibrary}
+                      onClick={chooseFromLibrary}
+                      disabled={isChooseFromLibraryDisabled}
+                    />
+                    <IconButtonCard
+                      icon={UploadCloud}
+                      label={commonCopy.uploadImage}
+                      onClick={() =>
+                        document.getElementById('try-on-upper-canvas')?.click()
+                      }
+                      disabled={isSubmitting}
+                    />
+                  </div>
+                </div>
+                <div>
+                  <h2 className="mb-3 text-center text-sm font-bold text-gray-700">
+                    {copy.lowerGarment}
+                  </h2>
+                  <UploadDropzone
+                    id="try-on-lower-canvas"
+                    preview={lowerGarmentPreview}
+                    fileName={lowerGarmentLabel}
+                    emptyText={
+                      mode === 'single'
+                        ? copy.lowerGarmentDisabled
+                        : copy.lowerGarmentEmpty
+                    }
+                    hint={mode === 'single' ? copy.onePieceHint : copy.garmentHint}
+                    disabled={isSubmitting || mode === 'single'}
+                    onChange={(files) => selectGarmentFileAt(1, files)}
+                  />
+                  <div className="mt-3 grid gap-3">
+                    <IconButtonCard
+                      icon={Images}
+                      label={commonCopy.chooseFromLibrary}
+                      onClick={chooseFromLibrary}
+                      disabled={isChooseFromLibraryDisabled || mode === 'single'}
+                    />
+                    <IconButtonCard
+                      icon={UploadCloud}
+                      label={commonCopy.uploadImage}
+                      onClick={() =>
+                        document.getElementById('try-on-lower-canvas')?.click()
+                      }
+                      disabled={isSubmitting || mode === 'single'}
+                    />
+                  </div>
+                </div>
               </div>
             </div>
           )}

@@ -91,16 +91,11 @@ function assertNonZeroInteger(value: number, label: string) {
 }
 
 function estimateFromDuration(durationSeconds: number) {
-  switch (durationSeconds) {
-    case 5:
-      return 10;
-    case 8:
-      return 18;
-    case 10:
-      return 25;
-    default:
-      throw new Error(`Unsupported generation duration: ${durationSeconds}`);
+  if (!Number.isInteger(durationSeconds) || durationSeconds < 4 || durationSeconds > 15) {
+    throw new Error(`Unsupported generation duration: ${durationSeconds}`);
   }
+
+  return Math.max(8, Math.round(durationSeconds * 3 - 5));
 }
 
 function getReserveAmount(input: ReserveCreditsForJobInput) {
