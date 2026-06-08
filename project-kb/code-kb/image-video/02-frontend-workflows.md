@@ -1,6 +1,6 @@
 # Frontend Workflows
 
-Updated: 2026-06-05
+Updated: 2026-06-08
 
 ## Dashboard Shell
 
@@ -24,31 +24,26 @@ For the default rendering contract, route/data ownership rules, and frontend rev
 
 Each workbench handles upload, payload construction, generation submission, polling, and result rendering.
 
-Workbench library loading separates official material catalogs from private user
-history:
+Workbench material loading now uses templates, the model catalog, and private
+user history. The standalone official material catalog has been removed.
 
-- `/create/video` loads `/api/templates?type=image_to_video` plus `/api/library-assets?category=image_to_video` for official inspiration, and `/api/user-media?generationType=image_to_video` for the user's private history.
+- `/create/video` loads `/api/templates?type=image_to_video` and `/api/user-media?generationType=image_to_video` for the user's private history.
 - The public homepage template gallery and public templates page reuse the same image-to-video template catalog by querying `type=image_to_video`.
 - Template list responses should only drive thumbnail browsing: `id`, `type`, `category`, and `thumbnailUrl`. When the user opens details or applies a template, fetch the template detail by id to get `previewUrl` and `prompt`.
 - Template catalog data is stable enough for frontend memory/SWR caching by `type`, `category`, and template id. Media files are object-versioned assets and should rely on R2/CDN long cache headers.
 - Template `category` is a business category inside `type`; do not use category values such as `image_to_video`, `image_to_image`, or `try_on` as the template workflow selector.
-- `/create/apparel` uses `/api/library-assets?category=apparel_image`; library assets are used for inspiration/examples while template IDs remain template-only payload fields. The history tab uses `/api/user-media?generationType=apparel_image`.
-- `/create/try-on` loads `/api/model-assets` plus `/api/library-assets?category=try_on` for official material/model choices. The history tab uses `/api/user-media?generationType=try_on`.
+- `/create/apparel` uses templates plus `/api/user-media?generationType=apparel_image` for user-owned previous product images.
+- `/create/try-on` loads `/api/model-assets` for model choices plus `/api/user-media?generationType=try_on` for user-owned garment/history items.
 
-Admin exposes two material surfaces:
+Admin exposes one private material support surface:
 
-- `Library Assets` is the official reusable material library for product, model,
-  garment, scene, example image, and example video materials. It supports
-  R2-backed upload, metadata editing, category routing, sort weight, and admin
-  removal.
 - `User History` is the private per-user material history from
   `user_media_history`. It is for support and operations inspection, not for
-  replacing the public official catalog.
+  replacing a public catalog.
 
 `assets` remains a technical substrate. Do not reintroduce a generic Admin
-`assets` table as a primary management surface. `category` is the single
-workbench routing field for official library assets; the old multi-use field is
-not a separate frontend filter.
+`assets` table as a primary management surface. Do not restore official
+material source tabs without a staffed content ingestion and quality workflow.
 
 ## Frontend Optimization Candidates
 

@@ -4,6 +4,7 @@ import { firstDashboardParam } from '@/lib/dashboard/locale-url';
 type CreateTryOnPageProps = {
   searchParams?: Promise<{
     prompt?: string | string[];
+    templateId?: string | string[];
   }>;
 };
 
@@ -14,6 +15,7 @@ export default async function CreateTryOnPage({
   return (
     <TryOnWorkbench
       initialPrompt={firstDashboardParam(params?.prompt) ?? ''}
+      initialTemplateId={firstDashboardParam(params?.templateId) ?? ''}
     />
   );
 }

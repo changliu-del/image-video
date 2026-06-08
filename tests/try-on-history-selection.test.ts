@@ -11,8 +11,8 @@ describe('try-on history material selection', () => {
     const source = readSource('components/create/try-on-workbench.tsx');
 
     expect(source).toContain('const [selectedGarmentAssets');
-    expect(source).toContain(
-      'garmentFiles.length + selectedGarmentAssetIds.length'
+    expect(source).toMatch(
+      /localGarmentFiles\.length\s*\+\s*selectedGarmentAssetIds\.length/
     );
     expect(source).toContain('function toggleLibraryGarment');
     expect(source).toContain('...selectedGarmentAssetIds');

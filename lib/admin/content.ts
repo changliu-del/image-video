@@ -29,7 +29,6 @@ export const adminStatusLabels: Record<AdminLocale, Record<string, string>> = {
     member: 'Membro',
     model: 'Modelo',
     ops: 'Operações',
-    ops_library_used: 'Biblioteca usada',
     output: 'Saída',
     pending: 'Pendente',
     purchase: 'Compra',
@@ -71,7 +70,6 @@ export const adminStatusLabels: Record<AdminLocale, Record<string, string>> = {
     member: 'Member',
     model: 'Model',
     ops: 'Ops',
-    ops_library_used: 'Library used',
     output: 'Output',
     pending: 'Pending',
     purchase: 'Purchase',
@@ -113,7 +111,6 @@ export const adminStatusLabels: Record<AdminLocale, Record<string, string>> = {
     member: '成员',
     model: '模特',
     ops: '运营',
-    ops_library_used: '使用官方素材',
     output: '输出',
     pending: '待处理',
     purchase: '充值',
@@ -202,29 +199,6 @@ type AdminTemplatesCopy = {
   errors: Record<string, string>;
 };
 
-type AdminLibraryCopy = {
-  title: string;
-  description: string;
-  emptyText: string;
-  searchPlaceholder: string;
-  addAsset: string;
-  createAction: string;
-  modalCreate: string;
-  modalEdit: string;
-  modalDetails: string;
-  advancedFields: string;
-  noFileSelected: string;
-  selectedFile: string;
-  uploadFile: string;
-  openAssetUrl: string;
-  confirmRemove: (title: string) => string;
-  columns: Record<string, string>;
-  fields: Record<string, string>;
-  placeholders: Record<string, string>;
-  categoryOptions: Record<string, string>;
-  errors: Record<string, string>;
-};
-
 type AdminDashboardCopy = {
   title: string;
   description: string;
@@ -303,7 +277,6 @@ type AdminDashboardCopy = {
 export const ADMIN_TAB_KEYS = [
   'overview',
   'templates',
-  'library-assets',
   'user-media',
   'users',
   'generation-jobs',
@@ -359,7 +332,6 @@ export type AdminContent = {
     AdminManagementCopy
   >;
   templates: AdminTemplatesCopy;
-  libraryAssets: AdminLibraryCopy;
   help: AdminHelpCopy;
   statusLabels: Record<string, string>;
 };
@@ -406,7 +378,6 @@ export const adminContent: Record<AdminLocale, AdminContent> = {
     tabs: {
       overview: 'Visão geral',
       templates: 'Templates',
-      'library-assets': 'Biblioteca',
       'user-media': 'Histórico do usuário',
       users: 'Usuários',
       'generation-jobs': 'Gerações',
@@ -606,7 +577,6 @@ export const adminContent: Record<AdminLocale, AdminContent> = {
           visibility: 'Visibilidade',
           isFavorite: 'Favorito',
           usedCount: 'Uso',
-          libraryTitle: 'Material oficial vinculado',
           jobStatus: 'Status da geração',
           lastUsedAt: 'Último uso',
           createdAt: 'Criado em',
@@ -738,59 +708,6 @@ export const adminContent: Record<AdminLocale, AdminContent> = {
         completeUpload: 'Não foi possível concluir o envio',
       },
     },
-    libraryAssets: {
-      title: 'Biblioteca',
-      description:
-        'Gerencie mídias reutilizáveis por workbench.',
-      emptyText: 'Nenhum ativo na biblioteca.',
-      searchPlaceholder: 'Título, categoria, MIME...',
-      addAsset: 'Adicionar ativo',
-      createAction: 'Enviar para biblioteca',
-      modalCreate: 'Adicionar ativo da biblioteca',
-      modalEdit: 'Editar ativo da biblioteca',
-      modalDetails: 'Detalhes do ativo',
-      advancedFields: 'Campos avançados',
-      noFileSelected: 'Nenhum arquivo selecionado',
-      selectedFile: 'Arquivo selecionado',
-      uploadFile: 'Enviar arquivo',
-      openAssetUrl: 'Abrir URL do ativo',
-      confirmRemove: (title) => `Remover ${title} da biblioteca?`,
-      columns: {
-        assetId: 'ID do material',
-        assetUrl: 'Preview',
-        title: 'Material',
-        category: 'Categoria',
-        sortWeight: 'Peso',
-        usageCount: 'Uso',
-        updatedAt: 'Atualizado em',
-      },
-      fields: {
-        title: 'Título',
-        category: 'Categoria',
-        description: 'Descrição',
-        sortWeight: 'Peso',
-        usageCount: 'Uso',
-        mimeType: 'MIME',
-        sizeBytes: 'Tamanho',
-        createdAt: 'Criado em',
-        updatedAt: 'Atualizado em',
-      },
-      placeholders: {},
-      categoryOptions: {
-        image_to_video: 'Imagem para vídeo',
-        apparel_image: 'Imagem de produto',
-        try_on: 'Provador virtual',
-      },
-      errors: {
-        load: 'Falha ao carregar',
-        save: 'Falha ao salvar',
-        upload: 'Falha no envio',
-        delete: 'Falha ao excluir',
-        prepareUpload: 'Não foi possível preparar o envio',
-        completeUpload: 'Não foi possível concluir o envio',
-        selectFile: 'Selecione um arquivo primeiro.',
-      },
-    },
     help: {
       title: 'Ajuda',
       description:
@@ -816,7 +733,7 @@ export const adminContent: Record<AdminLocale, AdminContent> = {
           title: 'Durante campanhas',
           items: [
             'Confirme se templates têm categoria, preview, custo e tags alinhados com a campanha.',
-            'Use a Biblioteca para deixar materiais aprovados visíveis e arquivar duplicados.',
+            'Revise templates e histórico do usuário quando houver material duplicado ou inválido.',
           ],
         },
         {
@@ -944,71 +861,6 @@ Templates agora sao registros pequenos de imagem para video. A tabela de templat
           ],
         },
         {
-          key: 'library-assets',
-          title: 'Biblioteca',
-          markdown: `# Biblioteca
-
-## Uso
-
-Ativos da biblioteca sao midias reutilizaveis. O upload cria o registro no Admin; a categoria define em qual workbench o material aparece.
-
-## Fluxo de operacao
-
-- Envie PNG, JPG, WEBP, MP4 ou WEBM.
-- Confira o preview antes de salvar.
-- Revise titulo, categoria, descricao e peso de ordenacao.
-- Salve e confira o material no workbench da categoria escolhida.
-
-## Onde o usuario ve
-
-### Workbench de video
-
-![Video workbench material placement](/admin-help/placements/library-video-key.png)
-
-- Caminho: workspace de criacao, aba de video.
-- O usuario ve: botoes de referencia e material para compor o video.
-- O operador confere: categoria de video, preview claro e midia pronta para ser usada.
-
-### Workbench de produto
-
-![Apparel workbench material placement](/admin-help/placements/library-apparel-key.png)
-
-- Caminho: workspace de produto, botao de escolher da biblioteca.
-- O usuario ve: materiais de produto reutilizaveis para iniciar a composicao.
-- O operador confere: clareza, proporcao e se a categoria e produto.
-
-### Workbench de prova virtual
-
-![Try-on workbench material placement](/admin-help/placements/library-try-on-key.png)
-
-- Caminho: workspace de prova virtual, area de modelo, roupa e material.
-- O usuario ve: modelos, roupas ou exemplos disponiveis para selecionar.
-- O operador confere: se o material esta na categoria correta.
-
-## Checklist
-
-- A categoria errada coloca midia na pagina errada.
-- Video precisa de poster ou thumbnail real antes de entrar em grid de imagem.
-- Para tirar do frontend, remova o registro da biblioteca.`,
-          purpose:
-            'Gerenciar mídias reutilizáveis de produto, modelo, peça, cena e exemplos que alimentam os workbenches.',
-          dailyActions: [
-            'Enviar arquivo, conferir preview e completar metadados básicos.',
-            'Ajustar categoria, descrição e peso de ordenação.',
-            'Remover materiais obsoletos quando não devem aparecer no frontend.',
-          ],
-          keyFields: [
-            'ID do material, título, categoria e descrição.',
-            'Peso de ordenação e uso.',
-            'Preview, URL do ativo e metadados de mídia nos detalhes.',
-          ],
-          riskSignals: [
-            'Vídeos precisam de tratamento próprio e não devem virar imagem quebrada.',
-            'Categoria incorreta coloca material no workbench errado.',
-            'Materiais obsoletos devem ser removidos da biblioteca.',
-          ],
-        },
-        {
           key: 'user-media',
           title: 'Histórico do usuário',
           purpose:
@@ -1021,12 +873,12 @@ Ativos da biblioteca sao midias reutilizaveis. O upload cria o registro no Admin
           keyFields: [
             'ID do material, usuário, título, origem e fluxo.',
             'Visibilidade, favorito, uso e último uso.',
-            'Material oficial vinculado e status da geração nos detalhes.',
+            'Status da geração nos detalhes quando o material veio de uma geração.',
           ],
           riskSignals: [
-            'Este histórico é dado privado de usuário; não use cache público nem trate como catálogo oficial.',
+            'Este histórico é dado privado de usuário; não use cache público nem trate como catálogo.',
             'Excluir no Admin deve ser soft delete por visibilidade.',
-            'A tabela assets é apenas base técnica; operação deve usar Biblioteca ou Histórico do usuário.',
+            'A tabela assets é apenas base técnica; operação deve usar Histórico do usuário para suporte.',
           ],
         },
         {
@@ -1106,7 +958,7 @@ Ativos da biblioteca sao midias reutilizaveis. O upload cria o registro no Admin
           keyFields: [
             'Princípios de uso, ritmo recomendado e manutenção da coluna.',
             'Uso, ações diárias, campos principais e riscos por aba.',
-            'Relação entre Templates, Biblioteca, Arquivos, Gerações e Créditos.',
+            'Relação entre Templates, Histórico do usuário, Gerações e Créditos.',
           ],
           riskSignals: [
             'Ajuda desatualizada vira fonte de erro operacional.',
@@ -1159,7 +1011,6 @@ Ativos da biblioteca sao midias reutilizaveis. O upload cria o registro no Admin
     tabs: {
       overview: 'Overview',
       templates: 'Templates',
-      'library-assets': 'Library Assets',
       'user-media': 'User History',
       users: 'Users',
       'generation-jobs': 'Generation Jobs',
@@ -1358,7 +1209,6 @@ Ativos da biblioteca sao midias reutilizaveis. O upload cria o registro no Admin
           visibility: 'Visibility',
           isFavorite: 'Favorite',
           usedCount: 'Uses',
-          libraryTitle: 'Linked official material',
           jobStatus: 'Generation status',
           lastUsedAt: 'Last used',
           createdAt: 'Created At',
@@ -1490,59 +1340,6 @@ Ativos da biblioteca sao midias reutilizaveis. O upload cria o registro no Admin
         completeUpload: 'Upload could not be completed',
       },
     },
-    libraryAssets: {
-      title: 'Library Assets',
-      description:
-        'Manage reusable media by workbench.',
-      emptyText: 'No library assets.',
-      searchPlaceholder: 'Title, category, MIME...',
-      addAsset: 'Add asset',
-      createAction: 'Upload to library',
-      modalCreate: 'Add library asset',
-      modalEdit: 'Edit library asset',
-      modalDetails: 'Library asset details',
-      advancedFields: 'Advanced fields',
-      noFileSelected: 'No file selected',
-      selectedFile: 'Selected file',
-      uploadFile: 'Upload file',
-      openAssetUrl: 'Open asset URL',
-      confirmRemove: (title) => `Remove ${title} from the library?`,
-      columns: {
-        assetId: 'Material ID',
-        assetUrl: 'Preview',
-        title: 'Material',
-        category: 'Category',
-        sortWeight: 'Weight',
-        usageCount: 'Usage',
-        updatedAt: 'Updated At',
-      },
-      fields: {
-        title: 'Title',
-        category: 'Category',
-        description: 'Description',
-        sortWeight: 'Sort Weight',
-        usageCount: 'Usage',
-        mimeType: 'MIME',
-        sizeBytes: 'Size',
-        createdAt: 'Created At',
-        updatedAt: 'Updated At',
-      },
-      placeholders: {},
-      categoryOptions: {
-        image_to_video: 'Image to video',
-        apparel_image: 'Apparel image',
-        try_on: 'Try-on',
-      },
-      errors: {
-        load: 'Load failed',
-        save: 'Save failed',
-        upload: 'Upload failed',
-        delete: 'Delete failed',
-        prepareUpload: 'Upload could not be prepared',
-        completeUpload: 'Upload could not be completed',
-        selectFile: 'Select a file first.',
-      },
-    },
     help: {
       title: 'Help',
       description:
@@ -1568,7 +1365,7 @@ Ativos da biblioteca sao midias reutilizaveis. O upload cria o registro no Admin
           title: 'Campaign work',
           items: [
             'Confirm templates have category, preview media, cost, and tags aligned with the campaign.',
-            'Use Library Assets to surface reusable media and remove duplicates.',
+            'Review templates and user history when support reports duplicated or invalid material.',
           ],
         },
         {
@@ -1696,71 +1493,6 @@ Templates are now small image-to-video records. The templates table stores type,
           ],
         },
         {
-          key: 'library-assets',
-          title: 'Library Assets',
-          markdown: `# Library Assets
-
-## Purpose
-
-Library assets are reusable media. Uploading creates the Admin record; the category decides which workbench shows the material.
-
-## Operating flow
-
-- Upload a PNG, JPG, WEBP, MP4, or WEBM file.
-- Check the preview before saving.
-- Review title, category, description, and sort weight.
-- Save and check the material in the selected category's workbench.
-
-## Where users see it
-
-### Video workbench
-
-![Video workbench material placement](/admin-help/placements/library-video-key.png)
-
-- Path: creation workspace, video tab.
-- Users see: reference buttons and reusable material for composing a video.
-- Operators check: video category, clear preview, and usable media.
-
-### Product image workbench
-
-![Apparel workbench material placement](/admin-help/placements/library-apparel-key.png)
-
-- Path: product image workspace, choose-from-library entry.
-- Users see: reusable product materials for starting a composition.
-- Operators check: clarity, ratio, and product-image category.
-
-### Try-on workbench
-
-![Try-on workbench material placement](/admin-help/placements/library-try-on-key.png)
-
-- Path: try-on workspace, model, garment, and material areas.
-- Users see: selectable models, garments, or examples.
-- Operators check: correct category.
-
-## Checklist
-
-- A wrong category places media on the wrong page.
-- Video needs a real poster or thumbnail before entering image grids.
-- Remove obsolete materials from the library when they should leave the frontend.`,
-          purpose:
-            'Manage reusable product, model, garment, scene, and example media that feed the workbenches.',
-          dailyActions: [
-            'Upload the file, check the preview, and complete core metadata.',
-            'Set category, description, and sort weight.',
-            'Remove outdated materials when they should not appear on the frontend.',
-          ],
-          keyFields: [
-            'Material ID, title, category, and description.',
-            'Sort weight and usage count.',
-            'Preview, asset URL, and media metadata in the detail view.',
-          ],
-          riskSignals: [
-            'Videos need their own handling and should not render as broken images.',
-            'A wrong category places material on the wrong workbench.',
-            'Outdated materials should be removed from the library.',
-          ],
-        },
-        {
           key: 'user-media',
           title: 'User History',
           purpose:
@@ -1773,12 +1505,12 @@ Library assets are reusable media. Uploading creates the Admin record; the categ
           keyFields: [
             'Material ID, user, title, source, and generation flow.',
             'Visibility, favorite flag, usage count, and last use.',
-            'Linked official library material and generation status in details.',
+            'Generation status in details when the material came from a generation.',
           ],
           riskSignals: [
-            'This history is private user data; do not cache it publicly or treat it as the official catalog.',
+            'This history is private user data; do not cache it publicly or treat it as a catalog.',
             'Deleting from Admin should be a soft delete through visibility.',
-            'The assets table is only the technical substrate; operators should use Library Assets or User History.',
+            'The assets table is only the technical substrate; operators should use User History for support.',
           ],
         },
         {
@@ -1858,7 +1590,7 @@ Library assets are reusable media. Uploading creates the Admin record; the categ
           keyFields: [
             'Operating principles, recommended rhythm, and column maintenance.',
             'Purpose, daily actions, key fields, and risks for each tab.',
-            'The relationship between Templates, Library Assets, Assets, Generation Jobs, and Credit Ledger.',
+            'The relationship between Templates, User History, Generation Jobs, and Credit Ledger.',
           ],
           riskSignals: [
             'Outdated Help becomes a source of operational mistakes.',
@@ -1910,7 +1642,6 @@ Library assets are reusable media. Uploading creates the Admin record; the categ
     tabs: {
       overview: '总览',
       templates: '模板',
-      'library-assets': '素材库',
       'user-media': '用户历史素材',
       users: '用户',
       'generation-jobs': '生成任务',
@@ -2109,7 +1840,6 @@ Library assets are reusable media. Uploading creates the Admin record; the categ
           visibility: '可见性',
           isFavorite: '收藏',
           usedCount: '使用次数',
-          libraryTitle: '关联官方素材',
           jobStatus: '生成状态',
           lastUsedAt: '最近使用',
           createdAt: '创建时间',
@@ -2240,58 +1970,6 @@ Library assets are reusable media. Uploading creates the Admin record; the categ
         completeUpload: '无法完成上传',
       },
     },
-    libraryAssets: {
-      title: '素材库',
-      description: '按工作台管理可复用媒体。',
-      emptyText: '暂无素材。',
-      searchPlaceholder: '搜索标题、类别或 MIME...',
-      addAsset: '添加素材',
-      createAction: '上传入库',
-      modalCreate: '添加素材',
-      modalEdit: '编辑素材',
-      modalDetails: '素材详情',
-      advancedFields: '高级字段',
-      noFileSelected: '未选择文件',
-      selectedFile: '已选文件',
-      uploadFile: '上传文件',
-      openAssetUrl: '打开素材链接',
-      confirmRemove: (title) => `确认从素材库移除 ${title}？`,
-      columns: {
-        assetId: '素材 ID',
-        assetUrl: '预览',
-        title: '素材',
-        category: '类别',
-        sortWeight: '排序权重',
-        usageCount: '使用量',
-        updatedAt: '更新时间',
-      },
-      fields: {
-        title: '标题',
-        category: '类别',
-        description: '描述',
-        sortWeight: '排序权重',
-        usageCount: '使用量',
-        mimeType: 'MIME',
-        sizeBytes: '大小',
-        createdAt: '创建时间',
-        updatedAt: '更新时间',
-      },
-      placeholders: {},
-      categoryOptions: {
-        image_to_video: '图生视频',
-        apparel_image: '商品图',
-        try_on: '智能试衣',
-      },
-      errors: {
-        load: '加载失败',
-        save: '保存失败',
-        upload: '上传失败',
-        delete: '删除失败',
-        prepareUpload: '无法准备上传',
-        completeUpload: '无法完成上传',
-        selectFile: '请先选择文件。',
-      },
-    },
     help: {
       title: '帮助',
       description:
@@ -2301,16 +1979,16 @@ Library assets are reusable media. Uploading creates the Admin record; the categ
       principles: [
         '先在左侧“帮助”下拉里选择要操作的页面讲解，再照着“实操步骤”做，不要把帮助当成数据字典。',
         '字段说明只写运营必须知道的含义：为什么要填、填错会影响哪里、最终会被哪个前台页面读取。',
-        '模板和素材都按类别进入对应工作台；素材库只维护类别和基础信息。',
-        '遇到问题时按链路排查：模板决定创作入口，素材库提供可复用媒体，媒体文件确认上传状态，生成任务确认执行结果，算力流水解释余额。',
+        '模板决定创作入口；用户历史只用于排查用户自己的上传和生成记录。',
+        '遇到问题时按链路排查：模板决定创作入口，用户历史确认用户素材，生成任务确认执行结果，算力流水解释余额。',
       ],
       rhythmTitle: '推荐运营节奏',
       rhythms: [
         {
           title: '上新前',
           items: [
-            '先准备模板或素材的预览，再补字段；保存后到对应工作台验证。',
-            '用对应工作台确认用户能看到正确入口或素材。',
+            '先准备模板预览，再补字段；保存后到对应工作台验证。',
+            '用对应工作台确认用户能看到正确模板入口。',
           ],
         },
         {
@@ -2323,7 +2001,7 @@ Library assets are reusable media. Uploading creates the Admin record; the categ
         {
           title: '下架和复盘',
           items: [
-            '过期模板先降低排序或删除前确认历史排查需求；过期素材从素材库移除。',
+            '过期模板先降低排序或删除前确认历史排查需求。',
             '把重复踩坑补进对应 tab 的风险信号。',
           ],
         },
@@ -2488,127 +2166,6 @@ Library assets are reusable media. Uploading creates the Admin record; the categ
           ],
         },
         {
-          key: 'library-assets',
-          title: '素材库',
-          markdown: `# 素材库操作手册
-
-## 一、引言
-
-### 编写目的
-
-本文用于指导运营在管理后台维护可复用媒体素材。素材库里的图片和视频会被创作工作台调用，帮助用户更快选择商品、模特、服饰、参考素材或示例素材。
-
-### 注意事项
-
-- 素材不是模板。素材是可复用媒体文件，模板是生成配方。
-- 文件上传成功后，类别会决定素材进入哪个工作台。
-- 视频素材进入图片格子前需要真实封面或缩略图。
-
-## 二、系统整体界面介绍
-
-### 系统登录与入口
-
-- 系统 URL：使用管理员提供的后台域名进入系统。
-- 登录方式：使用管理员账号登录后进入管理后台。
-- 功能入口：左侧菜单选择“管理后台 > 素材库”。
-- 前台验证位置：图生视频、商品图、智能试衣等创作工作台。
-
-### 素材库页面介绍
-
-素材库页面用于上传、编辑和删除媒体素材。运营在这里维护文件预览、标题、类别、描述和排序权重。
-
-- 上传与预览：上传 PNG、JPG、WEBP、MP4 或 WEBM 后，先确认预览是否正常。
-- 基础信息：标题、类别、描述。
-- 类别：决定素材会进入图生视频、商品图还是智能试衣。
-- 运营管理：排序权重和使用量。
-
-### 图生视频工作台页面介绍
-
-![图生视频工作台素材位置](/admin-help/placements/library-video-key.png)
-
-- 打开位置：创作工作台里的“图生视频”。
-- 用户看到：出镜商品、出镜模特、参考素材等可选入口。
-- 运营检查：类别是图生视频，预览清楚，素材可以直接用于生成。
-
-### 商品图工作台页面介绍
-
-![商品图工作台素材位置](/admin-help/placements/library-apparel-key.png)
-
-- 打开位置：创作工作台里的“商品图”。
-- 用户看到：“从素材库选择”入口，用已有商品素材开始制作。
-- 运营检查：图片清晰，比例适合商品图，标题能帮助用户理解素材。
-
-### 智能试衣工作台页面介绍
-
-![智能试衣工作台素材位置](/admin-help/placements/library-try-on-key.png)
-
-- 打开位置：创作工作台里的“智能试衣”。
-- 用户看到：模特、服饰和参考素材的选择入口。
-- 运营检查：类别是智能试衣，素材能作为模特、服饰或参考素材使用。
-
-## 三、功能介绍
-
-### 上传素材
-
-- 点击新增素材，选择 PNG、JPG、WEBP、MP4 或 WEBM 文件。
-- 上传后先看预览。预览打不开、主体被裁切、清晰度不足时，不要保留在素材库。
-- 系统可能根据文件名自动猜标题和类别，运营需要复核。
-
-### 编辑素材信息
-
-- 标题：使用运营能看懂的名称，不要只保留乱码文件名。
-- 描述：说明适合什么商品、场景、风格或限制。
-
-### 设置类别
-
-- image_to_video：素材会用于图生视频相关入口。
-- apparel_image：素材会用于商品图相关入口。
-- try_on：素材会用于智能试衣相关入口。
-- 类别选错会让素材出现在错误页面。
-
-### 管理排序
-
-- 排序权重：同类素材的人工排序加权，活动主推可以调高，活动结束后要复原。
-- 使用量：详情里查看素材被使用的统计值；当前不是手工填写字段。
-
-## 四、业务操作指引
-
-### 如何管理素材库
-
-新增素材：进入“素材库”页面，点击新增素材，上传文件，确认预览正常，再填写标题、类别和描述。
-
-查询素材：通过标题、类别、MIME 或素材 ID 查找素材。前台找不到素材时，先检查底层媒体是否 uploaded、类别是否选对。
-
-修改素材：需要调整展示时，修改标题、描述和排序权重；需要调整出现位置时，修改类别。
-
-删除或下架素材：确认不需要前台展示时，直接从素材库删除记录。
-
-保存后验证：保存后进入对应工作台检查素材是否出现。图生视频看视频素材入口，商品图看“从素材库选择”，智能试衣看模特、服饰和参考素材入口。`,
-          purpose:
-            '上传和管理可复用媒体素材。新上传保存后就是 Admin 里的素材记录，并按“类别”出现在对应工作台：图生视频、商品图或智能试衣。',
-          dailyActions: [
-            '进入“素材库”，点击“新增素材”，先选择 PNG、JPG、WEBP、MP4 或 WEBM 文件。',
-            '看左侧预览是否正常。预览不正常时先换文件或查媒体文件状态。',
-            '系统会根据文件名自动猜标题和类别，但运营需要复核。',
-            '补标题、类别和描述，必要时展开高级字段补排序权重。',
-            '保存后到对应工作台检查：image_to_video 看 /create/video，apparel_image 看 /create/apparel，try_on 看 /create/try-on。',
-          ],
-          keyFields: [
-            '上传文件：真正写入 R2 的原始媒体。支持图片和视频；文件决定预览、MIME、大小、尺寸、时长。',
-            '预览：第一检查点。看不清、打不开、比例明显不对时不要保留。',
-            '标题：运营可读名称，会用于 Admin 搜索和前台素材列表理解，不能只写文件名乱码。',
-            '类别：image_to_video 出现在图生视频；apparel_image 出现在商品图；try_on 出现在智能试衣。',
-            '描述：说明适合什么商品、场景、风格或限制，帮助运营二次筛选。',
-            '排序权重：同类素材的人工排序加权，活动主推可以调高，活动结束要复原。',
-          ],
-          riskSignals: [
-            '类别选错会让素材出现在错误工作台。',
-            '视频素材不要当图片素材使用，否则前台可能没有图片缩略图。',
-            '低清晰度、主体被裁切、商品和模特不适配的素材不要保留在素材库。',
-            '素材标题、类别和描述不清楚时，用户会难以判断能不能使用。',
-          ],
-        },
-        {
           key: 'user-media',
           title: '用户历史素材',
           purpose:
@@ -2616,18 +2173,18 @@ Library assets are reusable media. Uploading creates the Admin record; the categ
           dailyActions: [
             '客服排查前先按邮箱、标题、来源或生成类型搜索，确认是同一个用户的素材。',
             '打开详情看预览、来源、可见性和最后使用时间，再判断是上传问题、生成问题还是素材复用问题。',
-            '用户要求隐藏或素材明显无效时，通过可见性做软删除，不要误动官方素材库。',
+            '用户要求隐藏或素材明显无效时，通过可见性做软删除，不要误删底层文件。',
           ],
           keyFields: [
             '素材 ID、用户、标题、来源和生成类型：快速确认素材是谁的、从哪里来的。',
             '预览只在详情里看，避免列表页加载大量图片。',
             '可见性、收藏、使用次数和最后使用时间：判断素材是否还在用户历史里活跃。',
-            '关联运营素材和生成任务状态：在详情里定位是否来自官方素材库或某次生成。',
+            '生成任务状态：在详情里定位是否来自某次生成。',
           ],
           riskSignals: [
-            '用户历史素材是用户私域数据，不能按官方素材库缓存或展示。',
+            '用户历史素材是用户私域数据，不能按公共目录缓存或展示。',
             'Admin 删除应落到可见性的软删除，避免误删底层文件和其他引用。',
-            'assets 表只是技术底座；运营日常只看“运营素材库”和“用户历史素材”。',
+            'assets 表只是技术底座；运营日常通过“用户历史素材”做支持排查。',
           ],
         },
         {
@@ -2720,11 +2277,10 @@ Library assets are reusable media. Uploading creates the Admin record; the categ
             '每次复盘把“踩坑点”写进发布前检查，不要只写在聊天记录里。',
           ],
           keyFields: [
-            '帮助下拉：选择总览、模板、素材库、用户、媒体文件、生成任务或算力流水页面讲解。',
+            '帮助下拉：选择总览、模板、用户历史、用户、生成任务或算力流水页面讲解。',
             '实操步骤：按真实后台动作排序。',
             '字段含义：说明字段为什么填、怎么填、影响哪里。',
             '发布前检查：记录容易误操作的地方。',
-            '素材库字段示意图：对照上传弹窗看每个字段的位置。',
           ],
           riskSignals: [
             '帮助过期会直接造成误发布、误扣费解释或错误权限操作。',

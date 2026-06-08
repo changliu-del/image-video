@@ -1,6 +1,6 @@
 # Runtime Architecture
 
-Updated: 2026-06-03
+Updated: 2026-06-08
 
 ## Active Generation Flow
 
@@ -40,7 +40,6 @@ Key tables are defined in `lib/db/schema.ts`:
 - `users`
 - `assets`
 - `templates`
-- `library_assets`
 - `model_catalog_assets`
 - `generation_jobs`
 - `user_media_history`
@@ -62,11 +61,10 @@ The template list API should return only `id`, `type`, `category`, and
 `previewUrl` plus `prompt` when the user opens a detail view or applies a
 template.
 
-`library_assets` is the first-party reusable material layer. It references
-uploaded `assets` rows and stores category, title, description, sort weight,
-usage count, and creator/updater audit metadata. The public
-`/api/library-assets` route returns uploaded records filtered by category for
-workbench inspiration and examples.
+`user_media_history` is the private per-user material layer for uploaded and
+generated media. It references owned `assets` rows and optional
+`generation_jobs` rows, then stores source, generation type, role, visibility,
+favorite state, usage count, and last-used time. It is not public catalog data.
 
 `generation_jobs` keeps one `output_asset_id` for the final provider result.
 Try-on mode, template id, prompt, duration, and similar request context stay in

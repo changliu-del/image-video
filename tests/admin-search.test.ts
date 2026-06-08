@@ -51,9 +51,12 @@ describe('Admin operational search fields', () => {
     expect(ADMIN_OPERATIONAL_SEARCH_FIELDS.templates).not.toContain(
       'sortWeight'
     );
-    expect(ADMIN_OPERATIONAL_SEARCH_FIELDS['library-assets']).toEqual(
-      expect.arrayContaining(['title', 'category', 'assetId', 'mimeType'])
-    );
+    expect(
+      Object.prototype.hasOwnProperty.call(
+        ADMIN_OPERATIONAL_SEARCH_FIELDS,
+        'library-assets'
+      )
+    ).toBe(false);
     expect(ADMIN_OPERATIONAL_SEARCH_FIELDS['user-media']).toEqual(
       expect.arrayContaining([
         'userEmail',
@@ -94,19 +97,6 @@ describe('adminSearchMatches', () => {
     expect(adminSearchMatches(values, 'fashion')).toBe(true);
     expect(adminSearchMatches(values, 'clean sale video')).toBe(true);
     expect(adminSearchMatches(values, 'ratio-9-16')).toBe(false);
-  });
-
-  it('matches library asset title, category, and asset metadata', () => {
-    const values = [
-      'Lookbook model',
-      'try_on',
-      '2e8f4c55-a4f7-48d2-b546-55a41e31f31a',
-      'image/webp',
-    ];
-
-    expect(adminSearchMatches(values, 'lookbook')).toBe(true);
-    expect(adminSearchMatches(values, 'try_on')).toBe(true);
-    expect(adminSearchMatches(values, 'image/webp')).toBe(true);
   });
 
   it('does not treat arbitrary objects as broad raw search text', () => {

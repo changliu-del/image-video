@@ -11,14 +11,12 @@ import {
   Home,
   Images,
   LayoutTemplate,
-  Library,
   Loader2,
   ReceiptText,
   Users,
 } from 'lucide-react';
 import { AdminDashboardPanel } from '@/components/admin/dashboard-panel';
 import { AdminHelpPanel } from '@/components/admin/help-panel';
-import { LibraryAssetsPanel } from '@/components/admin/library-assets-panel';
 import { TemplatesPanel } from '@/components/admin/templates-panel';
 import {
   ManagementPanel,
@@ -48,11 +46,6 @@ const TABLES = [
     adminOnly: false,
   },
   {
-    key: 'library-assets',
-    icon: Library,
-    adminOnly: false,
-  },
-  {
     key: 'user-media',
     icon: Images,
     adminOnly: false,
@@ -79,7 +72,7 @@ type TableKey = (typeof TABLES)[number]['key'];
 type VisibleTable = (typeof TABLES)[number];
 type ManagementTableKey = Exclude<
   TableKey,
-  'overview' | 'templates' | 'library-assets' | 'help'
+  'overview' | 'templates' | 'help'
 >;
 type AdminShellUser = {
   id: number;
@@ -252,7 +245,6 @@ function buildManagementConfigs(
         'visibility',
         'isFavorite',
         'usedCount',
-        'libraryTitle',
         'jobStatus',
         'mediaKind',
         'previewMimeType',
@@ -751,11 +743,6 @@ export function AdminShell() {
               content={content}
               locale={locale}
             />
-          </div>
-        ) : null}
-        {visitedTabs.includes('library-assets') ? (
-          <div hidden={activeTab !== 'library-assets'}>
-            <LibraryAssetsPanel canDelete={canManageUsers} content={content} />
           </div>
         ) : null}
         {visitedTabs.includes('help') ? (

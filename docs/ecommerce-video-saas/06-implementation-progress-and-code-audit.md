@@ -1,6 +1,6 @@
 # 电商图生视频 SaaS 当前实现进度和代码审计
 
-更新时间：2026-06-05
+更新时间：2026-06-08
 
 本文记录当前仓库代码的真实实现状态、主要风险、已完成优化和下一步建议。调研范围包括 Next.js App Router 页面、API routes、Drizzle schema、生成链路、支付/积分、R2 存储、模板/素材、后台任务、测试和既有文档。
 
@@ -19,8 +19,8 @@
 | 生成任务 | 当前主线是 DB-first queued job + Trigger.dev `generate-wanxiang` worker + 万相 submit/query | 主链路已避开 provider submit 先于本地落库的问题，后续重点是生产 worker/env/并发验证 |
 | Trigger/fal/FFmpeg runner | 旧 `generate-video` runner 已 disabled | 不在 active path；后续应删除归档或按简化 schema 重建 |
 | 支付/积分 | Stripe webhook、mock payments、credit ledger、reserve/capture/refund 已有 | 主体完整，仍需真实 price metadata 和生产 webhook 联调 |
-| 模板/素材 | 模板表、标签、官方素材库、用户历史素材、管理 API、爬虫 runbook、模型素材同步已有 | 素材/历史管理闭环第一版完成，下一步重点是真实素材填充、批量运营和质量闭环 |
-| 测试 | Vitest 覆盖 validation、limits、credits、payments、provider input、Admin 素材/搜索安全 | 有基础单测，仍缺更多 DB-backed API route 和端到端 smoke |
+| 模板/素材 | 模板表、用户历史素材、模型素材同步已有；官方素材库已撤掉 | 当前以模板、模特库和用户私域历史支撑创作，避免维护无人负责的官方素材目录 |
+| 测试 | Vitest 覆盖 validation、limits、credits、payments、provider input、Admin 搜索/帮助和用户历史安全 | 有基础单测，仍缺更多 DB-backed API route 和端到端 smoke |
 | 部署文档 | 01-05 文档覆盖架构、成本、部署、爬虫 | 缺少当前实现进度和风险清单，本文补齐 |
 
 ## 2. 已实现能力
@@ -35,7 +35,6 @@
   - `/create/apparel` -> `components/create/apparel-workbench.tsx`
   - `/create/try-on` -> `components/create/try-on-workbench.tsx`
 - Admin 入口：`app/(dashboard)/admin/page.tsx`、`components/admin/*`、`lib/admin/services/*`。
-- 素材库管理：`components/admin/library-assets-panel.tsx`、`app/api/admin/library-assets/*`。
 - 用户历史素材管理：`app/api/user-media/*`、`app/api/admin/user-media/route.ts`、`lib/user-media/service.ts`、`lib/admin/services/user-media.ts`。
 
 ### 2.2 API 和服务层
@@ -43,7 +42,7 @@
 - 资产上传：`app/api/assets/presign/route.ts`、`app/api/assets/complete/route.ts`、`lib/storage/r2.ts`。
 - 生成创建和查询：`app/api/generations/route.ts`、`app/api/generations/[id]/status/route.ts`、`lib/generations/jobs.ts`。
 - 兼容旧 job 查询：`app/api/jobs/[id]/route.ts` 仍作为三个工作台的状态查询 fallback。
-- 模板、素材库、用户历史素材和模型素材：`app/api/templates/route.ts`、`app/api/library-assets/route.ts`、`app/api/user-media/*`、`app/api/model-assets/route.ts`、`lib/templates/query.ts`、`lib/library-assets/query.ts`、`lib/user-media/service.ts`、`lib/model-assets/catalog.ts`。
+- 模板、用户历史素材和模型素材：`app/api/templates/route.ts`、`app/api/user-media/*`、`app/api/model-assets/route.ts`、`lib/templates/query.ts`、`lib/user-media/service.ts`、`lib/model-assets/catalog.ts`。
 - 支付：`app/api/stripe/checkout/route.ts`、`app/api/stripe/webhook/route.ts`、`lib/payments/stripe.ts`、`lib/payments/mock.ts`。
 
 ### 2.3 数据模型
@@ -53,8 +52,7 @@
 - 用户、角色、管理员权限和 credit balance。
 - 用户资产 `assets`。
 - 模板、标签、模板资产、审计日志。
-- 一等素材库 `library_assets`，引用 `assets`，并保存 `category`、标题、描述、排序权重、使用量和创建/更新审计。
-- 私域用户历史素材 `user_media_history`，引用 `assets`，可关联 `library_assets` 或 `generation_jobs`，保存来源、用途、可见性、收藏、使用次数和最近使用时间。
+- 私域用户历史素材 `user_media_history`，引用 `assets`，可关联 `generation_jobs`，保存来源、用途、可见性、收藏、使用次数和最近使用时间。
 - 模板爬虫 ingestion run 和 source record。
 - 万相模型素材 catalog。
 - 生成任务 `generation_jobs`。
@@ -92,7 +90,7 @@
 ### P2: 生产联调和工程化缺口
 
 - Stripe price metadata、webhook secret、mock/production 切换需要一次真实联调。
-- 旧 `ADMIN_API_URL/ADMIN_API_TOKEN` 素材库代理已由本地 `library_assets` 公开 API 替代；若还需要外部素材源，应作为 ingestion/sync 能力接入本地素材库，而不是直接让工作台依赖外部代理。
+- 旧 `ADMIN_API_URL/ADMIN_API_TOKEN` 素材库代理和本地 `library_assets` 官方素材库都已从当前主线撤掉；若以后恢复外部素材源，应先定义 ingestion、质量审核和运营 owner，而不是让工作台直接依赖无维护目录。
 - Next 15 canary、PPR、clientSegmentCache 已启用，上线前需要固定一次完整 build 验证。
 - API route 的集成测试和创作流端到端测试还缺。
 
@@ -127,36 +125,21 @@ pnpm test tests/generations-validation.test.ts
 - `image-video-studio` skill 增加前端默认架构入口，后续前端开发应先加载该 KB。
 - 旧前端实现已清理：`components/create/create-workbench.tsx`、`components/video-generation/*`、`components/landing/*`、旧 `/jobs/[id]` 页面已删除；`/api/jobs/[id]` 仍保留为工作台状态查询兼容回退。
 
-### 4.2 素材库与用户历史管理第一版
+### 4.2 用户历史管理和官方素材库撤回
 
-已新增本地一等素材库能力：
+当前主线不再维护一等官方素材库：
 
-- `lib/db/schema.ts` 和 `lib/db/migrations/0009_library_assets.sql`
-  - 新增 `library_assets`，引用底层 `assets`，并通过 `category` 路由到图生视频、商品图或智能试衣工作台。
-  - 保留标题、描述、排序权重、使用量和创建/更新审计；`0013_simplify_library_assets.sql` 已移除旧的细分类型、上下架、多场景、标签、来源、授权和质量字段。
-- `lib/admin/services/library-assets.ts`
-  - 支持素材库列表、R2 presign 上传、complete 入库、编辑和删除。
-  - ops 可录入/编辑，删除仍需 admin。
-- `components/admin/library-assets-panel.tsx`
-  - 新增 Admin 一级 `Library Assets` 面板，支持视觉预览、搜索、上传创建和元数据编辑。
-- `app/api/library-assets/route.ts`、`lib/library-assets/query.ts`
-  - 替换旧外部素材代理，公开返回上传完成且类别匹配的本地素材。
-- 三个工作台已开始消费素材库：
-  - 图生视频加载 `category=image_to_video` 素材。
-  - 商品图加载 `category=apparel_image` 素材作为灵感/示例，模板 ID 仍只来自模板记录。
-  - 试衣加载 `category=try_on` 素材，并与模板、官方 model catalog 共同构成素材区。
-- 已新增 `user_media_history`：
-  - 用户上传完成后写入 `user_upload` 历史。
-  - 生成成功后 best-effort 写入 `generated_image` 或 `generated_video` 历史。
-  - 三个工作台用“官方素材 / 我的历史”分开展示。
-  - Admin 用 `User History` tab 做支持/运营查看，generic `assets` Admin route/service 已移除，`assets` 只保留为技术底座。
+- `library_assets` schema、公开 API、Admin API、Admin 面板和 `lib/library-assets/*` 已从产品面移除。
+- 历史迁移 `0009_library_assets.sql`、`0013_simplify_library_assets.sql`、`0014_library_assets_category_unique.sql` 保留为 no-op；`0025_remove_library_assets.sql` 用于从已有数据库删除旧表、旧外键和旧来源值。
+- `user_media_history` 只引用用户自己的 `assets` 和可选 `generation_jobs`，来源收敛为 `user_upload`、`generated_image`、`generated_video`。
+- 三个工作台的可复用用户素材入口改为私域历史；智能试衣保留独立 `model_catalog_assets` 模特库。
+- Admin 只保留 `User History` 做支持/运营查看，generic `assets` Admin route/service 和 Library Assets 面板都不作为管理入口。
 
 ## 5. 下一步优先级
 
 1. 做一次生产式 deploy/migrate/Trigger.dev worker/Wanxiang/R2/Stripe 联合 smoke，确认 queued job、provider submit、poll、output asset、history、capture/refund 全链路。
 2. 移除或归档 disabled `generate-video` / fal / FFmpeg runner，并同步 01-04 部署、成本和架构文档。
-3. 填充 50-100 条高质量官方素材记录，覆盖商品图、模特图、服装图、场景图、成片案例和短视频案例。
-4. 抽取 workbench 客户端共享工具，减少重复请求和错误处理逻辑。
-5. 为 workbench 的官方素材/历史素材加载增加局部 retry/error UI，并加入更完整的素材选择器筛选。
-6. 为 `/api/assets/*`、`/api/library-assets/*`、`/api/user-media/*`、`/api/generations/*`、Stripe webhook 增加 DB-backed route 级测试。
-7. 完成一次带真实 env 的 `pnpm typecheck`、`pnpm build`、上传生成、支付回调 smoke。
+3. 抽取 workbench 客户端共享工具，减少重复请求和错误处理逻辑。
+4. 为 workbench 的用户历史加载增加局部 retry/error UI，并加入更完整的历史素材筛选。
+5. 为 `/api/assets/*`、`/api/user-media/*`、`/api/generations/*`、Stripe webhook 增加 DB-backed route 级测试。
+6. 完成一次带真实 env 的 `pnpm typecheck`、`pnpm build`、上传生成、支付回调 smoke。

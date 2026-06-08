@@ -17,7 +17,6 @@ vi.mock('@/lib/dashboard/content', () => ({
 const EXPECTED_ADMIN_TAB_KEYS = [
   'overview',
   'templates',
-  'library-assets',
   'user-media',
   'users',
   'generation-jobs',
@@ -28,7 +27,6 @@ const EXPECTED_ADMIN_TAB_KEYS = [
 const EXISTING_ADMIN_TAB_KEYS = [
   'overview',
   'templates',
-  'library-assets',
   'user-media',
   'users',
   'generation-jobs',
@@ -329,13 +327,10 @@ describe('Admin Help tab coverage', () => {
     }
   });
 
-  it('keeps Template and Library Asset Help as separate Markdown documents', () => {
+  it('keeps Template Help focused on templates after removing Library Assets', () => {
     for (const [locale, content] of Object.entries(adminContent)) {
       const templates = content.help.items.find(
         (item) => item.key === 'templates'
-      );
-      const libraryAssets = content.help.items.find(
-        (item) => item.key === 'library-assets'
       );
 
       expect(templates?.markdown, `${locale}.templates.markdown`).toContain(
@@ -420,43 +415,18 @@ describe('Admin Help tab coverage', () => {
         expect(templates?.markdown, `${locale}.templates.markdown`).not.toContain(
           '### #1'
         );
-        expect(libraryAssets?.markdown, `${locale}.library-assets.markdown`).toContain(
-          '## 一、引言'
-        );
-        expect(libraryAssets?.markdown, `${locale}.library-assets.markdown`).toContain(
-          '## 二、系统整体界面介绍'
-        );
-        expect(libraryAssets?.markdown, `${locale}.library-assets.markdown`).toContain(
-          '## 三、功能介绍'
-        );
-        expect(libraryAssets?.markdown, `${locale}.library-assets.markdown`).toContain(
-          '## 四、业务操作指引'
-        );
       }
 
       expect(
-        libraryAssets?.markdown,
-        `${locale}.library-assets.markdown`
-      ).toContain('/admin-help/placements/library-apparel-key.png');
-      expect(
-        libraryAssets?.markdown,
-        `${locale}.library-assets.markdown`
-      ).toContain('/admin-help/placements/library-try-on-key.png');
-      expect(
-        libraryAssets?.markdown,
-        `${locale}.library-assets.markdown`
-      ).not.toContain('/api/');
-      expect(
-        libraryAssets?.markdown,
-        `${locale}.library-assets.markdown`
-      ).not.toContain('/admin-help/placements/apparel-workbench.png');
+        content.help.items.some(
+          (item) => (item as { key: string }).key === 'library-assets'
+        ),
+        `${locale}.library-assets removed`
+      ).toBe(false);
     }
 
     const zhTemplates = adminContent.zh.help.items.find(
       (item) => item.key === 'templates'
-    );
-    const zhLibraryAssets = adminContent.zh.help.items.find(
-      (item) => item.key === 'library-assets'
     );
 
     expect(zhTemplates?.markdown).not.toContain(
@@ -464,10 +434,5 @@ describe('Admin Help tab coverage', () => {
     );
     expect(zhTemplates?.markdown).not.toContain('如何管理素材库');
     expect(zhTemplates?.markdown).not.toContain('新增素材');
-    expect(zhLibraryAssets?.markdown).not.toContain(
-      '/admin-help/placements/template-admin-list.png'
-    );
-    expect(zhLibraryAssets?.markdown).not.toContain('如何管理模板');
-    expect(zhLibraryAssets?.markdown).not.toContain('模板没有被拆成两份');
   });
 });

@@ -8,8 +8,8 @@ import {
   normalizeLibraryItems,
 } from '../components/create/library-item-utils';
 
-describe('library item utilities', () => {
-  it('uses assetUrl for image library assets', () => {
+describe('media item utilities', () => {
+  it('uses assetUrl for image media items', () => {
     expect(
       getLibraryItemImage({
         title: 'Product',

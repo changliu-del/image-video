@@ -154,13 +154,6 @@ export function buildTemplatePreviewStorageKey(
   return `templates/${templateId}/${assetId}.${getAdminMediaExtension(mimeType)}`;
 }
 
-export function buildLibraryAssetStorageKey(
-  assetId: string,
-  mimeType: AdminMediaMimeType
-) {
-  return `library-assets/${assetId}.${getAdminMediaExtension(mimeType)}`;
-}
-
 export function storageKeyBelongsToUser(userId: number, storageKey: string) {
   return (
     storageKey.startsWith(`users/${userId}/uploads/`) &&
@@ -202,27 +195,6 @@ export function storageKeyMatchesTemplatePreview(
     Object.values(ADMIN_MEDIA_MIME_EXTENSIONS)
   );
   const prefix = `templates/${templateId}/${assetId}.`;
-  const extension = storageKey.slice(prefix.length);
-
-  return storageKey.startsWith(prefix) && allowedExtensions.has(extension);
-}
-
-export function storageKeyMatchesLibraryAsset(
-  assetId: string,
-  storageKey: string
-) {
-  if (
-    !storageKey.startsWith('library-assets/') ||
-    storageKey.includes('..') ||
-    storageKey.includes('//')
-  ) {
-    return false;
-  }
-
-  const allowedExtensions = new Set(
-    Object.values(ADMIN_MEDIA_MIME_EXTENSIONS)
-  );
-  const prefix = `library-assets/${assetId}.`;
   const extension = storageKey.slice(prefix.length);
 
   return storageKey.startsWith(prefix) && allowedExtensions.has(extension);

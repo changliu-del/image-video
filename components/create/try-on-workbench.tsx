@@ -46,12 +46,14 @@ import {
 import { refreshDashboardUser } from '@/lib/dashboard/user-cache';
 import { useDashboardLocale } from '@/lib/dashboard/use-dashboard-locale';
 import { getTryOnCreditCost } from '@/lib/generations/credit-costs';
-import type { PublicTemplateDetailItem } from '@/lib/templates/public-client';
+import {
+  normalizePublicTemplateDetail,
+  type PublicTemplateDetailItem,
+} from '@/lib/templates/public-client';
 import { cn } from '@/lib/utils';
 
 type TryOnMode = 'single' | 'multi';
 type TryOnAspectRatio = '1:1' | '3:4' | '9:16';
-type MaterialPickerSource = 'official' | 'history';
 type PosePreset = 'auto' | 'front' | 'editorial' | 'runway';
 type BackgroundPreset = 'studio' | 'street' | 'minimal' | 'boutique';
 type FitPreset = 'natural' | 'tailored' | 'relaxed';
@@ -102,30 +104,24 @@ const backgroundValues: BackgroundPreset[] = ['studio', 'street', 'minimal', 'bo
 const fitValues: FitPreset[] = ['natural', 'tailored', 'relaxed'];
 const materialPickerCopy = {
   pt: {
-    official: 'Materiais oficiais',
     history: 'Meu historico',
     loadingHistory: 'Carregando historico',
     historyError: 'Nao foi possivel carregar seu historico.',
     emptyHistory: 'Seu historico ainda nao tem imagens para este fluxo.',
-    emptyOfficial: 'Nenhum material oficial disponivel para este fluxo.',
     retry: 'Tentar novamente',
   },
   en: {
-    official: 'Official materials',
     history: 'My history',
     loadingHistory: 'Loading history',
     historyError: 'History could not be loaded.',
     emptyHistory: 'Your history does not have images for this flow yet.',
-    emptyOfficial: 'No official materials are available for this flow yet.',
     retry: 'Retry',
   },
   zh: {
-    official: '官方素材',
     history: '我的历史',
     loadingHistory: '加载历史素材中',
     historyError: '历史素材加载失败。',
     emptyHistory: '当前流程还没有可用的历史图片。',
-    emptyOfficial: '当前流程暂无官方素材。',
     retry: '重试',
   },
 };
@@ -425,8 +421,10 @@ function LibraryTile({
 
 export function TryOnWorkbench({
   initialPrompt = '',
+  initialTemplateId = '',
 }: {
   initialPrompt?: string;
+  initialTemplateId?: string;
 }) {
   const locale = useDashboardLocale();
   const copy = tryOnWorkbenchCopy[locale];
@@ -434,6 +432,7 @@ export function TryOnWorkbench({
   const banner = bannerCopy[locale];
   const materialCopy = materialPickerCopy[locale];
   const starterPrompt = initialPrompt.trim();
+  const starterTemplateId = initialTemplateId.trim();
   const [garmentFiles, setGarmentFiles] = useState<Array<File | null>>([
     null,
     null,
@@ -447,12 +446,9 @@ export function TryOnWorkbench({
   const [preserveFace, setPreserveFace] = useState(true);
   const [prompt, setPrompt] = useState(() => starterPrompt);
   const [selectedTemplateId, setSelectedTemplateId] = useState<string | null>(
-    null
+    () => starterTemplateId || null
   );
-  const [assets, setAssets] = useState<LibraryItem[]>([]);
   const [modelAssets, setModelAssets] = useState<ModelCatalogItem[]>([]);
-  const [materialSource, setMaterialSource] =
-    useState<MaterialPickerSource>('official');
   const [historyItems, setHistoryItems] = useState<LibraryItem[]>([]);
   const [hasLoadedHistory, setHasLoadedHistory] = useState(false);
   const [isLoadingHistory, setIsLoadingHistory] = useState(false);
@@ -461,7 +457,7 @@ export function TryOnWorkbench({
   const [selectedGarmentAssets, setSelectedGarmentAssets] = useState<
     LibraryItem[]
   >([]);
-  const [isLoadingLibrary, setIsLoadingLibrary] = useState(true);
+  const [isLoadingModels, setIsLoadingModels] = useState(true);
   const [exampleOffset, setExampleOffset] = useState(0);
   const [submitLabel, setSubmitLabel] = useState<string | null>(null);
   const [jobId, setJobId] = useState<string | null>(null);
@@ -530,47 +526,36 @@ export function TryOnWorkbench({
   useEffect(() => {
     let cancelled = false;
 
-    async function loadLibrary() {
-      setIsLoadingLibrary(true);
+    async function loadModels() {
+      setIsLoadingModels(true);
       try {
         const modelParams = new URLSearchParams({
           locale,
           limit: '24',
         });
-        const assetParams = new URLSearchParams({
-          pageSize: '12',
-          category: 'try_on',
-        });
-        const [modelResponse, assetResponse] = await Promise.all([
-          fetch(`/api/model-assets?${modelParams.toString()}`),
-          fetch(`/api/library-assets?${assetParams.toString()}`),
-        ]);
-
-        const [modelBody, assetBody] = await Promise.all([
-          modelResponse.ok ? modelResponse.json() : Promise.resolve({ items: [] }),
-          assetResponse.ok ? assetResponse.json() : Promise.resolve({ items: [] }),
-        ]);
+        const modelResponse = await fetch(`/api/model-assets?${modelParams.toString()}`);
+        const modelBody = modelResponse.ok
+          ? await modelResponse.json()
+          : { items: [] };
 
         if (!cancelled) {
           const nextModelAssets = normalizeModelItems(modelBody);
-          const nextAssets = normalizeItems(assetBody);
-          setAssets(nextAssets);
           setModelAssets(nextModelAssets);
           setSelectedModelAsset((current) => current ?? nextModelAssets[0] ?? null);
         }
       } finally {
-        if (!cancelled) setIsLoadingLibrary(false);
+        if (!cancelled) setIsLoadingModels(false);
       }
     }
 
-    loadLibrary();
+    loadModels();
     return () => {
       cancelled = true;
     };
   }, [locale]);
 
   useEffect(() => {
-    if (materialSource !== 'history' || hasLoadedHistory) return;
+    if (hasLoadedHistory) return;
 
     let cancelled = false;
 
@@ -610,7 +595,48 @@ export function TryOnWorkbench({
     return () => {
       cancelled = true;
     };
-  }, [hasLoadedHistory, materialSource]);
+  }, [hasLoadedHistory]);
+
+  useEffect(() => {
+    if (!starterTemplateId) return;
+
+    let cancelled = false;
+    const controller = new AbortController();
+
+    async function loadInitialTemplate() {
+      try {
+        const response = await fetch(
+          `/api/templates/${encodeURIComponent(starterTemplateId)}?${new URLSearchParams(
+            { locale }
+          )}`,
+          { signal: controller.signal }
+        );
+
+        if (!response.ok) {
+          throw new Error('initial-template-load-failed');
+        }
+
+        const detail = normalizePublicTemplateDetail(await response.json());
+        if (!detail || detail.type !== 'try_on') return;
+
+        if (!cancelled) {
+          setError(null);
+          setSelectedTemplateId(detail.id);
+          setPrompt(detail.prompt);
+        }
+      } catch {
+        if (!cancelled) {
+          setSelectedTemplateId(null);
+        }
+      }
+    }
+
+    void loadInitialTemplate();
+    return () => {
+      cancelled = true;
+      controller.abort();
+    };
+  }, [locale, starterTemplateId]);
 
   useEffect(() => {
     if (!jobId || terminalStatus(jobStatus?.status)) return;
@@ -822,9 +848,7 @@ export function TryOnWorkbench({
     if (mode === 'single') {
       const garmentAsset =
         selectedGarmentAsset ??
-        (materialSource === 'history'
-          ? selectableHistoryItems[0]
-          : selectableGarmentAssets[0]);
+        selectableHistoryItems[0];
       if (garmentAsset) {
         selectLibraryGarment(garmentAsset);
         return;
@@ -832,10 +856,7 @@ export function TryOnWorkbench({
     }
 
     if (mode === 'multi') {
-      const candidates =
-        materialSource === 'history'
-          ? selectableHistoryItems
-          : selectableGarmentAssets;
+      const candidates = selectableHistoryItems;
       const selectedIds = new Set(selectedGarmentAssetIds);
       const availableSlots = Math.max(
         0,
@@ -852,20 +873,14 @@ export function TryOnWorkbench({
     }
 
   }
-
-  const selectableGarmentAssets = useMemo(
-    () => assets.filter((item) => getItemAssetId(item) && getItemImage(item)),
-    [assets]
-  );
   const selectableHistoryItems = useMemo(
     () =>
       historyItems.filter((item) => getItemAssetId(item) && getItemImage(item)),
     [historyItems]
   );
-  const displayedLibraryTiles =
-    materialSource === 'history' ? selectableHistoryItems : selectableGarmentAssets;
+  const displayedLibraryTiles = selectableHistoryItems;
   const isChooseFromLibraryDisabled = displayedLibraryTiles.length === 0;
-  const baseLibraryImages = assets.map(getItemImage).filter(Boolean);
+  const baseLibraryImages = selectableHistoryItems.map(getItemImage).filter(Boolean);
   const libraryStart = baseLibraryImages.length ? exampleOffset % baseLibraryImages.length : 0;
   const libraryImages = [
     ...baseLibraryImages.slice(libraryStart),
@@ -996,7 +1011,12 @@ export function TryOnWorkbench({
             </button>
           </div>
           <div className="grid grid-cols-4 gap-3">
-            {modelAssets.length === 0 ? (
+            {isLoadingModels ? (
+              <p className="col-span-4 inline-flex items-center justify-center gap-2 rounded-lg border border-dashed border-gray-200 px-3 py-4 text-sm font-semibold text-gray-400">
+                <Loader2 className="size-4 animate-spin" />
+                {commonCopy.loadingLibrary}
+              </p>
+            ) : modelAssets.length === 0 ? (
               <p className="col-span-4 rounded-lg border border-dashed border-gray-200 px-3 py-4 text-sm text-gray-400">
                 {copy.noOfficialModels}
               </p>
@@ -1134,43 +1154,21 @@ export function TryOnWorkbench({
         </PanelSection>
 
         <PanelSection
-          title={copy.library}
+          title={materialCopy.history}
           hint={
-            materialSource === 'history'
-              ? isLoadingHistory
-                ? materialCopy.loadingHistory
-                : commonCopy.materialCount(selectableHistoryItems.length)
-              : isLoadingLibrary
-                ? commonCopy.loadingLibrary
-                : commonCopy.materialCount(displayedLibraryTiles.length)
+            isLoadingHistory
+              ? materialCopy.loadingHistory
+              : commonCopy.materialCount(selectableHistoryItems.length)
           }
         >
           <div className="space-y-3">
-            <div className="grid grid-cols-2 rounded-lg bg-gray-100 p-1">
-              {(['official', 'history'] as const).map((source) => (
-                <button
-                  key={source}
-                  type="button"
-                  onClick={() => setMaterialSource(source)}
-                  disabled={isSubmitting}
-                  className={cn(
-                    'h-9 rounded-md text-xs font-bold transition disabled:cursor-not-allowed disabled:opacity-60',
-                    materialSource === source
-                      ? 'bg-white text-indigo-600 shadow-sm'
-                      : 'text-gray-500 hover:bg-white hover:text-indigo-600'
-                  )}
-                >
-                  {source === 'official' ? materialCopy.official : materialCopy.history}
-                </button>
-              ))}
-            </div>
             <div className="grid grid-cols-3 gap-2">
-              {materialSource === 'history' && isLoadingHistory ? (
+              {isLoadingHistory ? (
                 <div className="col-span-3 flex items-center justify-center gap-2 rounded-lg border border-dashed border-gray-200 px-3 py-4 text-sm font-semibold text-gray-400">
                   <Loader2 className="size-4 animate-spin" />
                   {materialCopy.loadingHistory}
                 </div>
-              ) : materialSource === 'history' && historyError ? (
+              ) : historyError ? (
                 <div className="col-span-3 rounded-lg border border-red-100 bg-red-50 px-3 py-4 text-sm text-red-700">
                   <div className="flex items-start gap-2">
                     <AlertCircle className="mt-0.5 size-4 shrink-0" />
@@ -1189,9 +1187,7 @@ export function TryOnWorkbench({
                 </div>
               ) : displayedLibraryTiles.length === 0 ? (
                 <p className="col-span-3 rounded-lg border border-dashed border-gray-200 px-3 py-4 text-sm text-gray-400">
-                  {materialSource === 'history'
-                    ? materialCopy.emptyHistory
-                    : materialCopy.emptyOfficial}
+                  {materialCopy.emptyHistory}
                 </p>
               ) : (
                 displayedLibraryTiles.slice(0, 12).map((asset) => {

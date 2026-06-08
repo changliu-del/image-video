@@ -37,7 +37,6 @@ export const createUserMediaHistoryInputSchema = z
   .object({
     userId: z.number().int().positive(),
     assetId: z.string().uuid(),
-    libraryAssetId: z.string().uuid().nullable().optional(),
     generationJobId: z.string().uuid().nullable().optional(),
     source: z.enum(USER_MEDIA_HISTORY_SOURCES),
     generationType: z.enum(GENERATION_TYPES).nullable().optional(),

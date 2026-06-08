@@ -2,7 +2,6 @@ create table if not exists user_media_history (
   id uuid primary key default gen_random_uuid(),
   user_id integer not null references users(id),
   asset_id uuid not null references assets(id),
-  library_asset_id uuid references library_assets(id) on delete set null,
   generation_job_id uuid references generation_jobs(id) on delete set null,
   source varchar(32) not null,
   generation_type varchar(32),
@@ -37,16 +36,13 @@ create index if not exists user_media_history_user_generation_type_updated_idx
 create index if not exists user_media_history_asset_id_idx
   on user_media_history (asset_id);
 
-create index if not exists user_media_history_library_asset_id_idx
-  on user_media_history (library_asset_id);
-
 create index if not exists user_media_history_generation_job_id_idx
   on user_media_history (generation_job_id);
 
 alter table user_media_history
   drop constraint if exists user_media_history_source_check,
   add constraint user_media_history_source_check
-    check (source in ('user_upload', 'generated_image', 'generated_video', 'ops_library_used'));
+    check (source in ('user_upload', 'generated_image', 'generated_video'));
 
 alter table user_media_history
   drop constraint if exists user_media_history_generation_type_check,

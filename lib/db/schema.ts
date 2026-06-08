@@ -60,18 +60,10 @@ export const TEMPLATE_TYPES = [
 ] as const;
 export type TemplateType = (typeof TEMPLATE_TYPES)[number];
 
-export const LIBRARY_ASSET_CATEGORIES = [
-  'image_to_video',
-  'apparel_image',
-  'try_on',
-] as const;
-export type LibraryAssetCategory = (typeof LIBRARY_ASSET_CATEGORIES)[number];
-
 export const USER_MEDIA_HISTORY_SOURCES = [
   'user_upload',
   'generated_image',
   'generated_video',
-  'ops_library_used',
 ] as const;
 export type UserMediaHistorySource =
   (typeof USER_MEDIA_HISTORY_SOURCES)[number];
@@ -274,43 +266,6 @@ export const templates = pgTable(
   ]
 );
 
-export const libraryAssets = pgTable(
-  'library_assets',
-  {
-    id: uuid('id').defaultRandom().primaryKey(),
-    assetId: uuid('asset_id')
-      .notNull()
-      .references(() => assets.id),
-    title: varchar('title', { length: 140 }).notNull(),
-    description: text('description'),
-    category: varchar('category', { length: 32 })
-      .$type<LibraryAssetCategory>()
-      .notNull(),
-    sortWeight: integer('sort_weight').notNull().default(0),
-    usageCount: integer('usage_count').notNull().default(0),
-    createdBy: integer('created_by').references(() => users.id),
-    updatedBy: integer('updated_by').references(() => users.id),
-    createdAt: timestamp('created_at').notNull().defaultNow(),
-    updatedAt: timestamp('updated_at').notNull().defaultNow(),
-  },
-  (table) => [
-    uniqueIndex('library_assets_asset_category_unique').on(
-      table.assetId,
-      table.category
-    ),
-    index('library_assets_category_idx').on(table.category),
-    index('library_assets_sort_weight_idx').on(table.sortWeight),
-    check(
-      'library_assets_category_check',
-      sql`${table.category} in ('image_to_video', 'apparel_image', 'try_on')`
-    ),
-    check(
-      'library_assets_usage_count_check',
-      sql`${table.usageCount} >= 0`
-    ),
-  ]
-);
-
 export const MODEL_CATALOG_ASSET_STATUSES = [
   'active',
   'inactive',
@@ -439,9 +394,6 @@ export const userMediaHistory = pgTable(
     assetId: uuid('asset_id')
       .notNull()
       .references(() => assets.id),
-    libraryAssetId: uuid('library_asset_id').references(() => libraryAssets.id, {
-      onDelete: 'set null',
-    }),
     generationJobId: uuid('generation_job_id').references(() => generationJobs.id, {
       onDelete: 'set null',
     }),
@@ -485,11 +437,10 @@ export const userMediaHistory = pgTable(
       table.updatedAt
     ),
     index('user_media_history_asset_id_idx').on(table.assetId),
-    index('user_media_history_library_asset_id_idx').on(table.libraryAssetId),
     index('user_media_history_generation_job_id_idx').on(table.generationJobId),
     check(
       'user_media_history_source_check',
-      sql`${table.source} in ('user_upload', 'generated_image', 'generated_video', 'ops_library_used')`
+      sql`${table.source} in ('user_upload', 'generated_image', 'generated_video')`
     ),
     check(
       'user_media_history_generation_type_check',
@@ -564,8 +515,6 @@ export const usersRelations = relations(users, ({ many }) => ({
   generationJobs: many(generationJobs),
   userMediaHistory: many(userMediaHistory),
   creditLedgerEntries: many(creditLedger),
-  createdLibraryAssets: many(libraryAssets, { relationName: 'libraryAssetCreator' }),
-  updatedLibraryAssets: many(libraryAssets, { relationName: 'libraryAssetUpdater' }),
 }));
 
 export const assetsRelations = relations(assets, ({ one, many }) => ({
@@ -577,7 +526,6 @@ export const assetsRelations = relations(assets, ({ one, many }) => ({
   outputForJobs: many(generationJobs, { relationName: 'outputAsset' }),
   templateThumbnails: many(templates, { relationName: 'templateThumbnail' }),
   templatePreviews: many(templates, { relationName: 'templatePreview' }),
-  libraryAssetRecords: many(libraryAssets),
   userMediaHistory: many(userMediaHistory),
 }));
 
@@ -592,24 +540,6 @@ export const templatesRelations = relations(templates, ({ one }) => ({
     references: [assets.id],
     relationName: 'templatePreview',
   }),
-}));
-
-export const libraryAssetsRelations = relations(libraryAssets, ({ one, many }) => ({
-  asset: one(assets, {
-    fields: [libraryAssets.assetId],
-    references: [assets.id],
-  }),
-  creator: one(users, {
-    fields: [libraryAssets.createdBy],
-    references: [users.id],
-    relationName: 'libraryAssetCreator',
-  }),
-  updater: one(users, {
-    fields: [libraryAssets.updatedBy],
-    references: [users.id],
-    relationName: 'libraryAssetUpdater',
-  }),
-  userMediaHistory: many(userMediaHistory),
 }));
 
 export const generationJobsRelations = relations(
@@ -644,10 +574,6 @@ export const userMediaHistoryRelations = relations(
       fields: [userMediaHistory.assetId],
       references: [assets.id],
     }),
-    libraryAsset: one(libraryAssets, {
-      fields: [userMediaHistory.libraryAssetId],
-      references: [libraryAssets.id],
-    }),
     generationJob: one(generationJobs, {
       fields: [userMediaHistory.generationJobId],
       references: [generationJobs.id],
@@ -672,8 +598,6 @@ export type Asset = typeof assets.$inferSelect;
 export type NewAsset = typeof assets.$inferInsert;
 export type Template = typeof templates.$inferSelect;
 export type NewTemplate = typeof templates.$inferInsert;
-export type LibraryAsset = typeof libraryAssets.$inferSelect;
-export type NewLibraryAsset = typeof libraryAssets.$inferInsert;
 export type GenerationJob = typeof generationJobs.$inferSelect;
 export type NewGenerationJob = typeof generationJobs.$inferInsert;
 export type UserMediaHistory = typeof userMediaHistory.$inferSelect;

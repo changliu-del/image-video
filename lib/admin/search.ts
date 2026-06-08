@@ -3,7 +3,6 @@ export type AdminSearchArea =
   | 'user-media'
   | 'generation-jobs'
   | 'templates'
-  | 'library-assets'
   | 'credit-ledger';
 
 export const ADMIN_OPERATIONAL_SEARCH_FIELDS: Record<
@@ -19,7 +18,6 @@ export const ADMIN_OPERATIONAL_SEARCH_FIELDS: Record<
     'generationType',
     'visibility',
     'role',
-    'libraryTitle',
     'jobStatus',
     'mimeType',
   ],
@@ -29,7 +27,6 @@ export const ADMIN_OPERATIONAL_SEARCH_FIELDS: Record<
     'generationType',
   ],
   templates: ['id', 'title', 'type', 'category', 'prompt'],
-  'library-assets': ['title', 'description', 'category', 'assetId', 'mimeType'],
   'credit-ledger': [
     'userEmail',
     'userName',

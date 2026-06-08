@@ -1,6 +1,6 @@
 # Repository Overview
 
-Updated: 2026-06-03
+Updated: 2026-06-08
 
 ## Top-Level Layout
 
@@ -36,7 +36,8 @@ Updated: 2026-06-03
 - `app/api/generations/[id]/status/route.ts`
 - `app/api/templates/route.ts`
 - `app/api/templates/[id]/route.ts`
-- `app/api/library-assets/route.ts`
 - `app/api/model-assets/route.ts`
+- `app/api/user-media/route.ts`
+- `app/api/user-media/[id]/route.ts`
 - `app/api/stripe/webhook/route.ts`
 - `app/api/admin/**`

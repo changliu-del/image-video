@@ -7,7 +7,7 @@ function readSource(path: string) {
 }
 
 describe('user media history schema', () => {
-  it('keeps private user media as history over assets and official library assets', () => {
+  it('keeps private user media as history over owned assets and generation jobs', () => {
     const schema = readSource('lib/db/schema.ts');
     const migration = readSource(
       'lib/db/migrations/0017_user_media_history.sql'
@@ -15,14 +15,15 @@ describe('user media history schema', () => {
 
     expect(schema).toContain("export const userMediaHistory = pgTable");
     expect(schema).toContain("assetId: uuid('asset_id')");
-    expect(schema).toContain("libraryAssetId: uuid('library_asset_id')");
+    expect(schema).not.toContain("libraryAssetId: uuid('library_asset_id')");
     expect(schema).toContain("generationJobId: uuid('generation_job_id')");
     expect(migration).toContain('references assets(id)');
-    expect(migration).toContain('references library_assets(id) on delete set null');
+    expect(migration).not.toContain('references library_assets(id)');
     expect(migration).toContain('references generation_jobs(id) on delete set null');
     expect(migration).toContain(
-      "source in ('user_upload', 'generated_image', 'generated_video', 'ops_library_used')"
+      "source in ('user_upload', 'generated_image', 'generated_video')"
     );
+    expect(migration).not.toContain('ops_library_used');
     expect(migration).toContain(
       "role in ('input', 'output', 'reference', 'garment', 'model')"
     );
@@ -66,9 +67,8 @@ describe('user media catalog contract', () => {
     }
 
     expect(service).toContain("eq(assets.status, 'uploaded')");
-    expect(service).toContain(
-      'asset.userId !== payload.userId && !matchingLibraryAsset'
-    );
+    expect(service).toContain('asset.userId !== payload.userId');
+    expect(service).not.toContain('matchingLibraryAsset');
   });
 
   it('keeps deleted history hidden on later upserts and sorts null usage after recency', () => {

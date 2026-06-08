@@ -15,13 +15,13 @@ export const homepageWorkbenchMaterials = [
 
 export const homepageHeroPreviewVideo = homepageWorkbenchMaterials[0].asset;
 
-export const workbenchHomeMedia = {
+export const dashboardHomeMedia = {
   imageToVideo: {
     asset: '/aivideo.mp4',
     mediaType: 'video',
   },
   productImage: {
-    asset: '/resources/example2.mp4',
+    asset: '/resources/example4.mp4',
     mediaType: 'video',
   },
   tryOn: {
@@ -30,7 +30,7 @@ export const workbenchHomeMedia = {
   },
 } as const;
 
-export const workbenchHomeFallbackImages = [
+export const dashboardHomeFallbackImages = [
   '/resources/example1.png',
   '/resources/example2.png',
   '/resources/example3.png',

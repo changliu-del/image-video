@@ -5,11 +5,9 @@ import { db } from '@/lib/db/drizzle';
 import {
   assets,
   generationJobs,
-  libraryAssets,
   userMediaHistory,
   type Asset,
   type GenerationJob,
-  type LibraryAsset,
   type NewUserMediaHistory,
   type UserMediaHistory,
 } from '@/lib/db/schema';
@@ -35,7 +33,6 @@ export class UserMediaError extends Error {
 type UserMediaRecord = {
   userMedia: UserMediaHistory;
   asset: Asset;
-  libraryAsset: LibraryAsset | null;
 };
 
 type MinimalGenerationJob = Pick<
@@ -90,7 +87,6 @@ function isVideoAsset(asset: Asset) {
 
 function mapUserMediaRecord({
   asset,
-  libraryAsset,
   userMedia,
 }: UserMediaRecord): UserMediaCatalogItem {
   const video = isVideoAsset(asset);
@@ -99,8 +95,8 @@ function mapUserMediaRecord({
     id: userMedia.id,
     assetId: userMedia.assetId,
     source: userMedia.source,
-    title: userMedia.title ?? libraryAsset?.title ?? null,
-    description: userMedia.description ?? libraryAsset?.description ?? null,
+    title: userMedia.title,
+    description: userMedia.description,
     generationType: userMedia.generationType,
     assetUrl: asset.publicUrl,
     imageUrl: video ? null : asset.publicUrl,
@@ -126,29 +122,10 @@ async function getUserMediaRecord(userId: number, id: string) {
     .select({
       userMedia: userMediaHistory,
       asset: assets,
-      libraryAsset: libraryAssets,
     })
     .from(userMediaHistory)
     .innerJoin(assets, eq(userMediaHistory.assetId, assets.id))
-    .leftJoin(libraryAssets, eq(userMediaHistory.libraryAssetId, libraryAssets.id))
     .where(and(eq(userMediaHistory.id, id), eq(userMediaHistory.userId, userId)))
-    .limit(1);
-
-  return row ?? null;
-}
-
-async function getMatchingLibraryAsset(
-  assetId: string,
-  libraryAssetId?: string | null
-) {
-  const where = libraryAssetId
-    ? and(eq(libraryAssets.id, libraryAssetId), eq(libraryAssets.assetId, assetId))
-    : eq(libraryAssets.assetId, assetId);
-
-  const [row] = await db
-    .select()
-    .from(libraryAssets)
-    .where(where)
     .limit(1);
 
   return row ?? null;
@@ -196,21 +173,7 @@ async function normalizeCreateInput(input: CreateUserMediaHistoryInput) {
     );
   }
 
-  const shouldLoadLibraryAsset =
-    Boolean(payload.libraryAssetId) || payload.source === 'ops_library_used';
-  const matchingLibraryAsset = shouldLoadLibraryAsset
-    ? await getMatchingLibraryAsset(payload.assetId, payload.libraryAssetId)
-    : null;
-
-  if (payload.libraryAssetId && !matchingLibraryAsset) {
-    throw new UserMediaError(
-      400,
-      'library_asset_mismatch',
-      'Library asset does not match this asset'
-    );
-  }
-
-  if (asset.userId !== payload.userId && !matchingLibraryAsset) {
+  if (asset.userId !== payload.userId) {
     throw notFound('Asset not found');
   }
 
@@ -238,24 +201,20 @@ async function normalizeCreateInput(input: CreateUserMediaHistoryInput) {
   const generationType =
     payload.generationType ??
     generationJob?.generationType ??
-    matchingLibraryAsset?.category ??
     null;
 
   return {
     payload,
     asset,
-    libraryAsset: matchingLibraryAsset,
     values: {
       userId: payload.userId,
       assetId: payload.assetId,
-      libraryAssetId: matchingLibraryAsset?.id ?? payload.libraryAssetId ?? null,
       generationJobId: generationJob?.id ?? null,
       source: payload.source,
       generationType,
       role: payload.role ?? null,
-      title: payload.title ?? matchingLibraryAsset?.title ?? null,
-      description:
-        payload.description ?? matchingLibraryAsset?.description ?? null,
+      title: payload.title ?? null,
+      description: payload.description ?? null,
       visibility: payload.visibility ?? 'active',
       isFavorite: payload.isFavorite ?? false,
       usedCount: payload.usedCount ?? 0,
@@ -306,11 +265,9 @@ export async function listUserMedia(
       .select({
         userMedia: userMediaHistory,
         asset: assets,
-        libraryAsset: libraryAssets,
       })
       .from(userMediaHistory)
       .innerJoin(assets, eq(userMediaHistory.assetId, assets.id))
-      .leftJoin(libraryAssets, eq(userMediaHistory.libraryAssetId, libraryAssets.id))
       .where(where)
       .orderBy(
         desc(userMediaHistory.isFavorite),
@@ -349,7 +306,6 @@ export async function createUserMediaHistory(
   return mapUserMediaRecord({
     userMedia: row,
     asset: normalized.asset,
-    libraryAsset: normalized.libraryAsset,
   });
 }
 
@@ -393,7 +349,6 @@ export async function upsertUserMediaHistory(
   }
 
   const updateValues: Partial<NewUserMediaHistory> = {
-    libraryAssetId: normalized.values.libraryAssetId,
     generationJobId: normalized.values.generationJobId,
     generationType: normalized.values.generationType,
     visibility: normalized.values.visibility,
@@ -425,7 +380,6 @@ export async function upsertUserMediaHistory(
   return mapUserMediaRecord({
     userMedia: row,
     asset: normalized.asset,
-    libraryAsset: normalized.libraryAsset,
   });
 }
 

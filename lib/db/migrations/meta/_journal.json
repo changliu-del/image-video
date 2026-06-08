@@ -169,6 +169,13 @@
       "when": 1780000021000,
       "tag": "0024_template_sort_order",
       "breakpoints": true
+    },
+    {
+      "idx": 24,
+      "version": "7",
+      "when": 1780000022000,
+      "tag": "0025_remove_library_assets",
+      "breakpoints": true
     }
   ]
 }

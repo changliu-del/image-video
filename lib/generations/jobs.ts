@@ -282,41 +282,11 @@ export async function getAssetForUser(assetId: string, userId: number) {
   return row ? mapAssetRow(row) : null;
 }
 
-async function getLibraryAssetForGeneration(
-  assetId: string,
-  generationType: GenerationType
-) {
-  const rows = await client`
-    select
-      a.id,
-      a.user_id,
-      a.type,
-      a.status,
-      a.storage_key,
-      a.public_url,
-      a.mime_type,
-      a.size_bytes
-    from library_assets la
-    inner join assets a on a.id = la.asset_id
-    where la.asset_id = ${assetId}
-      and a.status = 'uploaded'
-      and la.category = ${generationType}
-    limit 1
-  `;
-
-  const row = rows[0] as Record<string, unknown> | undefined;
-  return row ? mapAssetRow(row) : null;
-}
-
 async function getGenerationInputAsset(
   assetId: string,
-  userId: number,
-  generationType: GenerationType
+  userId: number
 ) {
-  return (
-    (await getAssetForUser(assetId, userId)) ??
-    (await getLibraryAssetForGeneration(assetId, generationType))
-  );
+  return getAssetForUser(assetId, userId);
 }
 
 export async function markAssetUploaded(input: {
@@ -507,8 +477,7 @@ async function assertInputAssetsForUser(
   for (const assetId of getInputAssetIds(generation)) {
     const asset = await getGenerationInputAsset(
       assetId,
-      userId,
-      generation.generationType
+      userId
     );
 
     if (!asset) {

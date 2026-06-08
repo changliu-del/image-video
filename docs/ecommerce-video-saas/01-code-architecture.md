@@ -75,11 +75,11 @@ Trigger.dev:
   - credit capture/refund
 
 Neon:
-  - 用户、任务、资产、素材库、用户历史素材、credits、支付、provider 调用记录
+  - 用户、任务、资产、模板、模特库、用户历史素材、credits、支付、provider 调用记录
 
 Cloudflare R2:
   - 用户上传图片
-  - 官方素材库文件
+  - 模板和模特库媒体
   - 生成输出文件
 
 Wanxiang:

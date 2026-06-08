@@ -53,7 +53,7 @@ export const templateTypeLabels: Record<TemplateType, LocalizedText> = {
   image_to_image: {
     pt: 'Imagem',
     en: 'Image',
-    zh: '生图',
+    zh: '商品图',
   },
   try_on: {
     pt: 'Provador virtual',

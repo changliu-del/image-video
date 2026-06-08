@@ -6,7 +6,6 @@ import { db } from '@/lib/db/drizzle';
 import {
   assets,
   generationJobs,
-  libraryAssets,
   userMediaHistory,
   USER_MEDIA_HISTORY_VISIBILITIES,
   users,
@@ -45,7 +44,6 @@ const updateUserMediaAdminSchema = z
 type AdminUserMediaRecord = {
   asset: Pick<typeof assets.$inferSelect, 'mimeType' | 'publicUrl'>;
   generationJob: Pick<typeof generationJobs.$inferSelect, 'status'> | null;
-  libraryAsset: Pick<typeof libraryAssets.$inferSelect, 'title'> | null;
   user: Pick<typeof users.$inferSelect, 'email' | 'id' | 'name'>;
   userMedia: typeof userMediaHistory.$inferSelect;
 };
@@ -66,7 +64,6 @@ export type AdminUserMediaListItem = {
   visibility: UserMediaHistoryVisibility;
   isFavorite: boolean;
   usedCount: number;
-  libraryTitle: string | null;
   jobStatus: string | null;
   lastUsedAt: string | null;
   createdAt: string;
@@ -100,7 +97,6 @@ function inferMediaKind(input: {
 function userMediaRecordToListItem({
   asset,
   generationJob,
-  libraryAsset,
   user,
   userMedia,
 }: AdminUserMediaRecord): AdminUserMediaListItem {
@@ -115,14 +111,13 @@ function userMediaRecordToListItem({
     previewUrl: mediaKind === 'file' ? null : asset.publicUrl,
     previewMimeType: asset.mimeType,
     mediaKind,
-    title: userMedia.title ?? libraryAsset?.title ?? null,
+    title: userMedia.title,
     source: userMedia.source,
     generationType: userMedia.generationType,
     role: userMedia.role,
     visibility: userMedia.visibility,
     isFavorite: userMedia.isFavorite,
     usedCount: userMedia.usedCount,
-    libraryTitle: libraryAsset?.title ?? null,
     jobStatus: generationJob?.status ?? null,
     lastUsedAt: userMedia.lastUsedAt?.toISOString() ?? null,
     createdAt: userMedia.createdAt.toISOString(),
@@ -155,7 +150,6 @@ export async function listAdminUserMedia(params: {
         ilikeCol(userMediaHistory.generationType, query),
         ilikeCol(userMediaHistory.role, query),
         ilikeCol(userMediaHistory.visibility, query),
-        ilikeCol(libraryAssets.title, query),
         ilikeCol(generationJobs.status, query),
         ilikeCol(assets.mimeType, query)
       )
@@ -172,9 +166,6 @@ export async function listAdminUserMedia(params: {
           generationJob: {
             status: generationJobs.status,
           },
-          libraryAsset: {
-            title: libraryAssets.title,
-          },
           user: {
             id: users.id,
             email: users.email,
@@ -185,10 +176,6 @@ export async function listAdminUserMedia(params: {
         .from(userMediaHistory)
         .innerJoin(users, eq(userMediaHistory.userId, users.id))
         .innerJoin(assets, eq(userMediaHistory.assetId, assets.id))
-        .leftJoin(
-          libraryAssets,
-          eq(userMediaHistory.libraryAssetId, libraryAssets.id)
-        )
         .leftJoin(
           generationJobs,
           eq(userMediaHistory.generationJobId, generationJobs.id)
@@ -208,10 +195,6 @@ export async function listAdminUserMedia(params: {
       .from(userMediaHistory)
       .innerJoin(users, eq(userMediaHistory.userId, users.id))
       .innerJoin(assets, eq(userMediaHistory.assetId, assets.id))
-      .leftJoin(
-        libraryAssets,
-        eq(userMediaHistory.libraryAssetId, libraryAssets.id)
-      )
       .leftJoin(
         generationJobs,
         eq(userMediaHistory.generationJobId, generationJobs.id)
