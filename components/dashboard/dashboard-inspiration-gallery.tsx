@@ -6,7 +6,6 @@ import { Loader2, PlayCircle, Sparkles } from 'lucide-react';
 
 import type { DashboardLocale } from '@/lib/dashboard/content';
 import { withDashboardLocale } from '@/lib/dashboard/locale-url';
-import { dashboardHomeFallbackImages } from '@/lib/marketing/homepage-materials';
 import {
   getTemplateCategoryLabel,
   templateTypeLabels,
@@ -55,7 +54,7 @@ const copyByLocale: Record<DashboardLocale, GalleryCopy> = {
       'Veja o total e filtre por tipo para partir de templates reais do catalogo.',
     all: 'Todos',
     total: 'Total',
-    loading: 'Carregando inspiracoes',
+    loading: 'Carregando',
     error: 'Nao foi possivel carregar as inspiracoes.',
     retry: 'Tentar novamente',
     empty: 'Nenhum template disponivel ainda.',
@@ -67,7 +66,7 @@ const copyByLocale: Record<DashboardLocale, GalleryCopy> = {
       'See the total and filter by type to start from real catalog templates.',
     all: 'All',
     total: 'Total',
-    loading: 'Loading inspiration',
+    loading: 'Loading',
     error: 'Could not load inspiration.',
     retry: 'Try again',
     empty: 'No templates are available yet.',
@@ -85,22 +84,6 @@ const copyByLocale: Record<DashboardLocale, GalleryCopy> = {
     useTemplate: '使用模板',
   },
 };
-
-const fallbackItems: PublicTemplateItem[] = dashboardHomeFallbackImages.map(
-  (image, index) => {
-    const type = galleryTypes[index % galleryTypes.length];
-    return {
-      id: `fallback-${index}`,
-      title: '',
-      type,
-      category: '',
-      thumbnailUrl: image,
-      previewUrl: image,
-      createdAt: null,
-      updatedAt: null,
-    };
-  }
-);
 
 function emptyBucket(): TemplateBucket {
   return { hasMore: false, items: [], page: 0, total: 0 };
@@ -420,8 +403,6 @@ export function DashboardInspirationGallery({
     active === 'all'
       ? galleryTypes.some((type) => buckets[type].hasMore)
       : buckets[active].hasMore;
-  const visibleItems = remoteItems.length > 0 ? remoteItems : fallbackItems;
-  const totalLabel = status === 'ready' ? total : fallbackItems.length;
 
   useEffect(() => {
     if (status !== 'ready' || !hasMore) return;
@@ -457,7 +438,7 @@ export function DashboardInspirationGallery({
           <div className="mt-5 inline-flex items-center gap-2 rounded-full bg-gray-100 px-4 py-2 text-sm font-black text-gray-700">
             <Sparkles className="size-4 text-indigo-500" />
             {copy.total}
-            <span className="text-indigo-600">{totalLabel}</span>
+            <span className="text-indigo-600">{total}</span>
           </div>
         </div>
 
@@ -497,17 +478,19 @@ export function DashboardInspirationGallery({
           </p>
         ) : null}
 
-        <div className="mt-10 columns-1 gap-5 sm:columns-2 lg:columns-3 xl:columns-5">
-          {visibleItems.map((item, index) => (
-            <GalleryCard
-              key={`${item.id}-${active}-${index}`}
-              index={index}
-              item={item}
-              locale={locale}
-              useTemplate={copy.useTemplate}
-            />
-          ))}
-        </div>
+        {status === 'ready' && remoteItems.length > 0 ? (
+          <div className="mt-10 columns-1 gap-5 sm:columns-2 lg:columns-3 xl:columns-5">
+            {remoteItems.map((item, index) => (
+              <GalleryCard
+                key={`${item.id}-${active}-${index}`}
+                index={index}
+                item={item}
+                locale={locale}
+                useTemplate={copy.useTemplate}
+              />
+            ))}
+          </div>
+        ) : null}
 
         <div ref={sentinelRef} className="mt-2 flex h-12 items-center justify-center">
           {isLoadingMore ? (

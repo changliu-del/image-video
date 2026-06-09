@@ -46,20 +46,20 @@ Key tables are defined in `lib/db/schema.ts`:
 - `credit_ledger`
 
 `templates` is the minimal public template catalog. Its semantic fields are
-`id`, `type`, `category`, `thumbnail_asset_id`, `preview_asset_id`, `prompt`,
-`created_at`, and `updated_at`. Thumbnail and preview media are regular
-`assets` rows; templates store stable asset IDs, and public APIs resolve those
-IDs into URLs. `type` is the top-level workflow selector: the homepage template
-gallery, public template library, and `/create/video` image-to-video workbench
-should query `/api/templates?type=image_to_video`. `category` is only a
-business category inside that type. Template semantics do not include tag JSON,
-slugs, publication status, sort/order fields, direct URL columns, or
-negative/reverse prompts.
+`id`, `type`, `category`, `thumbnail_asset_id`, `preview_asset_id`,
+`thumbnail_url`, `preview_url`, `thumbnail_mime_type`, `preview_mime_type`,
+`prompt`, `sort_order`, `created_at`, and `updated_at`. Thumbnail and preview
+media are regular `assets` rows, but templates also store URL/MIME snapshots so
+public and Admin list reads do not join `assets` only to render cards. `type` is
+the top-level workflow selector: the homepage template gallery, public template
+library, and `/create/video` image-to-video workbench should query
+`/api/templates?type=image_to_video`. `category` is only a business category
+inside that type. Template semantics do not include tag JSON, slugs,
+publication status, direct source URLs, or negative/reverse prompts.
 
-The template list API should return only `id`, `type`, `category`, and
-`thumbnailUrl`. Template detail should resolve `preview_asset_id` and return
-`previewUrl` plus `prompt` when the user opens a detail view or applies a
-template.
+The template list API should return `id`, `type`, `category`, `thumbnailUrl`,
+and `previewUrl` for browsing cards. Template detail adds `prompt` when the user
+opens a detail view or applies a template.
 
 `user_media_history` is the private per-user material layer for uploaded and
 generated media. It references owned `assets` rows and optional

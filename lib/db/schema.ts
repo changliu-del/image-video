@@ -235,6 +235,10 @@ export const templates = pgTable(
     previewAssetId: uuid('preview_asset_id')
       .notNull()
       .references(() => assets.id),
+    thumbnailUrl: text('thumbnail_url').notNull(),
+    previewUrl: text('preview_url').notNull(),
+    thumbnailMimeType: varchar('thumbnail_mime_type', { length: 120 }).notNull(),
+    previewMimeType: varchar('preview_mime_type', { length: 120 }).notNull(),
     prompt: text('prompt').notNull(),
     promptTranslations: jsonb('prompt_translations_json')
       .$type<Record<string, string>>()
@@ -262,6 +266,10 @@ export const templates = pgTable(
     ),
     check('templates_title_not_empty_check', sql`length(trim(${table.title})) > 0`),
     check('templates_category_not_empty_check', sql`length(trim(${table.category})) > 0`),
+    check('templates_thumbnail_url_not_empty_check', sql`length(trim(${table.thumbnailUrl})) > 0`),
+    check('templates_preview_url_not_empty_check', sql`length(trim(${table.previewUrl})) > 0`),
+    check('templates_thumbnail_mime_type_not_empty_check', sql`length(trim(${table.thumbnailMimeType})) > 0`),
+    check('templates_preview_mime_type_not_empty_check', sql`length(trim(${table.previewMimeType})) > 0`),
     check('templates_sort_order_check', sql`${table.sortOrder} >= 0`),
   ]
 );

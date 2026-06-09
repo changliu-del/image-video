@@ -2,14 +2,9 @@ import 'server-only';
 
 import { randomUUID } from 'crypto';
 import { and, asc, desc, eq, or, sql } from 'drizzle-orm';
-import { alias } from 'drizzle-orm/pg-core';
 import { z } from 'zod';
 import { db } from '@/lib/db/drizzle';
-import {
-  assets,
-  templates,
-  type Asset,
-} from '@/lib/db/schema';
+import { assets, templates } from '@/lib/db/schema';
 import {
   hasAdminAccess,
   requireOpsOrAdmin,
@@ -34,6 +29,7 @@ import {
   refreshTemplateMediaCache,
   refreshTemplateMediaCacheForAsset,
 } from '@/lib/templates/media-cache';
+import { buildTemplateMediaUrl } from '@/lib/templates/media-url';
 import { clearPublishedTemplateCatalogCache } from '@/lib/templates/query';
 import { normalizeAdminSearchQuery } from '@/lib/admin/search';
 import {
@@ -45,14 +41,13 @@ import {
 
 const MAX_TEMPLATE_PREVIEW_BYTES = 80 * 1024 * 1024;
 const templateIdSchema = z.string().uuid();
-const adminThumbnailAsset = alias(assets, 'admin_template_thumbnail_asset');
-const adminPreviewAsset = alias(assets, 'admin_template_preview_asset');
 const localeSchema = z.enum(['pt', 'en', 'zh']);
 const templateTypeSchema = z.enum([
   'image_to_image',
   'image_to_video',
   'try_on',
 ]);
+const templateMediaTargetSchema = z.enum(['thumbnail', 'preview']);
 const templateCategorySchema = z
   .string()
   .trim()
@@ -74,16 +69,14 @@ export type AdminTemplateListItem = TemplateCatalogDetailItem & {
   promptTranslations: Record<string, string>;
   thumbnailAssetId: string;
   previewAssetId: string;
+  thumbnailMimeType: string;
+  previewMimeType: string;
   sortOrder: number;
   createdAt: string;
   updatedAt: string;
 };
 
-type AdminTemplateRecord = {
-  template: typeof templates.$inferSelect;
-  thumbnailAsset: Pick<Asset, 'publicUrl' | 'mimeType' | 'status'>;
-  previewAsset: Pick<Asset, 'publicUrl' | 'mimeType' | 'status'>;
-};
+type TemplateMediaTarget = z.infer<typeof templateMediaTargetSchema>;
 
 const templatePayloadSchema = z
   .object({
@@ -115,6 +108,7 @@ const templateOrderPayloadSchema = templateGroupSchema
 const presignTemplatePreviewSchema = z
   .object({
     templateId: z.string().uuid(),
+    target: templateMediaTargetSchema.optional(),
     fileName: z.string().trim().min(1).max(255),
     mimeType: z.string().trim().min(1).max(120),
     sizeBytes: z.coerce.number().int().positive().max(MAX_TEMPLATE_PREVIEW_BYTES),
@@ -124,6 +118,7 @@ const presignTemplatePreviewSchema = z
 const completeTemplatePreviewSchema = z
   .object({
     templateId: z.string().uuid(),
+    target: templateMediaTargetSchema.optional(),
     assetId: z.string().uuid(),
     storageKey: z.string().trim().min(1).max(512),
   })
@@ -205,6 +200,39 @@ async function assertTemplateAssets(input: {
   ) {
     throw new Error('Template preview asset must be an image or video');
   }
+
+  return { thumbnailAsset, previewAsset };
+}
+
+function assertTemplateUploadTargetMimeType(
+  target: TemplateMediaTarget,
+  mimeType: string | null | undefined
+) {
+  if (target === 'thumbnail' && !mimeType?.startsWith('image/')) {
+    throw new Error('Template thumbnail upload must be an image');
+  }
+
+  if (
+    target === 'preview' &&
+    !mimeType?.startsWith('image/') &&
+    !mimeType?.startsWith('video/')
+  ) {
+    throw new Error('Template preview upload must be an image or video');
+  }
+}
+
+function inferTemplateUploadTarget(
+  mimeType: string | null | undefined
+): TemplateMediaTarget {
+  return mimeType?.startsWith('image/') ? 'thumbnail' : 'preview';
+}
+
+function requireTemplateAssetMimeType(mimeType: string | null | undefined) {
+  if (!mimeType) {
+    throw new Error('Template media asset must have a MIME type');
+  }
+
+  return mimeType;
 }
 
 async function refreshTemplateMediaCacheAfterAdminWrite(
@@ -230,50 +258,32 @@ async function refreshSingleTemplateMediaCacheAfterAdminWrite(
 }
 
 function adminTemplateRecordToListItem(
-  row: AdminTemplateRecord
+  row: typeof templates.$inferSelect
 ): AdminTemplateListItem {
   return {
-    id: row.template.id,
-    title: row.template.title,
-    titleTranslations: row.template.titleTranslations,
-    type: row.template.type,
-    category: row.template.category,
-    thumbnailUrl: row.thumbnailAsset.publicUrl,
-    thumbnailAssetId: row.template.thumbnailAssetId,
-    previewUrl: row.previewAsset.publicUrl,
-    previewAssetId: row.template.previewAssetId,
-    prompt: row.template.prompt,
-    promptTranslations: row.template.promptTranslations,
-    sortOrder: row.template.sortOrder,
-    createdAt: row.template.createdAt.toISOString(),
-    updatedAt: row.template.updatedAt.toISOString(),
+    id: row.id,
+    title: row.title,
+    titleTranslations: row.titleTranslations,
+    type: row.type,
+    category: row.category,
+    thumbnailUrl: row.thumbnailUrl,
+    thumbnailAssetId: row.thumbnailAssetId,
+    thumbnailMimeType: row.thumbnailMimeType,
+    previewUrl: row.previewUrl,
+    previewAssetId: row.previewAssetId,
+    previewMimeType: row.previewMimeType,
+    prompt: row.prompt,
+    promptTranslations: row.promptTranslations,
+    sortOrder: row.sortOrder,
+    createdAt: row.createdAt.toISOString(),
+    updatedAt: row.updatedAt.toISOString(),
   };
 }
 
 async function getAdminTemplateDetail(id: string) {
   const [row] = await db
-    .select({
-      template: templates,
-      thumbnailAsset: {
-        publicUrl: adminThumbnailAsset.publicUrl,
-        mimeType: adminThumbnailAsset.mimeType,
-        status: adminThumbnailAsset.status,
-      },
-      previewAsset: {
-        publicUrl: adminPreviewAsset.publicUrl,
-        mimeType: adminPreviewAsset.mimeType,
-        status: adminPreviewAsset.status,
-      },
-    })
+    .select()
     .from(templates)
-    .innerJoin(
-      adminThumbnailAsset,
-      eq(templates.thumbnailAssetId, adminThumbnailAsset.id)
-    )
-    .innerJoin(
-      adminPreviewAsset,
-      eq(templates.previewAssetId, adminPreviewAsset.id)
-    )
     .where(eq(templates.id, id))
     .limit(1);
 
@@ -302,37 +312,15 @@ export async function listAdminTemplates(params: {
         ilikeCol(templates.category, query),
         ilikeCol(templates.prompt, query),
         sql`${templates.titleTranslations}::text ilike ${`%${query}%`}`,
-        sql`${templates.promptTranslations}::text ilike ${`%${query}%`}`,
-        ilikeCol(adminThumbnailAsset.mimeType, query),
-        ilikeCol(adminPreviewAsset.mimeType, query)
+        sql`${templates.promptTranslations}::text ilike ${`%${query}%`}`
       )
     : undefined;
 
   const [rows, countRows] = await Promise.all([
     withPagination(
       db
-        .select({
-          template: templates,
-          thumbnailAsset: {
-            publicUrl: adminThumbnailAsset.publicUrl,
-            mimeType: adminThumbnailAsset.mimeType,
-            status: adminThumbnailAsset.status,
-          },
-          previewAsset: {
-            publicUrl: adminPreviewAsset.publicUrl,
-            mimeType: adminPreviewAsset.mimeType,
-            status: adminPreviewAsset.status,
-          },
-        })
+        .select()
         .from(templates)
-        .innerJoin(
-          adminThumbnailAsset,
-          eq(templates.thumbnailAssetId, adminThumbnailAsset.id)
-        )
-        .innerJoin(
-          adminPreviewAsset,
-          eq(templates.previewAssetId, adminPreviewAsset.id)
-        )
         .where(where)
         .orderBy(desc(templates.updatedAt)),
       page,
@@ -341,14 +329,6 @@ export async function listAdminTemplates(params: {
     db
       .select({ count: sql<number>`count(*)::int` })
       .from(templates)
-      .innerJoin(
-        adminThumbnailAsset,
-        eq(templates.thumbnailAssetId, adminThumbnailAsset.id)
-      )
-      .innerJoin(
-        adminPreviewAsset,
-        eq(templates.previewAssetId, adminPreviewAsset.id)
-      )
       .where(where),
   ]);
 
@@ -364,28 +344,8 @@ export async function listAdminTemplateOrder(input: unknown) {
   await requireOpsOrAdmin();
   const group = normalizeTemplateGroup(input);
   const rows = await db
-    .select({
-      template: templates,
-      thumbnailAsset: {
-        publicUrl: adminThumbnailAsset.publicUrl,
-        mimeType: adminThumbnailAsset.mimeType,
-        status: adminThumbnailAsset.status,
-      },
-      previewAsset: {
-        publicUrl: adminPreviewAsset.publicUrl,
-        mimeType: adminPreviewAsset.mimeType,
-        status: adminPreviewAsset.status,
-      },
-    })
+    .select()
     .from(templates)
-    .innerJoin(
-      adminThumbnailAsset,
-      eq(templates.thumbnailAssetId, adminThumbnailAsset.id)
-    )
-    .innerJoin(
-      adminPreviewAsset,
-      eq(templates.previewAssetId, adminPreviewAsset.id)
-    )
     .where(
       and(
         eq(templates.type, group.type),
@@ -457,7 +417,9 @@ export async function updateAdminTemplateOrder(input: unknown) {
 export async function createTemplate(input: unknown) {
   await requireOpsOrAdmin();
   const payload = normalizeTemplatePayload(input);
-  await assertTemplateAssets(payload);
+  const { thumbnailAsset, previewAsset } = await assertTemplateAssets(payload);
+  const thumbnailMimeType = requireTemplateAssetMimeType(thumbnailAsset.mimeType);
+  const previewMimeType = requireTemplateAssetMimeType(previewAsset.mimeType);
   const sortOrder = await getNextTemplateSortOrder({
     type: payload.type,
     category: payload.category,
@@ -472,6 +434,10 @@ export async function createTemplate(input: unknown) {
       category: payload.category,
       thumbnailAssetId: payload.thumbnailAssetId,
       previewAssetId: payload.previewAssetId,
+      thumbnailUrl: buildTemplateMediaUrl(payload.thumbnailAssetId),
+      previewUrl: buildTemplateMediaUrl(payload.previewAssetId),
+      thumbnailMimeType,
+      previewMimeType,
       prompt: payload.prompt,
       promptTranslations: payload.promptTranslations,
       sortOrder,
@@ -491,7 +457,9 @@ export async function updateTemplate(id: string, input: unknown) {
   await requireOpsOrAdmin();
   const templateId = templateIdSchema.parse(id);
   const payload = normalizeTemplatePayload(input);
-  await assertTemplateAssets(payload);
+  const { thumbnailAsset, previewAsset } = await assertTemplateAssets(payload);
+  const thumbnailMimeType = requireTemplateAssetMimeType(thumbnailAsset.mimeType);
+  const previewMimeType = requireTemplateAssetMimeType(previewAsset.mimeType);
   const [existing] = await db
     .select({
       id: templates.id,
@@ -527,6 +495,10 @@ export async function updateTemplate(id: string, input: unknown) {
       category: payload.category,
       thumbnailAssetId: payload.thumbnailAssetId,
       previewAssetId: payload.previewAssetId,
+      thumbnailUrl: buildTemplateMediaUrl(payload.thumbnailAssetId),
+      previewUrl: buildTemplateMediaUrl(payload.previewAssetId),
+      thumbnailMimeType,
+      previewMimeType,
       prompt: payload.prompt,
       promptTranslations: payload.promptTranslations,
       sortOrder,
@@ -583,6 +555,9 @@ export async function createTemplatePreviewPresign(input: unknown) {
 
   if (!isAdminMediaMimeType(payload.mimeType)) {
     throw new Error('Unsupported template preview MIME type');
+  }
+  if (payload.target) {
+    assertTemplateUploadTargetMimeType(payload.target, payload.mimeType);
   }
 
   const [template] = await db
@@ -686,7 +661,10 @@ export async function completeTemplatePreviewUpload(input: unknown) {
     .set({ status: 'uploaded', updatedAt: sql`CURRENT_TIMESTAMP` })
     .where(eq(assets.id, payload.assetId));
 
-  const target = asset.mimeType?.startsWith('image/') ? 'thumbnail' : 'preview';
+  const target = payload.target ?? inferTemplateUploadTarget(asset.mimeType);
+  assertTemplateUploadTargetMimeType(target, asset.mimeType);
+  const mimeType = requireTemplateAssetMimeType(asset.mimeType);
+
   const replacedAssetId =
     target === 'thumbnail' ? template.thumbnailAssetId : template.previewAssetId;
 
@@ -694,8 +672,16 @@ export async function completeTemplatePreviewUpload(input: unknown) {
     .update(templates)
     .set({
       ...(target === 'thumbnail'
-        ? { thumbnailAssetId: asset.id }
-        : { previewAssetId: asset.id }),
+        ? {
+            thumbnailAssetId: asset.id,
+            thumbnailUrl: buildTemplateMediaUrl(asset.id),
+            thumbnailMimeType: mimeType,
+          }
+        : {
+            previewAssetId: asset.id,
+            previewUrl: buildTemplateMediaUrl(asset.id),
+            previewMimeType: mimeType,
+          }),
       updatedAt: new Date(),
     })
     .where(eq(templates.id, payload.templateId));
@@ -711,7 +697,7 @@ export async function completeTemplatePreviewUpload(input: unknown) {
 
   return {
     assetId: payload.assetId,
-    publicUrl: asset.publicUrl,
+    publicUrl: buildTemplateMediaUrl(asset.id),
     target,
     status: 'uploaded',
   };

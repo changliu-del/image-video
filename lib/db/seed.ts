@@ -8,6 +8,7 @@ import {
 } from './schema';
 import { hashPassword } from '@/lib/auth/password';
 import { starterTemplateSeeds } from '@/lib/templates/catalog';
+import { buildTemplateMediaUrl } from '@/lib/templates/media-url';
 
 const seedNamespace = 'image-video-starter-template-catalog';
 
@@ -130,6 +131,10 @@ async function seedStarterTemplateCatalog() {
         category: template.category,
         thumbnailAssetId,
         previewAssetId,
+        thumbnailUrl: buildTemplateMediaUrl(thumbnailAssetId),
+        previewUrl: buildTemplateMediaUrl(previewAssetId),
+        thumbnailMimeType: 'image/png',
+        previewMimeType: 'video/mp4',
         prompt: template.prompt,
         promptTranslations: template.promptTranslations ?? {},
         sortOrder,
@@ -143,6 +148,10 @@ async function seedStarterTemplateCatalog() {
           category: template.category,
           thumbnailAssetId,
           previewAssetId,
+          thumbnailUrl: buildTemplateMediaUrl(thumbnailAssetId),
+          previewUrl: buildTemplateMediaUrl(previewAssetId),
+          thumbnailMimeType: 'image/png',
+          previewMimeType: 'video/mp4',
           prompt: template.prompt,
           promptTranslations: template.promptTranslations ?? {},
           updatedAt: now,

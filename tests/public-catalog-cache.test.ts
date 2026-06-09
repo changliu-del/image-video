@@ -19,12 +19,12 @@ describe('public catalog cache headers', () => {
     });
   });
 
-  it('keeps template list cache shorter than template detail cache', () => {
+  it('keeps template list and detail caches short enough for Admin edits', () => {
     expect(TEMPLATE_CATALOG_LIST_CACHE_CONTROL).toBe(
       'public, max-age=30, s-maxage=60, stale-while-revalidate=300'
     );
     expect(TEMPLATE_CATALOG_DETAIL_CACHE_CONTROL).toBe(
-      'public, max-age=300, s-maxage=86400, stale-while-revalidate=604800'
+      TEMPLATE_CATALOG_LIST_CACHE_CONTROL
     );
     expect(templateCatalogListReadHeaders).toEqual({
       'Cache-Control': TEMPLATE_CATALOG_LIST_CACHE_CONTROL,

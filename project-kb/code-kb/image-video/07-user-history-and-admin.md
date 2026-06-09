@@ -11,7 +11,7 @@ either templates, the model catalog, or future ingestion work with a clear owner
 
 | Surface | Purpose | Owner |
 |---|---|---|
-| `templates` | Public image-to-video template recipes with thumbnail/preview asset IDs and prompt | Admin operators |
+| `templates` | Public template recipes with thumbnail/preview asset IDs plus URL/MIME snapshots and prompt | Admin operators |
 | `model_catalog_assets` | Model choices for virtual try-on | Model catalog workflow |
 | `user_media_history` | Private per-user upload and generation history for support/workbench reuse | Current user, inspected by Admin |
 | `assets` | Technical media substrate for uploads, generated outputs, template media, and model media | System |
@@ -56,6 +56,14 @@ Admin search fields, and Help copy aligned with these active areas:
 - Generation Jobs
 - Credit Ledger
 - Help
+
+Template rows keep `thumbnail_asset_id` and `preview_asset_id` for upload
+integrity, but also store `thumbnail_url`, `preview_url`,
+`thumbnail_mime_type`, and `preview_mime_type` as read snapshots. Public and
+Admin template lists should read these template columns directly instead of
+joining `assets` just to render cards or detail previews. The stored URLs use
+the stable app media route `/api/template-media/{assetId}` so template media
+still goes through the existing proxy, range support, and memory cache path.
 
 User History is private support data. It must use current-user scoped APIs and
 `Cache-Control: no-store`; it should never be served through public catalog

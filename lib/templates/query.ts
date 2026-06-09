@@ -1,9 +1,8 @@
 import 'server-only';
 
-import { asc, eq, sql } from 'drizzle-orm';
-import { alias } from 'drizzle-orm/pg-core';
+import { asc, sql } from 'drizzle-orm';
 import { db } from '@/lib/db/drizzle';
-import { assets, templates } from '@/lib/db/schema';
+import { templates } from '@/lib/db/schema';
 import type {
   TemplateCatalogDetailItem,
   TemplateCatalogListItem,
@@ -15,8 +14,6 @@ import {
   normalizeTemplateCategoryForType,
 } from '@/lib/templates/category-config';
 
-const thumbnailAsset = alias(assets, 'template_thumbnail_asset');
-const previewAsset = alias(assets, 'template_preview_asset');
 const templateCatalogMetadataCacheKey =
   '__imageVideoPublishedTemplateCatalogMetadataCache';
 const templateCatalogMetadataCacheTtlMs = 5 * 60 * 1000;
@@ -29,6 +26,8 @@ type TemplateListRow = {
   category: string;
   thumbnailAssetId: string;
   previewAssetId: string;
+  thumbnailUrl: string;
+  previewUrl: string;
   sortOrder: number;
   createdAt: Date;
   updatedAt: Date;
@@ -112,8 +111,8 @@ function mapTemplateListRow(
     type: row.type,
     category:
       normalizeTemplateCategoryForType(row.type, row.category) ?? row.category,
-    thumbnailUrl: `/api/template-media/${row.thumbnailAssetId}`,
-    previewUrl: `/api/template-media/${row.previewAssetId}`,
+    thumbnailUrl: row.thumbnailUrl,
+    previewUrl: row.previewUrl,
     createdAt: row.createdAt.toISOString(),
     updatedAt: row.updatedAt.toISOString(),
   };
@@ -153,17 +152,17 @@ function baseTemplateDetailQuery() {
       titleTranslations: templates.titleTranslations,
       type: templates.type,
       category: templates.category,
-      thumbnailAssetId: thumbnailAsset.id,
-      previewAssetId: previewAsset.id,
+      thumbnailAssetId: templates.thumbnailAssetId,
+      previewAssetId: templates.previewAssetId,
+      thumbnailUrl: templates.thumbnailUrl,
+      previewUrl: templates.previewUrl,
       prompt: templates.prompt,
       promptTranslations: templates.promptTranslations,
       sortOrder: templates.sortOrder,
       createdAt: templates.createdAt,
       updatedAt: templates.updatedAt,
     })
-    .from(templates)
-    .innerJoin(thumbnailAsset, eq(templates.thumbnailAssetId, thumbnailAsset.id))
-    .innerJoin(previewAsset, eq(templates.previewAssetId, previewAsset.id));
+    .from(templates);
 }
 
 function sortTemplateCategories(type: TemplateType, categories: string[]) {
@@ -245,8 +244,8 @@ async function loadPublishedTemplateRowsForType(type: TemplateType) {
   return baseTemplateDetailQuery()
     .where(
       sql`${templates.type} = ${type}
-        and ${thumbnailAsset.status} = 'uploaded'
-        and ${previewAsset.status} = 'uploaded'`
+        and length(trim(${templates.thumbnailUrl})) > 0
+        and length(trim(${templates.previewUrl})) > 0`
     )
     .orderBy(
       asc(templates.category),
@@ -373,8 +372,8 @@ export async function getTemplateDetail(id: string, localeInput?: string | null)
   const [row] = await baseTemplateDetailQuery()
     .where(
       sql`${templates.id}::text = ${id}
-        and ${thumbnailAsset.status} = 'uploaded'
-        and ${previewAsset.status} = 'uploaded'`
+        and length(trim(${templates.thumbnailUrl})) > 0
+        and length(trim(${templates.previewUrl})) > 0`
     )
     .limit(1);
 

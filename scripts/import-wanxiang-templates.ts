@@ -4,6 +4,7 @@ import path from 'node:path';
 import dotenv from 'dotenv';
 import postgres from 'postgres';
 import { buildWanxiangTemplateLocalization } from './wanxiang-template-localization';
+import { buildTemplateMediaUrl } from '../lib/templates/media-url';
 
 const DEFAULT_SOURCE = '/private/tmp';
 const DEFAULT_OWNER_EMAIL = 'codex-admin@local.test';
@@ -604,6 +605,10 @@ async function ensureTemplateSchema(sql: postgres.Sql) {
     'category',
     'thumbnail_asset_id',
     'preview_asset_id',
+    'thumbnail_url',
+    'preview_url',
+    'thumbnail_mime_type',
+    'preview_mime_type',
     'prompt',
     'prompt_translations_json',
     'sort_order',
@@ -723,6 +728,10 @@ async function applyImport(result: ScanResult, args: CliArgs) {
       category: item.category,
       thumbnail_asset_id: item.asset.id,
       preview_asset_id: item.asset.id,
+      thumbnail_url: buildTemplateMediaUrl(item.asset.id),
+      preview_url: buildTemplateMediaUrl(item.asset.id),
+      thumbnail_mime_type: item.asset.mimeType,
+      preview_mime_type: item.asset.mimeType,
       prompt: item.prompt,
       prompt_translations_json: item.promptTranslations,
       sort_order: item.sortOrder,
@@ -789,6 +798,10 @@ async function applyImport(result: ScanResult, args: CliArgs) {
             'category',
             'thumbnail_asset_id',
             'preview_asset_id',
+            'thumbnail_url',
+            'preview_url',
+            'thumbnail_mime_type',
+            'preview_mime_type',
             'prompt',
             'prompt_translations_json',
             'sort_order',
@@ -802,6 +815,10 @@ async function applyImport(result: ScanResult, args: CliArgs) {
             category = excluded.category,
             thumbnail_asset_id = excluded.thumbnail_asset_id,
             preview_asset_id = excluded.preview_asset_id,
+            thumbnail_url = excluded.thumbnail_url,
+            preview_url = excluded.preview_url,
+            thumbnail_mime_type = excluded.thumbnail_mime_type,
+            preview_mime_type = excluded.preview_mime_type,
             prompt = excluded.prompt,
             prompt_translations_json = excluded.prompt_translations_json,
             updated_at = current_timestamp

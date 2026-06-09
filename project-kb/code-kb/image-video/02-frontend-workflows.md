@@ -29,8 +29,8 @@ user history. The standalone official material catalog has been removed.
 
 - `/create/video` loads `/api/templates?type=image_to_video` and `/api/user-media?generationType=image_to_video` for the user's private history.
 - The public homepage template gallery and public templates page reuse the same image-to-video template catalog by querying `type=image_to_video`.
-- Template list responses should only drive thumbnail browsing: `id`, `type`, `category`, and `thumbnailUrl`. When the user opens details or applies a template, fetch the template detail by id to get `previewUrl` and `prompt`.
-- Template catalog data is stable enough for frontend memory/SWR caching by `type`, `category`, and template id. Media files are object-versioned assets and should rely on R2/CDN long cache headers.
+- Template list responses drive browsing with `id`, `type`, `category`, `thumbnailUrl`, and `previewUrl`; detail fetches add `prompt` before applying a template.
+- Template list/detail HTTP cache headers stay short (`max-age=30`, `s-maxage=60`) because Admin can edit template media and prompt. The server-side base-array cache is cleared by Admin template writes, while media bytes are served through `/api/template-media/{assetId}` with range support and a memory/R2/external fallback path.
 - Template `category` is a business category inside `type`; do not use category values such as `image_to_video`, `image_to_image`, or `try_on` as the template workflow selector.
 - `/create/apparel` uses templates plus `/api/user-media?generationType=apparel_image` for user-owned previous product images.
 - `/create/try-on` loads `/api/model-assets` for model choices plus `/api/user-media?generationType=try_on` for user-owned garment/history items.

@@ -4,6 +4,7 @@ import { promises as fs } from 'node:fs';
 import path from 'node:path';
 import dotenv from 'dotenv';
 import postgres from 'postgres';
+import { buildTemplateMediaUrl } from '../lib/templates/media-url';
 
 const DEFAULT_SOURCE_ROOT = '/private/tmp/image-jpeg';
 const TEMPLATE_TYPE = 'image_to_video';
@@ -185,8 +186,8 @@ function parseOwnerUserId(value: string) {
 function printUsage() {
   console.log(`Usage:
   pnpm templates:import
-  pnpm templates:import -- --apply
-  pnpm templates:import -- --apply --replace
+  pnpm templates:import --apply
+  pnpm templates:import --apply --replace
 
 Options:
   --source <path>         Source catalog root. Default: ${DEFAULT_SOURCE_ROOT}
@@ -609,6 +610,10 @@ async function ensureFinalTemplateSchema(sql: postgres.Sql) {
     'category',
     'thumbnail_asset_id',
     'preview_asset_id',
+    'thumbnail_url',
+    'preview_url',
+    'thumbnail_mime_type',
+    'preview_mime_type',
     'prompt',
     'prompt_translations_json',
     'sort_order',
@@ -633,26 +638,16 @@ async function ensureFinalTemplateSchema(sql: postgres.Sql) {
   const missingAssetColumns = requiredAssetColumns.filter(
     (column) => !assetColumnNames.has(column)
   );
-  const legacyTemplateColumns = ['thumbnail_url', 'preview_url'].filter((column) =>
-    templateColumnNames.has(column)
-  );
 
-  if (
-    missingTemplateColumns.length > 0 ||
-    missingAssetColumns.length > 0 ||
-    legacyTemplateColumns.length > 0
-  ) {
+  if (missingTemplateColumns.length > 0 || missingAssetColumns.length > 0) {
     throw new Error(
       [
-        'Target database is not on the final asset-backed template schema.',
+        'Target database is not on the template media snapshot schema.',
         missingTemplateColumns.length
           ? `Missing templates columns: ${missingTemplateColumns.join(', ')}`
           : null,
         missingAssetColumns.length
           ? `Missing assets columns: ${missingAssetColumns.join(', ')}`
-          : null,
-        legacyTemplateColumns.length
-          ? `Legacy templates columns still present: ${legacyTemplateColumns.join(', ')}`
           : null,
       ]
         .filter(Boolean)
@@ -739,6 +734,10 @@ async function applyImport(result: ScanResult, args: CliArgs) {
       category: item.category,
       thumbnail_asset_id: item.thumbnailAsset.id,
       preview_asset_id: item.previewAsset.id,
+      thumbnail_url: buildTemplateMediaUrl(item.thumbnailAsset.id),
+      preview_url: buildTemplateMediaUrl(item.previewAsset.id),
+      thumbnail_mime_type: item.thumbnailAsset.mimeType,
+      preview_mime_type: item.previewAsset.mimeType,
       prompt: item.prompt,
       prompt_translations_json: item.promptTranslations,
       sort_order: item.sortOrder,
@@ -789,6 +788,10 @@ async function applyImport(result: ScanResult, args: CliArgs) {
           'category',
           'thumbnail_asset_id',
           'preview_asset_id',
+          'thumbnail_url',
+          'preview_url',
+          'thumbnail_mime_type',
+          'preview_mime_type',
           'prompt',
           'prompt_translations_json',
           'sort_order',
@@ -802,6 +805,10 @@ async function applyImport(result: ScanResult, args: CliArgs) {
           category = excluded.category,
           thumbnail_asset_id = excluded.thumbnail_asset_id,
           preview_asset_id = excluded.preview_asset_id,
+          thumbnail_url = excluded.thumbnail_url,
+          preview_url = excluded.preview_url,
+          thumbnail_mime_type = excluded.thumbnail_mime_type,
+          preview_mime_type = excluded.preview_mime_type,
           prompt = excluded.prompt,
           prompt_translations_json = excluded.prompt_translations_json,
           updated_at = current_timestamp

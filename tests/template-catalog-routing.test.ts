@@ -155,8 +155,9 @@ describe('template catalog routing contract', () => {
     expect(cacheControl).toContain('TEMPLATE_CATALOG_LIST_CACHE_CONTROL');
     expect(cacheControl).toContain('max-age=30');
     expect(cacheControl).toContain('TEMPLATE_CATALOG_DETAIL_CACHE_CONTROL');
-    expect(cacheControl).toContain('s-maxage=86400');
-    expect(cacheControl).toContain('stale-while-revalidate=604800');
+    expect(cacheControl).toContain('TEMPLATE_CATALOG_LIST_CACHE_CONTROL;');
+    expect(cacheControl).not.toContain('s-maxage=86400');
+    expect(cacheControl).not.toContain('stale-while-revalidate=604800');
     expect(listRoute).toContain('templateCatalogListReadHeaders');
     expect(detailRoute).toContain('templateCatalogReadHeaders');
     expect(listRoute).not.toContain("searchParams.get('id')");
@@ -166,7 +167,7 @@ describe('template catalog routing contract', () => {
     expect(detailRoute).not.toContain('no-store');
     expect(publicClient).toContain('PublicTemplateListItem');
     expect(publicClient).toContain('PublicTemplateDetailItem');
-    expect(query).toContain('previewUrl: `/api/template-media/${row.previewAssetId}`');
+    expect(query).toContain('previewUrl: row.previewUrl');
     expect(query).toContain('clearPublishedTemplateCatalogCache');
     expect(templatesPage).toContain("media: 'preview'");
     expect(templatesPage).toContain('src={template.previewUrl}');
@@ -231,6 +232,33 @@ describe('template catalog routing contract', () => {
     expect(adminTemplates).toContain('deleteTemplateMediaCacheEntries');
     expect(publicTemplateList).not.toContain('refreshTemplateMediaCache');
     expect(publicTemplateDetail).not.toContain('refreshTemplateMediaCache');
+  });
+
+  it('keeps direct template import scripts aligned with template media snapshots', () => {
+    const importScripts = [
+      readSource('scripts/import-template-catalog.ts'),
+      readSource('scripts/import-wanxiang-templates.ts'),
+    ];
+    const snapshotColumns = [
+      'thumbnail_url',
+      'preview_url',
+      'thumbnail_mime_type',
+      'preview_mime_type',
+    ];
+
+    for (const source of importScripts) {
+      expect(source).toContain('buildTemplateMediaUrl');
+      for (const column of snapshotColumns) {
+        expect(source).toContain(`'${column}'`);
+      }
+      expect(source).toContain('thumbnail_url = excluded.thumbnail_url');
+      expect(source).toContain('preview_url = excluded.preview_url');
+      expect(source).toContain(
+        'thumbnail_mime_type = excluded.thumbnail_mime_type'
+      );
+      expect(source).toContain('preview_mime_type = excluded.preview_mime_type');
+      expect(source).not.toContain('Legacy templates columns still present');
+    }
   });
 
   it('passes real template ids through image-to-video generation requests', () => {

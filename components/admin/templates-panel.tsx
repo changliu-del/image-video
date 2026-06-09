@@ -33,16 +33,21 @@ import {
   type TemplateType,
 } from '@/lib/templates/catalog';
 import { getTemplateCategoriesForType } from '@/lib/templates/category-config';
+import { buildTemplateMediaUrl } from '@/lib/templates/media-url';
 
 type AdminTemplate = TemplateCatalogDetailItem & {
   titleTranslations: Record<string, string>;
   promptTranslations: Record<string, string>;
   thumbnailAssetId: string;
   previewAssetId: string;
+  thumbnailMimeType: string;
+  previewMimeType: string;
   sortOrder: number;
   createdAt: string;
   updatedAt: string;
 };
+
+type TemplateMediaTarget = 'thumbnail' | 'preview';
 
 type TemplateFormState = {
   id?: string;
@@ -89,6 +94,10 @@ const emptyForm: TemplateFormState = {
 };
 
 const defaultOrderType: TemplateType = 'image_to_video';
+const emptyUploadFiles: Record<TemplateMediaTarget, File | null> = {
+  thumbnail: null,
+  preview: null,
+};
 
 function defaultCategoryForType(type: TemplateType) {
   return getTemplateCategoriesForType(type)[0] ?? 'common';
@@ -187,36 +196,129 @@ function Field({ children, label }: { children: ReactNode; label: string }) {
   );
 }
 
-function isLikelyVideoUrl(url: string) {
-  return /\.(mp4|webm|mov)(\?.*)?$/i.test(url);
+function isVideoMimeType(mimeType: string) {
+  return mimeType.startsWith('video/');
+}
+
+function TemplateMediaPreview({
+  mimeType,
+  url,
+}: {
+  mimeType: string;
+  url: string;
+}) {
+  if (!url) {
+    return (
+      <div className="grid aspect-[4/3] w-full place-items-center bg-gray-100 text-gray-400">
+        <ImagePlus className="size-6" aria-hidden="true" />
+      </div>
+    );
+  }
+
+  return isVideoMimeType(mimeType) ? (
+    <video
+      src={url}
+      className="aspect-[4/3] w-full object-cover"
+      controls
+      muted
+      playsInline
+    />
+  ) : (
+    <img src={url} alt="" className="aspect-[4/3] w-full object-cover" />
+  );
 }
 
 function TemplatePreview({ template }: { template: AdminTemplate }) {
   return (
     <div className="grid gap-4 md:grid-cols-2">
       <div className="overflow-hidden rounded-lg border border-gray-200 bg-gray-100">
-        <img
-          src={template.thumbnailUrl}
-          alt=""
-          className="aspect-[4/3] w-full object-cover"
+        <TemplateMediaPreview
+          mimeType={template.thumbnailMimeType}
+          url={template.thumbnailUrl}
         />
       </div>
       <div className="overflow-hidden rounded-lg border border-gray-200 bg-gray-100">
-        {isLikelyVideoUrl(template.previewUrl) ? (
-          <video
-            src={template.previewUrl}
-            className="aspect-[4/3] w-full object-cover"
-            controls
-            muted
-            playsInline
-          />
-        ) : (
-          <img
-            src={template.previewUrl}
-            alt=""
-            className="aspect-[4/3] w-full object-cover"
-          />
-        )}
+        <TemplateMediaPreview
+          mimeType={template.previewMimeType}
+          url={template.previewUrl}
+        />
+      </div>
+    </div>
+  );
+}
+
+function TemplateMediaField({
+  accept,
+  assetId,
+  currentAssetLabel,
+  disabled,
+  file,
+  label,
+  mediaUrl,
+  mimeType,
+  onAssetIdChange,
+  onFileChange,
+  onUpload,
+  uploadLabel,
+  uploading,
+}: {
+  accept: string;
+  assetId: string;
+  currentAssetLabel: string;
+  disabled: boolean;
+  file: File | null;
+  label: string;
+  mediaUrl: string;
+  mimeType: string;
+  onAssetIdChange: (value: string) => void;
+  onFileChange: (file: File | null) => void;
+  onUpload: () => void;
+  uploadLabel: string;
+  uploading: boolean;
+}) {
+  return (
+    <div className="grid gap-3 rounded-lg border border-gray-200 p-3">
+      <div className="flex items-center justify-between gap-3">
+        <div className="text-xs font-semibold uppercase text-gray-500">
+          {label}
+        </div>
+        {mediaUrl ? (
+          <a
+            href={mediaUrl}
+            target="_blank"
+            rel="noreferrer"
+            className="text-xs font-semibold text-orange-700"
+          >
+            {currentAssetLabel}
+          </a>
+        ) : null}
+      </div>
+      <div className="overflow-hidden rounded-md border border-gray-200 bg-gray-100">
+        <TemplateMediaPreview mimeType={mimeType} url={mediaUrl} />
+      </div>
+      <Input
+        value={assetId}
+        onChange={(event) => onAssetIdChange(event.target.value)}
+      />
+      <div className="grid gap-2 sm:grid-cols-[1fr_auto]">
+        <Input
+          type="file"
+          accept={accept}
+          onChange={(event) => onFileChange(event.target.files?.[0] ?? null)}
+          disabled={disabled}
+        />
+        <Button
+          type="button"
+          onClick={onUpload}
+          disabled={disabled || !file}
+        >
+          {uploading ? (
+            <Loader2 className="size-4 animate-spin" />
+          ) : (
+            <ImagePlus className="size-4" />
+          )}
+          {uploadLabel}
+        </Button>
       </div>
     </div>
   );
@@ -245,10 +347,12 @@ export function TemplatesPanel({
   const [selectedTemplate, setSelectedTemplate] =
     useState<AdminTemplate | null>(null);
   const [modalMode, setModalMode] = useState<ModalMode | null>(null);
-  const [uploadFile, setUploadFile] = useState<File | null>(null);
+  const [uploadFiles, setUploadFiles] =
+    useState<Record<TemplateMediaTarget, File | null>>(emptyUploadFiles);
   const [loading, setLoading] = useState(false);
   const [saving, setSaving] = useState(false);
-  const [uploading, setUploading] = useState(false);
+  const [uploadingTarget, setUploadingTarget] =
+    useState<TemplateMediaTarget | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [orderModalOpen, setOrderModalOpen] = useState(false);
   const [orderForm, setOrderForm] = useState<TemplateOrderFormState>({
@@ -375,7 +479,7 @@ export function TemplatesPanel({
   function openCreate() {
     setSelectedTemplate(null);
     setForm(freshEmptyForm());
-    setUploadFile(null);
+    setUploadFiles(emptyUploadFiles);
     setModalMode('create');
     setError(null);
   }
@@ -383,7 +487,7 @@ export function TemplatesPanel({
   function openView(template: AdminTemplate) {
     setSelectedTemplate(template);
     setForm(templateToForm(template));
-    setUploadFile(null);
+    setUploadFiles(emptyUploadFiles);
     setModalMode('view');
     setError(null);
   }
@@ -391,7 +495,7 @@ export function TemplatesPanel({
   function openEdit(template: AdminTemplate) {
     setSelectedTemplate(template);
     setForm(templateToForm(template));
-    setUploadFile(null);
+    setUploadFiles(emptyUploadFiles);
     setModalMode('edit');
     setError(null);
   }
@@ -401,6 +505,10 @@ export function TemplatesPanel({
     value: TemplateFormState[K]
   ) {
     setForm((current) => ({ ...current, [key]: value }));
+  }
+
+  function updateUploadFile(target: TemplateMediaTarget, file: File | null) {
+    setUploadFiles((current) => ({ ...current, [target]: file }));
   }
 
   async function saveTemplate() {
@@ -475,13 +583,14 @@ export function TemplatesPanel({
     }
   }
 
-  async function uploadTemplatePreview() {
+  async function uploadTemplateMedia(target: TemplateMediaTarget) {
+    const uploadFile = uploadFiles[target];
     if (!form.id || !uploadFile) {
       setError(copy.selectSavedTemplate);
       return;
     }
 
-    setUploading(true);
+    setUploadingTarget(target);
     setError(null);
     try {
       const presign = await requestJson<{
@@ -494,6 +603,7 @@ export function TemplatesPanel({
           method: 'POST',
           body: JSON.stringify({
             templateId: form.id,
+            target,
             fileName: uploadFile.name,
             mimeType: uploadFile.type,
             sizeBytes: uploadFile.size,
@@ -512,12 +622,18 @@ export function TemplatesPanel({
         throw new Error(copy.errors.upload);
       }
 
-      await requestJson(
+      const completed = await requestJson<{
+        assetId: string;
+        publicUrl: string;
+        target: TemplateMediaTarget;
+        status: string;
+      }>(
         '/api/admin/template-preview/complete',
         {
           method: 'POST',
           body: JSON.stringify({
             templateId: form.id,
+            target,
             assetId: presign.assetId,
             storageKey: presign.storageKey,
           }),
@@ -525,14 +641,20 @@ export function TemplatesPanel({
         copy.errors.completeUpload
       );
 
-      setUploadFile(null);
+      setForm((current) => ({
+        ...current,
+        ...(completed.target === 'thumbnail'
+          ? { thumbnailAssetId: completed.assetId }
+          : { previewAssetId: completed.assetId }),
+      }));
+      setUploadFiles((current) => ({ ...current, [target]: null }));
       await loadTemplates(data.page);
     } catch (uploadError) {
       setError(
         uploadError instanceof Error ? uploadError.message : copy.errors.upload
       );
     } finally {
-      setUploading(false);
+      setUploadingTarget(null);
     }
   }
 
@@ -682,6 +804,23 @@ export function TemplatesPanel({
       : modalMode === 'edit'
         ? copy.modalEdit
         : copy.modalDetails;
+  const thumbnailMediaUrl = form.thumbnailAssetId
+    ? buildTemplateMediaUrl(form.thumbnailAssetId)
+    : (selectedTemplate?.thumbnailUrl ?? '');
+  const previewMediaUrl = form.previewAssetId
+    ? buildTemplateMediaUrl(form.previewAssetId)
+    : (selectedTemplate?.previewUrl ?? '');
+  const thumbnailMimeType =
+    selectedTemplate?.thumbnailAssetId === form.thumbnailAssetId
+      ? selectedTemplate.thumbnailMimeType
+      : 'image/png';
+  const previewMimeType =
+    selectedTemplate?.previewAssetId === form.previewAssetId
+      ? selectedTemplate.previewMimeType
+      : form.type === 'image_to_video'
+        ? 'video/mp4'
+        : 'image/png';
+  const uploadDisabled = !form.id || Boolean(uploadingTarget);
 
   return (
     <>
@@ -938,6 +1077,8 @@ export function TemplatesPanel({
                 'previewAssetId',
                 'thumbnailUrl',
                 'previewUrl',
+                'thumbnailMimeType',
+                'previewMimeType',
                 'prompt',
                 'promptTranslations',
                 'createdAt',
@@ -999,22 +1140,38 @@ export function TemplatesPanel({
             </Field>
 
             <div className="grid gap-4 md:grid-cols-2">
-              <Field label={copy.fields.thumbnailAssetId ?? 'Thumbnail asset ID'}>
-                <Input
-                  value={form.thumbnailAssetId}
-                  onChange={(event) =>
-                    updateForm('thumbnailAssetId', event.target.value)
-                  }
-                />
-              </Field>
-              <Field label={copy.fields.previewAssetId ?? 'Preview asset ID'}>
-                <Input
-                  value={form.previewAssetId}
-                  onChange={(event) =>
-                    updateForm('previewAssetId', event.target.value)
-                  }
-                />
-              </Field>
+              <TemplateMediaField
+                accept="image/png,image/jpeg,image/webp"
+                assetId={form.thumbnailAssetId}
+                currentAssetLabel={copy.currentAsset}
+                disabled={uploadDisabled}
+                file={uploadFiles.thumbnail}
+                label={copy.fields.thumbnailAssetId ?? 'Thumbnail asset ID'}
+                mediaUrl={thumbnailMediaUrl}
+                mimeType={thumbnailMimeType}
+                onAssetIdChange={(value) =>
+                  updateForm('thumbnailAssetId', value)
+                }
+                onFileChange={(file) => updateUploadFile('thumbnail', file)}
+                onUpload={() => uploadTemplateMedia('thumbnail')}
+                uploadLabel={common.upload}
+                uploading={uploadingTarget === 'thumbnail'}
+              />
+              <TemplateMediaField
+                accept="image/png,image/jpeg,image/webp,video/mp4,video/webm"
+                assetId={form.previewAssetId}
+                currentAssetLabel={copy.currentAsset}
+                disabled={uploadDisabled}
+                file={uploadFiles.preview}
+                label={copy.fields.previewAssetId ?? 'Preview asset ID'}
+                mediaUrl={previewMediaUrl}
+                mimeType={previewMimeType}
+                onAssetIdChange={(value) => updateForm('previewAssetId', value)}
+                onFileChange={(file) => updateUploadFile('preview', file)}
+                onUpload={() => uploadTemplateMedia('preview')}
+                uploadLabel={common.upload}
+                uploading={uploadingTarget === 'preview'}
+              />
             </div>
 
             <Field label={copy.fields.prompt}>
@@ -1037,45 +1194,6 @@ export function TemplatesPanel({
               />
             </Field>
 
-            <div className="rounded-lg border border-gray-200 p-4">
-              <div className="mb-4 flex items-center justify-between gap-3">
-                <div className="text-sm font-semibold text-gray-950">
-                  {copy.uploadAsset}
-                </div>
-                {selectedTemplate?.previewUrl ? (
-                  <a
-                    href={selectedTemplate.previewUrl}
-                    target="_blank"
-                    rel="noreferrer"
-                    className="text-xs font-semibold text-orange-700"
-                  >
-                    {copy.currentAsset}
-                  </a>
-                ) : null}
-              </div>
-              <div className="grid gap-3 md:grid-cols-[1fr_auto]">
-                <Input
-                  type="file"
-                  accept="image/png,image/jpeg,image/webp,video/mp4,video/webm"
-                  onChange={(event) =>
-                    setUploadFile(event.target.files?.[0] ?? null)
-                  }
-                  disabled={!form.id || uploading}
-                />
-                <Button
-                  type="button"
-                  onClick={uploadTemplatePreview}
-                  disabled={!form.id || !uploadFile || uploading}
-                >
-                  {uploading ? (
-                    <Loader2 className="size-4 animate-spin" />
-                  ) : (
-                    <ImagePlus className="size-4" />
-                  )}
-                  {common.upload}
-                </Button>
-              </div>
-            </div>
           </div>
         )}
       </AdminModal>
