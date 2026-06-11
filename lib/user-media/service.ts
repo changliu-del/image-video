@@ -2,6 +2,7 @@ import 'server-only';
 
 import { and, desc, eq, isNull, or, sql, type SQL } from 'drizzle-orm';
 import { db } from '@/lib/db/drizzle';
+import { buildAssetMediaUrl } from '@/lib/assets/media-url';
 import {
   assets,
   generationJobs,
@@ -90,6 +91,7 @@ function mapUserMediaRecord({
   userMedia,
 }: UserMediaRecord): UserMediaCatalogItem {
   const video = isVideoAsset(asset);
+  const mediaUrl = buildAssetMediaUrl(asset.id);
 
   return {
     id: userMedia.id,
@@ -98,11 +100,11 @@ function mapUserMediaRecord({
     title: userMedia.title,
     description: userMedia.description,
     generationType: userMedia.generationType,
-    assetUrl: asset.publicUrl,
-    imageUrl: video ? null : asset.publicUrl,
-    videoUrl: video ? asset.publicUrl : null,
-    thumbnailUrl: video ? null : asset.publicUrl,
-    publicUrl: asset.publicUrl,
+    assetUrl: mediaUrl,
+    imageUrl: video ? null : mediaUrl,
+    videoUrl: video ? mediaUrl : null,
+    thumbnailUrl: video ? null : mediaUrl,
+    publicUrl: mediaUrl,
     mimeType: asset.mimeType,
     isFavorite: userMedia.isFavorite,
     usedCount: userMedia.usedCount,

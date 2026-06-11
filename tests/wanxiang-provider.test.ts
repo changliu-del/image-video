@@ -5,7 +5,10 @@ import {
   queryCloth,
   submitCloth
 } from '../lib/providers/wanxiang/cloth';
-import { submitImageToVideo } from '../lib/providers/wanxiang/img-to-video';
+import {
+  DEFAULT_WANXIANG_IMG_TO_VIDEO_SUBMIT_URL,
+  submitImageToVideo
+} from '../lib/providers/wanxiang/img-to-video';
 import {
   DEFAULT_WANXIANG_TRY_ON_MULTI_SUBMIT_URL,
   queryTryOn,
@@ -193,11 +196,47 @@ describe('Wanxiang capability exports', () => {
     vi.stubEnv('WANXIANG_IMG_TO_VIDEO_SUBMIT_URL', 'https://override.test/i2v');
     const fetchMock = mockJsonFetch({ code: 0, data: { task_id: 'i2v-task' } });
 
-    await submitImageToVideo({ prompt: 'move' }, { fetch: fetchMock });
+    await submitImageToVideo(
+      {
+        inputImageUrl: 'https://img.test/product.png',
+        prompt: '模特转动身体展示衣服',
+        durationSeconds: 10,
+        metadata: { jobId: 'local-job' }
+      },
+      { fetch: fetchMock }
+    );
 
     expect(fetchMock).toHaveBeenCalledWith(
       'https://override.test/i2v',
-      expect.any(Object)
+      expect.objectContaining({
+        body: JSON.stringify({
+          imgUrl: 'https://img.test/product.png',
+          posPrompt: '模特转动身体展示衣服'
+        })
+      })
+    );
+  });
+
+  it('uses the Alibaba Cloud Market image-to-video default endpoint and payload shape', async () => {
+    vi.stubEnv('WANXIANG_APPCODE', 'env-code');
+    const fetchMock = mockJsonFetch({ code: 0, data: { taskId: 'i2v-task' } });
+
+    await submitImageToVideo(
+      {
+        imgUrl: 'https://aliyun-tmp.oss-cn-beijing.aliyuncs.com/imgToVideo.png',
+        posPrompt: '模特转动身体展示衣服'
+      },
+      { fetch: fetchMock }
+    );
+
+    expect(fetchMock).toHaveBeenCalledWith(
+      DEFAULT_WANXIANG_IMG_TO_VIDEO_SUBMIT_URL,
+      expect.objectContaining({
+        body: JSON.stringify({
+          imgUrl: 'https://aliyun-tmp.oss-cn-beijing.aliyuncs.com/imgToVideo.png',
+          posPrompt: '模特转动身体展示衣服'
+        })
+      })
     );
   });
 

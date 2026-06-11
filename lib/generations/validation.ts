@@ -4,6 +4,8 @@ import {
   MAX_UPLOAD_SIZE_BYTES,
 } from './constants';
 import {
+  IMAGE_TO_VIDEO_CREDIT_COST,
+  IMAGE_TO_VIDEO_DURATION_SECONDS,
   getApparelImageCreditCost,
   getCreditCostForDuration,
   getTryOnCreditCost,
@@ -19,6 +21,8 @@ export {
   MAX_UPLOAD_SIZE_BYTES,
 } from './constants';
 export {
+  IMAGE_TO_VIDEO_CREDIT_COST,
+  IMAGE_TO_VIDEO_DURATION_SECONDS,
   getApparelImageCreditCost,
   getCreditCostForDuration,
   getTryOnCreditCost,
@@ -61,10 +65,6 @@ export const UPLOAD_MIME_EXTENSIONS: Record<UploadMimeType, string> = {
 export const VIDEO_ASPECT_RATIOS = ['9:16', '3:4', '1:1', '16:9'] as const;
 export type VideoAspectRatio = (typeof VIDEO_ASPECT_RATIOS)[number];
 
-export const GENERATION_DURATION_SECONDS_MIN = 4;
-export const GENERATION_DURATION_SECONDS_MAX = 15;
-export type GenerationDurationSeconds = number;
-
 export const GENERATION_TYPES = [
   'image_to_video',
   'apparel_image',
@@ -97,7 +97,7 @@ const optionalCleanPromptField = z.preprocess(
   cleanPromptField.optional()
 );
 
-const durationSecondsSchema = z.preprocess(
+const legacyImageToVideoDurationSchema = z.preprocess(
   (value) => {
     if (typeof value === 'string' && /^\d+$/.test(value)) {
       return Number(value);
@@ -105,15 +105,11 @@ const durationSecondsSchema = z.preprocess(
 
     return value;
   },
-  z
-    .number()
-    .int()
-    .min(GENERATION_DURATION_SECONDS_MIN)
-    .max(GENERATION_DURATION_SECONDS_MAX)
+  z.literal(IMAGE_TO_VIDEO_DURATION_SECONDS)
 );
 
-const qualityModeSchema = z.enum(['standard', 'high']);
 const assetIdArraySchema = z.array(idStringSchema).min(1).max(8);
+const singleAssetIdArraySchema = z.array(idStringSchema).min(1).max(1);
 
 const apparelStrengthSchema = z.preprocess(
   (value) => {
@@ -208,18 +204,10 @@ export const imageToVideoGenerationRequestSchema = z
   .object({
     ...baseGenerationFields,
     inputAssetId: idStringSchema.optional(),
-    inputAssetIds: assetIdArraySchema.optional(),
+    inputAssetIds: singleAssetIdArraySchema.optional(),
     inputAsset: idStringSchema.optional(),
-    prompt: optionalCleanPromptField,
-    negativePrompt: z.string().trim().max(1000).optional(),
-    aspectRatio: z.enum(VIDEO_ASPECT_RATIOS).optional(),
-    durationSeconds: durationSecondsSchema.optional(),
-    qualityMode: qualityModeSchema.optional(),
-    audioSync: z.boolean().optional(),
-    referenceAssetIds: assetIdArraySchema.optional(),
-    referenceImageAssetIds: assetIdArraySchema.optional(),
-    referenceVideoAssetIds: assetIdArraySchema.optional(),
-    referenceAudioAssetIds: assetIdArraySchema.optional(),
+    prompt: cleanPromptField,
+    durationSeconds: legacyImageToVideoDurationSchema.optional(),
   })
   .strict()
   .superRefine((value, context) => {
@@ -241,6 +229,19 @@ export const imageToVideoGenerationRequestSchema = z
         path: ['inputAssetId'],
       });
     }
+
+    const explicitInputAssetId = value.inputAssetId ?? value.inputAsset;
+    if (
+      explicitInputAssetId &&
+      value.inputAssetIds?.length &&
+      value.inputAssetIds[0] !== explicitInputAssetId
+    ) {
+      context.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: 'image_to_video supports one input image',
+        path: ['inputAssetIds'],
+      });
+    }
   })
   .transform(
     ({ generationType, inputAsset, inputAssetId, inputAssetIds, mode, ...value }) => {
@@ -251,10 +252,7 @@ export const imageToVideoGenerationRequestSchema = z
 
       return {
         ...value,
-        aspectRatio: value.aspectRatio ?? '9:16',
-        durationSeconds: value.durationSeconds ?? 10,
-        qualityMode: value.qualityMode ?? 'standard',
-        audioSync: value.audioSync ?? true,
+        durationSeconds: IMAGE_TO_VIDEO_DURATION_SECONDS,
         generationType: 'image_to_video' as const,
         inputAssetId: primaryInputAssetId,
         ...(inputAssetIds?.length
@@ -306,7 +304,7 @@ export const tryOnGenerationRequestSchema = z
     ...baseGenerationFields,
     tryOnMode: z.enum(TRY_ON_MODES).optional(),
     modelAssetId: idStringSchema.optional(),
-    modelCatalogAssetId: idStringSchema.optional(),
+    modelTemplateId: idStringSchema.optional(),
     inputAssetId: idStringSchema.optional(),
     garmentAssetId: idStringSchema.optional(),
     garmentAssetIds: z.array(idStringSchema).min(1).max(8).optional(),
@@ -329,11 +327,11 @@ export const tryOnGenerationRequestSchema = z
       });
     }
 
-    if (!value.modelAssetId && !value.inputAssetId && !value.modelCatalogAssetId) {
+    if (!value.modelAssetId && !value.inputAssetId && !value.modelTemplateId) {
       context.addIssue({
         code: z.ZodIssueCode.custom,
-        message: 'modelAssetId or modelCatalogAssetId is required',
-        path: ['modelCatalogAssetId'],
+        message: 'modelAssetId or modelTemplateId is required',
+        path: ['modelTemplateId'],
       });
     }
 
@@ -396,7 +394,7 @@ export type GenerationApiRequest = z.infer<typeof generationApiRequestSchema>;
 export function getCreditCostForGeneration(generation: GenerationRequest) {
   switch (generation.generationType) {
     case 'image_to_video':
-      return getCreditCostForDuration(generation.durationSeconds);
+      return IMAGE_TO_VIDEO_CREDIT_COST;
     case 'apparel_image':
       return getApparelImageCreditCost();
     case 'try_on':

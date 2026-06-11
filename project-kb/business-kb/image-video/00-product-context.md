@@ -24,9 +24,7 @@ The product helps ecommerce sellers produce short videos, product campaign image
 
 ## Current Credit Costs
 
-- 5s image-to-video: 10 credits.
-- 8s image-to-video: 18 credits.
-- 10s image-to-video: 25 credits.
+- Fixed 5s image-to-video: 10 credits.
 - Apparel image: 5 credits.
 - Try-on single: 5 credits.
 - Try-on multi: 10 credits.

@@ -7,6 +7,7 @@ import {
   users,
   type CreditLedgerEntry,
 } from '@/lib/db/schema';
+import { getCreditCostForDuration } from '@/lib/generations/credit-costs';
 import { getSignupFreeCreditsAmount } from '@/lib/generations/free-credits';
 
 export type CreditLedgerMetadata = Record<string, unknown>;
@@ -91,11 +92,7 @@ function assertNonZeroInteger(value: number, label: string) {
 }
 
 function estimateFromDuration(durationSeconds: number) {
-  if (!Number.isInteger(durationSeconds) || durationSeconds < 4 || durationSeconds > 15) {
-    throw new Error(`Unsupported generation duration: ${durationSeconds}`);
-  }
-
-  return Math.max(8, Math.round(durationSeconds * 3 - 5));
+  return getCreditCostForDuration(durationSeconds);
 }
 
 function getReserveAmount(input: ReserveCreditsForJobInput) {

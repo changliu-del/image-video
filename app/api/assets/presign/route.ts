@@ -1,6 +1,7 @@
 import { randomUUID } from 'crypto';
 
 import { getUser } from '@/lib/db/queries';
+import { buildAssetMediaUrl } from '@/lib/assets/media-url';
 import { createPendingUploadAsset } from '@/lib/generations/jobs';
 import { presignAssetRequestSchema } from '@/lib/generations/validation';
 import {
@@ -43,7 +44,7 @@ export async function POST(request: NextRequest) {
     assetId,
     parsed.data.mimeType
   );
-  const publicUrl = buildPublicUrl(storageKey);
+  const storagePublicUrl = buildPublicUrl(storageKey);
 
   try {
     const uploadUrl = await createSignedPutUrl({
@@ -56,7 +57,7 @@ export async function POST(request: NextRequest) {
       assetId,
       userId: user.id,
       storageKey,
-      publicUrl,
+      publicUrl: storagePublicUrl,
       mimeType: parsed.data.mimeType,
       sizeBytes: parsed.data.sizeBytes,
     });
@@ -65,7 +66,7 @@ export async function POST(request: NextRequest) {
       assetId,
       uploadUrl,
       storageKey,
-      publicUrl,
+      publicUrl: buildAssetMediaUrl(assetId),
     });
   } catch (error) {
     console.error('Failed to create signed upload URL', error);

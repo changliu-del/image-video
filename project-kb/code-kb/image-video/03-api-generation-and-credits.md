@@ -1,6 +1,6 @@
 # API, Generation, and Credits
 
-Updated: 2026-06-04
+Updated: 2026-06-11
 
 ## Request Validation
 
@@ -10,7 +10,7 @@ Updated: 2026-06-04
 - Generation types: `image_to_video`, `apparel_image`, `try_on`.
 - Legacy `image-to-video` alias.
 - Optional workbench field: `templateId`.
-- Empty prompt strings as omitted prompt.
+- `image_to_video` is fixed to one image input, a required prompt, and 5 seconds. Frontend requests should not send `durationSeconds`; the backend only accepts a legacy `durationSeconds = 5` value for compatibility and rejects any other duration.
 - Apparel controls: `strength`, `variants`.
 - Try-on modes: `single`, `multi`.
 
@@ -39,16 +39,14 @@ Updated: 2026-06-03
 
 Generation credit cost is currently:
 
-- Image-to-video 5s: 10 credits.
-- Image-to-video 8s: 18 credits.
-- Image-to-video 10s: 25 credits.
+- Image-to-video fixed 5s: 10 credits.
 - Apparel image: 5 credits.
 - Try-on single: 5 credits.
 - Try-on multi: 10 credits.
 
 ## Current Risk
 
-`createGenerationForUser` is DB-first: it creates a queued `generation_jobs` row, reserves credits, and enqueues the Trigger.dev `generate-wanxiang` task before returning a job id. Wanxiang submit/query, terminal status updates, single output asset creation, `generation_jobs.output_asset_id`, user media history recording, credit capture, and refund now happen in or around the Trigger worker.
+`createGenerationForUser` is DB-first: it creates a queued `generation_jobs` row, reserves credits, and enqueues the Trigger.dev `generate-wanxiang` task before returning a job id. Wanxiang submit/query, provider-result-to-R2 copy, terminal status updates, single output asset creation, `generation_jobs.output_asset_id`, user media history recording, credit capture, and refund now happen in or around the Trigger worker. The status APIs and workbench previews should use `/api/asset-media/{assetId}` display URLs, not raw provider result URLs or raw R2 `assets.public_url` values.
 
 `generation_jobs` does not store `try_on_mode`, `template_id`, final image/video asset pairs, provider poll counters, attempt counters, or completion timestamps as separate columns. Try-on mode and template id remain in `input_json` and credit metadata for historical traceability.
 

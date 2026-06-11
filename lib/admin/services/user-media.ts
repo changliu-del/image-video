@@ -3,6 +3,7 @@ import 'server-only';
 import { and, desc, eq, or, sql } from 'drizzle-orm';
 import { z } from 'zod';
 import { db } from '@/lib/db/drizzle';
+import { buildAssetMediaUrl } from '@/lib/assets/media-url';
 import {
   assets,
   generationJobs,
@@ -42,7 +43,7 @@ const updateUserMediaAdminSchema = z
   );
 
 type AdminUserMediaRecord = {
-  asset: Pick<typeof assets.$inferSelect, 'mimeType' | 'publicUrl'>;
+  asset: Pick<typeof assets.$inferSelect, 'id' | 'mimeType' | 'publicUrl'>;
   generationJob: Pick<typeof generationJobs.$inferSelect, 'status'> | null;
   user: Pick<typeof users.$inferSelect, 'email' | 'id' | 'name'>;
   userMedia: typeof userMediaHistory.$inferSelect;
@@ -108,7 +109,7 @@ function userMediaRecordToListItem({
     userId: userMedia.userId,
     userEmail: user.email,
     userName: user.name,
-    previewUrl: mediaKind === 'file' ? null : asset.publicUrl,
+    previewUrl: mediaKind === 'file' ? null : buildAssetMediaUrl(asset.id),
     previewMimeType: asset.mimeType,
     mediaKind,
     title: userMedia.title,
@@ -160,6 +161,7 @@ export async function listAdminUserMedia(params: {
       db
         .select({
           asset: {
+            id: assets.id,
             mimeType: assets.mimeType,
             publicUrl: assets.publicUrl,
           },

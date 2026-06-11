@@ -1,0 +1,1468 @@
+{
+  "createdAt": "2026-06-09T14:14:30.523Z",
+  "total": 146,
+  "ok": 146,
+  "failed": 0,
+  "results": [
+    {
+      "kind": "thumbnail",
+      "model": "马特奥",
+      "index": 1,
+      "url": "https://agi.alicdn.com/upload/material/8tfrq/2026/01/17/62dd3ac9-5e5e-4410-bd3d-576b567ca394.png?x-oss-process=image%2Fresize%2Cs_324%2Fformat%2Cwebp",
+      "dest": "/Users/changliu/workspace/src/github.com/image-video/.tmp/wanxiang-models-europe-usa-20260609/images/thumbnails/001-104-thumbnail.webp",
+      "ok": true,
+      "bytes": 7828,
+      "contentType": "image/webp"
+    },
+    {
+      "kind": "thumbnail",
+      "model": "娜莎",
+      "index": 4,
+      "url": "https://agi.alicdn.com/upload/material/8tfrq/2026/01/17/bea569b9-5810-4419-a435-71a8865fdcb4.png?x-oss-process=image%2Fresize%2Cs_324%2Fformat%2Cwebp",
+      "dest": "/Users/changliu/workspace/src/github.com/image-video/.tmp/wanxiang-models-europe-usa-20260609/images/thumbnails/004-156-thumbnail.webp",
+      "ok": true,
+      "bytes": 8484,
+      "contentType": "image/webp"
+    },
+    {
+      "kind": "thumbnail",
+      "model": "杰斯",
+      "index": 3,
+      "url": "https://agi.alicdn.com/upload/material/8tfrq/2026/01/17/e1df5337-7b55-458d-a0d1-b5db46b003cd.png?x-oss-process=image%2Fresize%2Cs_324%2Fformat%2Cwebp",
+      "dest": "/Users/changliu/workspace/src/github.com/image-video/.tmp/wanxiang-models-europe-usa-20260609/images/thumbnails/003-132-thumbnail.webp",
+      "ok": true,
+      "bytes": 8284,
+      "contentType": "image/webp"
+    },
+    {
+      "kind": "thumbnail",
+      "model": "诺埃尔",
+      "index": 2,
+      "url": "https://agi.alicdn.com/upload/material/8tfrq/2026/01/17/f886f00d-713b-415b-8e4c-1899a1c01f4b.png?x-oss-process=image%2Fresize%2Cs_324%2Fformat%2Cwebp",
+      "dest": "/Users/changliu/workspace/src/github.com/image-video/.tmp/wanxiang-models-europe-usa-20260609/images/thumbnails/002-110-thumbnail.webp",
+      "ok": true,
+      "bytes": 8534,
+      "contentType": "image/webp"
+    },
+    {
+      "kind": "detail",
+      "model": "诺埃尔",
+      "index": 2,
+      "url": "https://agi.alicdn.com/user/3zsp/c7266960-98e4-4c20-80fd-a2e79c093327_avatar.png?x-oss-process=image%2Fresize%2Cs_400%2Fformat%2Cwebp",
+      "dest": "/Users/changliu/workspace/src/github.com/image-video/.tmp/wanxiang-models-europe-usa-20260609/images/details/002-110-detail.webp",
+      "ok": true,
+      "bytes": 22524,
+      "contentType": "image/webp"
+    },
+    {
+      "kind": "detail",
+      "model": "马特奥",
+      "index": 1,
+      "url": "https://agi.alicdn.com/user/3zsp/6a4dd036-22f2-48d4-8477-89e9c8c2d3c7_avatar.png?x-oss-process=image%2Fresize%2Cs_400%2Fformat%2Cwebp",
+      "dest": "/Users/changliu/workspace/src/github.com/image-video/.tmp/wanxiang-models-europe-usa-20260609/images/details/001-104-detail.webp",
+      "ok": true,
+      "bytes": 20022,
+      "contentType": "image/webp"
+    },
+    {
+      "kind": "thumbnail",
+      "model": "斯特拉",
+      "index": 6,
+      "url": "https://agi.alicdn.com/upload/material/8tfrq/2026/01/17/c4df5d13-330f-44df-a31e-296261b436f1.png?x-oss-process=image%2Fresize%2Cs_324%2Fformat%2Cwebp",
+      "dest": "/Users/changliu/workspace/src/github.com/image-video/.tmp/wanxiang-models-europe-usa-20260609/images/thumbnails/006-160-thumbnail.webp",
+      "ok": true,
+      "bytes": 8118,
+      "contentType": "image/webp"
+    },
+    {
+      "kind": "thumbnail",
+      "model": "苏菲",
+      "index": 5,
+      "url": "https://agi.alicdn.com/upload/material/8tfrq/2026/01/17/03eea4c2-11d3-4108-8d5a-4b22ad6a1b2a.png?x-oss-process=image%2Fresize%2Cs_324%2Fformat%2Cwebp",
+      "dest": "/Users/changliu/workspace/src/github.com/image-video/.tmp/wanxiang-models-europe-usa-20260609/images/thumbnails/005-158-thumbnail.webp",
+      "ok": true,
+      "bytes": 7468,
+      "contentType": "image/webp"
+    },
+    {
+      "kind": "detail",
+      "model": "娜莎",
+      "index": 4,
+      "url": "https://agi.alicdn.com/user/3zsp/50c22855-53ec-4045-b994-5a028556bce6_avatar.png?x-oss-process=image%2Fresize%2Cs_400%2Fformat%2Cwebp",
+      "dest": "/Users/changliu/workspace/src/github.com/image-video/.tmp/wanxiang-models-europe-usa-20260609/images/details/004-156-detail.webp",
+      "ok": true,
+      "bytes": 42902,
+      "contentType": "image/webp"
+    },
+    {
+      "kind": "thumbnail",
+      "model": "黛菲尔",
+      "index": 7,
+      "url": "https://agi.alicdn.com/upload/material/8tfrq/2026/01/17/e6b3d496-e35f-4dd1-9d2d-2c7360a9241d.png?x-oss-process=image%2Fresize%2Cs_324%2Fformat%2Cwebp",
+      "dest": "/Users/changliu/workspace/src/github.com/image-video/.tmp/wanxiang-models-europe-usa-20260609/images/thumbnails/007-162-thumbnail.webp",
+      "ok": true,
+      "bytes": 11212,
+      "contentType": "image/webp"
+    },
+    {
+      "kind": "detail",
+      "model": "黛菲尔",
+      "index": 7,
+      "url": "https://agi.alicdn.com/user/3zsp/1812ded9-e003-48a2-98a4-382f19fc6f77_avatar.png?x-oss-process=image%2Fresize%2Cs_400%2Fformat%2Cwebp",
+      "dest": "/Users/changliu/workspace/src/github.com/image-video/.tmp/wanxiang-models-europe-usa-20260609/images/details/007-162-detail.webp",
+      "ok": true,
+      "bytes": 11756,
+      "contentType": "image/webp"
+    },
+    {
+      "kind": "thumbnail",
+      "model": "莉奥娜",
+      "index": 8,
+      "url": "https://agi.alicdn.com/upload/material/8tfrq/2026/01/17/565f1c42-26b4-4c12-bb08-09e72830431c.png?x-oss-process=image%2Fresize%2Cs_324%2Fformat%2Cwebp",
+      "dest": "/Users/changliu/workspace/src/github.com/image-video/.tmp/wanxiang-models-europe-usa-20260609/images/thumbnails/008-164-thumbnail.webp",
+      "ok": true,
+      "bytes": 12518,
+      "contentType": "image/webp"
+    },
+    {
+      "kind": "thumbnail",
+      "model": "阿缇",
+      "index": 10,
+      "url": "https://agi.alicdn.com/upload/material/8tfrq/2026/01/17/1af95e9a-c09d-4844-aee8-2cb5ce42cfa7.png?x-oss-process=image%2Fresize%2Cs_324%2Fformat%2Cwebp",
+      "dest": "/Users/changliu/workspace/src/github.com/image-video/.tmp/wanxiang-models-europe-usa-20260609/images/thumbnails/010-167-thumbnail.webp",
+      "ok": true,
+      "bytes": 5452,
+      "contentType": "image/webp"
+    },
+    {
+      "kind": "detail",
+      "model": "杰斯",
+      "index": 3,
+      "url": "https://agi.alicdn.com/user/3zsp/eef579c8-6526-41c6-923b-f872b1bedc10_avatar.png?x-oss-process=image%2Fresize%2Cs_400%2Fformat%2Cwebp",
+      "dest": "/Users/changliu/workspace/src/github.com/image-video/.tmp/wanxiang-models-europe-usa-20260609/images/details/003-132-detail.webp",
+      "ok": true,
+      "bytes": 15180,
+      "contentType": "image/webp"
+    },
+    {
+      "kind": "thumbnail",
+      "model": "萨琳",
+      "index": 9,
+      "url": "https://agi.alicdn.com/upload/material/8tfrq/2026/01/17/85243bdf-63c7-4e4a-af5a-2ca527646a07.png?x-oss-process=image%2Fresize%2Cs_324%2Fformat%2Cwebp",
+      "dest": "/Users/changliu/workspace/src/github.com/image-video/.tmp/wanxiang-models-europe-usa-20260609/images/thumbnails/009-165-thumbnail.webp",
+      "ok": true,
+      "bytes": 8768,
+      "contentType": "image/webp"
+    },
+    {
+      "kind": "thumbnail",
+      "model": "露西亚",
+      "index": 11,
+      "url": "https://agi.alicdn.com/upload/material/8tfrq/2026/01/17/4c78093a-7a92-48ec-83fb-80553468d9a5.png?x-oss-process=image%2Fresize%2Cs_324%2Fformat%2Cwebp",
+      "dest": "/Users/changliu/workspace/src/github.com/image-video/.tmp/wanxiang-models-europe-usa-20260609/images/thumbnails/011-169-thumbnail.webp",
+      "ok": true,
+      "bytes": 11224,
+      "contentType": "image/webp"
+    },
+    {
+      "kind": "detail",
+      "model": "阿缇",
+      "index": 10,
+      "url": "https://agi.alicdn.com/user/3zsp/2cb632cd-b62f-493b-954a-5622ddc9184c_avatar.png?x-oss-process=image%2Fresize%2Cs_400%2Fformat%2Cwebp",
+      "dest": "/Users/changliu/workspace/src/github.com/image-video/.tmp/wanxiang-models-europe-usa-20260609/images/details/010-167-detail.webp",
+      "ok": true,
+      "bytes": 13890,
+      "contentType": "image/webp"
+    },
+    {
+      "kind": "thumbnail",
+      "model": "阿米娜",
+      "index": 12,
+      "url": "https://agi.alicdn.com/upload/material/8tfrq/2026/01/17/ac7ecf8e-989f-42e4-b42b-e83dcad0c858.png?x-oss-process=image%2Fresize%2Cs_324%2Fformat%2Cwebp",
+      "dest": "/Users/changliu/workspace/src/github.com/image-video/.tmp/wanxiang-models-europe-usa-20260609/images/thumbnails/012-171-thumbnail.webp",
+      "ok": true,
+      "bytes": 6376,
+      "contentType": "image/webp"
+    },
+    {
+      "kind": "thumbnail",
+      "model": "阿瑞斯",
+      "index": 13,
+      "url": "https://agi.alicdn.com/upload/material/8tfrq/2026/01/17/fe773b1d-e07a-4781-84f5-c144cddcd65b.png?x-oss-process=image%2Fresize%2Cs_324%2Fformat%2Cwebp",
+      "dest": "/Users/changliu/workspace/src/github.com/image-video/.tmp/wanxiang-models-europe-usa-20260609/images/thumbnails/013-159-thumbnail.webp",
+      "ok": true,
+      "bytes": 6310,
+      "contentType": "image/webp"
+    },
+    {
+      "kind": "thumbnail",
+      "model": "丹尼尔",
+      "index": 14,
+      "url": "https://agi.alicdn.com/upload/material/8tfrq/2026/01/17/99112274-4ca0-4f40-9dcb-99310fdb5507.png?x-oss-process=image%2Fresize%2Cs_324%2Fformat%2Cwebp",
+      "dest": "/Users/changliu/workspace/src/github.com/image-video/.tmp/wanxiang-models-europe-usa-20260609/images/thumbnails/014-161-thumbnail.webp",
+      "ok": true,
+      "bytes": 6530,
+      "contentType": "image/webp"
+    },
+    {
+      "kind": "detail",
+      "model": "莉奥娜",
+      "index": 8,
+      "url": "https://agi.alicdn.com/user/3zsp/20570921-4f8b-4afc-a364-2b963871bcf4_avatar.png?x-oss-process=image%2Fresize%2Cs_400%2Fformat%2Cwebp",
+      "dest": "/Users/changliu/workspace/src/github.com/image-video/.tmp/wanxiang-models-europe-usa-20260609/images/details/008-164-detail.webp",
+      "ok": true,
+      "bytes": 20132,
+      "contentType": "image/webp"
+    },
+    {
+      "kind": "detail",
+      "model": "苏菲",
+      "index": 5,
+      "url": "https://agi.alicdn.com/user/3zsp/db355e57-8747-4826-9c7f-56bb1c39b420_avatar.png?x-oss-process=image%2Fresize%2Cs_400%2Fformat%2Cwebp",
+      "dest": "/Users/changliu/workspace/src/github.com/image-video/.tmp/wanxiang-models-europe-usa-20260609/images/details/005-158-detail.webp",
+      "ok": true,
+      "bytes": 31772,
+      "contentType": "image/webp"
+    },
+    {
+      "kind": "detail",
+      "model": "丹尼尔",
+      "index": 14,
+      "url": "https://agi.alicdn.com/user/3zsp/7b40e205-61e7-4f6a-9198-9593a8ab0f8b_avatar.png?x-oss-process=image%2Fresize%2Cs_400%2Fformat%2Cwebp",
+      "dest": "/Users/changliu/workspace/src/github.com/image-video/.tmp/wanxiang-models-europe-usa-20260609/images/details/014-161-detail.webp",
+      "ok": true,
+      "bytes": 12762,
+      "contentType": "image/webp"
+    },
+    {
+      "kind": "detail",
+      "model": "斯特拉",
+      "index": 6,
+      "url": "https://agi.alicdn.com/user/3zsp/1429bedf-e2a4-433f-801b-096653a53539_avatar.png?x-oss-process=image%2Fresize%2Cs_400%2Fformat%2Cwebp",
+      "dest": "/Users/changliu/workspace/src/github.com/image-video/.tmp/wanxiang-models-europe-usa-20260609/images/details/006-160-detail.webp",
+      "ok": true,
+      "bytes": 20874,
+      "contentType": "image/webp"
+    },
+    {
+      "kind": "detail",
+      "model": "萨琳",
+      "index": 9,
+      "url": "https://agi.alicdn.com/user/3zsp/c9fd3f69-385c-4ff6-8e6b-b7d0beb13638_avatar.png?x-oss-process=image%2Fresize%2Cs_400%2Fformat%2Cwebp",
+      "dest": "/Users/changliu/workspace/src/github.com/image-video/.tmp/wanxiang-models-europe-usa-20260609/images/details/009-165-detail.webp",
+      "ok": true,
+      "bytes": 28702,
+      "contentType": "image/webp"
+    },
+    {
+      "kind": "thumbnail",
+      "model": "伊戈尔",
+      "index": 15,
+      "url": "https://agi.alicdn.com/upload/material/8tfrq/2026/01/17/48f16972-3cf5-4799-a0d3-6f72a036dcd0.png?x-oss-process=image%2Fresize%2Cs_324%2Fformat%2Cwebp",
+      "dest": "/Users/changliu/workspace/src/github.com/image-video/.tmp/wanxiang-models-europe-usa-20260609/images/thumbnails/015-163-thumbnail.webp",
+      "ok": true,
+      "bytes": 6464,
+      "contentType": "image/webp"
+    },
+    {
+      "kind": "thumbnail",
+      "model": "娜塔莎",
+      "index": 16,
+      "url": "https://agi.alicdn.com/upload/material/8tfrq/2026/01/17/f1c3f382-602f-4370-9e51-7c8321516eaf.png?x-oss-process=image%2Fresize%2Cs_324%2Fformat%2Cwebp",
+      "dest": "/Users/changliu/workspace/src/github.com/image-video/.tmp/wanxiang-models-europe-usa-20260609/images/thumbnails/016-177-thumbnail.webp",
+      "ok": true,
+      "bytes": 7798,
+      "contentType": "image/webp"
+    },
+    {
+      "kind": "thumbnail",
+      "model": "艾芙琳",
+      "index": 17,
+      "url": "https://agi.alicdn.com/upload/material/8tfrq/2026/01/17/2b3e31d0-1002-42b2-b2c2-8b7b9cb33865.png?x-oss-process=image%2Fresize%2Cs_324%2Fformat%2Cwebp",
+      "dest": "/Users/changliu/workspace/src/github.com/image-video/.tmp/wanxiang-models-europe-usa-20260609/images/thumbnails/017-179-thumbnail.webp",
+      "ok": true,
+      "bytes": 7150,
+      "contentType": "image/webp"
+    },
+    {
+      "kind": "detail",
+      "model": "阿米娜",
+      "index": 12,
+      "url": "https://agi.alicdn.com/user/3zsp/50c4ec4f-8047-4857-9b92-93bced57ad13_avatar.png?x-oss-process=image%2Fresize%2Cs_400%2Fformat%2Cwebp",
+      "dest": "/Users/changliu/workspace/src/github.com/image-video/.tmp/wanxiang-models-europe-usa-20260609/images/details/012-171-detail.webp",
+      "ok": true,
+      "bytes": 29848,
+      "contentType": "image/webp"
+    },
+    {
+      "kind": "detail",
+      "model": "阿瑞斯",
+      "index": 13,
+      "url": "https://agi.alicdn.com/user/3zsp/c6d06d2d-4319-43a6-bcf5-f9d1e9ce36b5_avatar.png?x-oss-process=image%2Fresize%2Cs_400%2Fformat%2Cwebp",
+      "dest": "/Users/changliu/workspace/src/github.com/image-video/.tmp/wanxiang-models-europe-usa-20260609/images/details/013-159-detail.webp",
+      "ok": true,
+      "bytes": 28608,
+      "contentType": "image/webp"
+    },
+    {
+      "kind": "detail",
+      "model": "露西亚",
+      "index": 11,
+      "url": "https://agi.alicdn.com/user/3zsp/f8a161ca-061b-4b82-9fce-6df3bb04faff_avatar.png?x-oss-process=image%2Fresize%2Cs_400%2Fformat%2Cwebp",
+      "dest": "/Users/changliu/workspace/src/github.com/image-video/.tmp/wanxiang-models-europe-usa-20260609/images/details/011-169-detail.webp",
+      "ok": true,
+      "bytes": 31374,
+      "contentType": "image/webp"
+    },
+    {
+      "kind": "thumbnail",
+      "model": "贝丝",
+      "index": 18,
+      "url": "https://agi.alicdn.com/upload/material/8tfrq/2026/01/17/976dacac-2702-4b3b-952b-2b9d15215a2c.png?x-oss-process=image%2Fresize%2Cs_324%2Fformat%2Cwebp",
+      "dest": "/Users/changliu/workspace/src/github.com/image-video/.tmp/wanxiang-models-europe-usa-20260609/images/thumbnails/018-192-thumbnail.webp",
+      "ok": true,
+      "bytes": 7076,
+      "contentType": "image/webp"
+    },
+    {
+      "kind": "thumbnail",
+      "model": "哈里森",
+      "index": 19,
+      "url": "https://agi.alicdn.com/upload/material/8tfrq/2026/01/17/085ff095-38dd-4200-bb9b-dc7a7d2623df.png?x-oss-process=image%2Fresize%2Cs_324%2Fformat%2Cwebp",
+      "dest": "/Users/changliu/workspace/src/github.com/image-video/.tmp/wanxiang-models-europe-usa-20260609/images/thumbnails/019-203-thumbnail.webp",
+      "ok": true,
+      "bytes": 7500,
+      "contentType": "image/webp"
+    },
+    {
+      "kind": "thumbnail",
+      "model": "艾伯特",
+      "index": 20,
+      "url": "https://agi.alicdn.com/upload/material/8tfrq/2026/01/17/7eb7b855-478d-40f6-ba88-7646cf60620c.png?x-oss-process=image%2Fresize%2Cs_324%2Fformat%2Cwebp",
+      "dest": "/Users/changliu/workspace/src/github.com/image-video/.tmp/wanxiang-models-europe-usa-20260609/images/thumbnails/020-205-thumbnail.webp",
+      "ok": true,
+      "bytes": 6438,
+      "contentType": "image/webp"
+    },
+    {
+      "kind": "thumbnail",
+      "model": "阿依曼",
+      "index": 21,
+      "url": "https://agi.alicdn.com/upload/material/8tfrq/2026/01/17/707cb1f8-7708-4df3-b761-736f76d8c8f5.png?x-oss-process=image%2Fresize%2Cs_324%2Fformat%2Cwebp",
+      "dest": "/Users/changliu/workspace/src/github.com/image-video/.tmp/wanxiang-models-europe-usa-20260609/images/thumbnails/021-206-thumbnail.webp",
+      "ok": true,
+      "bytes": 9182,
+      "contentType": "image/webp"
+    },
+    {
+      "kind": "detail",
+      "model": "哈里森",
+      "index": 19,
+      "url": "https://agi.alicdn.com/user/3zsp/bb64f0ca-3bac-449f-beae-49935bf94236_avatar.png?x-oss-process=image%2Fresize%2Cs_400%2Fformat%2Cwebp",
+      "dest": "/Users/changliu/workspace/src/github.com/image-video/.tmp/wanxiang-models-europe-usa-20260609/images/details/019-203-detail.webp",
+      "ok": true,
+      "bytes": 41496,
+      "contentType": "image/webp"
+    },
+    {
+      "kind": "detail",
+      "model": "伊戈尔",
+      "index": 15,
+      "url": "https://agi.alicdn.com/user/3zsp/b6759da5-070d-4fb6-a6c1-1c7efc38933c_avatar.png?x-oss-process=image%2Fresize%2Cs_400%2Fformat%2Cwebp",
+      "dest": "/Users/changliu/workspace/src/github.com/image-video/.tmp/wanxiang-models-europe-usa-20260609/images/details/015-163-detail.webp",
+      "ok": true,
+      "bytes": 34172,
+      "contentType": "image/webp"
+    },
+    {
+      "kind": "detail",
+      "model": "娜塔莎",
+      "index": 16,
+      "url": "https://agi.alicdn.com/user/3zsp/6a2d1de1-d9db-450f-8dfb-fd9b09b711b9_avatar.png?x-oss-process=image%2Fresize%2Cs_400%2Fformat%2Cwebp",
+      "dest": "/Users/changliu/workspace/src/github.com/image-video/.tmp/wanxiang-models-europe-usa-20260609/images/details/016-177-detail.webp",
+      "ok": true,
+      "bytes": 13466,
+      "contentType": "image/webp"
+    },
+    {
+      "kind": "thumbnail",
+      "model": "卡尔文",
+      "index": 22,
+      "url": "https://agi.alicdn.com/upload/material/8tfrq/2026/01/17/95c5eb60-523b-4e4b-b8d6-c1f5492299eb.png?x-oss-process=image%2Fresize%2Cs_324%2Fformat%2Cwebp",
+      "dest": "/Users/changliu/workspace/src/github.com/image-video/.tmp/wanxiang-models-europe-usa-20260609/images/thumbnails/022-207-thumbnail.webp",
+      "ok": true,
+      "bytes": 6556,
+      "contentType": "image/webp"
+    },
+    {
+      "kind": "detail",
+      "model": "卡尔文",
+      "index": 22,
+      "url": "https://agi.alicdn.com/user/3zsp/193eb437-b05f-4e2a-92b1-b0480f47ab8e_avatar.png?x-oss-process=image%2Fresize%2Cs_400%2Fformat%2Cwebp",
+      "dest": "/Users/changliu/workspace/src/github.com/image-video/.tmp/wanxiang-models-europe-usa-20260609/images/details/022-207-detail.webp",
+      "ok": true,
+      "bytes": 28946,
+      "contentType": "image/webp"
+    },
+    {
+      "kind": "thumbnail",
+      "model": "约翰",
+      "index": 23,
+      "url": "https://agi.alicdn.com/user/3zsp/336288e0-3be0-44f7-bd49-9c6079cfa6ff_cover.png?x-oss-process=image%2Fresize%2Cs_324%2Fformat%2Cwebp",
+      "dest": "/Users/changliu/workspace/src/github.com/image-video/.tmp/wanxiang-models-europe-usa-20260609/images/thumbnails/023-208-thumbnail.webp",
+      "ok": true,
+      "bytes": 5960,
+      "contentType": "image/webp"
+    },
+    {
+      "kind": "thumbnail",
+      "model": "艾恩",
+      "index": 25,
+      "url": "https://agi.alicdn.com/upload/material/8tfrq/2026/01/17/c627323b-50a5-4eca-a95a-d916fbb4e099.png?x-oss-process=image%2Fresize%2Cs_324%2Fformat%2Cwebp",
+      "dest": "/Users/changliu/workspace/src/github.com/image-video/.tmp/wanxiang-models-europe-usa-20260609/images/thumbnails/025-210-thumbnail.webp",
+      "ok": true,
+      "bytes": 8568,
+      "contentType": "image/webp"
+    },
+    {
+      "kind": "detail",
+      "model": "艾芙琳",
+      "index": 17,
+      "url": "https://agi.alicdn.com/user/3zsp/6aed4528-f471-4002-9465-e36dd97ecafe_avatar.png?x-oss-process=image%2Fresize%2Cs_400%2Fformat%2Cwebp",
+      "dest": "/Users/changliu/workspace/src/github.com/image-video/.tmp/wanxiang-models-europe-usa-20260609/images/details/017-179-detail.webp",
+      "ok": true,
+      "bytes": 32622,
+      "contentType": "image/webp"
+    },
+    {
+      "kind": "thumbnail",
+      "model": "丽塔",
+      "index": 24,
+      "url": "https://agi.alicdn.com/upload/material/8tfrq/2026/01/17/1707cc88-109f-4559-92a5-d0f3a52111ef.png?x-oss-process=image%2Fresize%2Cs_324%2Fformat%2Cwebp",
+      "dest": "/Users/changliu/workspace/src/github.com/image-video/.tmp/wanxiang-models-europe-usa-20260609/images/thumbnails/024-209-thumbnail.webp",
+      "ok": true,
+      "bytes": 9964,
+      "contentType": "image/webp"
+    },
+    {
+      "kind": "detail",
+      "model": "艾伯特",
+      "index": 20,
+      "url": "https://agi.alicdn.com/user/3zsp/8d4dab79-3a9a-46bd-a0d1-d1f65cf3f22e_avatar.png?x-oss-process=image%2Fresize%2Cs_400%2Fformat%2Cwebp",
+      "dest": "/Users/changliu/workspace/src/github.com/image-video/.tmp/wanxiang-models-europe-usa-20260609/images/details/020-205-detail.webp",
+      "ok": true,
+      "bytes": 19762,
+      "contentType": "image/webp"
+    },
+    {
+      "kind": "detail",
+      "model": "阿依曼",
+      "index": 21,
+      "url": "https://agi.alicdn.com/user/3zsp/e0df4db8-56d7-4f60-a898-b3ea98ce92a6_avatar.png?x-oss-process=image%2Fresize%2Cs_400%2Fformat%2Cwebp",
+      "dest": "/Users/changliu/workspace/src/github.com/image-video/.tmp/wanxiang-models-europe-usa-20260609/images/details/021-206-detail.webp",
+      "ok": true,
+      "bytes": 24092,
+      "contentType": "image/webp"
+    },
+    {
+      "kind": "thumbnail",
+      "model": "戈登",
+      "index": 26,
+      "url": "https://agi.alicdn.com/upload/material/8tfrq/2026/01/17/00ac7913-df0b-4c3e-aeaf-704ac77ba666.png?x-oss-process=image%2Fresize%2Cs_324%2Fformat%2Cwebp",
+      "dest": "/Users/changliu/workspace/src/github.com/image-video/.tmp/wanxiang-models-europe-usa-20260609/images/thumbnails/026-212-thumbnail.webp",
+      "ok": true,
+      "bytes": 11448,
+      "contentType": "image/webp"
+    },
+    {
+      "kind": "thumbnail",
+      "model": "内斯特",
+      "index": 27,
+      "url": "https://agi.alicdn.com/upload/material/8tfrq/2026/01/17/da6d2264-9b3c-4de5-9260-7d87bdda0cc4.png?x-oss-process=image%2Fresize%2Cs_324%2Fformat%2Cwebp",
+      "dest": "/Users/changliu/workspace/src/github.com/image-video/.tmp/wanxiang-models-europe-usa-20260609/images/thumbnails/027-214-thumbnail.webp",
+      "ok": true,
+      "bytes": 8406,
+      "contentType": "image/webp"
+    },
+    {
+      "kind": "detail",
+      "model": "贝丝",
+      "index": 18,
+      "url": "https://agi.alicdn.com/user/3zsp/62575427-0d6f-443b-90e0-bd32573a555b_avatar.png?x-oss-process=image%2Fresize%2Cs_400%2Fformat%2Cwebp",
+      "dest": "/Users/changliu/workspace/src/github.com/image-video/.tmp/wanxiang-models-europe-usa-20260609/images/details/018-192-detail.webp",
+      "ok": true,
+      "bytes": 25286,
+      "contentType": "image/webp"
+    },
+    {
+      "kind": "detail",
+      "model": "戈登",
+      "index": 26,
+      "url": "https://agi.alicdn.com/user/3zsp/d6246e23-2f34-473b-87f6-7dc2065b7f62_avatar.png?x-oss-process=image%2Fresize%2Cs_400%2Fformat%2Cwebp",
+      "dest": "/Users/changliu/workspace/src/github.com/image-video/.tmp/wanxiang-models-europe-usa-20260609/images/details/026-212-detail.webp",
+      "ok": true,
+      "bytes": 25868,
+      "contentType": "image/webp"
+    },
+    {
+      "kind": "detail",
+      "model": "内斯特",
+      "index": 27,
+      "url": "https://agi.alicdn.com/user/3zsp/c79644d6-2fe9-4936-a10a-b1180ba68368_avatar.png?x-oss-process=image%2Fresize%2Cs_400%2Fformat%2Cwebp",
+      "dest": "/Users/changliu/workspace/src/github.com/image-video/.tmp/wanxiang-models-europe-usa-20260609/images/details/027-214-detail.webp",
+      "ok": true,
+      "bytes": 25884,
+      "contentType": "image/webp"
+    },
+    {
+      "kind": "thumbnail",
+      "model": "兰迪",
+      "index": 29,
+      "url": "https://agi.alicdn.com/upload/material/8tfrq/2026/01/17/4614101a-ee1e-4017-917d-927f00c0d811.png?x-oss-process=image%2Fresize%2Cs_324%2Fformat%2Cwebp",
+      "dest": "/Users/changliu/workspace/src/github.com/image-video/.tmp/wanxiang-models-europe-usa-20260609/images/thumbnails/029-216-thumbnail.webp",
+      "ok": true,
+      "bytes": 10966,
+      "contentType": "image/webp"
+    },
+    {
+      "kind": "thumbnail",
+      "model": "伊莲娜",
+      "index": 28,
+      "url": "https://agi.alicdn.com/upload/material/8tfrq/2026/01/17/1224abcf-53b7-4441-97db-8066e0a15ff8.png?x-oss-process=image%2Fresize%2Cs_324%2Fformat%2Cwebp",
+      "dest": "/Users/changliu/workspace/src/github.com/image-video/.tmp/wanxiang-models-europe-usa-20260609/images/thumbnails/028-215-thumbnail.webp",
+      "ok": true,
+      "bytes": 7260,
+      "contentType": "image/webp"
+    },
+    {
+      "kind": "thumbnail",
+      "model": "尤里",
+      "index": 30,
+      "url": "https://agi.alicdn.com/upload/material/8tfrq/2026/01/17/424ef08d-5058-4562-9539-8cdc5fe72393.png?x-oss-process=image%2Fresize%2Cs_324%2Fformat%2Cwebp",
+      "dest": "/Users/changliu/workspace/src/github.com/image-video/.tmp/wanxiang-models-europe-usa-20260609/images/thumbnails/030-218-thumbnail.webp",
+      "ok": true,
+      "bytes": 8160,
+      "contentType": "image/webp"
+    },
+    {
+      "kind": "detail",
+      "model": "约翰",
+      "index": 23,
+      "url": "https://agi.alicdn.com/user/3zsp/3670e6b7-79af-485c-b3a4-8b1f9b289fd8_avatar.png?x-oss-process=image%2Fresize%2Cs_400%2Fformat%2Cwebp",
+      "dest": "/Users/changliu/workspace/src/github.com/image-video/.tmp/wanxiang-models-europe-usa-20260609/images/details/023-208-detail.webp",
+      "ok": true,
+      "bytes": 34144,
+      "contentType": "image/webp"
+    },
+    {
+      "kind": "thumbnail",
+      "model": "阿帕德",
+      "index": 31,
+      "url": "https://agi.alicdn.com/upload/material/8tfrq/2026/01/17/8ced2dcf-6530-4545-a66b-c576aa8808f7.png?x-oss-process=image%2Fresize%2Cs_324%2Fformat%2Cwebp",
+      "dest": "/Users/changliu/workspace/src/github.com/image-video/.tmp/wanxiang-models-europe-usa-20260609/images/thumbnails/031-219-thumbnail.webp",
+      "ok": true,
+      "bytes": 15238,
+      "contentType": "image/webp"
+    },
+    {
+      "kind": "thumbnail",
+      "model": "伊森",
+      "index": 32,
+      "url": "https://agi.alicdn.com/upload/material/8tfrq/2026/01/17/bd27b364-393b-4853-bf04-8ef642d2cc6e.png?x-oss-process=image%2Fresize%2Cs_324%2Fformat%2Cwebp",
+      "dest": "/Users/changliu/workspace/src/github.com/image-video/.tmp/wanxiang-models-europe-usa-20260609/images/thumbnails/032-220-thumbnail.webp",
+      "ok": true,
+      "bytes": 8596,
+      "contentType": "image/webp"
+    },
+    {
+      "kind": "detail",
+      "model": "丽塔",
+      "index": 24,
+      "url": "https://agi.alicdn.com/user/3zsp/db033258-a1fa-494b-bd01-7549d3557bae_avatar.png?x-oss-process=image%2Fresize%2Cs_400%2Fformat%2Cwebp",
+      "dest": "/Users/changliu/workspace/src/github.com/image-video/.tmp/wanxiang-models-europe-usa-20260609/images/details/024-209-detail.webp",
+      "ok": true,
+      "bytes": 41102,
+      "contentType": "image/webp"
+    },
+    {
+      "kind": "thumbnail",
+      "model": "亚历克斯",
+      "index": 33,
+      "url": "https://agi.alicdn.com/upload/material/8tfrq/2026/01/17/96e47e96-91a6-4c70-86ec-b4459a9dbbf2.png?x-oss-process=image%2Fresize%2Cs_324%2Fformat%2Cwebp",
+      "dest": "/Users/changliu/workspace/src/github.com/image-video/.tmp/wanxiang-models-europe-usa-20260609/images/thumbnails/033-222-thumbnail.webp",
+      "ok": true,
+      "bytes": 9114,
+      "contentType": "image/webp"
+    },
+    {
+      "kind": "detail",
+      "model": "艾恩",
+      "index": 25,
+      "url": "https://agi.alicdn.com/user/3zsp/4d2e7fe4-bede-4152-a4ce-dfd1f128066a_avatar.png?x-oss-process=image%2Fresize%2Cs_400%2Fformat%2Cwebp",
+      "dest": "/Users/changliu/workspace/src/github.com/image-video/.tmp/wanxiang-models-europe-usa-20260609/images/details/025-210-detail.webp",
+      "ok": true,
+      "bytes": 30616,
+      "contentType": "image/webp"
+    },
+    {
+      "kind": "thumbnail",
+      "model": "库珀",
+      "index": 34,
+      "url": "https://agi.alicdn.com/upload/material/8tfrq/2026/01/17/6afffbd9-1136-4812-b312-91e7140da587.png?x-oss-process=image%2Fresize%2Cs_324%2Fformat%2Cwebp",
+      "dest": "/Users/changliu/workspace/src/github.com/image-video/.tmp/wanxiang-models-europe-usa-20260609/images/thumbnails/034-223-thumbnail.webp",
+      "ok": true,
+      "bytes": 8198,
+      "contentType": "image/webp"
+    },
+    {
+      "kind": "detail",
+      "model": "伊莲娜",
+      "index": 28,
+      "url": "https://agi.alicdn.com/user/3zsp/89313e78-3a18-4c96-884b-1620e106871b_avatar.png?x-oss-process=image%2Fresize%2Cs_400%2Fformat%2Cwebp",
+      "dest": "/Users/changliu/workspace/src/github.com/image-video/.tmp/wanxiang-models-europe-usa-20260609/images/details/028-215-detail.webp",
+      "ok": true,
+      "bytes": 20718,
+      "contentType": "image/webp"
+    },
+    {
+      "kind": "detail",
+      "model": "亚历克斯",
+      "index": 33,
+      "url": "https://agi.alicdn.com/user/3zsp/8c7e6ee4-1e9e-432f-8a73-350fa3566327_avatar.png?x-oss-process=image%2Fresize%2Cs_400%2Fformat%2Cwebp",
+      "dest": "/Users/changliu/workspace/src/github.com/image-video/.tmp/wanxiang-models-europe-usa-20260609/images/details/033-222-detail.webp",
+      "ok": true,
+      "bytes": 16012,
+      "contentType": "image/webp"
+    },
+    {
+      "kind": "detail",
+      "model": "兰迪",
+      "index": 29,
+      "url": "https://agi.alicdn.com/user/3zsp/2f40c787-fbd6-4c74-97e4-c32e4cfd43a0_avatar.png?x-oss-process=image%2Fresize%2Cs_400%2Fformat%2Cwebp",
+      "dest": "/Users/changliu/workspace/src/github.com/image-video/.tmp/wanxiang-models-europe-usa-20260609/images/details/029-216-detail.webp",
+      "ok": true,
+      "bytes": 28052,
+      "contentType": "image/webp"
+    },
+    {
+      "kind": "detail",
+      "model": "尤里",
+      "index": 30,
+      "url": "https://agi.alicdn.com/user/3zsp/8e26960e-dd42-43e4-a1ce-fea78865ff8b_avatar.png?x-oss-process=image%2Fresize%2Cs_400%2Fformat%2Cwebp",
+      "dest": "/Users/changliu/workspace/src/github.com/image-video/.tmp/wanxiang-models-europe-usa-20260609/images/details/030-218-detail.webp",
+      "ok": true,
+      "bytes": 25558,
+      "contentType": "image/webp"
+    },
+    {
+      "kind": "detail",
+      "model": "阿帕德",
+      "index": 31,
+      "url": "https://agi.alicdn.com/user/3zsp/d27c34f9-86e4-4489-acae-b1bada89ac1a_avatar.png?x-oss-process=image%2Fresize%2Cs_400%2Fformat%2Cwebp",
+      "dest": "/Users/changliu/workspace/src/github.com/image-video/.tmp/wanxiang-models-europe-usa-20260609/images/details/031-219-detail.webp",
+      "ok": true,
+      "bytes": 37682,
+      "contentType": "image/webp"
+    },
+    {
+      "kind": "thumbnail",
+      "model": "帕布洛",
+      "index": 35,
+      "url": "https://agi.alicdn.com/upload/material/8tfrq/2026/01/17/a3957a37-e304-4b68-91fb-b3022fa513ee.png?x-oss-process=image%2Fresize%2Cs_324%2Fformat%2Cwebp",
+      "dest": "/Users/changliu/workspace/src/github.com/image-video/.tmp/wanxiang-models-europe-usa-20260609/images/thumbnails/035-224-thumbnail.webp",
+      "ok": true,
+      "bytes": 8524,
+      "contentType": "image/webp"
+    },
+    {
+      "kind": "detail",
+      "model": "伊森",
+      "index": 32,
+      "url": "https://agi.alicdn.com/user/3zsp/658129fe-4048-4850-8d08-a3ffb6e1e714_avatar.png?x-oss-process=image%2Fresize%2Cs_400%2Fformat%2Cwebp",
+      "dest": "/Users/changliu/workspace/src/github.com/image-video/.tmp/wanxiang-models-europe-usa-20260609/images/details/032-220-detail.webp",
+      "ok": true,
+      "bytes": 23716,
+      "contentType": "image/webp"
+    },
+    {
+      "kind": "thumbnail",
+      "model": "凯茜亚",
+      "index": 36,
+      "url": "https://agi.alicdn.com/upload/material/8tfrq/2026/01/17/19562f02-0932-498c-87aa-218f7755c7b2.png?x-oss-process=image%2Fresize%2Cs_324%2Fformat%2Cwebp",
+      "dest": "/Users/changliu/workspace/src/github.com/image-video/.tmp/wanxiang-models-europe-usa-20260609/images/thumbnails/036-225-thumbnail.webp",
+      "ok": true,
+      "bytes": 6364,
+      "contentType": "image/webp"
+    },
+    {
+      "kind": "thumbnail",
+      "model": "罗尼",
+      "index": 39,
+      "url": "https://agi.alicdn.com/upload/material/8tfrq/2026/01/17/b76aab07-bde4-4ee8-abc2-c87c5bb088c1.png?x-oss-process=image%2Fresize%2Cs_324%2Fformat%2Cwebp",
+      "dest": "/Users/changliu/workspace/src/github.com/image-video/.tmp/wanxiang-models-europe-usa-20260609/images/thumbnails/039-228-thumbnail.webp",
+      "ok": true,
+      "bytes": 12780,
+      "contentType": "image/webp"
+    },
+    {
+      "kind": "thumbnail",
+      "model": "杰西卡",
+      "index": 38,
+      "url": "https://agi.alicdn.com/upload/material/8tfrq/2026/01/17/ba028909-b587-4889-9297-6a5342871089.png?x-oss-process=image%2Fresize%2Cs_324%2Fformat%2Cwebp",
+      "dest": "/Users/changliu/workspace/src/github.com/image-video/.tmp/wanxiang-models-europe-usa-20260609/images/thumbnails/038-227-thumbnail.webp",
+      "ok": true,
+      "bytes": 12914,
+      "contentType": "image/webp"
+    },
+    {
+      "kind": "thumbnail",
+      "model": "汉克",
+      "index": 40,
+      "url": "https://agi.alicdn.com/upload/material/8tfrq/2026/01/17/4171fb21-f95e-4f44-bc46-ff4173b7dfaf.png?x-oss-process=image%2Fresize%2Cs_324%2Fformat%2Cwebp",
+      "dest": "/Users/changliu/workspace/src/github.com/image-video/.tmp/wanxiang-models-europe-usa-20260609/images/thumbnails/040-230-thumbnail.webp",
+      "ok": true,
+      "bytes": 14120,
+      "contentType": "image/webp"
+    },
+    {
+      "kind": "detail",
+      "model": "库珀",
+      "index": 34,
+      "url": "https://agi.alicdn.com/user/3zsp/bf0a9a85-a161-4645-926b-4674928404d5_avatar.png?x-oss-process=image%2Fresize%2Cs_400%2Fformat%2Cwebp",
+      "dest": "/Users/changliu/workspace/src/github.com/image-video/.tmp/wanxiang-models-europe-usa-20260609/images/details/034-223-detail.webp",
+      "ok": true,
+      "bytes": 32202,
+      "contentType": "image/webp"
+    },
+    {
+      "kind": "thumbnail",
+      "model": "莱昂",
+      "index": 37,
+      "url": "https://agi.alicdn.com/upload/material/8tfrq/2026/01/17/ad661d0e-47aa-4d97-b19c-4a85d9cd52a1.png?x-oss-process=image%2Fresize%2Cs_324%2Fformat%2Cwebp",
+      "dest": "/Users/changliu/workspace/src/github.com/image-video/.tmp/wanxiang-models-europe-usa-20260609/images/thumbnails/037-226-thumbnail.webp",
+      "ok": true,
+      "bytes": 10672,
+      "contentType": "image/webp"
+    },
+    {
+      "kind": "detail",
+      "model": "凯茜亚",
+      "index": 36,
+      "url": "https://agi.alicdn.com/user/3zsp/b87f72f9-6df4-4bb6-8fa8-7ca8754ac793_avatar.png?x-oss-process=image%2Fresize%2Cs_400%2Fformat%2Cwebp",
+      "dest": "/Users/changliu/workspace/src/github.com/image-video/.tmp/wanxiang-models-europe-usa-20260609/images/details/036-225-detail.webp",
+      "ok": true,
+      "bytes": 19030,
+      "contentType": "image/webp"
+    },
+    {
+      "kind": "thumbnail",
+      "model": "希贝儿",
+      "index": 41,
+      "url": "https://agi.alicdn.com/upload/material/8tfrq/2026/01/17/acedfde0-5d8f-48a6-9a24-d9378d02bfe9.png?x-oss-process=image%2Fresize%2Cs_324%2Fformat%2Cwebp",
+      "dest": "/Users/changliu/workspace/src/github.com/image-video/.tmp/wanxiang-models-europe-usa-20260609/images/thumbnails/041-231-thumbnail.webp",
+      "ok": true,
+      "bytes": 5998,
+      "contentType": "image/webp"
+    },
+    {
+      "kind": "detail",
+      "model": "帕布洛",
+      "index": 35,
+      "url": "https://agi.alicdn.com/user/3zsp/9ba7c7a2-f883-46b8-84c8-f8780cb8c93e_avatar.png?x-oss-process=image%2Fresize%2Cs_400%2Fformat%2Cwebp",
+      "dest": "/Users/changliu/workspace/src/github.com/image-video/.tmp/wanxiang-models-europe-usa-20260609/images/details/035-224-detail.webp",
+      "ok": true,
+      "bytes": 22596,
+      "contentType": "image/webp"
+    },
+    {
+      "kind": "detail",
+      "model": "希贝儿",
+      "index": 41,
+      "url": "https://agi.alicdn.com/user/3zsp/5fdc2594-c31c-4580-89d2-6a72a773a037_avatar.png?x-oss-process=image%2Fresize%2Cs_400%2Fformat%2Cwebp",
+      "dest": "/Users/changliu/workspace/src/github.com/image-video/.tmp/wanxiang-models-europe-usa-20260609/images/details/041-231-detail.webp",
+      "ok": true,
+      "bytes": 39836,
+      "contentType": "image/webp"
+    },
+    {
+      "kind": "detail",
+      "model": "莱昂",
+      "index": 37,
+      "url": "https://agi.alicdn.com/user/3zsp/68ae71c2-25da-4e74-86a2-95add141d1e4_avatar.png?x-oss-process=image%2Fresize%2Cs_400%2Fformat%2Cwebp",
+      "dest": "/Users/changliu/workspace/src/github.com/image-video/.tmp/wanxiang-models-europe-usa-20260609/images/details/037-226-detail.webp",
+      "ok": true,
+      "bytes": 18726,
+      "contentType": "image/webp"
+    },
+    {
+      "kind": "detail",
+      "model": "杰西卡",
+      "index": 38,
+      "url": "https://agi.alicdn.com/user/3zsp/e5749a12-0465-49b4-8cbd-0fb9a79d54af_avatar.png?x-oss-process=image%2Fresize%2Cs_400%2Fformat%2Cwebp",
+      "dest": "/Users/changliu/workspace/src/github.com/image-video/.tmp/wanxiang-models-europe-usa-20260609/images/details/038-227-detail.webp",
+      "ok": true,
+      "bytes": 22028,
+      "contentType": "image/webp"
+    },
+    {
+      "kind": "thumbnail",
+      "model": "霍夫曼",
+      "index": 42,
+      "url": "https://agi.alicdn.com/upload/material/8tfrq/2026/01/17/4457637f-1732-45fd-9e8a-9f57211122f4.png?x-oss-process=image%2Fresize%2Cs_324%2Fformat%2Cwebp",
+      "dest": "/Users/changliu/workspace/src/github.com/image-video/.tmp/wanxiang-models-europe-usa-20260609/images/thumbnails/042-232-thumbnail.webp",
+      "ok": true,
+      "bytes": 14622,
+      "contentType": "image/webp"
+    },
+    {
+      "kind": "detail",
+      "model": "罗尼",
+      "index": 39,
+      "url": "https://agi.alicdn.com/user/3zsp/aa427a0f-36cb-4c79-adff-13878fb63b85_avatar.png?x-oss-process=image%2Fresize%2Cs_400%2Fformat%2Cwebp",
+      "dest": "/Users/changliu/workspace/src/github.com/image-video/.tmp/wanxiang-models-europe-usa-20260609/images/details/039-228-detail.webp",
+      "ok": true,
+      "bytes": 33148,
+      "contentType": "image/webp"
+    },
+    {
+      "kind": "detail",
+      "model": "霍夫曼",
+      "index": 42,
+      "url": "https://agi.alicdn.com/user/3zsp/5f2f7be8-09fd-4d2e-96e7-4111b924e41e_avatar.png?x-oss-process=image%2Fresize%2Cs_400%2Fformat%2Cwebp",
+      "dest": "/Users/changliu/workspace/src/github.com/image-video/.tmp/wanxiang-models-europe-usa-20260609/images/details/042-232-detail.webp",
+      "ok": true,
+      "bytes": 36112,
+      "contentType": "image/webp"
+    },
+    {
+      "kind": "thumbnail",
+      "model": "乔安娜",
+      "index": 43,
+      "url": "https://agi.alicdn.com/upload/material/8tfrq/2026/01/17/31baff40-977e-41cd-bb24-d48453873511.png?x-oss-process=image%2Fresize%2Cs_324%2Fformat%2Cwebp",
+      "dest": "/Users/changliu/workspace/src/github.com/image-video/.tmp/wanxiang-models-europe-usa-20260609/images/thumbnails/043-233-thumbnail.webp",
+      "ok": true,
+      "bytes": 6312,
+      "contentType": "image/webp"
+    },
+    {
+      "kind": "thumbnail",
+      "model": "蕾切尔",
+      "index": 45,
+      "url": "https://agi.alicdn.com/user/3zsp/6c56c55a-b3db-4560-9166-865a12eb7f41_cover.png?x-oss-process=image%2Fresize%2Cs_324%2Fformat%2Cwebp",
+      "dest": "/Users/changliu/workspace/src/github.com/image-video/.tmp/wanxiang-models-europe-usa-20260609/images/thumbnails/045-235-thumbnail.webp",
+      "ok": true,
+      "bytes": 7124,
+      "contentType": "image/webp"
+    },
+    {
+      "kind": "thumbnail",
+      "model": "戴恩",
+      "index": 44,
+      "url": "https://agi.alicdn.com/upload/material/8tfrq/2026/01/17/761ca9e6-44fb-435b-b682-2089b83c58d5.png?x-oss-process=image%2Fresize%2Cs_324%2Fformat%2Cwebp",
+      "dest": "/Users/changliu/workspace/src/github.com/image-video/.tmp/wanxiang-models-europe-usa-20260609/images/thumbnails/044-234-thumbnail.webp",
+      "ok": true,
+      "bytes": 14726,
+      "contentType": "image/webp"
+    },
+    {
+      "kind": "thumbnail",
+      "model": "迪诺",
+      "index": 46,
+      "url": "https://agi.alicdn.com/upload/material/8tfrq/2026/01/17/58820619-98f0-4664-b6dd-383d81ab9e5d.png?x-oss-process=image%2Fresize%2Cs_324%2Fformat%2Cwebp",
+      "dest": "/Users/changliu/workspace/src/github.com/image-video/.tmp/wanxiang-models-europe-usa-20260609/images/thumbnails/046-236-thumbnail.webp",
+      "ok": true,
+      "bytes": 13288,
+      "contentType": "image/webp"
+    },
+    {
+      "kind": "thumbnail",
+      "model": "卡特",
+      "index": 47,
+      "url": "https://agi.alicdn.com/upload/material/8tfrq/2026/01/17/75236ace-cb91-49e2-9445-2eb3c0cd0554.png?x-oss-process=image%2Fresize%2Cs_324%2Fformat%2Cwebp",
+      "dest": "/Users/changliu/workspace/src/github.com/image-video/.tmp/wanxiang-models-europe-usa-20260609/images/thumbnails/047-238-thumbnail.webp",
+      "ok": true,
+      "bytes": 6296,
+      "contentType": "image/webp"
+    },
+    {
+      "kind": "thumbnail",
+      "model": "米娅",
+      "index": 48,
+      "url": "https://agi.alicdn.com/upload/material/8tfrq/2026/01/17/7002011b-056f-46b7-8ee0-08af7f479a0c.png?x-oss-process=image%2Fresize%2Cs_324%2Fformat%2Cwebp",
+      "dest": "/Users/changliu/workspace/src/github.com/image-video/.tmp/wanxiang-models-europe-usa-20260609/images/thumbnails/048-239-thumbnail.webp",
+      "ok": true,
+      "bytes": 11076,
+      "contentType": "image/webp"
+    },
+    {
+      "kind": "detail",
+      "model": "汉克",
+      "index": 40,
+      "url": "https://agi.alicdn.com/user/3zsp/d32bdd76-da60-4eed-bdba-2213445c3a04_avatar.png?x-oss-process=image%2Fresize%2Cs_400%2Fformat%2Cwebp",
+      "dest": "/Users/changliu/workspace/src/github.com/image-video/.tmp/wanxiang-models-europe-usa-20260609/images/details/040-230-detail.webp",
+      "ok": true,
+      "bytes": 28174,
+      "contentType": "image/webp"
+    },
+    {
+      "kind": "thumbnail",
+      "model": "诺拉",
+      "index": 49,
+      "url": "https://agi.alicdn.com/upload/material/8tfrq/2026/01/17/11136671-159d-425f-9cb6-f622107ba504.png?x-oss-process=image%2Fresize%2Cs_324%2Fformat%2Cwebp",
+      "dest": "/Users/changliu/workspace/src/github.com/image-video/.tmp/wanxiang-models-europe-usa-20260609/images/thumbnails/049-240-thumbnail.webp",
+      "ok": true,
+      "bytes": 6674,
+      "contentType": "image/webp"
+    },
+    {
+      "kind": "detail",
+      "model": "乔安娜",
+      "index": 43,
+      "url": "https://agi.alicdn.com/user/3zsp/beea87b9-4774-4683-bcb9-e32cdae9fd45_avatar.png?x-oss-process=image%2Fresize%2Cs_400%2Fformat%2Cwebp",
+      "dest": "/Users/changliu/workspace/src/github.com/image-video/.tmp/wanxiang-models-europe-usa-20260609/images/details/043-233-detail.webp",
+      "ok": true,
+      "bytes": 20544,
+      "contentType": "image/webp"
+    },
+    {
+      "kind": "detail",
+      "model": "戴恩",
+      "index": 44,
+      "url": "https://agi.alicdn.com/user/3zsp/e081c48b-9948-49eb-9754-70c40def4ddb_avatar.png?x-oss-process=image%2Fresize%2Cs_400%2Fformat%2Cwebp",
+      "dest": "/Users/changliu/workspace/src/github.com/image-video/.tmp/wanxiang-models-europe-usa-20260609/images/details/044-234-detail.webp",
+      "ok": true,
+      "bytes": 27318,
+      "contentType": "image/webp"
+    },
+    {
+      "kind": "thumbnail",
+      "model": "埃玛",
+      "index": 50,
+      "url": "https://agi.alicdn.com/upload/material/8tfrq/2026/01/17/f95acefe-3dcb-4454-a6c0-8849e5e15b50.png?x-oss-process=image%2Fresize%2Cs_324%2Fformat%2Cwebp",
+      "dest": "/Users/changliu/workspace/src/github.com/image-video/.tmp/wanxiang-models-europe-usa-20260609/images/thumbnails/050-241-thumbnail.webp",
+      "ok": true,
+      "bytes": 6012,
+      "contentType": "image/webp"
+    },
+    {
+      "kind": "detail",
+      "model": "蕾切尔",
+      "index": 45,
+      "url": "https://agi.alicdn.com/user/3zsp/e23011ce-4546-4839-a92b-8c5207e43d80_avatar.png?x-oss-process=image%2Fresize%2Cs_400%2Fformat%2Cwebp",
+      "dest": "/Users/changliu/workspace/src/github.com/image-video/.tmp/wanxiang-models-europe-usa-20260609/images/details/045-235-detail.webp",
+      "ok": true,
+      "bytes": 21642,
+      "contentType": "image/webp"
+    },
+    {
+      "kind": "detail",
+      "model": "迪诺",
+      "index": 46,
+      "url": "https://agi.alicdn.com/user/3zsp/6c64f10c-fb10-4991-80bd-111178ca16cd_avatar.png?x-oss-process=image%2Fresize%2Cs_400%2Fformat%2Cwebp",
+      "dest": "/Users/changliu/workspace/src/github.com/image-video/.tmp/wanxiang-models-europe-usa-20260609/images/details/046-236-detail.webp",
+      "ok": true,
+      "bytes": 22248,
+      "contentType": "image/webp"
+    },
+    {
+      "kind": "thumbnail",
+      "model": "凯瑟琳",
+      "index": 51,
+      "url": "https://agi.alicdn.com/upload/material/8tfrq/2026/01/17/71d1b247-aaae-4611-a257-4243b283d2e9.png?x-oss-process=image%2Fresize%2Cs_324%2Fformat%2Cwebp",
+      "dest": "/Users/changliu/workspace/src/github.com/image-video/.tmp/wanxiang-models-europe-usa-20260609/images/thumbnails/051-243-thumbnail.webp",
+      "ok": true,
+      "bytes": 5952,
+      "contentType": "image/webp"
+    },
+    {
+      "kind": "thumbnail",
+      "model": "汉娜",
+      "index": 52,
+      "url": "https://agi.alicdn.com/upload/material/8tfrq/2026/01/17/f4dcde93-7ede-48a3-9054-44d7bc178a59.png?x-oss-process=image%2Fresize%2Cs_324%2Fformat%2Cwebp",
+      "dest": "/Users/changliu/workspace/src/github.com/image-video/.tmp/wanxiang-models-europe-usa-20260609/images/thumbnails/052-244-thumbnail.webp",
+      "ok": true,
+      "bytes": 10322,
+      "contentType": "image/webp"
+    },
+    {
+      "kind": "detail",
+      "model": "米娅",
+      "index": 48,
+      "url": "https://agi.alicdn.com/user/3zsp/bfa74d1a-1218-4815-a805-0c99b972ea97_avatar.png?x-oss-process=image%2Fresize%2Cs_400%2Fformat%2Cwebp",
+      "dest": "/Users/changliu/workspace/src/github.com/image-video/.tmp/wanxiang-models-europe-usa-20260609/images/details/048-239-detail.webp",
+      "ok": true,
+      "bytes": 52162,
+      "contentType": "image/webp"
+    },
+    {
+      "kind": "thumbnail",
+      "model": "乌里扬娜",
+      "index": 53,
+      "url": "https://agi.alicdn.com/upload/material/8tfrq/2026/01/17/0299d193-3dc4-430a-91b8-e561021ead21.png?x-oss-process=image%2Fresize%2Cs_324%2Fformat%2Cwebp",
+      "dest": "/Users/changliu/workspace/src/github.com/image-video/.tmp/wanxiang-models-europe-usa-20260609/images/thumbnails/053-245-thumbnail.webp",
+      "ok": true,
+      "bytes": 8746,
+      "contentType": "image/webp"
+    },
+    {
+      "kind": "detail",
+      "model": "卡特",
+      "index": 47,
+      "url": "https://agi.alicdn.com/user/3zsp/d9ac66ca-9163-4ed3-a0e8-ef4e26c7ff0f_avatar.png?x-oss-process=image%2Fresize%2Cs_400%2Fformat%2Cwebp",
+      "dest": "/Users/changliu/workspace/src/github.com/image-video/.tmp/wanxiang-models-europe-usa-20260609/images/details/047-238-detail.webp",
+      "ok": true,
+      "bytes": 28414,
+      "contentType": "image/webp"
+    },
+    {
+      "kind": "thumbnail",
+      "model": "雪伦",
+      "index": 54,
+      "url": "https://agi.alicdn.com/upload/material/8tfrq/2026/01/17/0b527dd0-e29a-4b06-9c3c-e585c641ddee.png?x-oss-process=image%2Fresize%2Cs_324%2Fformat%2Cwebp",
+      "dest": "/Users/changliu/workspace/src/github.com/image-video/.tmp/wanxiang-models-europe-usa-20260609/images/thumbnails/054-247-thumbnail.webp",
+      "ok": true,
+      "bytes": 6876,
+      "contentType": "image/webp"
+    },
+    {
+      "kind": "detail",
+      "model": "诺拉",
+      "index": 49,
+      "url": "https://agi.alicdn.com/user/3zsp/2b061bbd-ce82-4580-8a86-864a4b30eac0_avatar.png?x-oss-process=image%2Fresize%2Cs_400%2Fformat%2Cwebp",
+      "dest": "/Users/changliu/workspace/src/github.com/image-video/.tmp/wanxiang-models-europe-usa-20260609/images/details/049-240-detail.webp",
+      "ok": true,
+      "bytes": 20302,
+      "contentType": "image/webp"
+    },
+    {
+      "kind": "thumbnail",
+      "model": "希琳",
+      "index": 56,
+      "url": "https://agi.alicdn.com/upload/material/8tfrq/2026/01/17/e7f83233-acdf-46a8-9e4e-66c9a8f8407d.png?x-oss-process=image%2Fresize%2Cs_324%2Fformat%2Cwebp",
+      "dest": "/Users/changliu/workspace/src/github.com/image-video/.tmp/wanxiang-models-europe-usa-20260609/images/thumbnails/056-250-thumbnail.webp",
+      "ok": true,
+      "bytes": 9850,
+      "contentType": "image/webp"
+    },
+    {
+      "kind": "detail",
+      "model": "埃玛",
+      "index": 50,
+      "url": "https://agi.alicdn.com/user/3zsp/5f2c319a-b94b-4e61-874a-71f365b9a784_avatar.png?x-oss-process=image%2Fresize%2Cs_400%2Fformat%2Cwebp",
+      "dest": "/Users/changliu/workspace/src/github.com/image-video/.tmp/wanxiang-models-europe-usa-20260609/images/details/050-241-detail.webp",
+      "ok": true,
+      "bytes": 21078,
+      "contentType": "image/webp"
+    },
+    {
+      "kind": "detail",
+      "model": "汉娜",
+      "index": 52,
+      "url": "https://agi.alicdn.com/user/3zsp/4a31b0a6-eddc-4221-901f-296286731653_avatar.png?x-oss-process=image%2Fresize%2Cs_400%2Fformat%2Cwebp",
+      "dest": "/Users/changliu/workspace/src/github.com/image-video/.tmp/wanxiang-models-europe-usa-20260609/images/details/052-244-detail.webp",
+      "ok": true,
+      "bytes": 17924,
+      "contentType": "image/webp"
+    },
+    {
+      "kind": "detail",
+      "model": "凯瑟琳",
+      "index": 51,
+      "url": "https://agi.alicdn.com/user/3zsp/61b69307-9289-4bdc-8639-4a1b28f8b4a0_avatar.png?x-oss-process=image%2Fresize%2Cs_400%2Fformat%2Cwebp",
+      "dest": "/Users/changliu/workspace/src/github.com/image-video/.tmp/wanxiang-models-europe-usa-20260609/images/details/051-243-detail.webp",
+      "ok": true,
+      "bytes": 27566,
+      "contentType": "image/webp"
+    },
+    {
+      "kind": "thumbnail",
+      "model": "琼",
+      "index": 57,
+      "url": "https://agi.alicdn.com/upload/material/8tfrq/2026/01/17/1aadfdd8-188d-4da7-b350-decd9adfcc0f.png?x-oss-process=image%2Fresize%2Cs_324%2Fformat%2Cwebp",
+      "dest": "/Users/changliu/workspace/src/github.com/image-video/.tmp/wanxiang-models-europe-usa-20260609/images/thumbnails/057-251-thumbnail.webp",
+      "ok": true,
+      "bytes": 7312,
+      "contentType": "image/webp"
+    },
+    {
+      "kind": "thumbnail",
+      "model": "玛蒂尔达",
+      "index": 55,
+      "url": "https://agi.alicdn.com/upload/material/8tfrq/2026/01/17/f0b1c34b-3e78-4eaa-a352-749bcb49ce88.png?x-oss-process=image%2Fresize%2Cs_324%2Fformat%2Cwebp",
+      "dest": "/Users/changliu/workspace/src/github.com/image-video/.tmp/wanxiang-models-europe-usa-20260609/images/thumbnails/055-249-thumbnail.webp",
+      "ok": true,
+      "bytes": 8118,
+      "contentType": "image/webp"
+    },
+    {
+      "kind": "detail",
+      "model": "乌里扬娜",
+      "index": 53,
+      "url": "https://agi.alicdn.com/user/3zsp/6d4f3762-aea2-4f14-af3b-060d686f3a38_avatar.png?x-oss-process=image%2Fresize%2Cs_400%2Fformat%2Cwebp",
+      "dest": "/Users/changliu/workspace/src/github.com/image-video/.tmp/wanxiang-models-europe-usa-20260609/images/details/053-245-detail.webp",
+      "ok": true,
+      "bytes": 38268,
+      "contentType": "image/webp"
+    },
+    {
+      "kind": "thumbnail",
+      "model": "劳拉",
+      "index": 58,
+      "url": "https://agi.alicdn.com/upload/material/8tfrq/2026/01/17/d0f6505f-9930-4a8c-bbc5-6fd4c4d90180.png?x-oss-process=image%2Fresize%2Cs_324%2Fformat%2Cwebp",
+      "dest": "/Users/changliu/workspace/src/github.com/image-video/.tmp/wanxiang-models-europe-usa-20260609/images/thumbnails/058-253-thumbnail.webp",
+      "ok": true,
+      "bytes": 7098,
+      "contentType": "image/webp"
+    },
+    {
+      "kind": "thumbnail",
+      "model": "妮可",
+      "index": 59,
+      "url": "https://agi.alicdn.com/upload/material/8tfrq/2026/01/17/4d7e5e05-bfd3-4956-98f5-a51cb3896bba.png?x-oss-process=image%2Fresize%2Cs_324%2Fformat%2Cwebp",
+      "dest": "/Users/changliu/workspace/src/github.com/image-video/.tmp/wanxiang-models-europe-usa-20260609/images/thumbnails/059-256-thumbnail.webp",
+      "ok": true,
+      "bytes": 6620,
+      "contentType": "image/webp"
+    },
+    {
+      "kind": "thumbnail",
+      "model": "帕梅拉",
+      "index": 60,
+      "url": "https://agi.alicdn.com/upload/material/8tfrq/2026/01/17/cd016934-7843-4b6e-8ddb-57eea8e4c6ba.png?x-oss-process=image%2Fresize%2Cs_324%2Fformat%2Cwebp",
+      "dest": "/Users/changliu/workspace/src/github.com/image-video/.tmp/wanxiang-models-europe-usa-20260609/images/thumbnails/060-258-thumbnail.webp",
+      "ok": true,
+      "bytes": 7716,
+      "contentType": "image/webp"
+    },
+    {
+      "kind": "detail",
+      "model": "雪伦",
+      "index": 54,
+      "url": "https://agi.alicdn.com/user/3zsp/bc50ebff-7825-4355-9237-c6644c7b8c86_avatar.png?x-oss-process=image%2Fresize%2Cs_400%2Fformat%2Cwebp",
+      "dest": "/Users/changliu/workspace/src/github.com/image-video/.tmp/wanxiang-models-europe-usa-20260609/images/details/054-247-detail.webp",
+      "ok": true,
+      "bytes": 31396,
+      "contentType": "image/webp"
+    },
+    {
+      "kind": "thumbnail",
+      "model": "苏西",
+      "index": 61,
+      "url": "https://agi.alicdn.com/upload/material/8tfrq/2026/01/17/80304568-72f0-43a8-9cee-df31c39fa730.png?x-oss-process=image%2Fresize%2Cs_324%2Fformat%2Cwebp",
+      "dest": "/Users/changliu/workspace/src/github.com/image-video/.tmp/wanxiang-models-europe-usa-20260609/images/thumbnails/061-259-thumbnail.webp",
+      "ok": true,
+      "bytes": 8704,
+      "contentType": "image/webp"
+    },
+    {
+      "kind": "detail",
+      "model": "希琳",
+      "index": 56,
+      "url": "https://agi.alicdn.com/user/3zsp/924946d2-e5a9-461d-83db-ca992836b7f6_avatar.png?x-oss-process=image%2Fresize%2Cs_400%2Fformat%2Cwebp",
+      "dest": "/Users/changliu/workspace/src/github.com/image-video/.tmp/wanxiang-models-europe-usa-20260609/images/details/056-250-detail.webp",
+      "ok": true,
+      "bytes": 22958,
+      "contentType": "image/webp"
+    },
+    {
+      "kind": "detail",
+      "model": "琼",
+      "index": 57,
+      "url": "https://agi.alicdn.com/user/3zsp/70611711-ead7-480b-be42-a162e8b40a27_avatar.png?x-oss-process=image%2Fresize%2Cs_400%2Fformat%2Cwebp",
+      "dest": "/Users/changliu/workspace/src/github.com/image-video/.tmp/wanxiang-models-europe-usa-20260609/images/details/057-251-detail.webp",
+      "ok": true,
+      "bytes": 14920,
+      "contentType": "image/webp"
+    },
+    {
+      "kind": "thumbnail",
+      "model": "大童 | 诺埃里克",
+      "index": 62,
+      "url": "https://agi.alicdn.com/upload/material/8tfrq/2026/01/16/f65da023-f661-4d2f-8896-40c09dec8f0e.png?x-oss-process=image%2Fresize%2Cs_324%2Fformat%2Cwebp",
+      "dest": "/Users/changliu/workspace/src/github.com/image-video/.tmp/wanxiang-models-europe-usa-20260609/images/thumbnails/062-374-thumbnail.webp",
+      "ok": true,
+      "bytes": 10258,
+      "contentType": "image/webp"
+    },
+    {
+      "kind": "detail",
+      "model": "玛蒂尔达",
+      "index": 55,
+      "url": "https://agi.alicdn.com/user/3zsp/26d933b2-47dc-4b24-a8b0-e83119e34805_avatar.png?x-oss-process=image%2Fresize%2Cs_400%2Fformat%2Cwebp",
+      "dest": "/Users/changliu/workspace/src/github.com/image-video/.tmp/wanxiang-models-europe-usa-20260609/images/details/055-249-detail.webp",
+      "ok": true,
+      "bytes": 19814,
+      "contentType": "image/webp"
+    },
+    {
+      "kind": "thumbnail",
+      "model": "小童 | 爱丽丝",
+      "index": 63,
+      "url": "https://agi.alicdn.com/upload/material/8tfrq/2026/01/16/5c077805-b5ed-4f3d-8c7c-33dd55e05fee.png?x-oss-process=image%2Fresize%2Cs_324%2Fformat%2Cwebp",
+      "dest": "/Users/changliu/workspace/src/github.com/image-video/.tmp/wanxiang-models-europe-usa-20260609/images/thumbnails/063-379-thumbnail.webp",
+      "ok": true,
+      "bytes": 12368,
+      "contentType": "image/webp"
+    },
+    {
+      "kind": "detail",
+      "model": "劳拉",
+      "index": 58,
+      "url": "https://agi.alicdn.com/user/3zsp/d4abbfe4-683c-4096-b17d-7c0250431646_avatar.png?x-oss-process=image%2Fresize%2Cs_400%2Fformat%2Cwebp",
+      "dest": "/Users/changliu/workspace/src/github.com/image-video/.tmp/wanxiang-models-europe-usa-20260609/images/details/058-253-detail.webp",
+      "ok": true,
+      "bytes": 23874,
+      "contentType": "image/webp"
+    },
+    {
+      "kind": "thumbnail",
+      "model": "中童 | 贝拉",
+      "index": 64,
+      "url": "https://agi.alicdn.com/upload/material/8tfrq/2026/01/17/a536df09-32fb-44f7-a413-c7ed68f7b1f1.png?x-oss-process=image%2Fresize%2Cs_324%2Fformat%2Cwebp",
+      "dest": "/Users/changliu/workspace/src/github.com/image-video/.tmp/wanxiang-models-europe-usa-20260609/images/thumbnails/064-381-thumbnail.webp",
+      "ok": true,
+      "bytes": 12304,
+      "contentType": "image/webp"
+    },
+    {
+      "kind": "thumbnail",
+      "model": "大童 | 海伦",
+      "index": 65,
+      "url": "https://agi.alicdn.com/upload/material/8tfrq/2026/01/17/812fdbc2-f141-49a3-a52d-a59faba7de63.png?x-oss-process=image%2Fresize%2Cs_324%2Fformat%2Cwebp",
+      "dest": "/Users/changliu/workspace/src/github.com/image-video/.tmp/wanxiang-models-europe-usa-20260609/images/thumbnails/065-382-thumbnail.webp",
+      "ok": true,
+      "bytes": 8412,
+      "contentType": "image/webp"
+    },
+    {
+      "kind": "detail",
+      "model": "妮可",
+      "index": 59,
+      "url": "https://agi.alicdn.com/user/3zsp/96927377-7f53-4f16-a4b7-b3d0d65222c4_avatar.png?x-oss-process=image%2Fresize%2Cs_400%2Fformat%2Cwebp",
+      "dest": "/Users/changliu/workspace/src/github.com/image-video/.tmp/wanxiang-models-europe-usa-20260609/images/details/059-256-detail.webp",
+      "ok": true,
+      "bytes": 24222,
+      "contentType": "image/webp"
+    },
+    {
+      "kind": "thumbnail",
+      "model": "大童 | 莫莉",
+      "index": 66,
+      "url": "https://agi.alicdn.com/upload/material/8tfrq/2026/01/17/5a59b33f-596d-42d3-a8e4-bf4081742998.png?x-oss-process=image%2Fresize%2Cs_324%2Fformat%2Cwebp",
+      "dest": "/Users/changliu/workspace/src/github.com/image-video/.tmp/wanxiang-models-europe-usa-20260609/images/thumbnails/066-383-thumbnail.webp",
+      "ok": true,
+      "bytes": 8786,
+      "contentType": "image/webp"
+    },
+    {
+      "kind": "detail",
+      "model": "帕梅拉",
+      "index": 60,
+      "url": "https://agi.alicdn.com/user/3zsp/38805659-acc6-474f-98b0-94535c65f39d_avatar.png?x-oss-process=image%2Fresize%2Cs_400%2Fformat%2Cwebp",
+      "dest": "/Users/changliu/workspace/src/github.com/image-video/.tmp/wanxiang-models-europe-usa-20260609/images/details/060-258-detail.webp",
+      "ok": true,
+      "bytes": 34336,
+      "contentType": "image/webp"
+    },
+    {
+      "kind": "detail",
+      "model": "小童 | 爱丽丝",
+      "index": 63,
+      "url": "https://agi.alicdn.com/user/3zsp/6114e558-fe78-4704-a88b-1755a176f0aa_avatar.png?x-oss-process=image%2Fresize%2Cs_400%2Fformat%2Cwebp",
+      "dest": "/Users/changliu/workspace/src/github.com/image-video/.tmp/wanxiang-models-europe-usa-20260609/images/details/063-379-detail.webp",
+      "ok": true,
+      "bytes": 26746,
+      "contentType": "image/webp"
+    },
+    {
+      "kind": "thumbnail",
+      "model": "小童 | 伊恩",
+      "index": 67,
+      "url": "https://agi.alicdn.com/upload/material/8tfrq/2026/01/17/317660d9-c2e2-4aa1-8e8b-03a707537198.png?x-oss-process=image%2Fresize%2Cs_324%2Fformat%2Cwebp",
+      "dest": "/Users/changliu/workspace/src/github.com/image-video/.tmp/wanxiang-models-europe-usa-20260609/images/thumbnails/067-387-thumbnail.webp",
+      "ok": true,
+      "bytes": 8110,
+      "contentType": "image/webp"
+    },
+    {
+      "kind": "detail",
+      "model": "大童 | 诺埃里克",
+      "index": 62,
+      "url": "https://agi.alicdn.com/user/3zsp/9bae34ab-29d4-478b-8f4c-d37843eff8db_avatar.png?x-oss-process=image%2Fresize%2Cs_400%2Fformat%2Cwebp",
+      "dest": "/Users/changliu/workspace/src/github.com/image-video/.tmp/wanxiang-models-europe-usa-20260609/images/details/062-374-detail.webp",
+      "ok": true,
+      "bytes": 37582,
+      "contentType": "image/webp"
+    },
+    {
+      "kind": "thumbnail",
+      "model": "小童 | 哈里",
+      "index": 68,
+      "url": "https://agi.alicdn.com/upload/material/8tfrq/2026/01/17/ed08e389-dd7a-408f-910b-bc3fddb83604.png?x-oss-process=image%2Fresize%2Cs_324%2Fformat%2Cwebp",
+      "dest": "/Users/changliu/workspace/src/github.com/image-video/.tmp/wanxiang-models-europe-usa-20260609/images/thumbnails/068-388-thumbnail.webp",
+      "ok": true,
+      "bytes": 10636,
+      "contentType": "image/webp"
+    },
+    {
+      "kind": "thumbnail",
+      "model": "中童 | 科迪",
+      "index": 69,
+      "url": "https://agi.alicdn.com/upload/material/8tfrq/2026/01/17/068d6931-c0b7-4677-a465-78402494dcd0.png?x-oss-process=image%2Fresize%2Cs_324%2Fformat%2Cwebp",
+      "dest": "/Users/changliu/workspace/src/github.com/image-video/.tmp/wanxiang-models-europe-usa-20260609/images/thumbnails/069-389-thumbnail.webp",
+      "ok": true,
+      "bytes": 7914,
+      "contentType": "image/webp"
+    },
+    {
+      "kind": "thumbnail",
+      "model": "中童 | 塞德里克",
+      "index": 70,
+      "url": "https://agi.alicdn.com/upload/material/8tfrq/2026/01/17/b9e523b4-5175-4cb2-9f83-5474ab4d54f6.png?x-oss-process=image%2Fresize%2Cs_324%2Fformat%2Cwebp",
+      "dest": "/Users/changliu/workspace/src/github.com/image-video/.tmp/wanxiang-models-europe-usa-20260609/images/thumbnails/070-390-thumbnail.webp",
+      "ok": true,
+      "bytes": 8380,
+      "contentType": "image/webp"
+    },
+    {
+      "kind": "detail",
+      "model": "中童 | 贝拉",
+      "index": 64,
+      "url": "https://agi.alicdn.com/user/3zsp/732f1ae1-8f28-4c09-9e7c-398d958e8679_avatar.png?x-oss-process=image%2Fresize%2Cs_400%2Fformat%2Cwebp",
+      "dest": "/Users/changliu/workspace/src/github.com/image-video/.tmp/wanxiang-models-europe-usa-20260609/images/details/064-381-detail.webp",
+      "ok": true,
+      "bytes": 28972,
+      "contentType": "image/webp"
+    },
+    {
+      "kind": "detail",
+      "model": "大童 | 海伦",
+      "index": 65,
+      "url": "https://agi.alicdn.com/user/3zsp/0244880f-1d4f-4904-af50-a0a939e16136_avatar.png?x-oss-process=image%2Fresize%2Cs_400%2Fformat%2Cwebp",
+      "dest": "/Users/changliu/workspace/src/github.com/image-video/.tmp/wanxiang-models-europe-usa-20260609/images/details/065-382-detail.webp",
+      "ok": true,
+      "bytes": 27268,
+      "contentType": "image/webp"
+    },
+    {
+      "kind": "detail",
+      "model": "大童 | 莫莉",
+      "index": 66,
+      "url": "https://agi.alicdn.com/user/3zsp/9ffaba43-0405-4c63-8641-a6176d80cdfb_avatar.png?x-oss-process=image%2Fresize%2Cs_400%2Fformat%2Cwebp",
+      "dest": "/Users/changliu/workspace/src/github.com/image-video/.tmp/wanxiang-models-europe-usa-20260609/images/details/066-383-detail.webp",
+      "ok": true,
+      "bytes": 31358,
+      "contentType": "image/webp"
+    },
+    {
+      "kind": "detail",
+      "model": "苏西",
+      "index": 61,
+      "url": "https://agi.alicdn.com/user/3zsp/3ab181dd-07f9-4b60-a10c-946bcd1a1701_avatar.png?x-oss-process=image%2Fresize%2Cs_400%2Fformat%2Cwebp",
+      "dest": "/Users/changliu/workspace/src/github.com/image-video/.tmp/wanxiang-models-europe-usa-20260609/images/details/061-259-detail.webp",
+      "ok": true,
+      "bytes": 24698,
+      "contentType": "image/webp"
+    },
+    {
+      "kind": "thumbnail",
+      "model": "大童 | 诺兰",
+      "index": 71,
+      "url": "https://agi.alicdn.com/upload/material/8tfrq/2026/01/17/dcf35d42-3d27-466a-9d1f-cab9eb2f50ce.png?x-oss-process=image%2Fresize%2Cs_324%2Fformat%2Cwebp",
+      "dest": "/Users/changliu/workspace/src/github.com/image-video/.tmp/wanxiang-models-europe-usa-20260609/images/thumbnails/071-391-thumbnail.webp",
+      "ok": true,
+      "bytes": 8978,
+      "contentType": "image/webp"
+    },
+    {
+      "kind": "detail",
+      "model": "小童 | 伊恩",
+      "index": 67,
+      "url": "https://agi.alicdn.com/user/3zsp/e5f07a59-12d6-469f-b5cc-8d1a617bfcb5_avatar.png?x-oss-process=image%2Fresize%2Cs_400%2Fformat%2Cwebp",
+      "dest": "/Users/changliu/workspace/src/github.com/image-video/.tmp/wanxiang-models-europe-usa-20260609/images/details/067-387-detail.webp",
+      "ok": true,
+      "bytes": 17216,
+      "contentType": "image/webp"
+    },
+    {
+      "kind": "thumbnail",
+      "model": "中童 | 莉亚",
+      "index": 73,
+      "url": "https://agi.alicdn.com/upload/material/8tfrq/2026/01/17/44f0b4fe-a629-4814-a175-11743c9f7c9f.png?x-oss-process=image%2Fresize%2Cs_324%2Fformat%2Cwebp",
+      "dest": "/Users/changliu/workspace/src/github.com/image-video/.tmp/wanxiang-models-europe-usa-20260609/images/thumbnails/073-393-thumbnail.webp",
+      "ok": true,
+      "bytes": 10448,
+      "contentType": "image/webp"
+    },
+    {
+      "kind": "thumbnail",
+      "model": "小童 | 黛西",
+      "index": 72,
+      "url": "https://agi.alicdn.com/upload/material/8tfrq/2026/01/17/d1e01886-36e5-42b9-b964-6f25374c785e.png?x-oss-process=image%2Fresize%2Cs_324%2Fformat%2Cwebp",
+      "dest": "/Users/changliu/workspace/src/github.com/image-video/.tmp/wanxiang-models-europe-usa-20260609/images/thumbnails/072-392-thumbnail.webp",
+      "ok": true,
+      "bytes": 11134,
+      "contentType": "image/webp"
+    },
+    {
+      "kind": "detail",
+      "model": "小童 | 哈里",
+      "index": 68,
+      "url": "https://agi.alicdn.com/user/3zsp/6c6f6119-8469-4a96-99c6-99fb004dbbfb_avatar.png?x-oss-process=image%2Fresize%2Cs_400%2Fformat%2Cwebp",
+      "dest": "/Users/changliu/workspace/src/github.com/image-video/.tmp/wanxiang-models-europe-usa-20260609/images/details/068-388-detail.webp",
+      "ok": true,
+      "bytes": 26770,
+      "contentType": "image/webp"
+    },
+    {
+      "kind": "detail",
+      "model": "中童 | 科迪",
+      "index": 69,
+      "url": "https://agi.alicdn.com/user/3zsp/5298c757-0a89-433b-b670-672ea7188faf_avatar.png?x-oss-process=image%2Fresize%2Cs_400%2Fformat%2Cwebp",
+      "dest": "/Users/changliu/workspace/src/github.com/image-video/.tmp/wanxiang-models-europe-usa-20260609/images/details/069-389-detail.webp",
+      "ok": true,
+      "bytes": 39184,
+      "contentType": "image/webp"
+    },
+    {
+      "kind": "detail",
+      "model": "中童 | 塞德里克",
+      "index": 70,
+      "url": "https://agi.alicdn.com/user/3zsp/d03e61f2-5dd8-436f-9d54-58f3acbde064_avatar.png?x-oss-process=image%2Fresize%2Cs_400%2Fformat%2Cwebp",
+      "dest": "/Users/changliu/workspace/src/github.com/image-video/.tmp/wanxiang-models-europe-usa-20260609/images/details/070-390-detail.webp",
+      "ok": true,
+      "bytes": 26814,
+      "contentType": "image/webp"
+    },
+    {
+      "kind": "detail",
+      "model": "大童 | 诺兰",
+      "index": 71,
+      "url": "https://agi.alicdn.com/user/3zsp/be751b96-6820-4a53-84f1-e14640e85c7d_avatar.png?x-oss-process=image%2Fresize%2Cs_400%2Fformat%2Cwebp",
+      "dest": "/Users/changliu/workspace/src/github.com/image-video/.tmp/wanxiang-models-europe-usa-20260609/images/details/071-391-detail.webp",
+      "ok": true,
+      "bytes": 23616,
+      "contentType": "image/webp"
+    },
+    {
+      "kind": "detail",
+      "model": "小童 | 黛西",
+      "index": 72,
+      "url": "https://agi.alicdn.com/user/3zsp/b1b20867-90c6-40e6-8b3d-2c1c2af763d7_avatar.png?x-oss-process=image%2Fresize%2Cs_400%2Fformat%2Cwebp",
+      "dest": "/Users/changliu/workspace/src/github.com/image-video/.tmp/wanxiang-models-europe-usa-20260609/images/details/072-392-detail.webp",
+      "ok": true,
+      "bytes": 27086,
+      "contentType": "image/webp"
+    },
+    {
+      "kind": "detail",
+      "model": "中童 | 莉亚",
+      "index": 73,
+      "url": "https://agi.alicdn.com/user/3zsp/b4a65e69-faeb-444c-a2ca-ade94b576147_avatar.png?x-oss-process=image%2Fresize%2Cs_400%2Fformat%2Cwebp",
+      "dest": "/Users/changliu/workspace/src/github.com/image-video/.tmp/wanxiang-models-europe-usa-20260609/images/details/073-393-detail.webp",
+      "ok": true,
+      "bytes": 27434,
+      "contentType": "image/webp"
+    }
+  ]
+}

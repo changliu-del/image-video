@@ -1,6 +1,6 @@
 # Runtime Architecture
 
-Updated: 2026-06-08
+Updated: 2026-06-11
 
 ## Active Generation Flow
 
@@ -18,7 +18,7 @@ Workbench selects file and options
 -> Trigger.dev worker polls Wanxiang until terminal status
 -> frontend polls /api/generations/[id]/status
 -> status route reads generation_jobs only
--> success creates one output asset, stores generation_jobs.output_asset_id, records user media history, and captures credits
+-> success copies the provider result into R2, creates one output asset, stores generation_jobs.output_asset_id, records user media history, and captures credits
 -> failure refunds reserved credits
 ```
 
@@ -29,7 +29,6 @@ Workbench selects file and options
 - `lib/providers/wanxiang/img-to-video.ts`
 - `lib/providers/wanxiang/cloth.ts`
 - `lib/providers/wanxiang/starlink.ts`
-- `lib/providers/wanxiang/models.ts`
 - `trigger/generate-wanxiang.ts` is the active Trigger.dev task for Wanxiang submit/query.
 - `lib/providers/video/fal.ts` remains for older runner path.
 
@@ -40,7 +39,6 @@ Key tables are defined in `lib/db/schema.ts`:
 - `users`
 - `assets`
 - `templates`
-- `model_catalog_assets`
 - `generation_jobs`
 - `user_media_history`
 - `credit_ledger`
@@ -61,15 +59,44 @@ The template list API should return `id`, `type`, `category`, `thumbnailUrl`,
 and `previewUrl` for browsing cards. Template detail adds `prompt` when the user
 opens a detail view or applies a template.
 
+Virtual try-on model choices are also template rows. Use `type = 'model'`,
+store model classifications such as `男/青年/冷酷` in `category`, store the
+model name in `title`, and store the style/feature/person description in
+`prompt`. `/api/model-assets` is a compatibility API over these template rows;
+there is no active `model_catalog_assets` table.
+
 `user_media_history` is the private per-user material layer for uploaded and
 generated media. It references owned `assets` rows and optional
 `generation_jobs` rows, then stores source, generation type, role, visibility,
 favorite state, usage count, and last-used time. It is not public catalog data.
 
-`generation_jobs` keeps one `output_asset_id` for the final provider result.
-Try-on mode, template id, prompt, duration, and similar request context stay in
-`input_json`; the task table itself keeps only lifecycle, provider tracking,
-credits, and input/output asset references.
+`generation_jobs` keeps one `output_asset_id` for the final generated result.
+The provider URL is an intermediate worker result only; successful jobs copy the
+final image/video bytes into Cloudflare R2 and expose the owned asset through
+the app media route wherever the app displays or records the output.
+Try-on mode, template id, prompt, and similar request context stay in
+`input_json`; image-to-video duration is normalized internally to the fixed 5s
+provider capability rather than exposed as a user setting. The task table itself
+keeps only lifecycle, provider tracking, credits, and input/output asset
+references.
+
+## Media URL Ownership
+
+Do not treat `assets.public_url` as the frontend display contract. It is storage
+metadata for the R2 object and may point at a bucket endpoint that is not
+browser-readable.
+
+Template media follows this pattern already: Admin upload writes regular
+`assets` rows with R2 metadata, but `templates.thumbnail_url` and
+`templates.preview_url` store `/api/template-media/{assetId}`. That route reads
+the R2 object server-side, supports byte ranges for video, and sets public media
+cache headers.
+
+User uploads and generated outputs should follow the same app-route pattern:
+status APIs, user history, Admin previews, and workbench upload completion
+should return `/api/asset-media/{assetId}` for browser display. Provider-facing
+payloads that require an absolute URL should derive it from `BASE_URL` plus that
+route, not from `R2_PUBLIC_BASE_URL`.
 
 ## Architecture Caveat
 

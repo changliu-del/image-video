@@ -1,18 +1,23 @@
 import { client } from '@/lib/db/drizzle';
-import { fetchWanxiangModelCatalog } from '@/lib/providers/wanxiang/models';
+import {
+  localizeModelCategoryTags,
+  modelCategoryTags,
+  resolveModelPrompt,
+  resolveModelTitle,
+} from '@/lib/model-assets/localization';
 
-export type ModelCatalogAssetItem = {
+export type ModelTemplateItem = {
   id: string;
-  provider: string;
-  externalId: string;
-  locale: string;
   title: string;
   description: string | null;
   thumbnailUrl: string | null;
   imageUrl: string | null;
   videoUrl: string | null;
   tags: string[];
+  displayTags: string[];
   sortWeight: number;
+  thumbnailStorageKey: string | null;
+  imageStorageKey: string | null;
 };
 
 function toStringValue(value: unknown) {
@@ -20,152 +25,102 @@ function toStringValue(value: unknown) {
 }
 
 function toNullableString(value: unknown) {
-  return value == null ? null : String(value);
+  const text = toStringValue(value).trim();
+  return text || null;
 }
 
-function toTags(value: unknown) {
-  return Array.isArray(value)
-    ? value.map((tag) => String(tag)).filter(Boolean)
-    : [];
-}
+function mapModelTemplateRow(
+  row: Record<string, unknown>,
+  locale: string
+): ModelTemplateItem {
+  const sortOrder = Number(row.sort_order ?? 0);
+  const category = toStringValue(row.category);
+  const title = resolveModelTitle({
+    category,
+    locale,
+    title: row.title,
+    translations: row.title_translations_json,
+  });
 
-function mapModelAssetRow(row: Record<string, unknown>): ModelCatalogAssetItem {
   return {
     id: toStringValue(row.id),
-    provider: toStringValue(row.provider),
-    externalId: toStringValue(row.external_id),
-    locale: toStringValue(row.locale),
-    title: toStringValue(row.title),
-    description: toNullableString(row.description),
+    title,
+    description: toNullableString(
+      resolveModelPrompt({
+        category,
+        locale,
+        prompt: row.prompt,
+        title: row.title,
+        titleTranslations: row.title_translations_json,
+        translations: row.prompt_translations_json,
+      })
+    ),
     thumbnailUrl: toNullableString(row.thumbnail_url),
-    imageUrl: toNullableString(row.image_url),
-    videoUrl: toNullableString(row.video_url),
-    tags: toTags(row.tags_json),
-    sortWeight: Number(row.sort_weight ?? 0),
+    imageUrl: toNullableString(row.preview_url),
+    videoUrl: null,
+    tags: modelCategoryTags(category),
+    displayTags: localizeModelCategoryTags(category, locale),
+    sortWeight: 100_000 - sortOrder,
+    thumbnailStorageKey: toNullableString(row.thumbnail_storage_key),
+    imageStorageKey: toNullableString(row.preview_storage_key),
   };
 }
 
-export async function listModelCatalogAssets(input: {
+export async function listModelTemplates(input: {
   locale: string;
-  provider?: string;
   limit?: number;
 }) {
-  const limit = Math.min(Math.max(input.limit ?? 24, 1), 48);
-  const provider = input.provider ?? 'wanxiang';
+  const limit = Math.min(Math.max(input.limit ?? 24, 1), 96);
   const rows = await client`
     select
-      id,
-      provider,
-      external_id,
-      locale,
-      title,
-      description,
-      thumbnail_url,
-      image_url,
-      video_url,
-      tags_json,
-      sort_weight
-    from model_catalog_assets
-    where locale = ${input.locale}
-      and provider = ${provider}
-      and status = 'active'
-    order by sort_weight desc, updated_at desc, title asc
+      t.id,
+      t.title,
+      t.title_translations_json,
+      t.category,
+      t.thumbnail_url,
+      t.preview_url,
+      t.prompt,
+      t.prompt_translations_json,
+      t.sort_order,
+      thumbnail_asset.storage_key as thumbnail_storage_key,
+      preview_asset.storage_key as preview_storage_key
+    from templates t
+    join assets thumbnail_asset on thumbnail_asset.id = t.thumbnail_asset_id
+    join assets preview_asset on preview_asset.id = t.preview_asset_id
+    where t.type = 'model'
+      and length(trim(t.thumbnail_url)) > 0
+      and length(trim(t.preview_url)) > 0
+    order by t.sort_order asc, t.created_at asc, t.title asc
     limit ${limit}
   `;
 
-  return rows.map((row) => mapModelAssetRow(row as Record<string, unknown>));
+  return rows.map((row) =>
+    mapModelTemplateRow(row as Record<string, unknown>, input.locale)
+  );
 }
 
-export async function getModelCatalogAsset(input: {
-  id: string;
-  provider?: string;
-}) {
-  const provider = input.provider ?? 'wanxiang';
+export async function getModelTemplate(input: { id: string; locale?: string }) {
   const rows = await client`
     select
-      id,
-      provider,
-      external_id,
-      locale,
-      title,
-      description,
-      thumbnail_url,
-      image_url,
-      video_url,
-      tags_json,
-      sort_weight
-    from model_catalog_assets
-    where id = ${input.id}
-      and provider = ${provider}
-      and status = 'active'
+      t.id,
+      t.title,
+      t.title_translations_json,
+      t.category,
+      t.thumbnail_url,
+      t.preview_url,
+      t.prompt,
+      t.prompt_translations_json,
+      t.sort_order,
+      thumbnail_asset.storage_key as thumbnail_storage_key,
+      preview_asset.storage_key as preview_storage_key
+    from templates t
+    join assets thumbnail_asset on thumbnail_asset.id = t.thumbnail_asset_id
+    join assets preview_asset on preview_asset.id = t.preview_asset_id
+    where t.id = ${input.id}
+      and t.type = 'model'
     limit 1
   `;
   const row = rows[0] as Record<string, unknown> | undefined;
 
-  return row ? mapModelAssetRow(row) : null;
-}
-
-export async function syncWanxiangModelCatalog(input: { locale: string }) {
-  const providerItems = await fetchWanxiangModelCatalog({ locale: input.locale });
-
-  for (const item of providerItems) {
-    const description = item.description ?? null;
-    const thumbnailUrl = item.thumbnailUrl ?? null;
-    const imageUrl = item.imageUrl ?? null;
-    const videoUrl = item.videoUrl ?? null;
-
-    await client`
-      insert into model_catalog_assets (
-        provider,
-        external_id,
-        locale,
-        title,
-        description,
-        thumbnail_url,
-        image_url,
-        video_url,
-        tags_json,
-        provider_payload_json,
-        status,
-        sort_weight,
-        synced_at,
-        created_at,
-        updated_at
-      )
-      values (
-        'wanxiang',
-        ${item.externalId},
-        ${input.locale},
-        ${item.title},
-        ${description},
-        ${thumbnailUrl},
-        ${imageUrl},
-        ${videoUrl},
-        ${JSON.stringify(item.tags)}::jsonb,
-        ${JSON.stringify(item.raw)}::jsonb,
-        'active',
-        ${item.sortWeight},
-        now(),
-        now(),
-        now()
-      )
-      on conflict (provider, external_id, locale)
-      do update set
-        title = excluded.title,
-        description = excluded.description,
-        thumbnail_url = excluded.thumbnail_url,
-        image_url = excluded.image_url,
-        video_url = excluded.video_url,
-        tags_json = excluded.tags_json,
-        provider_payload_json = excluded.provider_payload_json,
-        status = 'active',
-        sort_weight = excluded.sort_weight,
-        synced_at = now(),
-        updated_at = now()
-    `;
-  }
-
-  return {
-    synced: providerItems.length,
-  };
+  return row ? mapModelTemplateRow(row, input.locale ?? 'pt') : null;
 }

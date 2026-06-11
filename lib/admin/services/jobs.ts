@@ -4,6 +4,7 @@ import { desc, eq, or, sql } from 'drizzle-orm';
 import { alias } from 'drizzle-orm/pg-core';
 import { z } from 'zod';
 import { db } from '@/lib/db/drizzle';
+import { buildAssetMediaUrl } from '@/lib/assets/media-url';
 import {
   assets,
   GENERATION_JOB_STATUSES,
@@ -28,7 +29,7 @@ const jobIdSchema = z.string().uuid();
 type AdminMediaKind = 'image' | 'video' | 'file';
 type AdminAssetPreviewSource = Pick<
   typeof assets.$inferSelect,
-  'publicUrl' | 'mimeType'
+  'id' | 'publicUrl' | 'mimeType'
 >;
 type AdminAssetPreview = {
   url: string | null;
@@ -141,7 +142,7 @@ function mediaFieldsFromAsset(
   }
 
   return {
-    url: asset.publicUrl,
+    url: buildAssetMediaUrl(asset.id),
     mimeType: previewMimeType,
     mediaKind,
   };
@@ -218,11 +219,7 @@ export async function listJobs(params: {
         exactCol(generationJobs.triggerRunId, query),
         exactJsonTextField(generationJobs.inputJson, 'templateId', query),
         exactJsonTextField(generationJobs.inputJson, 'modelAssetId', query),
-        exactJsonTextField(
-          generationJobs.inputJson,
-          'modelCatalogAssetId',
-          query
-        ),
+        exactJsonTextField(generationJobs.inputJson, 'modelTemplateId', query),
         exactJsonTextField(generationJobs.inputJson, 'garmentAssetId', query),
         sql`${generationJobs.inputJson}->'garmentAssetIds' ? ${query}`,
         ilikeCol(users.email, query),

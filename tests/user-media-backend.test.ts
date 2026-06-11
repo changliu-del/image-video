@@ -68,7 +68,24 @@ describe('user media catalog contract', () => {
 
     expect(service).toContain("eq(assets.status, 'uploaded')");
     expect(service).toContain('asset.userId !== payload.userId');
+    expect(service).toContain('buildAssetMediaUrl(asset.id)');
+    expect(service).not.toContain('assetUrl: asset.publicUrl');
     expect(service).not.toContain('matchingLibraryAsset');
+  });
+
+  it('serves user asset bytes through the app media route instead of raw R2 public URLs', () => {
+    const mediaUrl = readSource('lib/assets/media-url.ts');
+    const mediaRoute = readSource('app/api/asset-media/[assetId]/route.ts');
+    const completeRoute = readSource('app/api/assets/complete/route.ts');
+
+    expect(mediaUrl).toContain('buildAssetMediaUrl');
+    expect(mediaUrl).toContain('/api/asset-media/');
+    expect(mediaRoute).toContain("storageKey.startsWith('users/')");
+    expect(mediaRoute).toContain('getObjectFromR2({');
+    expect(mediaRoute).toContain("'Accept-Ranges': 'bytes'");
+    expect(mediaRoute).not.toContain('createSignedGetUrl');
+    expect(mediaRoute).not.toContain('proxyExternal');
+    expect(completeRoute).toContain('publicUrl: buildAssetMediaUrl(updatedAsset.id)');
   });
 
   it('keeps deleted history hidden on later upserts and sorts null usage after recency', () => {

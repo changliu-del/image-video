@@ -1,6 +1,6 @@
 # Frontend Workflows
 
-Updated: 2026-06-08
+Updated: 2026-06-11
 
 ## Dashboard Shell
 
@@ -24,16 +24,18 @@ For the default rendering contract, route/data ownership rules, and frontend rev
 
 Each workbench handles upload, payload construction, generation submission, polling, and result rendering.
 
-Workbench material loading now uses templates, the model catalog, and private
-user history. The standalone official material catalog has been removed.
+Workbench material loading now uses templates and private user history. The
+standalone official material catalog and standalone model catalog table have
+been removed.
 
 - `/create/video` loads `/api/templates?type=image_to_video` and `/api/user-media?generationType=image_to_video` for the user's private history.
 - The public homepage template gallery and public templates page reuse the same image-to-video template catalog by querying `type=image_to_video`.
 - Template list responses drive browsing with `id`, `type`, `category`, `thumbnailUrl`, and `previewUrl`; detail fetches add `prompt` before applying a template.
-- Template list/detail HTTP cache headers stay short (`max-age=30`, `s-maxage=60`) because Admin can edit template media and prompt. The server-side base-array cache is cleared by Admin template writes, while media bytes are served through `/api/template-media/{assetId}` with range support and a memory/R2/external fallback path.
+- Template list/detail HTTP cache headers stay short (`max-age=30`, `s-maxage=60`) because Admin can edit template media and prompt. The server-side base-array cache is cleared by Admin template writes, while media bytes are served through `/api/template-media/{assetId}` with range support; normal template assets are read from R2 server-side, and only explicit `external/` storage keys use external proxying.
+- Uploaded user assets and generated outputs should be displayed through `/api/asset-media/{assetId}`. Workbenches should not render the raw `assets.public_url` / `R2_PUBLIC_BASE_URL` value because that URL is storage metadata and may not be browser-readable.
 - Template `category` is a business category inside `type`; do not use category values such as `image_to_video`, `image_to_image`, or `try_on` as the template workflow selector.
 - `/create/apparel` uses templates plus `/api/user-media?generationType=apparel_image` for user-owned previous product images.
-- `/create/try-on` loads `/api/model-assets` for model choices plus `/api/user-media?generationType=try_on` for user-owned garment/history items.
+- `/create/try-on` loads `/api/model-assets` for model choices plus `/api/user-media?generationType=try_on` for user-owned garment/history items. `/api/model-assets` reads `templates` rows where `type = 'model'`; model card categories/tags come from `templates.category`, and detail copy comes from `templates.prompt`.
 
 Admin exposes one private material support surface:
 

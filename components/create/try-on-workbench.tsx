@@ -14,15 +14,14 @@ import {
   Sparkles,
   UploadCloud,
   WandSparkles,
+  X,
 } from 'lucide-react';
 
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import {
-  BlueBanner,
   CanvasStage,
-  ExampleProducts,
   IconButtonCard,
   PanelSection,
   ResultCard,
@@ -31,7 +30,6 @@ import {
   UploadDropzone,
 } from '@/components/create/workbench-ui';
 import {
-  bannerCopy,
   commonWorkbenchCopy,
   tryOnWorkbenchCopy,
 } from '@/components/create/workbench-copy';
@@ -54,11 +52,10 @@ import { cn } from '@/lib/utils';
 
 type TryOnMode = 'single' | 'multi';
 type TryOnAspectRatio = '1:1' | '3:4' | '9:16';
-type PosePreset = 'auto' | 'front' | 'editorial' | 'runway';
-type BackgroundPreset = 'studio' | 'street' | 'minimal' | 'boutique';
-type FitPreset = 'natural' | 'tailored' | 'relaxed';
+type ModelAgeFilter = 'all' | 'child' | 'youth' | 'middle' | 'senior';
+type ModelGenderFilter = 'all' | 'female' | 'male';
 
-type ModelCatalogItem = {
+type ModelTemplateItem = {
   id: string;
   title: string;
   description?: string | null;
@@ -66,6 +63,7 @@ type ModelCatalogItem = {
   imageUrl?: string | null;
   videoUrl?: string | null;
   tags?: string[];
+  displayTags?: string[];
 };
 
 type PresignResponse = {
@@ -96,45 +94,67 @@ type JobStatusResponse = {
 };
 
 const MAX_IMAGE_BYTES = 10 * 1024 * 1024;
+const MODEL_ASSET_LIMIT = 96;
 const ACCEPTED_IMAGE_TYPES = ['image/png', 'image/jpeg', 'image/webp'];
 const modeValues: TryOnMode[] = ['multi', 'single'];
 const tryOnAspectRatios: TryOnAspectRatio[] = ['1:1', '3:4', '9:16'];
-const poseValues: PosePreset[] = ['auto', 'front', 'editorial', 'runway'];
-const backgroundValues: BackgroundPreset[] = ['studio', 'street', 'minimal', 'boutique'];
-const fitValues: FitPreset[] = ['natural', 'tailored', 'relaxed'];
-const materialPickerCopy = {
-  pt: {
-    history: 'Meu historico',
-    loadingHistory: 'Carregando historico',
-    historyError: 'Nao foi possivel carregar seu historico.',
-    emptyHistory: 'Seu historico ainda nao tem imagens para este fluxo.',
-    retry: 'Tentar novamente',
-  },
-  en: {
-    history: 'My history',
-    loadingHistory: 'Loading history',
-    historyError: 'History could not be loaded.',
-    emptyHistory: 'Your history does not have images for this flow yet.',
-    retry: 'Retry',
-  },
-  zh: {
-    history: '我的历史',
-    loadingHistory: '加载历史素材中',
-    historyError: '历史素材加载失败。',
-    emptyHistory: '当前流程还没有可用的历史图片。',
-    retry: '重试',
-  },
+const modelAgeFilters: ModelAgeFilter[] = [
+  'all',
+  'child',
+  'youth',
+  'middle',
+  'senior',
+];
+const modelGenderFilters: ModelGenderFilter[] = ['all', 'female', 'male'];
+const modelAgeTags: Record<ModelAgeFilter, string | null> = {
+  all: null,
+  child: '儿童',
+  youth: '青年',
+  middle: '中年',
+  senior: '老年',
+};
+const modelGenderTags: Record<ModelGenderFilter, string | null> = {
+  all: null,
+  female: '女',
+  male: '男',
 };
 
-function normalizeModelItems(value: unknown): ModelCatalogItem[] {
+function normalizeModelItems(value: unknown): ModelTemplateItem[] {
   if (!value || typeof value !== 'object') return [];
   const record = value as Record<string, unknown>;
-  return Array.isArray(record.items) ? (record.items as ModelCatalogItem[]) : [];
+  return Array.isArray(record.items) ? (record.items as ModelTemplateItem[]) : [];
 }
 
-function getModelAssetImage(item: ModelCatalogItem | null) {
+function getModelAssetImage(item: ModelTemplateItem | null) {
   if (!item) return '';
   return item.thumbnailUrl ?? item.imageUrl ?? item.videoUrl ?? '';
+}
+
+function getModelDetailImage(item: ModelTemplateItem | null) {
+  if (!item) return '';
+  return item.imageUrl ?? item.thumbnailUrl ?? item.videoUrl ?? '';
+}
+
+function getModelDescriptionLines(item: ModelTemplateItem | null) {
+  return (item?.description ?? '')
+    .split(/\n+/)
+    .map((line) => line.trim())
+    .filter(Boolean);
+}
+
+function getModelTags(item: ModelTemplateItem | null) {
+  return (item?.displayTags ?? item?.tags ?? [])
+    .map((tag) => tag.trim())
+    .filter((tag) => {
+      const normalized = tag.toLowerCase();
+      return tag && normalized !== 'model' && normalized !== 'wanxiang' && normalized !== 'new';
+    })
+    .slice(0, 8);
+}
+
+function modelHasTag(item: ModelTemplateItem, tag: string | null) {
+  if (!tag) return true;
+  return (item.tags ?? []).some((itemTag) => itemTag.trim() === tag);
 }
 
 function terminalStatus(status?: string) {
@@ -253,25 +273,6 @@ async function fetchJobStatus(jobId: string, labels: typeof commonWorkbenchCopy.
   return (await legacyStatus.json()) as JobStatusResponse;
 }
 
-function buildTryOnPrompt(input: {
-  prompt: string;
-  pose: PosePreset;
-  background: BackgroundPreset;
-  fit: FitPreset;
-  preserveFace: boolean;
-}) {
-  const guidance = [
-    input.prompt.trim(),
-    `pose: ${input.pose}`,
-    `background: ${input.background}`,
-    `fit: ${input.fit}`,
-    input.preserveFace ? 'preserve the model identity and facial details' : '',
-    'high-end fashion ecommerce try-on, realistic fabric drape, clean lighting',
-  ].filter(Boolean);
-
-  return guidance.join('; ');
-}
-
 function UploadPanel({
   id,
   title,
@@ -377,6 +378,41 @@ function SegmentedControl<T extends string>({
   );
 }
 
+function CompactSettingGroup<T extends string | number>({
+  label,
+  required,
+  options,
+  value,
+  onChange,
+  disabled,
+  columns,
+}: {
+  label: string;
+  required?: boolean;
+  options: readonly (T | { value: T; label: string })[];
+  value: T;
+  onChange: (value: T) => void;
+  disabled?: boolean;
+  columns: 2 | 3;
+}) {
+  return (
+    <div className="rounded-lg border border-gray-100 bg-gray-50 p-2">
+      <div className="mb-1.5 text-xs font-bold text-gray-500">
+        {required ? <span className="mr-0.5 text-red-500">*</span> : null}
+        {label}
+      </div>
+      <SegmentedOptions
+        options={options}
+        value={value}
+        onChange={onChange}
+        disabled={disabled}
+        columns={columns}
+        compact
+      />
+    </div>
+  );
+}
+
 function LibraryTile({
   item,
   active,
@@ -429,8 +465,6 @@ export function TryOnWorkbench({
   const locale = useDashboardLocale();
   const copy = tryOnWorkbenchCopy[locale];
   const commonCopy = commonWorkbenchCopy[locale];
-  const banner = bannerCopy[locale];
-  const materialCopy = materialPickerCopy[locale];
   const starterPrompt = initialPrompt.trim();
   const starterTemplateId = initialTemplateId.trim();
   const [garmentFiles, setGarmentFiles] = useState<Array<File | null>>([
@@ -440,25 +474,23 @@ export function TryOnWorkbench({
   const [garmentPreviews, setGarmentPreviews] = useState<string[]>([]);
   const [mode, setMode] = useState<TryOnMode>('multi');
   const [aspectRatio, setAspectRatio] = useState<TryOnAspectRatio>('1:1');
-  const [pose, setPose] = useState<PosePreset>('auto');
-  const [background, setBackground] = useState<BackgroundPreset>('studio');
-  const [fit, setFit] = useState<FitPreset>('natural');
-  const [preserveFace, setPreserveFace] = useState(true);
   const [prompt, setPrompt] = useState(() => starterPrompt);
   const [selectedTemplateId, setSelectedTemplateId] = useState<string | null>(
     () => starterTemplateId || null
   );
-  const [modelAssets, setModelAssets] = useState<ModelCatalogItem[]>([]);
+  const [modelAssets, setModelAssets] = useState<ModelTemplateItem[]>([]);
+  const [modelAgeFilter, setModelAgeFilter] = useState<ModelAgeFilter>('all');
+  const [modelGenderFilter, setModelGenderFilter] =
+    useState<ModelGenderFilter>('all');
   const [historyItems, setHistoryItems] = useState<LibraryItem[]>([]);
   const [hasLoadedHistory, setHasLoadedHistory] = useState(false);
   const [isLoadingHistory, setIsLoadingHistory] = useState(false);
-  const [historyError, setHistoryError] = useState(false);
-  const [selectedModelAsset, setSelectedModelAsset] = useState<ModelCatalogItem | null>(null);
+  const [selectedModelAsset, setSelectedModelAsset] = useState<ModelTemplateItem | null>(null);
+  const [modelDetailAsset, setModelDetailAsset] = useState<ModelTemplateItem | null>(null);
   const [selectedGarmentAssets, setSelectedGarmentAssets] = useState<
     LibraryItem[]
   >([]);
   const [isLoadingModels, setIsLoadingModels] = useState(true);
-  const [exampleOffset, setExampleOffset] = useState(0);
   const [submitLabel, setSubmitLabel] = useState<string | null>(null);
   const [jobId, setJobId] = useState<string | null>(null);
   const [jobStatus, setJobStatus] = useState<JobStatusResponse | null>(null);
@@ -481,15 +513,6 @@ export function TryOnWorkbench({
       title: getItemLabel(asset),
     }))
     .filter((item) => item.image);
-  const garmentPreviewTiles = [
-    ...selectedGarmentPreviewTiles,
-    ...garmentFiles
-      .map((file, index) => ({
-        image: garmentPreviews[index] ?? '',
-        title: file?.name,
-      }))
-      .filter((item) => item.image),
-  ];
   const upperGarmentPreview =
     garmentPreviews[0] || selectedGarmentPreviewTiles[0]?.image || '';
   const lowerGarmentPreview =
@@ -498,12 +521,50 @@ export function TryOnWorkbench({
     garmentFiles[0]?.name ?? selectedGarmentPreviewTiles[0]?.title;
   const lowerGarmentLabel =
     garmentFiles[1]?.name ?? selectedGarmentPreviewTiles[1]?.title;
+  const garmentWorkbenchCards =
+    mode === 'single'
+      ? [
+          {
+            key: 'single',
+            image: upperGarmentPreview,
+            title: upperGarmentLabel,
+          },
+        ]
+      : [
+          {
+            key: 'upper',
+            image: upperGarmentPreview,
+            title: upperGarmentLabel,
+          },
+          {
+            key: 'lower',
+            image: lowerGarmentPreview,
+            title: lowerGarmentLabel,
+          },
+        ];
   const garmentInputCount =
     localGarmentFiles.length + selectedGarmentAssetIds.length;
   const modeOptions = modeValues.map((value) => ({
     value,
     label: copy.modeOptions[value],
   }));
+  const modelAgeOptions = modelAgeFilters.map((value) => ({
+    value,
+    label: copy.modelAgeOptions[value],
+  }));
+  const modelGenderOptions = modelGenderFilters.map((value) => ({
+    value,
+    label: copy.modelGenderOptions[value],
+  }));
+  const filteredModelAssets = useMemo(
+    () =>
+      modelAssets.filter(
+        (model) =>
+          modelHasTag(model, modelAgeTags[modelAgeFilter]) &&
+          modelHasTag(model, modelGenderTags[modelGenderFilter])
+      ),
+    [modelAgeFilter, modelAssets, modelGenderFilter]
+  );
 
   const canSubmit = useMemo(() => {
     if (isSubmitting || !selectedModelAsset) return false;
@@ -531,7 +592,7 @@ export function TryOnWorkbench({
       try {
         const modelParams = new URLSearchParams({
           locale,
-          limit: '24',
+          limit: String(MODEL_ASSET_LIMIT),
         });
         const modelResponse = await fetch(`/api/model-assets?${modelParams.toString()}`);
         const modelBody = modelResponse.ok
@@ -555,13 +616,27 @@ export function TryOnWorkbench({
   }, [locale]);
 
   useEffect(() => {
+    if (isLoadingModels) return;
+
+    setSelectedModelAsset((current) => {
+      if (
+        current &&
+        filteredModelAssets.some((model) => model.id === current.id)
+      ) {
+        return current;
+      }
+
+      return filteredModelAssets[0] ?? null;
+    });
+  }, [filteredModelAssets, isLoadingModels]);
+
+  useEffect(() => {
     if (hasLoadedHistory) return;
 
     let cancelled = false;
 
     async function loadHistory() {
       setIsLoadingHistory(true);
-      setHistoryError(false);
 
       try {
         const params = new URLSearchParams({
@@ -581,7 +656,6 @@ export function TryOnWorkbench({
       } catch {
         if (!cancelled) {
           setHistoryItems([]);
-          setHistoryError(true);
         }
       } finally {
         if (!cancelled) {
@@ -754,18 +828,12 @@ export function TryOnWorkbench({
         {
           generationType: 'try_on',
           tryOnMode: mode,
-          modelCatalogAssetId: selectedModelAsset.id,
+          modelTemplateId: selectedModelAsset.id,
           garmentAssetId: garmentAssetIds[0],
           garmentAssetIds,
           ...(selectedTemplateId ? { templateId: selectedTemplateId } : {}),
           aspectRatio,
-          prompt: buildTryOnPrompt({
-            prompt,
-            pose,
-            background,
-            fit,
-            preserveFace,
-          }),
+          prompt: prompt.trim(),
         },
         commonCopy.generationStartError
       );
@@ -793,7 +861,7 @@ export function TryOnWorkbench({
     }
   }
 
-  function selectLibraryModel(model: ModelCatalogItem) {
+  function selectLibraryModel(model: ModelTemplateItem) {
     setSelectedModelAsset(model);
   }
 
@@ -878,21 +946,19 @@ export function TryOnWorkbench({
       historyItems.filter((item) => getItemAssetId(item) && getItemImage(item)),
     [historyItems]
   );
-  const displayedLibraryTiles = selectableHistoryItems;
-  const isChooseFromLibraryDisabled = displayedLibraryTiles.length === 0;
-  const baseLibraryImages = selectableHistoryItems.map(getItemImage).filter(Boolean);
-  const libraryStart = baseLibraryImages.length ? exampleOffset % baseLibraryImages.length : 0;
-  const libraryImages = [
-    ...baseLibraryImages.slice(libraryStart),
-    ...baseLibraryImages.slice(0, libraryStart),
-  ].slice(0, 6);
+  const isChooseFromLibraryDisabled =
+    isLoadingHistory || selectableHistoryItems.length === 0;
   const statusLabel = jobStatus?.progressLabel ?? jobStatus?.status ?? (jobId ? commonCopy.generating : null);
+  const modelDetailImage = getModelDetailImage(modelDetailAsset);
+  const modelDescriptionLines = getModelDescriptionLines(modelDetailAsset);
+  const modelDetailTags = getModelTags(modelDetailAsset);
 
   return (
-    <form
-      onSubmit={handleSubmit}
-      className="flex min-h-[calc(100dvh-58px)] flex-col bg-[#f5f7fb] text-gray-950 lg:flex-row"
-    >
+    <>
+      <form
+        onSubmit={handleSubmit}
+        className="flex min-h-[calc(100dvh-58px)] flex-col bg-[#f5f7fb] text-gray-950 lg:flex-row"
+      >
       <StudioPanel
         footer={
           <div className="flex items-center gap-3">
@@ -906,7 +972,7 @@ export function TryOnWorkbench({
             <Button
               type="submit"
               disabled={!canSubmit}
-              className="h-12 flex-1 rounded-full bg-[#b8b8f6] text-sm font-bold text-white shadow-none hover:bg-[#a8a8ef] disabled:bg-gray-200 disabled:text-gray-400"
+              className="h-12 flex-1 rounded-full bg-indigo-600 text-sm font-bold text-white shadow-sm hover:bg-indigo-700 disabled:bg-gray-200 disabled:text-gray-400 disabled:opacity-100"
             >
               {isSubmitting ? <Loader2 className="size-4 animate-spin" /> : <WandSparkles className="size-4" />}
               {submitLabel ?? commonCopy.generateNow}
@@ -918,99 +984,140 @@ export function TryOnWorkbench({
         }
       >
         <PanelSection title={copy.uploadGarment} required>
-          <div className="grid grid-cols-2 gap-3">
-            <div>
-              <p className="mb-2 text-center text-xs font-bold text-gray-600">
-                {copy.upperGarment}
-              </p>
-              <UploadDropzone
-                id="try-on-upper-garment"
-                preview={upperGarmentPreview}
-                fileName={upperGarmentLabel}
-                emptyText={copy.upperGarmentEmpty}
-                hint={copy.garmentHint}
-                disabled={isSubmitting}
-                onChange={(files) => selectGarmentFileAt(0, files)}
-              />
-            </div>
-            <div>
-              <p className="mb-2 text-center text-xs font-bold text-gray-600">
-                {copy.lowerGarment}
-              </p>
-              <UploadDropzone
-                id="try-on-lower-garment"
-                preview={lowerGarmentPreview}
-                fileName={lowerGarmentLabel}
-                emptyText={
-                  mode === 'single'
-                    ? copy.lowerGarmentDisabled
-                    : copy.lowerGarmentEmpty
-                }
-                hint={mode === 'single' ? copy.onePieceHint : copy.garmentHint}
-                disabled={isSubmitting || mode === 'single'}
-                onChange={(files) => selectGarmentFileAt(1, files)}
-              />
-            </div>
+          <div
+            className={cn(
+              'grid gap-3',
+              mode === 'multi' ? 'grid-cols-2' : 'grid-cols-1'
+            )}
+          >
+            {garmentWorkbenchCards.map((card) => (
+              <div key={card.key}>
+                <div
+                  className={cn(
+                    'flex min-h-28 items-center justify-center overflow-hidden rounded-lg border border-gray-200 bg-gray-100 px-3 py-4 text-center',
+                    card.image && 'bg-white p-2'
+                  )}
+                >
+                  {card.image ? (
+                    <img
+                      src={card.image}
+                      alt=""
+                      className="max-h-48 w-full rounded-md object-contain"
+                    />
+                  ) : (
+                    <span className="text-xs font-bold leading-5 text-gray-500">
+                      {copy.garmentWorkbenchEmpty}
+                    </span>
+                  )}
+                </div>
+                {card.title ? (
+                  <p className="mt-2 truncate text-xs font-semibold text-indigo-600">
+                    {card.title}
+                  </p>
+                ) : null}
+              </div>
+            ))}
           </div>
-          {garmentPreviewTiles.length > 1 ? (
-            <div className="mt-3 grid grid-cols-4 gap-2">
-              {garmentPreviewTiles.map((item) => (
-                <img
-                  key={item.image}
-                  src={item.image}
-                  alt=""
-                  className="aspect-square rounded-md border border-gray-200 object-cover"
-                  title={item.title}
-                />
-              ))}
-            </div>
-          ) : null}
         </PanelSection>
 
-        <PanelSection title={copy.mode} required>
-          <SegmentedOptions
+        <div className="mb-5 grid grid-cols-2 gap-2">
+          <CompactSettingGroup
+            label={copy.mode}
+            required
             options={modeOptions}
             value={mode}
             onChange={updateMode}
             disabled={isSubmitting}
             columns={2}
           />
-        </PanelSection>
-
-        <PanelSection title={copy.size} required>
-          <SegmentedOptions
+          <CompactSettingGroup
+            label={copy.size}
+            required
             options={tryOnAspectRatios}
             value={aspectRatio}
             onChange={setAspectRatio}
             disabled={isSubmitting}
             columns={3}
           />
+        </div>
+
+        <PanelSection title={copy.templateMaterials}>
+          <TemplatePromptPicker
+            type="try_on"
+            selectedTemplateId={selectedTemplateId}
+            disabled={isSubmitting}
+            onApply={applyTemplate}
+          />
         </PanelSection>
 
         <PanelSection title={copy.chooseModel} required>
-          <div className="mb-3 grid grid-cols-2 rounded-lg bg-gray-100 p-1">
-            <button
-              type="button"
-              onClick={() => {
-                setSelectedModelAsset((current) => current ?? modelAssets[0] ?? null);
-              }}
-              disabled={modelAssets.length === 0 || isSubmitting}
-              className={cn(
-                'h-10 rounded-md text-sm font-bold transition disabled:cursor-not-allowed disabled:opacity-50',
-                'bg-white text-indigo-600 shadow-sm'
-              )}
-            >
-              {copy.officialModel}
-            </button>
-            <button
-              type="button"
-              disabled
-              className="h-10 cursor-not-allowed rounded-md text-sm font-bold text-gray-400"
-            >
-              {copy.modelLibraryComingSoon}
-            </button>
+          <div className="mb-3 grid gap-2 rounded-lg border border-gray-100 bg-gray-50 p-2">
+            <div className="grid grid-cols-[2.5rem_1fr] items-center gap-2">
+              <span className="text-xs font-bold text-gray-500">
+                {copy.modelAgeFilter}
+              </span>
+              <div
+                className="flex flex-wrap gap-1.5"
+                role="group"
+                aria-label={copy.modelAgeFilter}
+              >
+                {modelAgeOptions.map((option) => {
+                  const active = modelAgeFilter === option.value;
+
+                  return (
+                    <button
+                      key={option.value}
+                      type="button"
+                      aria-pressed={active}
+                      onClick={() => setModelAgeFilter(option.value)}
+                      disabled={isSubmitting}
+                      className={cn(
+                        'h-8 min-w-12 rounded-md px-3 text-xs font-bold transition focus:outline-none focus-visible:ring-2 focus-visible:ring-indigo-300',
+                        active
+                          ? 'bg-indigo-600 text-white shadow-sm'
+                          : 'bg-white text-gray-600 hover:bg-indigo-50 hover:text-indigo-600'
+                      )}
+                    >
+                      {option.label}
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+            <div className="grid grid-cols-[2.5rem_1fr] items-center gap-2">
+              <span className="text-xs font-bold text-gray-500">
+                {copy.modelGenderFilter}
+              </span>
+              <div
+                className="flex flex-wrap gap-1.5"
+                role="group"
+                aria-label={copy.modelGenderFilter}
+              >
+                {modelGenderOptions.map((option) => {
+                  const active = modelGenderFilter === option.value;
+
+                  return (
+                    <button
+                      key={option.value}
+                      type="button"
+                      aria-pressed={active}
+                      onClick={() => setModelGenderFilter(option.value)}
+                      disabled={isSubmitting}
+                      className={cn(
+                        'h-8 min-w-12 rounded-md px-3 text-xs font-bold transition focus:outline-none focus-visible:ring-2 focus-visible:ring-indigo-300',
+                        active
+                          ? 'bg-indigo-600 text-white shadow-sm'
+                          : 'bg-white text-gray-600 hover:bg-indigo-50 hover:text-indigo-600'
+                      )}
+                    >
+                      {option.label}
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
           </div>
-          <div className="grid grid-cols-4 gap-3">
+          <div className="grid max-h-96 grid-cols-4 gap-3 overflow-y-auto pr-1">
             {isLoadingModels ? (
               <p className="col-span-4 inline-flex items-center justify-center gap-2 rounded-lg border border-dashed border-gray-200 px-3 py-4 text-sm font-semibold text-gray-400">
                 <Loader2 className="size-4 animate-spin" />
@@ -1020,8 +1127,12 @@ export function TryOnWorkbench({
               <p className="col-span-4 rounded-lg border border-dashed border-gray-200 px-3 py-4 text-sm text-gray-400">
                 {copy.noOfficialModels}
               </p>
+            ) : filteredModelAssets.length === 0 ? (
+              <p className="col-span-4 rounded-lg border border-dashed border-gray-200 px-3 py-4 text-sm text-gray-400">
+                {copy.noFilteredModels}
+              </p>
             ) : (
-              modelAssets.slice(0, 8).map((model) => {
+              filteredModelAssets.map((model) => {
                 const image = getModelAssetImage(model);
                 const active = selectedModelAsset?.id === model.id;
 
@@ -1029,96 +1140,60 @@ export function TryOnWorkbench({
                   <button
                     key={model.id}
                     type="button"
-                    onClick={() => selectLibraryModel(model)}
-                    className="group text-center"
+                    title={model.description ?? model.title}
+                    aria-label={model.title}
+                    onClick={() => setModelDetailAsset(model)}
+                    className="group block min-w-0 text-center"
                   >
+                    <span className="relative block">
+                      <span
+                        className={cn(
+                          'block aspect-square overflow-hidden rounded-lg border bg-gray-100 transition group-hover:border-indigo-300',
+                          active
+                            ? 'border-indigo-500 ring-2 ring-indigo-100'
+                            : 'border-gray-200'
+                        )}
+                      >
+                        {model.videoUrl && image === model.videoUrl ? (
+                          <video
+                            src={image}
+                            muted
+                            playsInline
+                            preload="metadata"
+                            className="size-full object-cover"
+                          />
+                        ) : image ? (
+                          <img
+                            src={image}
+                            alt=""
+                            className="size-full object-cover"
+                            loading="lazy"
+                            decoding="async"
+                          />
+                        ) : (
+                          <span className="flex size-full items-center justify-center text-gray-300">
+                            <ImageIcon className="size-5" />
+                          </span>
+                        )}
+                      </span>
+                      {active ? (
+                        <span className="absolute left-1.5 top-1.5 flex size-6 items-center justify-center rounded-full bg-indigo-600 text-white shadow-sm">
+                          <CheckCircle2 className="size-4" />
+                        </span>
+                      ) : null}
+                    </span>
                     <span
                       className={cn(
-                        'block aspect-square overflow-hidden rounded-lg border bg-gray-100 transition group-hover:border-indigo-300',
-                        active ? 'border-indigo-500 ring-2 ring-indigo-100' : 'border-gray-200'
+                        'mt-1 block w-full truncate text-xs font-semibold transition',
+                        active ? 'text-indigo-600' : 'text-gray-600 group-hover:text-indigo-600'
                       )}
                     >
-                      {model.videoUrl && image === model.videoUrl ? (
-                        <video src={image} muted playsInline className="size-full object-cover" />
-                      ) : (
-                        <img src={image} alt="" className="size-full object-cover" />
-                      )}
-                    </span>
-                    <span className="mt-1 block truncate text-xs font-semibold text-gray-600">
                       {model.title}
                     </span>
                   </button>
                 );
               })
             )}
-          </div>
-        </PanelSection>
-
-        <PanelSection title={copy.featureAdjust}>
-          <div className="space-y-4">
-            <div>
-              <Label className="mb-2 text-xs font-bold text-gray-500">{copy.pose}</Label>
-              <div className="grid grid-cols-2 gap-2">
-                {poseValues.map((option) => (
-                  <button
-                    key={option}
-                    type="button"
-                    disabled={isSubmitting}
-                    onClick={() => setPose(option)}
-                    className={cn(
-                      'h-10 rounded-lg border text-sm font-bold transition',
-                      pose === option
-                        ? 'border-indigo-500 bg-indigo-50 text-indigo-600'
-                        : 'border-gray-200 bg-white text-gray-600'
-                    )}
-                  >
-                    {copy.poseOptions[option]}
-                  </button>
-                ))}
-              </div>
-            </div>
-            <div>
-              <Label className="mb-2 text-xs font-bold text-gray-500">{copy.background}</Label>
-              <div className="grid grid-cols-2 gap-2">
-                {backgroundValues.map((option) => (
-                  <button
-                    key={option}
-                    type="button"
-                    disabled={isSubmitting}
-                    onClick={() => setBackground(option)}
-                    className={cn(
-                      'h-10 rounded-lg border text-sm font-bold transition',
-                      background === option
-                        ? 'border-indigo-500 bg-indigo-50 text-indigo-600'
-                        : 'border-gray-200 bg-white text-gray-600'
-                    )}
-                  >
-                    {copy.backgroundOptions[option]}
-                  </button>
-                ))}
-              </div>
-            </div>
-            <div>
-              <Label className="mb-2 text-xs font-bold text-gray-500">{copy.fit}</Label>
-              <div className="grid grid-cols-3 gap-2">
-                {fitValues.map((option) => (
-                  <button
-                    key={option}
-                    type="button"
-                    disabled={isSubmitting}
-                    onClick={() => setFit(option)}
-                    className={cn(
-                      'h-10 rounded-lg border text-sm font-bold transition',
-                      fit === option
-                        ? 'border-indigo-500 bg-indigo-50 text-indigo-600'
-                        : 'border-gray-200 bg-white text-gray-600'
-                    )}
-                  >
-                    {copy.fitOptions[option]}
-                  </button>
-                ))}
-              </div>
-            </div>
           </div>
         </PanelSection>
 
@@ -1132,94 +1207,6 @@ export function TryOnWorkbench({
             placeholder={copy.promptPlaceholder}
             className="min-h-28 w-full resize-none rounded-lg border border-gray-200 bg-gray-100 px-4 py-3 text-sm leading-6 text-gray-800 outline-none transition placeholder:text-gray-400 focus:border-indigo-300 focus:bg-white focus:ring-3 focus:ring-indigo-100 disabled:cursor-not-allowed disabled:opacity-60"
           />
-          <label className="mt-3 flex items-center justify-between rounded-lg border border-gray-200 bg-white px-3 py-2 text-sm font-bold text-gray-700">
-            {copy.preserveIdentity}
-            <input
-              type="checkbox"
-              checked={preserveFace}
-              onChange={(event) => setPreserveFace(event.target.checked)}
-              disabled={isSubmitting}
-              className="size-4 accent-indigo-500"
-            />
-          </label>
-        </PanelSection>
-
-        <PanelSection title={copy.templateMaterials}>
-          <TemplatePromptPicker
-            type="try_on"
-            selectedTemplateId={selectedTemplateId}
-            disabled={isSubmitting}
-            onApply={applyTemplate}
-          />
-        </PanelSection>
-
-        <PanelSection
-          title={materialCopy.history}
-          hint={
-            isLoadingHistory
-              ? materialCopy.loadingHistory
-              : commonCopy.materialCount(selectableHistoryItems.length)
-          }
-        >
-          <div className="space-y-3">
-            <div className="grid grid-cols-3 gap-2">
-              {isLoadingHistory ? (
-                <div className="col-span-3 flex items-center justify-center gap-2 rounded-lg border border-dashed border-gray-200 px-3 py-4 text-sm font-semibold text-gray-400">
-                  <Loader2 className="size-4 animate-spin" />
-                  {materialCopy.loadingHistory}
-                </div>
-              ) : historyError ? (
-                <div className="col-span-3 rounded-lg border border-red-100 bg-red-50 px-3 py-4 text-sm text-red-700">
-                  <div className="flex items-start gap-2">
-                    <AlertCircle className="mt-0.5 size-4 shrink-0" />
-                    <span>{materialCopy.historyError}</span>
-                  </div>
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setHistoryError(false);
-                      setHasLoadedHistory(false);
-                    }}
-                    className="mt-2 text-xs font-bold text-red-700 underline underline-offset-2"
-                  >
-                    {materialCopy.retry}
-                  </button>
-                </div>
-              ) : displayedLibraryTiles.length === 0 ? (
-                <p className="col-span-3 rounded-lg border border-dashed border-gray-200 px-3 py-4 text-sm text-gray-400">
-                  {materialCopy.emptyHistory}
-                </p>
-              ) : (
-                displayedLibraryTiles.slice(0, 12).map((asset) => {
-                  const image = getItemImage(asset);
-                  const assetId = getItemAssetId(asset);
-                  const active = selectedGarmentAssetIds.includes(assetId);
-
-                  return (
-                    <button
-                      key={String(asset.id ?? image)}
-                      type="button"
-                      onClick={() => {
-                        if (mode === 'single') {
-                          selectLibraryGarment(asset);
-                          return;
-                        }
-
-                        toggleLibraryGarment(asset);
-                      }}
-                      className={cn(
-                        'aspect-square overflow-hidden rounded-lg border bg-gray-100',
-                        active ? 'border-indigo-500 ring-2 ring-indigo-100' : 'border-gray-200'
-                      )}
-                      title={getItemLabel(asset)}
-                    >
-                      {image ? <img src={image} alt="" className="size-full object-cover" /> : null}
-                    </button>
-                  );
-                })
-              )}
-            </div>
-          </div>
         </PanelSection>
 
         {error ? (
@@ -1235,7 +1222,7 @@ export function TryOnWorkbench({
 
       <CanvasStage
         title={copy.canvasTitle}
-        banner={<BlueBanner title={banner.title} label={copy.banner} images={libraryImages.length ? libraryImages.slice(0, 4) : undefined} />}
+        contentClassName="flex min-h-0 flex-1 items-center py-4"
       >
         <div className="mx-auto w-full max-w-[900px]">
           {selectedResultUrl ? (
@@ -1342,14 +1329,125 @@ export function TryOnWorkbench({
             </p>
           ) : null}
 
-          <ExampleProducts
-            images={libraryImages.length ? libraryImages : undefined}
-            title={commonCopy.examples}
-            refreshLabel={commonCopy.refresh}
-            onRefresh={() => setExampleOffset((offset) => offset + 1)}
-          />
         </div>
       </CanvasStage>
-    </form>
+      </form>
+
+      {modelDetailAsset ? (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center bg-gray-950/55 px-4 py-6"
+          role="dialog"
+          aria-modal="true"
+          aria-label={`${copy.modelDetailTitle}: ${modelDetailAsset.title}`}
+          onClick={() => setModelDetailAsset(null)}
+        >
+          <div
+            className="flex max-h-[90dvh] w-full max-w-3xl flex-col overflow-hidden rounded-lg bg-white shadow-2xl"
+            onClick={(event) => event.stopPropagation()}
+          >
+            <div className="flex items-center justify-between gap-4 border-b border-gray-100 px-5 py-4">
+              <div className="min-w-0">
+                <p className="text-xs font-bold uppercase text-indigo-500">
+                  {copy.modelDetailTitle}
+                </p>
+                <h2 className="truncate text-xl font-black text-gray-950">
+                  {modelDetailAsset.title}
+                </h2>
+              </div>
+              <button
+                type="button"
+                aria-label={copy.close}
+                title={copy.close}
+                onClick={() => setModelDetailAsset(null)}
+                className="flex size-9 shrink-0 items-center justify-center rounded-full border border-gray-200 text-gray-500 transition hover:border-indigo-200 hover:bg-indigo-50 hover:text-indigo-600 focus:outline-none focus-visible:ring-2 focus-visible:ring-indigo-300"
+              >
+                <X className="size-4" />
+              </button>
+            </div>
+
+            <div className="grid min-h-0 gap-5 overflow-y-auto p-5 md:grid-cols-[minmax(0,280px)_1fr]">
+              <div>
+                <p className="mb-2 text-xs font-bold uppercase text-gray-400">
+                  {copy.modelDisplayImage}
+                </p>
+                <div className="aspect-[3/4] overflow-hidden rounded-lg bg-gray-100">
+                  {modelDetailImage ? (
+                    modelDetailAsset.videoUrl &&
+                    modelDetailImage === modelDetailAsset.videoUrl ? (
+                      <video
+                        src={modelDetailImage}
+                        muted
+                        playsInline
+                        controls
+                        className="size-full object-cover"
+                      />
+                    ) : (
+                      <img
+                        src={modelDetailImage}
+                        alt=""
+                        className="size-full object-cover"
+                        loading="eager"
+                        decoding="async"
+                      />
+                    )
+                  ) : (
+                    <span className="flex size-full items-center justify-center text-gray-300">
+                      <ImageIcon className="size-8" />
+                    </span>
+                  )}
+                </div>
+              </div>
+
+              <div className="min-w-0">
+                <p className="mb-2 text-xs font-bold uppercase text-gray-400">
+                  {copy.modelStyleIntro}
+                </p>
+                {modelDetailTags.length > 0 ? (
+                  <div className="mb-4 flex flex-wrap gap-2">
+                    {modelDetailTags.map((tag) => (
+                      <span
+                        key={tag}
+                        className="rounded-full bg-indigo-50 px-2.5 py-1 text-xs font-bold text-indigo-600"
+                      >
+                        {tag}
+                      </span>
+                    ))}
+                  </div>
+                ) : null}
+                <div className="space-y-2 text-sm leading-6 text-gray-700">
+                  {modelDescriptionLines.length > 0 ? (
+                    modelDescriptionLines.map((line) => (
+                      <p key={line}>{line}</p>
+                    ))
+                  ) : (
+                    <p>{modelDetailAsset.title}</p>
+                  )}
+                </div>
+              </div>
+            </div>
+
+            <div className="flex items-center justify-end gap-3 border-t border-gray-100 px-5 py-4">
+              {selectedModelAsset?.id === modelDetailAsset.id ? (
+                <span className="inline-flex items-center gap-2 text-sm font-bold text-indigo-600">
+                  <CheckCircle2 className="size-4" />
+                  {copy.selectedModel}
+                </span>
+              ) : null}
+              <Button
+                type="button"
+                onClick={() => {
+                  selectLibraryModel(modelDetailAsset);
+                  setModelDetailAsset(null);
+                }}
+                disabled={isSubmitting}
+                className="rounded-full bg-indigo-600 px-5 text-sm font-bold text-white hover:bg-indigo-700"
+              >
+                {copy.useThisModel}
+              </Button>
+            </div>
+          </div>
+        </div>
+      ) : null}
+    </>
   );
 }

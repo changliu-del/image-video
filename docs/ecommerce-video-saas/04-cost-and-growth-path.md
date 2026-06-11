@@ -125,9 +125,7 @@ Stripe 抽成
 MVP credits 规则：
 
 ```text
-5s 标准视频: 10 credits
-8s 标准视频: 18 credits
-10s 标准视频: 25 credits
+固定 5s 标准视频: 10 credits
 失败任务: 全额返还
 ```
 
@@ -172,7 +170,7 @@ Stripe radar 基础风控
 付费用户: 按 credits 消耗
 单用户并发生成: 1-2 个
 全局并发生成: 根据 Wanxiang endpoint capacity、Trigger.dev concurrency 和预算设置
-最大视频时长: 10 秒
+图生视频时长: 固定 5 秒
 最大上传图片: 10 MB
 ```
 

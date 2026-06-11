@@ -1,6 +1,6 @@
 import type { Locale } from '@/lib/marketing/content';
 
-export type TemplateType = 'image_to_image' | 'image_to_video' | 'try_on';
+export type TemplateType = 'image_to_image' | 'image_to_video' | 'model' | 'try_on';
 
 export type TemplateCatalogListItem = {
   id: string;
@@ -41,6 +41,7 @@ export type StarterTemplateSeed = {
 export const templateTypes: TemplateType[] = [
   'image_to_video',
   'image_to_image',
+  'model',
   'try_on',
 ];
 
@@ -54,6 +55,11 @@ export const templateTypeLabels: Record<TemplateType, LocalizedText> = {
     pt: 'Imagem',
     en: 'Image',
     zh: '商品图',
+  },
+  model: {
+    pt: 'Modelos',
+    en: 'Models',
+    zh: '模特',
   },
   try_on: {
     pt: 'Provador virtual',

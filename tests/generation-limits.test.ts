@@ -21,6 +21,7 @@ describe('generation limits', () => {
           activeCount: 10,
           dailyCount: 10,
           totalCount: 10,
+          creditBalance: 0,
           hasPurchasedCredits: true,
         },
         {
@@ -38,6 +39,7 @@ describe('generation limits', () => {
         activeCount: 1,
         dailyCount: 0,
         totalCount: 0,
+        creditBalance: 0,
         hasPurchasedCredits: true,
       },
       {
@@ -51,7 +53,7 @@ describe('generation limits', () => {
     expect(violation?.status).toBe(429);
   });
 
-  it('blocks unpaid users after the free quota while allowing paid users', () => {
+  it('blocks zero-balance free users after the free quota while allowing funded users', () => {
     const config = {
       dailyLimit: 100,
       activeConcurrencyLimit: 2,
@@ -64,6 +66,7 @@ describe('generation limits', () => {
           activeCount: 0,
           dailyCount: 3,
           totalCount: 3,
+          creditBalance: 0,
           hasPurchasedCredits: false,
         },
         config
@@ -76,7 +79,21 @@ describe('generation limits', () => {
           activeCount: 0,
           dailyCount: 3,
           totalCount: 3,
+          creditBalance: 0,
           hasPurchasedCredits: true,
+        },
+        config
+      )
+    ).toBeNull();
+
+    expect(
+      getGenerationLimitViolation(
+        {
+          activeCount: 0,
+          dailyCount: 3,
+          totalCount: 3,
+          creditBalance: 10,
+          hasPurchasedCredits: false,
         },
         config
       )
@@ -89,6 +106,7 @@ describe('generation limits', () => {
         activeCount: 0,
         dailyCount: 10,
         totalCount: 10,
+        creditBalance: 100,
         hasPurchasedCredits: true,
       },
       {

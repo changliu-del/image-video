@@ -2,8 +2,7 @@ import { describe, expect, it } from 'vitest';
 
 import {
   ALLOWED_UPLOAD_MIME_TYPES,
-  GENERATION_DURATION_SECONDS_MAX,
-  GENERATION_DURATION_SECONDS_MIN,
+  IMAGE_TO_VIDEO_DURATION_SECONDS,
   MAX_TEXT_TO_IMAGE_PROMPT_LENGTH,
   MAX_UPLOAD_SIZE_BYTES,
   apparelImageGenerationRequestSchema,
@@ -19,8 +18,6 @@ const validImageToVideoRequest = {
   generationType: 'image_to_video',
   inputAssetId: 'asset_123',
   prompt: 'Create a polished product video from the uploaded image.',
-  aspectRatio: '9:16',
-  durationSeconds: 10,
 } as const;
 
 describe('presignAssetRequestSchema', () => {
@@ -59,58 +56,42 @@ describe('presignAssetRequestSchema', () => {
 });
 
 describe('imageToVideoGenerationRequestSchema', () => {
-  it('accepts supported generation durations and maps them to credit costs', () => {
-    const expectedCosts: Record<number, number> = {
-      4: 8,
-      5: 10,
-      10: 25,
-      15: 40,
-    };
+  it('defaults image-to-video to the fixed 5s duration and maps it to fixed credit cost', () => {
+    const parsed = imageToVideoGenerationRequestSchema.parse(
+      validImageToVideoRequest
+    );
 
-    for (const durationSeconds of [
-      GENERATION_DURATION_SECONDS_MIN,
-      5,
-      10,
-      GENERATION_DURATION_SECONDS_MAX,
-    ]) {
-      const parsed = imageToVideoGenerationRequestSchema.parse({
-        ...validImageToVideoRequest,
-        durationSeconds,
-      });
-
-      expect(parsed.durationSeconds).toBe(durationSeconds);
-      expect(getCreditCostForDuration(durationSeconds)).toBe(
-        expectedCosts[durationSeconds]
-      );
-      expect(getCreditCostForGeneration(parsed)).toBe(
-        expectedCosts[durationSeconds]
-      );
-    }
+    expect(parsed.durationSeconds).toBe(IMAGE_TO_VIDEO_DURATION_SECONDS);
+    expect(getCreditCostForDuration(IMAGE_TO_VIDEO_DURATION_SECONDS)).toBe(10);
+    expect(getCreditCostForGeneration(parsed)).toBe(10);
   });
 
-  it('rejects durations outside the workbench slider range', () => {
+  it('rejects non-5s image-to-video durations', () => {
     expect(
       imageToVideoGenerationRequestSchema.safeParse({
         ...validImageToVideoRequest,
-        durationSeconds: 3,
+        durationSeconds: 4,
       }).success
     ).toBe(false);
     expect(
       imageToVideoGenerationRequestSchema.safeParse({
         ...validImageToVideoRequest,
-        durationSeconds: 16,
+        durationSeconds: 10,
       }).success
     ).toBe(false);
+    expect(() => getCreditCostForDuration(10)).toThrow(
+      'Unsupported generation duration: 10'
+    );
   });
 
-  it('coerces string durations from form payloads', () => {
+  it('accepts only the legacy fixed 5s duration from old payloads', () => {
     const parsed = imageToVideoGenerationRequestSchema.parse({
       ...validImageToVideoRequest,
-      durationSeconds: '15',
+      durationSeconds: String(IMAGE_TO_VIDEO_DURATION_SECONDS),
     });
 
-    expect(parsed.durationSeconds).toBe(15);
-    expect(getCreditCostForGeneration(parsed)).toBe(40);
+    expect(parsed.durationSeconds).toBe(IMAGE_TO_VIDEO_DURATION_SECONDS);
+    expect(getCreditCostForGeneration(parsed)).toBe(10);
   });
 
   it('supports the legacy image-to-video alias but normalizes to image_to_video', () => {
@@ -122,35 +103,39 @@ describe('imageToVideoGenerationRequestSchema', () => {
     expect(parsed.generationType).toBe('image_to_video');
   });
 
-  it('accepts optional workbench fields and treats an empty prompt as omitted', () => {
+  it('accepts template metadata and defaults image-to-video to 5s', () => {
     const parsed = imageToVideoGenerationRequestSchema.parse({
       ...validImageToVideoRequest,
-      prompt: '',
       templateId: 'template_123',
-      aspectRatio: '3:4',
-      durationSeconds: 11,
-      qualityMode: 'high',
-      audioSync: false,
-      referenceAssetIds: ['ref_image', 'ref_video', 'ref_audio'],
-      referenceImageAssetIds: ['ref_image'],
-      referenceVideoAssetIds: ['ref_video'],
-      referenceAudioAssetIds: ['ref_audio'],
     });
 
-    expect(parsed.prompt).toBeUndefined();
+    expect(parsed.prompt).toBe(validImageToVideoRequest.prompt);
     expect(parsed.templateId).toBe('template_123');
-    expect(parsed.aspectRatio).toBe('3:4');
-    expect(parsed.durationSeconds).toBe(11);
-    expect(parsed.qualityMode).toBe('high');
-    expect(parsed.audioSync).toBe(false);
-    expect(parsed.referenceAssetIds).toEqual([
-      'ref_image',
-      'ref_video',
-      'ref_audio',
-    ]);
-    expect(parsed.referenceImageAssetIds).toEqual(['ref_image']);
-    expect(parsed.referenceVideoAssetIds).toEqual(['ref_video']);
-    expect(parsed.referenceAudioAssetIds).toEqual(['ref_audio']);
+    expect(parsed.durationSeconds).toBe(IMAGE_TO_VIDEO_DURATION_SECONDS);
+  });
+
+  it('requires a prompt for image-to-video generation', () => {
+    const result = imageToVideoGenerationRequestSchema.safeParse({
+      ...validImageToVideoRequest,
+      prompt: '',
+    });
+
+    expect(result.success).toBe(false);
+  });
+
+  it('rejects unsupported image-to-video video and audio reference fields', () => {
+    expect(
+      imageToVideoGenerationRequestSchema.safeParse({
+        ...validImageToVideoRequest,
+        referenceVideoAssetIds: ['ref_video'],
+      }).success
+    ).toBe(false);
+    expect(
+      imageToVideoGenerationRequestSchema.safeParse({
+        ...validImageToVideoRequest,
+        referenceAudioAssetIds: ['ref_audio'],
+      }).success
+    ).toBe(false);
   });
 
   it('requires an input asset id and supports the inputAsset alias', () => {
@@ -168,15 +153,14 @@ describe('imageToVideoGenerationRequestSchema', () => {
     expect(aliasAsset.inputAssetId).toBe('asset_from_alias');
   });
 
-  it('accepts multiple product images and keeps the first image as the main input', () => {
-    const parsed = imageToVideoGenerationRequestSchema.parse({
+  it('rejects multiple product images because the provider accepts one image', () => {
+    const result = imageToVideoGenerationRequestSchema.safeParse({
       ...validImageToVideoRequest,
       inputAssetId: undefined,
       inputAssetIds: ['asset_a', 'asset_b', 'asset_c'],
     });
 
-    expect(parsed.inputAssetId).toBe('asset_a');
-    expect(parsed.inputAssetIds).toEqual(['asset_a', 'asset_b', 'asset_c']);
+    expect(result.success).toBe(false);
   });
 
   it('rejects mismatched generation type and mode aliases', () => {
@@ -256,6 +240,19 @@ describe('tryOnGenerationRequestSchema', () => {
     expect(parsed.tryOnMode).toBe('multi');
     expect(parsed.modelAssetId).toBe('model_asset');
     expect(getCreditCostForGeneration(parsed)).toBe(10);
+  });
+
+  it('accepts model templates for try-on requests', () => {
+    const parsed = tryOnGenerationRequestSchema.parse({
+      generationType: 'try_on',
+      tryOnMode: 'single',
+      modelTemplateId: 'model_template_123',
+      garmentAssetId: 'garment_asset',
+    });
+
+    expect(parsed.modelTemplateId).toBe('model_template_123');
+    expect(parsed.modelAssetId).toBeUndefined();
+    expect(parsed.garmentAssetIds).toEqual(['garment_asset']);
   });
 
   it('requires at least two garments for multi try-on', () => {

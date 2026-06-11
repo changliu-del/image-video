@@ -45,16 +45,15 @@ const localeSchema = z.enum(['pt', 'en', 'zh']);
 const templateTypeSchema = z.enum([
   'image_to_image',
   'image_to_video',
+  'model',
   'try_on',
 ]);
 const templateMediaTargetSchema = z.enum(['thumbnail', 'preview']);
 const templateCategorySchema = z
   .string()
   .trim()
-  .toLowerCase()
   .min(1)
-  .max(80)
-  .regex(/^[a-z0-9][a-z0-9_-]*$/);
+  .max(120);
 const titleTranslationsSchema = z
   .record(localeSchema, z.string().trim().min(1).max(140))
   .optional()
@@ -126,21 +125,27 @@ const completeTemplatePreviewSchema = z
 
 function normalizeTemplatePayload(input: unknown) {
   const payload = templatePayloadSchema.parse(input);
+  const category = normalizeTemplateCategoryForType(payload.type, payload.category);
+  if (!category) {
+    throw new Error('Template category is invalid for this type');
+  }
+
   return {
     ...payload,
-    category:
-      normalizeTemplateCategoryForType(payload.type, payload.category) ??
-      payload.category,
+    category,
   };
 }
 
 function normalizeTemplateGroup(input: unknown) {
   const group = templateGroupSchema.parse(input);
+  const category = normalizeTemplateCategoryForType(group.type, group.category);
+  if (!category) {
+    throw new Error('Template category is invalid for this type');
+  }
+
   return {
     ...group,
-    category:
-      normalizeTemplateCategoryForType(group.type, group.category) ??
-      group.category,
+    category,
   };
 }
 

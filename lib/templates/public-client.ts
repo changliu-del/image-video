@@ -1,4 +1,4 @@
-export type PublicTemplateType = 'image_to_video' | 'image_to_image' | 'try_on';
+export type PublicTemplateType = 'image_to_video' | 'image_to_image' | 'model' | 'try_on';
 
 export type PublicTemplateListItem = {
   id: string;
@@ -30,6 +30,7 @@ export type PublicTemplatesApiResponse = {
 const templateTypes = new Set<PublicTemplateType>([
   'image_to_video',
   'image_to_image',
+  'model',
   'try_on',
 ]);
 

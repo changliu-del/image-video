@@ -8,6 +8,7 @@ export type GenerationLimitCounts = {
   activeCount: number;
   dailyCount: number;
   totalCount: number;
+  creditBalance: number;
   hasPurchasedCredits: boolean;
 };
 
@@ -99,6 +100,7 @@ export function getGenerationLimitViolation(
 
   if (
     !counts.hasPurchasedCredits &&
+    counts.creditBalance <= 0 &&
     counts.totalCount >= config.freeQuotaLimit
   ) {
     return {

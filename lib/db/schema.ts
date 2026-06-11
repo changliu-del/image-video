@@ -56,6 +56,7 @@ export type EmailVerificationPurpose =
 export const TEMPLATE_TYPES = [
   'image_to_image',
   'image_to_video',
+  'model',
   'try_on',
 ] as const;
 export type TemplateType = (typeof TEMPLATE_TYPES)[number];
@@ -262,7 +263,7 @@ export const templates = pgTable(
     index('templates_preview_asset_id_idx').on(table.previewAssetId),
     check(
       'templates_type_check',
-      sql`${table.type} in ('image_to_video', 'image_to_image', 'try_on')`
+      sql`${table.type} in ('image_to_video', 'image_to_image', 'model', 'try_on')`
     ),
     check('templates_title_not_empty_check', sql`length(trim(${table.title})) > 0`),
     check('templates_category_not_empty_check', sql`length(trim(${table.category})) > 0`),
@@ -271,63 +272,6 @@ export const templates = pgTable(
     check('templates_thumbnail_mime_type_not_empty_check', sql`length(trim(${table.thumbnailMimeType})) > 0`),
     check('templates_preview_mime_type_not_empty_check', sql`length(trim(${table.previewMimeType})) > 0`),
     check('templates_sort_order_check', sql`${table.sortOrder} >= 0`),
-  ]
-);
-
-export const MODEL_CATALOG_ASSET_STATUSES = [
-  'active',
-  'inactive',
-  'failed',
-] as const;
-export type ModelCatalogAssetStatus =
-  (typeof MODEL_CATALOG_ASSET_STATUSES)[number];
-
-export const modelCatalogAssets = pgTable(
-  'model_catalog_assets',
-  {
-    id: uuid('id').defaultRandom().primaryKey(),
-    provider: varchar('provider', { length: 40 }).notNull().default('wanxiang'),
-    externalId: varchar('external_id', { length: 160 }).notNull(),
-    locale: varchar('locale', { length: 8 }).notNull().default('pt'),
-    title: varchar('title', { length: 140 }).notNull(),
-    description: text('description'),
-    thumbnailUrl: text('thumbnail_url'),
-    imageUrl: text('image_url'),
-    videoUrl: text('video_url'),
-    tagsJson: jsonb('tags_json')
-      .$type<string[]>()
-      .notNull()
-      .default(sql`'[]'::jsonb`),
-    providerPayloadJson: jsonb('provider_payload_json')
-      .$type<Record<string, unknown>>()
-      .notNull()
-      .default(sql`'{}'::jsonb`),
-    status: varchar('status', { length: 24 })
-      .$type<ModelCatalogAssetStatus>()
-      .notNull()
-      .default('active'),
-    sortWeight: integer('sort_weight').notNull().default(0),
-    syncedAt: timestamp('synced_at'),
-    createdAt: timestamp('created_at').notNull().defaultNow(),
-    updatedAt: timestamp('updated_at').notNull().defaultNow(),
-  },
-  (table) => [
-    uniqueIndex('model_catalog_assets_provider_external_locale_unique').on(
-      table.provider,
-      table.externalId,
-      table.locale
-    ),
-    index('model_catalog_assets_locale_status_idx').on(table.locale, table.status),
-    index('model_catalog_assets_provider_status_idx').on(table.provider, table.status),
-    index('model_catalog_assets_sort_weight_idx').on(table.sortWeight),
-    check(
-      'model_catalog_assets_status_check',
-      sql`${table.status} in ('active', 'inactive', 'failed')`
-    ),
-    check(
-      'model_catalog_assets_media_check',
-      sql`${table.thumbnailUrl} is not null or ${table.imageUrl} is not null or ${table.videoUrl} is not null`
-    ),
   ]
 );
 

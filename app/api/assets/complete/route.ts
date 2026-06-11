@@ -3,6 +3,7 @@ import {
   getAssetForUser,
   markAssetUploaded,
 } from '@/lib/generations/jobs';
+import { buildAssetMediaUrl } from '@/lib/assets/media-url';
 import { completeAssetRequestSchema } from '@/lib/generations/validation';
 import { upsertUserMediaHistory } from '@/lib/user-media/service';
 import {
@@ -140,6 +141,6 @@ export async function POST(request: NextRequest) {
   return NextResponse.json({
     assetId: updatedAsset.id,
     status: updatedAsset.status,
-    publicUrl: updatedAsset.publicUrl,
+    publicUrl: buildAssetMediaUrl(updatedAsset.id),
   });
 }

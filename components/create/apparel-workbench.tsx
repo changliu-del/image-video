@@ -19,22 +19,16 @@ import {
 
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
 import {
-  BlueBanner,
   CanvasStage,
-  ChoiceGrid,
-  ExampleProducts,
   IconButtonCard,
   PanelSection,
   ResultCard,
   SegmentedOptions,
   StudioPanel,
-  UploadDropzone,
 } from '@/components/create/workbench-ui';
 import {
   apparelWorkbenchCopy,
-  bannerCopy,
   commonWorkbenchCopy,
 } from '@/components/create/workbench-copy';
 import { TemplatePromptPicker } from '@/components/create/template-prompt-picker';
@@ -56,10 +50,6 @@ import {
 import { cn } from '@/lib/utils';
 
 type AspectRatio = '9:16' | '1:1' | '16:9';
-type CreationMode = 'quick' | 'advanced';
-type ApparelModelType = 'fashion_model' | 'no_model' | 'partial_body' | 'lifestyle_talent';
-type ApparelScene = 'minimal_studio' | 'street_editorial' | 'luxury_boutique' | 'soft_daylight';
-type ApparelStyle = 'clean_commercial' | 'high_fashion' | 'korean_catalog' | 'premium_social_ad';
 
 type PresignResponse = {
   assetId: string;
@@ -89,24 +79,6 @@ type JobStatusResponse = {
 const MAX_IMAGE_BYTES = 10 * 1024 * 1024;
 const ACCEPTED_IMAGE_TYPES = ['image/png', 'image/jpeg', 'image/webp'];
 const aspectRatios: AspectRatio[] = ['9:16', '1:1', '16:9'];
-const modelTypeValues: ApparelModelType[] = [
-  'fashion_model',
-  'no_model',
-  'partial_body',
-  'lifestyle_talent',
-];
-const sceneValues: ApparelScene[] = [
-  'minimal_studio',
-  'street_editorial',
-  'luxury_boutique',
-  'soft_daylight',
-];
-const styleValues: ApparelStyle[] = [
-  'clean_commercial',
-  'high_fashion',
-  'korean_catalog',
-  'premium_social_ad',
-];
 const materialPickerCopy = {
   pt: {
     history: 'Meu historico',
@@ -270,46 +242,6 @@ function SectionTitle({
   );
 }
 
-function OptionGroup<T extends string>({
-  label,
-  options,
-  value,
-  onChange,
-  disabled,
-}: {
-  label: string;
-  options: T[];
-  value: T;
-  onChange: (value: T) => void;
-  disabled?: boolean;
-}) {
-  return (
-    <div>
-      <Label className="mb-2 text-xs font-medium uppercase text-gray-400">
-        {label}
-      </Label>
-      <div className="grid grid-cols-2 gap-2">
-        {options.map((option) => (
-          <button
-            key={option}
-            type="button"
-            disabled={disabled}
-            onClick={() => onChange(option)}
-            className={cn(
-              'min-h-10 rounded-lg border px-3 py-2 text-left text-sm font-medium transition disabled:cursor-not-allowed disabled:opacity-50',
-              value === option
-                ? 'border-indigo-300 bg-indigo-50 text-indigo-600 shadow-sm'
-                : 'border-gray-200 bg-white text-gray-600 hover:border-indigo-200 hover:bg-indigo-50/40 hover:text-indigo-600'
-            )}
-          >
-            {option}
-          </button>
-        ))}
-      </div>
-    </div>
-  );
-}
-
 function LibraryTile({
   item,
   active,
@@ -367,7 +299,6 @@ export function ApparelWorkbench({
   const locale = useDashboardLocale();
   const copy = apparelWorkbenchCopy[locale];
   const commonCopy = commonWorkbenchCopy[locale];
-  const banner = bannerCopy[locale];
   const materialCopy = materialPickerCopy[locale];
   const starterPrompt = initialPrompt.trim();
   const starterTemplateId = initialTemplateId.trim();
@@ -379,21 +310,13 @@ export function ApparelWorkbench({
   const [historyError, setHistoryError] = useState(false);
   const [selectedLibraryAsset, setSelectedLibraryAsset] =
     useState<LibraryItem | null>(null);
-  const [creationMode, setCreationMode] = useState<CreationMode>('quick');
-  const [modelType, setModelType] = useState<ApparelModelType>('fashion_model');
-  const [scene, setScene] = useState<ApparelScene>('minimal_studio');
-  const [style, setStyle] = useState<ApparelStyle>('clean_commercial');
   const [prompt, setPrompt] = useState(
     () => starterPrompt || copy.defaultPrompt
   );
   const [selectedTemplateId, setSelectedTemplateId] = useState<string | null>(
     () => starterTemplateId || null
   );
-  const [negativePrompt, setNegativePrompt] = useState(() => copy.defaultNegativePrompt);
   const [aspectRatio, setAspectRatio] = useState<AspectRatio>('9:16');
-  const [strength, setStrength] = useState(64);
-  const [variants, setVariants] = useState(4);
-  const [exampleOffset, setExampleOffset] = useState(0);
   const [submitLabel, setSubmitLabel] = useState<string | null>(null);
   const [jobId, setJobId] = useState<string | null>(null);
   const [jobStatus, setJobStatus] = useState<JobStatusResponse | null>(null);
@@ -409,22 +332,6 @@ export function ApparelWorkbench({
   const sourceName = primaryFile?.name ?? (
     selectedLibraryAsset ? getItemLabel(selectedLibraryAsset) : null
   );
-  const modelTypeOptions = modelTypeValues.map((value, index) => ({
-    value,
-    label: copy.modelTypes[index] ?? value,
-  }));
-  const sceneOptions = sceneValues.map((value, index) => ({
-    value,
-    label: copy.sceneOptions[index] ?? value,
-  }));
-  const styleOptions = styleValues.map((value, index) => ({
-    value,
-    label: copy.stylePresets[index] ?? value,
-  }));
-  const selectedModelTypeLabel =
-    copy.modelTypes[modelTypeValues.indexOf(modelType)] ?? modelType;
-  const selectedSceneLabel = copy.sceneOptions[sceneValues.indexOf(scene)] ?? scene;
-  const selectedStyleLabel = copy.stylePresets[styleValues.indexOf(style)] ?? style;
   const selectableHistoryItems = useMemo(
     () =>
       historyItems.filter((item) => getItemAssetId(item) && getItemImage(item)),
@@ -515,7 +422,6 @@ export function ApparelWorkbench({
         if (!cancelled) {
           setError(null);
           setSelectedTemplateId(detail.id);
-          setCreationMode('advanced');
           setPrompt(detail.prompt);
         }
       } catch {
@@ -609,18 +515,8 @@ export function ApparelWorkbench({
         {
           generationType: 'apparel_image',
           inputAssetId,
-          prompt: [
-            prompt.trim(),
-            `${copy.modelType}: ${selectedModelTypeLabel}.`,
-            `${copy.scene}: ${selectedSceneLabel}.`,
-            `${copy.style}: ${selectedStyleLabel}.`,
-            negativePrompt.trim() ? `Avoid: ${negativePrompt.trim()}.` : '',
-          ]
-            .filter(Boolean)
-            .join(' '),
+          prompt: prompt.trim(),
           aspectRatio,
-          strength,
-          variants,
           ...(selectedTemplateId ? { templateId: selectedTemplateId } : {}),
         },
         commonCopy.generationStartError
@@ -649,16 +545,9 @@ export function ApparelWorkbench({
     }
   }
 
-  function applyPromptIdea(idea: string) {
-    setSelectedTemplateId(null);
-    setCreationMode('quick');
-    setPrompt(idea);
-  }
-
   function applyTemplate(template: PublicTemplateDetailItem) {
     setError(null);
     setSelectedTemplateId(template.id);
-    setCreationMode('advanced');
     setPrompt(template.prompt);
   }
 
@@ -668,7 +557,6 @@ export function ApparelWorkbench({
     setError(null);
     setPrimaryFile(null);
     setSelectedLibraryAsset(asset);
-    setCreationMode('advanced');
     setPrompt((current) => {
       const label = getItemLabel(asset);
       const trimmed = current.trim();
@@ -676,12 +564,6 @@ export function ApparelWorkbench({
     });
   }
 
-  const baseLibraryImages = selectableHistoryItems.map(getItemImage).filter(Boolean);
-  const libraryStart = baseLibraryImages.length ? exampleOffset % baseLibraryImages.length : 0;
-  const libraryImages = [
-    ...baseLibraryImages.slice(libraryStart),
-    ...baseLibraryImages.slice(0, libraryStart),
-  ].slice(0, 6);
   const statusLabel = jobStatus?.progressLabel ?? jobStatus?.status ?? (jobId ? commonCopy.generating : null);
 
   return (
@@ -702,7 +584,7 @@ export function ApparelWorkbench({
             <Button
               type="submit"
               disabled={!canSubmit}
-              className="h-12 flex-1 rounded-full bg-[#b8b8f6] text-sm font-bold text-white shadow-none hover:bg-[#a8a8ef] disabled:bg-gray-200 disabled:text-gray-400"
+              className="h-12 flex-1 rounded-full bg-indigo-600 text-sm font-bold text-white shadow-sm hover:bg-indigo-700 disabled:bg-gray-200 disabled:text-gray-400 disabled:opacity-100"
             >
               {isSubmitting ? <Loader2 className="size-4 animate-spin" /> : <Palette className="size-4" />}
               {submitLabel ?? commonCopy.generateNow}
@@ -714,15 +596,29 @@ export function ApparelWorkbench({
         }
       >
         <PanelSection title={copy.productLayout} required>
-          <UploadDropzone
-            id="apparel-file"
-            preview={sourcePreview}
-            fileName={sourceName}
-            emptyText={copy.productEmpty}
-            hint={copy.productHint}
-            disabled={isSubmitting}
-            onChange={(files) => selectPrimaryFile(files?.[0] ?? null)}
-          />
+          <div
+            className={cn(
+              'flex min-h-36 items-center justify-center overflow-hidden rounded-lg border border-gray-200 bg-gray-100 px-4 py-6 text-center',
+              sourcePreview && 'bg-white p-2'
+            )}
+          >
+            {sourcePreview ? (
+              <img
+                src={sourcePreview}
+                alt=""
+                className="max-h-48 w-full rounded-md object-contain"
+              />
+            ) : (
+              <span className="text-sm font-bold text-gray-500">
+                {copy.productEmpty}
+              </span>
+            )}
+          </div>
+          {sourceName ? (
+            <p className="mt-2 truncate text-xs font-semibold text-indigo-600">
+              {sourceName}
+            </p>
+          ) : null}
         </PanelSection>
 
         <PanelSection title={copy.size} required>
@@ -731,44 +627,11 @@ export function ApparelWorkbench({
             value={aspectRatio}
             onChange={setAspectRatio}
             disabled={isSubmitting}
+            compact
           />
         </PanelSection>
 
         <PanelSection title={copy.inspiration} required>
-          <div className="mb-3 flex rounded-lg border border-indigo-200 bg-white">
-            <button
-              type="button"
-              onClick={() => {
-                setCreationMode('quick');
-                applyPromptIdea(
-                  copy.promptIdeaGroups[0]?.prompts[0] ?? copy.defaultPrompt
-                );
-              }}
-              className={cn(
-                'h-11 flex-1 rounded-l-lg text-sm font-bold transition',
-                creationMode === 'quick'
-                  ? 'bg-gray-100 text-gray-700'
-                  : 'bg-white text-gray-500 hover:text-indigo-600'
-              )}
-            >
-              {copy.quick}
-              <span className="ml-2 rounded-full bg-red-500 px-1.5 py-0.5 text-[10px] text-white">
-                {copy.hot}
-              </span>
-            </button>
-            <button
-              type="button"
-              onClick={() => setCreationMode('advanced')}
-              className={cn(
-                'h-11 flex-1 rounded-r-lg text-sm font-bold transition',
-                creationMode === 'advanced'
-                  ? 'bg-white text-indigo-600'
-                  : 'bg-gray-100 text-gray-500 hover:text-indigo-600'
-              )}
-            >
-              {copy.advanced}
-            </button>
-          </div>
           <textarea
             id="apparel-prompt"
             value={prompt}
@@ -867,78 +730,6 @@ export function ApparelWorkbench({
           </div>
         </PanelSection>
 
-        <PanelSection title={copy.settings}>
-          <div className="space-y-4">
-            <div>
-              <Label className="mb-2 text-xs font-bold text-gray-500">{copy.modelType}</Label>
-              <ChoiceGrid
-                options={modelTypeOptions}
-                value={modelType}
-                onChange={setModelType}
-                disabled={isSubmitting}
-              />
-            </div>
-            <div>
-              <Label className="mb-2 text-xs font-bold text-gray-500">{copy.scene}</Label>
-              <ChoiceGrid
-                options={sceneOptions}
-                value={scene}
-                onChange={setScene}
-                disabled={isSubmitting}
-              />
-            </div>
-            <div>
-              <Label className="mb-2 text-xs font-bold text-gray-500">{copy.style}</Label>
-              <ChoiceGrid
-                options={styleOptions}
-                value={style}
-                onChange={setStyle}
-                disabled={isSubmitting}
-              />
-            </div>
-            <div>
-              <div className="mb-2 flex items-center justify-between">
-                <Label htmlFor="apparel-strength" className="text-xs font-bold text-gray-500">
-                  {copy.strength}
-                </Label>
-                <span className="text-xs font-bold text-indigo-600">{strength}</span>
-              </div>
-              <input
-                id="apparel-strength"
-                type="range"
-                min="20"
-                max="90"
-                value={strength}
-                onChange={(event) => setStrength(Number(event.target.value))}
-                disabled={isSubmitting}
-                className="w-full accent-indigo-500"
-              />
-            </div>
-            <div>
-              <Label className="mb-2 text-xs font-bold text-gray-500">{copy.variants}</Label>
-              <SegmentedOptions
-                options={[1, 2, 4]}
-                value={variants}
-                onChange={setVariants}
-                disabled={isSubmitting}
-              />
-            </div>
-            <div>
-              <Label htmlFor="apparel-negative-prompt" className="mb-2 text-xs font-bold text-gray-500">
-                {copy.negative}
-              </Label>
-              <textarea
-                id="apparel-negative-prompt"
-                value={negativePrompt}
-                onChange={(event) => setNegativePrompt(event.target.value)}
-                rows={3}
-                disabled={isSubmitting}
-                className="min-h-20 w-full resize-none rounded-lg border border-gray-200 bg-white px-3 py-2 text-sm leading-6 text-gray-800 outline-none transition focus:border-indigo-300 focus:ring-3 focus:ring-indigo-100 disabled:cursor-not-allowed disabled:opacity-60"
-              />
-            </div>
-          </div>
-        </PanelSection>
-
         {error ? (
           <div
             className="mb-5 flex items-start gap-2 rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700"
@@ -952,7 +743,7 @@ export function ApparelWorkbench({
 
       <CanvasStage
         title={copy.canvasTitle}
-        banner={<BlueBanner title={banner.title} label={copy.banner} images={libraryImages.length ? libraryImages.slice(0, 4) : undefined} />}
+        contentClassName="flex min-h-0 flex-1 items-center py-4"
       >
         <div className="mx-auto w-full max-w-[900px]">
           {selectedResultUrl ? (
@@ -1019,12 +810,6 @@ export function ApparelWorkbench({
             </p>
           ) : null}
 
-          <ExampleProducts
-            images={libraryImages.length ? libraryImages : undefined}
-            title={commonCopy.examples}
-            refreshLabel={commonCopy.refresh}
-            onRefresh={() => setExampleOffset((offset) => offset + 1)}
-          />
         </div>
       </CanvasStage>
     </form>

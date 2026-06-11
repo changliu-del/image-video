@@ -59,13 +59,21 @@ export function CanvasStage({
   subtitle,
   banner,
   actions,
+  contentClassName,
 }: {
   children: ReactNode;
   title: string;
   subtitle?: string;
   banner?: ReactNode;
   actions?: ReactNode;
+  contentClassName?: string;
 }) {
+  const content = contentClassName ? (
+    <div className={contentClassName}>{children}</div>
+  ) : (
+    children
+  );
+
   return (
     <section className="relative min-w-0 flex-1 overflow-y-auto bg-[#f5f7fb] px-5 py-5 text-gray-950 sm:px-8">
       <div className="pointer-events-none absolute inset-0 overflow-hidden">
@@ -94,7 +102,7 @@ export function CanvasStage({
             ) : null}
           </div>
         ) : null}
-        {children}
+        {content}
       </div>
     </section>
   );
@@ -231,17 +239,20 @@ export function SegmentedOptions<T extends string | number>({
   onChange,
   disabled,
   columns = 3,
+  compact = false,
 }: {
   options: readonly SelectOption<T>[];
   value: T;
   onChange: (value: T) => void;
   disabled?: boolean;
   columns?: 2 | 3 | 4;
+  compact?: boolean;
 }) {
   return (
     <div
       className={cn(
-        'grid gap-2',
+        'grid',
+        compact ? 'gap-1.5' : 'gap-2',
         columns === 2 && 'grid-cols-2',
         columns === 3 && 'grid-cols-3',
         columns === 4 && 'grid-cols-4'
@@ -257,7 +268,8 @@ export function SegmentedOptions<T extends string | number>({
             disabled={disabled}
             onClick={() => onChange(optionValue)}
             className={cn(
-              'flex h-11 items-center justify-center rounded-lg border text-sm font-bold transition disabled:cursor-not-allowed disabled:opacity-60',
+              'flex items-center justify-center rounded-lg border font-bold transition disabled:cursor-not-allowed disabled:opacity-60',
+              compact ? 'h-9 px-2 text-xs' : 'h-11 text-sm',
               value === optionValue
                 ? 'border-indigo-500 bg-indigo-600 text-white shadow-sm'
                 : 'border-gray-200 bg-white text-gray-600 hover:border-indigo-200 hover:text-indigo-600'

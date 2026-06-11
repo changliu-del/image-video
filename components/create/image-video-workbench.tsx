@@ -1,22 +1,15 @@
 'use client';
 
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useState } from 'react';
 import {
   AlertCircle,
   CheckCircle2,
-  ChevronDown,
-  ChevronUp,
   Eye,
   FolderOpen,
-  HelpCircle,
   ImagePlus,
   Layers3,
   Loader2,
-  Music,
   Play,
-  RectangleHorizontal,
-  UserRound,
-  Video,
   X,
 } from 'lucide-react';
 
@@ -34,7 +27,6 @@ import {
 import { refreshDashboardUser } from '@/lib/dashboard/user-cache';
 import type { DashboardLocale } from '@/lib/dashboard/content';
 import { useDashboardLocale } from '@/lib/dashboard/use-dashboard-locale';
-import { getCreditCostForDuration } from '@/lib/generations/credit-costs';
 import { homepageWorkbenchMaterials } from '@/lib/marketing/homepage-materials';
 import { imageToVideoTemplateCategories } from '@/lib/templates/category-config';
 import { getTemplateCategoryLabel } from '@/lib/templates/catalog';
@@ -46,16 +38,16 @@ import {
 } from '@/lib/templates/public-client';
 import { cn } from '@/lib/utils';
 
-type AspectRatio = '9:16' | '3:4' | '1:1';
-type DurationSeconds = number;
-type QualityMode = 'standard' | 'high';
-type ReferenceKind = 'image' | 'video' | 'audio';
-type SpecsSection = 'aspect' | 'duration' | 'quality';
-
 type PresignResponse = {
   assetId: string;
   uploadUrl: string;
   storageKey: string;
+};
+
+type CompleteAssetResponse = {
+  assetId: string;
+  status: string;
+  publicUrl?: string | null;
 };
 
 type GenerationResponse = {
@@ -67,8 +59,15 @@ type GenerationResponse = {
 
 type JobStatusResponse = {
   id?: string;
+  generationType?: string;
+  inputAssetId?: string | null;
+  inputAssetIds?: string[];
+  inputImageUrl?: string | null;
+  inputImageUrls?: string[];
+  prompt?: string | null;
   status?: string;
   progressLabel?: string;
+  templateId?: string | null;
   finalVideoUrl?: string | null;
   finalImageUrl?: string | null;
   outputUrl?: string | null;
@@ -81,32 +80,10 @@ type JobStatusResponse = {
 
 const MAX_IMAGE_BYTES = 10 * 1024 * 1024;
 const MAX_REFERENCE_IMAGE_FILE_COUNT = 1;
-const MAX_REFERENCE_FILE_COUNT = 8;
 const ACCEPTED_IMAGE_TYPES = ['image/png', 'image/jpeg', 'image/webp'];
 const ACCEPTED_REFERENCE_IMAGE_TYPES = ACCEPTED_IMAGE_TYPES;
-const ACCEPTED_REFERENCE_VIDEO_TYPES = [
-  'video/mp4',
-  'video/webm',
-  'video/quicktime',
-];
-const ACCEPTED_REFERENCE_AUDIO_TYPES = [
-  'audio/mpeg',
-  'audio/mp4',
-  'audio/wav',
-  'audio/x-wav',
-  'audio/aac',
-  'audio/ogg',
-  'audio/webm',
-];
-const ACCEPTED_REFERENCE_TYPES = [
-  ...ACCEPTED_REFERENCE_IMAGE_TYPES,
-  ...ACCEPTED_REFERENCE_VIDEO_TYPES,
-  ...ACCEPTED_REFERENCE_AUDIO_TYPES,
-];
-const aspectRatios: AspectRatio[] = ['9:16', '3:4', '1:1'];
-const MIN_DURATION_SECONDS = 4;
-const MAX_DURATION_SECONDS = 15;
 const defaultTemplateCategory: string = imageToVideoTemplateCategories[0] ?? '';
+const LAST_IMAGE_VIDEO_TASK_KEY = 'image-video:last-task:v1';
 const materialPickerCopy = {
   pt: {
     templateLibrary: 'Templates',
@@ -131,6 +108,69 @@ const materialPickerCopy = {
   },
 };
 
+const taskFlowPanelCopy = {
+  pt: {
+    title: 'Fluxo',
+    close: 'Fechar',
+    currentTask: 'Tarefa atual',
+    noTask: 'Nenhuma tarefa iniciada ainda.',
+    jobId: 'ID da tarefa',
+    prompt: 'Prompt',
+    input: 'Imagem de entrada',
+    output: 'Resultado',
+    generatingHint:
+      'A tarefa esta em andamento. Acompanhe o progresso aqui; o video aparece a direita quando terminar.',
+    readyHint: 'Tarefa concluida. O resultado esta disponivel a direita.',
+    failedHint: 'A tarefa falhou. Veja a mensagem de erro e tente novamente.',
+    progressHint:
+      'Gerando agora. Abra o fluxo para acompanhar o progresso.',
+    viewTaskFlow: 'Ver fluxo',
+  },
+  en: {
+    title: 'Flow',
+    close: 'Close',
+    currentTask: 'Current task',
+    noTask: 'No task has been started yet.',
+    jobId: 'Task ID',
+    prompt: 'Prompt',
+    input: 'Input image',
+    output: 'Result',
+    generatingHint:
+      'This task is still generating. Track progress here; the video will appear on the right when it is ready.',
+    readyHint: 'Task complete. The result is available on the right.',
+    failedHint: 'The task failed. Check the error message and try again.',
+    progressHint:
+      'Generation is running. Open the flow to track progress.',
+    viewTaskFlow: 'View flow',
+  },
+  zh: {
+    title: '任务流',
+    close: '关闭',
+    currentTask: '当前任务',
+    noTask: '还没有生成任务。',
+    jobId: '任务 ID',
+    prompt: '生成描述',
+    input: '参考图片',
+    output: '生成结果',
+    generatingHint:
+      '任务正在生成中，可在这里查看进度；完成后视频会自动显示在右侧。',
+    readyHint: '任务已完成，右侧可以查看生成视频。',
+    failedHint: '任务失败，请查看错误信息后重新生成。',
+    progressHint: '任务正在生成中，可打开任务流查看进度。',
+    viewTaskFlow: '查看任务流',
+  },
+};
+
+type PersistedImageVideoTask = {
+  jobId: string;
+  prompt?: string;
+  templateId?: string;
+  inputAssetId?: string;
+  inputImageUrl?: string | null;
+  status?: JobStatusResponse | null;
+  updatedAt: number;
+};
+
 function formatFileSize(sizeBytes: number) {
   return `${(sizeBytes / (1024 * 1024)).toFixed(1)} MB`;
 }
@@ -139,7 +179,7 @@ function validateReferenceFile(
   file: File,
   labels: { invalidReference: string; referenceTooLarge: string }
 ) {
-  if (!ACCEPTED_REFERENCE_TYPES.includes(file.type)) {
+  if (!ACCEPTED_REFERENCE_IMAGE_TYPES.includes(file.type)) {
     return labels.invalidReference;
   }
 
@@ -150,23 +190,10 @@ function validateReferenceFile(
   return null;
 }
 
-function acceptedReferenceTypesForKind(kind: ReferenceKind) {
-  switch (kind) {
-    case 'image':
-      return ACCEPTED_REFERENCE_IMAGE_TYPES.join(',');
-    case 'video':
-      return ACCEPTED_REFERENCE_VIDEO_TYPES.join(',');
-    case 'audio':
-      return ACCEPTED_REFERENCE_AUDIO_TYPES.join(',');
-  }
-}
-
 type ReferenceMaterialCopy = {
   referencePanelTitle: string;
   close: string;
   uploadReferenceImage: string;
-  uploadReferenceVideo: string;
-  uploadReferenceMusic: string;
   referenceMaterialCount: (count: number) => string;
 };
 
@@ -175,8 +202,6 @@ function ReferenceMaterialPanel({
   disabled,
   referenceFileCount,
   referenceImageFiles,
-  referenceVideoFiles,
-  referenceAudioFiles,
   onClose,
   onSelect,
 }: {
@@ -184,29 +209,14 @@ function ReferenceMaterialPanel({
   disabled?: boolean;
   referenceFileCount: number;
   referenceImageFiles: File[];
-  referenceVideoFiles: File[];
-  referenceAudioFiles: File[];
   onClose: () => void;
-  onSelect: (kind: ReferenceKind, files: FileList | null) => void;
+  onSelect: (files: FileList | null) => void;
 }) {
   const uploadActions = [
     {
-      kind: 'image' as const,
       label: copy.uploadReferenceImage,
       icon: ImagePlus,
       files: referenceImageFiles,
-    },
-    {
-      kind: 'video' as const,
-      label: copy.uploadReferenceVideo,
-      icon: Video,
-      files: referenceVideoFiles,
-    },
-    {
-      kind: 'audio' as const,
-      label: copy.uploadReferenceMusic,
-      icon: Music,
-      files: referenceAudioFiles,
     },
   ];
 
@@ -225,14 +235,14 @@ function ReferenceMaterialPanel({
         </button>
       </div>
 
-      <div className="grid grid-cols-3 overflow-hidden rounded-2xl bg-indigo-50">
+      <div className="grid overflow-hidden rounded-2xl bg-indigo-50">
         {uploadActions.map((action, index) => {
           const Icon = action.icon;
-          const inputId = `reference-${action.kind}-file`;
+          const inputId = 'reference-image-file';
 
           return (
             <label
-              key={action.kind}
+              key={inputId}
               htmlFor={inputId}
               className={cn(
                 'inline-flex h-14 cursor-pointer items-center justify-center gap-2 text-sm font-bold text-indigo-600 transition hover:bg-indigo-100',
@@ -244,11 +254,10 @@ function ReferenceMaterialPanel({
               <input
                 id={inputId}
                 type="file"
-                multiple={action.kind !== 'image'}
-                accept={acceptedReferenceTypesForKind(action.kind)}
+                accept={ACCEPTED_REFERENCE_IMAGE_TYPES.join(',')}
                 disabled={disabled}
                 className="sr-only"
-                onChange={(event) => onSelect(action.kind, event.target.files)}
+                onChange={(event) => onSelect(event.target.files)}
               />
             </label>
           );
@@ -264,7 +273,7 @@ function ReferenceMaterialPanel({
             {uploadActions.flatMap((action) =>
               action.files.map((file) => (
                 <div
-                  key={`${action.kind}-${file.name}-${file.size}`}
+                  key={`${file.name}-${file.size}-${file.lastModified}`}
                   className="flex items-center justify-between gap-3 rounded-lg bg-gray-50 px-3 py-2 text-xs font-semibold text-gray-600"
                 >
                   <span className="truncate">{file.name}</span>
@@ -411,6 +420,151 @@ function TemplateDetailModal({
   );
 }
 
+function TaskFlowDrawer({
+  copy,
+  inputPreview,
+  isOpen,
+  jobId,
+  jobStatus,
+  onClose,
+  prompt,
+  resultPreview,
+  statusLabel,
+}: {
+  copy: typeof taskFlowPanelCopy.en;
+  inputPreview?: string | null;
+  isOpen: boolean;
+  jobId?: string | null;
+  jobStatus: JobStatusResponse | null;
+  onClose: () => void;
+  prompt: string;
+  resultPreview?: string | null;
+  statusLabel?: string | null;
+}) {
+  if (!isOpen) return null;
+
+  const failed = jobStatus?.status === 'failed';
+  const completed = jobStatus?.status === 'succeeded';
+  const hint = failed
+    ? copy.failedHint
+    : completed
+      ? copy.readyHint
+      : jobId
+        ? copy.generatingHint
+        : copy.noTask;
+  const resultIsVideo =
+    Boolean(resultPreview) &&
+    (resultPreview?.endsWith('.mp4') || resultPreview?.includes('.mp4?'));
+
+  return (
+    <div className="fixed inset-0 z-50 bg-gray-950/45 backdrop-blur-sm">
+      <div className="ml-auto flex h-full w-full max-w-md flex-col bg-white shadow-2xl">
+        <div className="flex items-center justify-between gap-4 border-b border-gray-200 px-5 py-4">
+          <div>
+            <p className="text-xs font-black uppercase text-indigo-600">
+              {copy.currentTask}
+            </p>
+            <h2 className="mt-1 text-xl font-black text-gray-950">
+              {copy.title}
+            </h2>
+          </div>
+          <button
+            type="button"
+            onClick={onClose}
+            className="grid size-9 shrink-0 place-items-center rounded-md text-gray-500 transition hover:bg-gray-100 hover:text-gray-950"
+            aria-label={copy.close}
+          >
+            <X className="size-5" />
+          </button>
+        </div>
+
+        <div className="min-h-0 flex-1 space-y-4 overflow-y-auto px-5 py-5">
+          <div className="rounded-lg border border-indigo-100 bg-indigo-50 px-4 py-3 text-sm font-semibold leading-6 text-indigo-800">
+            {hint}
+          </div>
+
+          {jobId ? (
+            <>
+              <div className="rounded-lg border border-gray-200 bg-white p-4">
+                <div className="flex items-start justify-between gap-3">
+                  <div>
+                    <p className="text-xs font-black uppercase text-gray-400">
+                      {copy.jobId}
+                    </p>
+                    <p className="mt-1 break-all text-sm font-bold text-gray-900">
+                      {jobId}
+                    </p>
+                  </div>
+                  <span className="inline-flex shrink-0 items-center gap-1 rounded-full bg-gray-100 px-3 py-1 text-xs font-black text-gray-600">
+                    {failed ? (
+                      <AlertCircle className="size-3.5 text-red-500" />
+                    ) : completed ? (
+                      <CheckCircle2 className="size-3.5 text-emerald-500" />
+                    ) : (
+                      <Loader2 className="size-3.5 animate-spin text-indigo-500" />
+                    )}
+                    {statusLabel ?? jobStatus?.status}
+                  </span>
+                </div>
+              </div>
+
+              <div className="rounded-lg border border-gray-200 bg-white p-4">
+                <p className="text-xs font-black uppercase text-gray-400">
+                  {copy.input}
+                </p>
+                {inputPreview ? (
+                  <img
+                    src={inputPreview}
+                    alt=""
+                    className="mt-3 aspect-[4/5] w-full rounded-lg bg-gray-100 object-cover"
+                  />
+                ) : (
+                  <div className="mt-3 grid aspect-[4/5] place-items-center rounded-lg bg-gray-100 text-gray-300">
+                    <ImagePlus className="size-8" />
+                  </div>
+                )}
+              </div>
+
+              <div className="rounded-lg border border-gray-200 bg-white p-4">
+                <p className="text-xs font-black uppercase text-gray-400">
+                  {copy.prompt}
+                </p>
+                <p className="mt-2 whitespace-pre-wrap text-sm font-semibold leading-6 text-gray-800">
+                  {prompt || '-'}
+                </p>
+              </div>
+
+              {resultPreview ? (
+                <div className="rounded-lg border border-gray-200 bg-white p-4">
+                  <p className="text-xs font-black uppercase text-gray-400">
+                    {copy.output}
+                  </p>
+                  <div className="mt-3 overflow-hidden rounded-lg bg-gray-950">
+                    {resultIsVideo ? (
+                      <video
+                        src={resultPreview}
+                        controls
+                        playsInline
+                        className="max-h-72 w-full object-contain"
+                      />
+                    ) : (
+                      <img
+                        src={resultPreview}
+                        alt=""
+                        className="max-h-72 w-full object-contain"
+                      />
+                    )}
+                  </div>
+                </div>
+              ) : null}
+            </>
+          ) : null}
+        </div>
+      </div>
+    </div>
+  );
+}
+
 function terminalStatus(status?: string) {
   return status === 'succeeded' || status === 'failed';
 }
@@ -424,6 +578,74 @@ function resultUrl(status: JobStatusResponse | null) {
     status?.resultUrl ??
     status?.thumbnailUrl ??
     null
+  );
+}
+
+function inputImageUrl(status: JobStatusResponse | null) {
+  return status?.inputImageUrl ?? status?.inputImageUrls?.[0] ?? null;
+}
+
+function readPersistedImageVideoTask() {
+  if (typeof window === 'undefined') return null;
+
+  try {
+    const rawTask = window.localStorage.getItem(LAST_IMAGE_VIDEO_TASK_KEY);
+    if (!rawTask) return null;
+
+    const task = JSON.parse(rawTask) as Partial<PersistedImageVideoTask>;
+    if (!task.jobId || typeof task.jobId !== 'string') return null;
+
+    return {
+      jobId: task.jobId,
+      prompt: typeof task.prompt === 'string' ? task.prompt : undefined,
+      templateId:
+        typeof task.templateId === 'string' ? task.templateId : undefined,
+      inputAssetId:
+        typeof task.inputAssetId === 'string' ? task.inputAssetId : undefined,
+      inputImageUrl:
+        typeof task.inputImageUrl === 'string' ? task.inputImageUrl : null,
+      status: task.status ?? null,
+      updatedAt: typeof task.updatedAt === 'number' ? task.updatedAt : 0,
+    } satisfies PersistedImageVideoTask;
+  } catch {
+    return null;
+  }
+}
+
+function writePersistedImageVideoTask(task: PersistedImageVideoTask) {
+  if (typeof window === 'undefined') return;
+
+  try {
+    window.localStorage.setItem(
+      LAST_IMAGE_VIDEO_TASK_KEY,
+      JSON.stringify(task)
+    );
+  } catch {
+    // Persistence is best-effort; the in-memory task state remains valid.
+  }
+}
+
+function setCurrentJobUrl(jobId: string) {
+  if (typeof window === 'undefined') return;
+
+  const url = new URL(window.location.href);
+  url.searchParams.set('jobId', jobId);
+  window.history.replaceState(
+    window.history.state,
+    '',
+    `${url.pathname}${url.search}${url.hash}`
+  );
+}
+
+function clearCurrentJobUrl() {
+  if (typeof window === 'undefined') return;
+
+  const url = new URL(window.location.href);
+  url.searchParams.delete('jobId');
+  window.history.replaceState(
+    window.history.state,
+    '',
+    `${url.pathname}${url.search}${url.hash}`
   );
 }
 
@@ -485,7 +707,7 @@ async function uploadAsset(file: File, labels: typeof commonWorkbenchCopy.en) {
     throw new Error(labels.uploadFailed);
   }
 
-  await postJson(
+  const completedAsset = await postJson<CompleteAssetResponse>(
     '/api/assets/complete',
     {
       assetId: presign.assetId,
@@ -494,7 +716,7 @@ async function uploadAsset(file: File, labels: typeof commonWorkbenchCopy.en) {
     labels.imageSaveError
   );
 
-  return presign.assetId;
+  return completedAsset;
 }
 
 async function fetchJobStatus(jobId: string, labels: typeof commonWorkbenchCopy.en) {
@@ -513,9 +735,11 @@ async function fetchJobStatus(jobId: string, labels: typeof commonWorkbenchCopy.
 }
 
 export function ImageVideoWorkbench({
+  initialJobId = '',
   initialTemplateId = '',
   initialPrompt = '',
 }: {
+  initialJobId?: string;
   initialTemplateId?: string;
   initialPrompt?: string;
 }) {
@@ -523,26 +747,21 @@ export function ImageVideoWorkbench({
   const copy = imageVideoWorkbenchCopy[locale];
   const commonCopy = commonWorkbenchCopy[locale];
   const materialCopy = materialPickerCopy[locale];
+  const taskCopy = taskFlowPanelCopy[locale];
   const starterPrompt = initialPrompt.trim();
   const [sourcePreviews, setSourcePreviews] = useState<string[]>([]);
   const [prompt, setPrompt] = useState(
     () => starterPrompt || copy.promptPresets[0]
   );
-  const [aspectRatio, setAspectRatio] = useState<AspectRatio>('9:16');
-  const [durationSeconds, setDurationSeconds] = useState<DurationSeconds>(10);
-  const [qualityMode, setQualityMode] = useState<QualityMode>('standard');
-  const [audioSync, setAudioSync] = useState(true);
-  const [isSpecsOpen, setIsSpecsOpen] = useState(false);
-  const [activeSpecsSection, setActiveSpecsSection] =
-    useState<SpecsSection>('aspect');
-  const aspectSpecsRef = useRef<HTMLDivElement | null>(null);
-  const durationSpecsRef = useRef<HTMLDivElement | null>(null);
-  const qualitySpecsRef = useRef<HTMLDivElement | null>(null);
   const [isReferencePanelOpen, setIsReferencePanelOpen] = useState(false);
   const [referenceImageFiles, setReferenceImageFiles] = useState<File[]>([]);
-  const [referenceVideoFiles, setReferenceVideoFiles] = useState<File[]>([]);
-  const [referenceAudioFiles, setReferenceAudioFiles] = useState<File[]>([]);
-  const [modelNotice, setModelNotice] = useState<string | null>(null);
+  const [selectedInputAssetId, setSelectedInputAssetId] = useState<string | null>(
+    null
+  );
+  const [selectedInputImageUrl, setSelectedInputImageUrl] = useState<
+    string | null
+  >(null);
+  const [isTaskFlowOpen, setIsTaskFlowOpen] = useState(false);
   const [templates, setTemplates] = useState<PublicTemplateItem[]>([]);
   const [templateCategory, setTemplateCategory] =
     useState<string>(defaultTemplateCategory);
@@ -561,7 +780,9 @@ export function ImageVideoWorkbench({
   const [isLoadingTemplates, setIsLoadingTemplates] = useState(true);
   const [templateError, setTemplateError] = useState(false);
   const [submitLabel, setSubmitLabel] = useState<string | null>(null);
-  const [jobId, setJobId] = useState<string | null>(null);
+  const [jobId, setJobId] = useState<string | null>(
+    () => initialJobId.trim() || null
+  );
   const [jobStatus, setJobStatus] = useState<JobStatusResponse | null>(null);
   const [error, setError] = useState<string | null>(null);
   const requestedTemplateId = initialTemplateId;
@@ -571,16 +792,13 @@ export function ImageVideoWorkbench({
   const selectedResultUrl = resultUrl(jobStatus);
   const selectedTemplateId =
     selectedTemplate?.id == null ? '' : String(selectedTemplate.id);
-  const primarySourcePreview = sourcePreviews[0] ?? null;
-  const referenceFileCount =
-    referenceImageFiles.length +
-    referenceVideoFiles.length +
-    referenceAudioFiles.length;
-  const qualitySummary =
-    qualityMode === 'standard' ? copy.standardQuality : copy.qualityHigh;
+  const primarySourcePreview = sourcePreviews[0] ?? selectedInputImageUrl ?? null;
+  const referenceFileCount = referenceImageFiles.length;
   const hasGenerationData = Boolean(jobId || jobStatus || selectedResultUrl);
   const canSubmit = Boolean(
-    referenceImageFiles.length && trimmedPrompt && !isSubmitting
+    (referenceImageFiles.length || selectedInputAssetId) &&
+      trimmedPrompt &&
+      !isSubmitting
   );
 
   useEffect(() => {
@@ -593,6 +811,93 @@ export function ImageVideoWorkbench({
     setSourcePreviews(objectUrls);
     return () => objectUrls.forEach((url) => URL.revokeObjectURL(url));
   }, [referenceImageFiles]);
+
+  useEffect(() => {
+    const currentJobId = initialJobId.trim();
+
+    if (!currentJobId) return;
+
+    setCurrentJobUrl(currentJobId);
+    const task = readPersistedImageVideoTask();
+    if (!task || task.jobId !== currentJobId) return;
+
+    setJobId(task.jobId);
+    setJobStatus(task.status ?? null);
+    if (task.prompt) setPrompt(task.prompt);
+    if (task.templateId) {
+      setSelectedTemplate((current) => ({
+        ...(current ?? {}),
+        id: task.templateId,
+      }));
+    }
+    if (task.inputAssetId) setSelectedInputAssetId(task.inputAssetId);
+    if (task.inputImageUrl) setSelectedInputImageUrl(task.inputImageUrl);
+  }, [initialJobId]);
+
+  useEffect(() => {
+    if (!jobId || jobStatus) return;
+
+    let cancelled = false;
+    const currentJobId = jobId;
+
+    async function loadInitialStatus() {
+      try {
+        const nextStatus = await fetchJobStatus(currentJobId, commonCopy);
+        if (cancelled) return;
+
+        setJobStatus(nextStatus);
+
+        if (nextStatus.prompt) setPrompt(nextStatus.prompt);
+        if (nextStatus.templateId) {
+          setSelectedTemplate((current) => ({
+            ...(current ?? {}),
+            id: nextStatus.templateId ?? undefined,
+          }));
+        }
+        if (nextStatus.inputAssetId) {
+          setSelectedInputAssetId(nextStatus.inputAssetId);
+        }
+        const restoredInputUrl = inputImageUrl(nextStatus);
+        if (restoredInputUrl) {
+          setSelectedInputImageUrl(restoredInputUrl);
+        }
+      } catch (statusError) {
+        if (!cancelled) {
+          setError(
+            statusError instanceof Error
+              ? statusError.message
+              : commonCopy.statusLoadError
+          );
+        }
+      }
+    }
+
+    void loadInitialStatus();
+    return () => {
+      cancelled = true;
+    };
+  }, [commonCopy, jobId, jobStatus]);
+
+  useEffect(() => {
+    if (!jobId) return;
+
+    writePersistedImageVideoTask({
+      jobId,
+      prompt: trimmedPrompt,
+      templateId: selectedTemplateId || jobStatus?.templateId || undefined,
+      inputAssetId: selectedInputAssetId ?? jobStatus?.inputAssetId ?? undefined,
+      inputImageUrl: selectedInputImageUrl ?? inputImageUrl(jobStatus),
+      status: jobStatus,
+      updatedAt: Date.now(),
+    });
+  }, [
+    jobId,
+    jobStatus,
+    selectedInputAssetId,
+    selectedInputImageUrl,
+    selectedTemplateId,
+    trimmedPrompt,
+  ]);
 
   useEffect(() => {
     let cancelled = false;
@@ -751,23 +1056,6 @@ export function ImageVideoWorkbench({
   }, [copy.promptPresets]);
 
   useEffect(() => {
-    if (!isSpecsOpen) return;
-
-    const sectionRef = {
-      aspect: aspectSpecsRef,
-      duration: durationSpecsRef,
-      quality: qualitySpecsRef,
-    }[activeSpecsSection];
-
-    window.requestAnimationFrame(() => {
-      sectionRef.current?.scrollIntoView({
-        block: 'nearest',
-        behavior: 'smooth',
-      });
-    });
-  }, [activeSpecsSection, isSpecsOpen]);
-
-  useEffect(() => {
     if (!jobId || terminalStatus(jobStatus?.status)) return;
 
     let cancelled = false;
@@ -776,6 +1064,13 @@ export function ImageVideoWorkbench({
         const nextStatus = await fetchJobStatus(jobId, commonCopy);
         if (!cancelled) {
           setJobStatus(nextStatus);
+          if (!selectedInputAssetId && nextStatus.inputAssetId) {
+            setSelectedInputAssetId(nextStatus.inputAssetId);
+          }
+          if (!selectedInputImageUrl) {
+            const restoredInputUrl = inputImageUrl(nextStatus);
+            if (restoredInputUrl) setSelectedInputImageUrl(restoredInputUrl);
+          }
           if (terminalStatus(nextStatus.status)) {
             void refreshDashboardUser();
           }
@@ -797,27 +1092,25 @@ export function ImageVideoWorkbench({
       cancelled = true;
       window.clearTimeout(timer);
     };
-  }, [jobId, jobStatus?.nextPollMs, jobStatus?.status]);
+  }, [
+    commonCopy,
+    jobId,
+    jobStatus?.nextPollMs,
+    jobStatus?.status,
+    selectedInputAssetId,
+    selectedInputImageUrl,
+  ]);
 
-  function selectReferenceFiles(kind: ReferenceKind, files: FileList | null) {
+  function selectReferenceFiles(files: FileList | null) {
     setError(null);
-    setModelNotice(null);
     const nextFiles = Array.from(files ?? []);
 
     if (!nextFiles.length) {
       return;
     }
 
-    if (
-      kind === 'image' &&
-      nextFiles.length > MAX_REFERENCE_IMAGE_FILE_COUNT
-    ) {
+    if (nextFiles.length > MAX_REFERENCE_IMAGE_FILE_COUNT) {
       setError(copy.referenceImageLimit);
-      return;
-    }
-
-    if (nextFiles.length > MAX_REFERENCE_FILE_COUNT) {
-      setError(copy.referenceMaterialLimit(MAX_REFERENCE_FILE_COUNT));
       return;
     }
 
@@ -830,17 +1123,12 @@ export function ImageVideoWorkbench({
       return;
     }
 
-    switch (kind) {
-      case 'image':
-        setReferenceImageFiles(nextFiles);
-        return;
-      case 'video':
-        setReferenceVideoFiles(nextFiles);
-        return;
-      case 'audio':
-        setReferenceAudioFiles(nextFiles);
-        return;
-    }
+    setReferenceImageFiles(nextFiles);
+    setJobId(null);
+    setJobStatus(null);
+    setSelectedInputAssetId(null);
+    setSelectedInputImageUrl(null);
+    clearCurrentJobUrl();
   }
 
   function openTemplateDetail(template: PublicTemplateItem) {
@@ -864,15 +1152,10 @@ export function ImageVideoWorkbench({
     closeTemplateDetail();
   }
 
-  function openSpecsSection(section: SpecsSection) {
-    setActiveSpecsSection(section);
-    setIsSpecsOpen(true);
-  }
-
   async function handleSubmit(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
 
-    if (!referenceImageFiles.length) {
+    if (!referenceImageFiles.length && !selectedInputAssetId) {
       setError(copy.selectSourceImage);
       return;
     }
@@ -885,26 +1168,30 @@ export function ImageVideoWorkbench({
     setError(null);
     setJobId(null);
     setJobStatus(null);
+    clearCurrentJobUrl();
 
     try {
-      setSubmitLabel(copy.uploadingImage);
-      const inputAssetIds = await Promise.all(
-        referenceImageFiles.map((file) => uploadAsset(file, commonCopy))
-      );
+      let uploadedAssets: CompleteAssetResponse[] = [];
+
+      if (referenceImageFiles.length) {
+        setSubmitLabel(copy.uploadingImage);
+        uploadedAssets = await Promise.all(
+          referenceImageFiles.map((file) => uploadAsset(file, commonCopy))
+        );
+      }
+
+      const inputAssetIds = uploadedAssets.length
+        ? uploadedAssets.map((asset) => asset.assetId)
+        : selectedInputAssetId
+          ? [selectedInputAssetId]
+          : [];
       const inputAssetId = inputAssetIds[0];
+      const nextInputImageUrl =
+        uploadedAssets[0]?.publicUrl ?? selectedInputImageUrl ?? null;
 
       if (!inputAssetId) {
         throw new Error(commonCopy.imageSaveError);
       }
-
-      const [referenceVideoAssetIds, referenceAudioAssetIds] = await Promise.all([
-        Promise.all(referenceVideoFiles.map((file) => uploadAsset(file, commonCopy))),
-        Promise.all(referenceAudioFiles.map((file) => uploadAsset(file, commonCopy))),
-      ]);
-      const referenceAssetIds = [
-        ...referenceVideoAssetIds,
-        ...referenceAudioAssetIds,
-      ];
 
       setSubmitLabel(copy.startingGeneration);
       const generation = await postJson<GenerationResponse>(
@@ -915,13 +1202,6 @@ export function ImageVideoWorkbench({
           ...(inputAssetIds.length > 1 ? { inputAssetIds } : {}),
           ...(selectedTemplateId ? { templateId: selectedTemplateId } : {}),
           prompt: trimmedPrompt,
-          aspectRatio,
-          durationSeconds,
-          qualityMode,
-          audioSync,
-          ...(referenceAssetIds.length ? { referenceAssetIds } : {}),
-          ...(referenceVideoAssetIds.length ? { referenceVideoAssetIds } : {}),
-          ...(referenceAudioAssetIds.length ? { referenceAudioAssetIds } : {}),
         },
         commonCopy.generationStartError
       );
@@ -932,11 +1212,21 @@ export function ImageVideoWorkbench({
       }
 
       void refreshDashboardUser();
+      setCurrentJobUrl(nextJobId);
+      setSelectedInputAssetId(inputAssetId);
+      if (nextInputImageUrl) setSelectedInputImageUrl(nextInputImageUrl);
       setJobId(nextJobId);
       setJobStatus({
         id: nextJobId,
+        generationType: 'image_to_video',
+        inputAssetId,
+        inputAssetIds,
+        inputImageUrl: nextInputImageUrl,
+        inputImageUrls: nextInputImageUrl ? [nextInputImageUrl] : [],
+        prompt: trimmedPrompt,
         status: generation.status ?? 'queued',
         progressLabel: commonCopy.queued,
+        templateId: selectedTemplateId || null,
       });
     } catch (submitError) {
       setError(
@@ -950,7 +1240,7 @@ export function ImageVideoWorkbench({
   const statusLabel = jobStatus?.progressLabel ?? jobStatus?.status ?? (jobId ? commonCopy.generating : null);
   const emptyMaterialLabels = [
     copy.emptyMaterialStyle,
-    copy.emptyMaterialModel,
+    copy.emptyMaterialScene,
     copy.emptyMaterialTexture,
   ];
   const emptyMaterialCards = homepageWorkbenchMaterials.map((material, index) => ({
@@ -968,6 +1258,7 @@ export function ImageVideoWorkbench({
           <div className="flex items-center gap-3">
             <button
               type="button"
+              onClick={() => setIsTaskFlowOpen(true)}
               className="inline-flex h-11 items-center gap-2 rounded-full px-3 text-sm font-bold text-indigo-600"
             >
               <Layers3 className="size-4" />
@@ -976,13 +1267,10 @@ export function ImageVideoWorkbench({
             <Button
               type="submit"
               disabled={!canSubmit}
-              className="h-12 flex-1 rounded-full bg-[#b8b8f6] text-sm font-bold text-white shadow-none hover:bg-[#a8a8ef] disabled:bg-gray-200 disabled:text-gray-400"
+              className="h-12 flex-1 rounded-full bg-indigo-600 text-sm font-bold text-white shadow-sm hover:bg-indigo-700 disabled:bg-gray-200 disabled:text-gray-400 disabled:opacity-100"
             >
               {isSubmitting ? <Loader2 className="size-4 animate-spin" /> : <Play className="size-4" />}
               {submitLabel ?? commonCopy.generateNow}
-              <span className="font-semibold opacity-90">
-                {commonCopy.credits(getCreditCostForDuration(durationSeconds))}
-              </span>
             </Button>
           </div>
         }
@@ -1001,20 +1289,12 @@ export function ImageVideoWorkbench({
             placeholder={copy.promptPlaceholder}
             className="min-h-44 w-full resize-none rounded-lg border border-gray-200 bg-gray-100 px-4 py-3 text-sm leading-6 text-gray-800 outline-none transition placeholder:text-gray-400 focus:border-indigo-300 focus:bg-white focus:ring-3 focus:ring-indigo-100 disabled:cursor-not-allowed disabled:opacity-60"
           />
-          <div className="mt-3 grid grid-cols-2 gap-2">
-            <button
-              type="button"
-              onClick={() => setModelNotice(copy.modelComingSoon)}
-              className="inline-flex h-10 items-center justify-center gap-1.5 rounded-lg bg-white px-1.5 text-xs font-bold text-gray-800 shadow-sm ring-1 ring-gray-100 sm:text-sm"
-            >
-              <UserRound className="size-4" />
-              <span className="truncate">{copy.modelAction}</span>
-            </button>
+          <div className="mt-3">
             <button
               type="button"
               onClick={() => setIsReferencePanelOpen(true)}
               className={cn(
-                'inline-flex h-10 items-center justify-center gap-1.5 rounded-lg px-1.5 text-xs font-bold shadow-sm ring-1 transition sm:text-sm',
+                'inline-flex h-10 w-full items-center justify-center gap-1.5 rounded-lg px-1.5 text-xs font-bold shadow-sm ring-1 transition sm:text-sm',
                 isReferencePanelOpen
                   ? 'bg-indigo-50 text-indigo-700 ring-indigo-100'
                   : 'bg-white text-gray-800 ring-gray-100'
@@ -1024,10 +1304,38 @@ export function ImageVideoWorkbench({
               <span className="truncate">{copy.materialAction}</span>
             </button>
           </div>
-          {modelNotice ? (
-            <p className="mt-2 rounded-lg bg-indigo-50 px-3 py-2 text-xs font-semibold text-indigo-700">
-              {modelNotice}
-            </p>
+          {primarySourcePreview ? (
+            <div className="mt-3 flex items-center gap-3 rounded-lg border border-gray-200 bg-white p-2 shadow-sm">
+              <img
+                src={primarySourcePreview}
+                alt=""
+                className="size-14 shrink-0 rounded-md bg-gray-100 object-cover"
+              />
+              <div className="min-w-0 flex-1">
+                <p className="truncate text-xs font-black text-gray-900">
+                  {copy.selectedReferenceImage}
+                </p>
+                <p className="mt-1 truncate text-xs font-semibold text-gray-400">
+                  {referenceImageFiles[0]?.name ?? selectedInputAssetId}
+                </p>
+              </div>
+              <button
+                type="button"
+                onClick={() => {
+                  setReferenceImageFiles([]);
+                  setJobId(null);
+                  setJobStatus(null);
+                  setSelectedInputAssetId(null);
+                  setSelectedInputImageUrl(null);
+                  clearCurrentJobUrl();
+                }}
+                disabled={isSubmitting}
+                className="grid size-8 shrink-0 place-items-center rounded-md text-gray-400 transition hover:bg-gray-100 hover:text-gray-700 disabled:cursor-not-allowed disabled:opacity-50"
+                aria-label={copy.removeReferenceImage}
+              >
+                <X className="size-4" />
+              </button>
+            </div>
           ) : null}
           {isReferencePanelOpen ? (
             <ReferenceMaterialPanel
@@ -1035,212 +1343,11 @@ export function ImageVideoWorkbench({
               disabled={isSubmitting}
               referenceFileCount={referenceFileCount}
               referenceImageFiles={referenceImageFiles}
-              referenceVideoFiles={referenceVideoFiles}
-              referenceAudioFiles={referenceAudioFiles}
               onClose={() => setIsReferencePanelOpen(false)}
               onSelect={selectReferenceFiles}
             />
           ) : null}
         </PanelSection>
-
-        <div className="relative mb-6">
-          <div className="flex min-h-14 items-center overflow-x-auto whitespace-nowrap rounded-2xl border border-gray-200 bg-[#f4f6fb] px-4 py-3 text-sm font-semibold text-gray-700 shadow-sm [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
-            <button
-              type="button"
-              onClick={() => openSpecsSection('aspect')}
-              disabled={isSubmitting}
-              aria-label={`${copy.aspectRatio} ${aspectRatio}`}
-              className={cn(
-                'inline-flex shrink-0 items-center gap-2 rounded-md text-left transition hover:text-indigo-600 disabled:cursor-not-allowed disabled:opacity-60',
-                isSpecsOpen && activeSpecsSection === 'aspect'
-                  ? 'text-indigo-600'
-                  : 'text-gray-800'
-              )}
-            >
-              <RectangleHorizontal className="size-5 shrink-0 text-gray-700" />
-              <span>{copy.specsLabel}</span>
-              <span className="font-medium">{aspectRatio}</span>
-            </button>
-            <span className="mx-3 h-5 w-px shrink-0 bg-gray-300" />
-            <button
-              type="button"
-              onClick={() => openSpecsSection('duration')}
-              disabled={isSubmitting}
-              aria-label={`${copy.videoDuration} ${durationSeconds}${copy.seconds}`}
-              className={cn(
-                'inline-flex shrink-0 items-center rounded-md font-medium transition hover:text-indigo-600 disabled:cursor-not-allowed disabled:opacity-60',
-                isSpecsOpen && activeSpecsSection === 'duration'
-                  ? 'text-indigo-600'
-                  : 'text-gray-800'
-              )}
-            >
-              <span>
-                {durationSeconds}{copy.seconds}
-              </span>
-            </button>
-            <span className="mx-3 h-5 w-px shrink-0 bg-gray-300" />
-            <button
-              type="button"
-              onClick={() => openSpecsSection('quality')}
-              disabled={isSubmitting}
-              aria-label={`${copy.quality} ${qualitySummary}`}
-              className={cn(
-                'inline-flex shrink-0 items-center gap-2 rounded-md font-medium transition hover:text-indigo-600 disabled:cursor-not-allowed disabled:opacity-60',
-                isSpecsOpen && activeSpecsSection === 'quality'
-                  ? 'text-indigo-600'
-                  : 'text-gray-800'
-              )}
-            >
-              <span className="font-medium">{qualitySummary}</span>
-              {isSpecsOpen && activeSpecsSection === 'quality' ? (
-                <ChevronUp className="ml-1 size-4 shrink-0 text-gray-500" />
-              ) : (
-                <ChevronDown className="ml-1 size-4 shrink-0 text-gray-500" />
-              )}
-            </button>
-            <label className="ml-4 inline-flex shrink-0 items-center gap-2 text-gray-800">
-              <input
-                type="checkbox"
-                checked={audioSync}
-                onChange={(event) => setAudioSync(event.target.checked)}
-                disabled={isSubmitting}
-                className="size-5 rounded-md accent-indigo-600"
-              />
-              <span>{copy.audioSync}</span>
-            </label>
-            <HelpCircle className="ml-2 size-4 shrink-0 text-gray-400" />
-            <button
-              type="button"
-              className="ml-4 shrink-0 font-semibold text-indigo-600 transition hover:text-indigo-700"
-            >
-              {copy.beginnerGuide}
-            </button>
-          </div>
-
-          {isSpecsOpen ? (
-            <div className="absolute left-0 right-0 top-[calc(100%+8px)] z-20 rounded-2xl border border-gray-200 bg-white p-5 shadow-[0_18px_50px_rgba(15,23,42,0.14)]">
-              <h3 className="mb-5 text-lg font-black text-gray-900">
-                {copy.videoSpecs}
-              </h3>
-              <div className="space-y-5">
-                <div
-                  ref={aspectSpecsRef}
-                  className={cn(
-                    'grid grid-cols-[86px_1fr] items-center gap-3 rounded-xl p-3 transition',
-                    activeSpecsSection === 'aspect' && 'bg-indigo-50 ring-1 ring-indigo-100'
-                  )}
-                >
-                  <span className="text-sm font-black text-gray-500">
-                    {copy.aspectRatio}
-                  </span>
-                  <div className="grid grid-cols-3 gap-3">
-                    {aspectRatios.map((ratio) => (
-                      <button
-                        key={ratio}
-                        type="button"
-                        onClick={() => setAspectRatio(ratio)}
-                        disabled={isSubmitting}
-                        className={cn(
-                          'flex h-12 items-center justify-center gap-2 rounded-xl border text-sm font-black transition disabled:cursor-not-allowed disabled:opacity-60',
-                          aspectRatio === ratio
-                            ? 'border-indigo-500 bg-indigo-50 text-indigo-600'
-                            : 'border-gray-200 bg-white text-gray-800 hover:border-indigo-200'
-                        )}
-                      >
-                        <span
-                          className={cn(
-                            'rounded bg-gray-200',
-                            ratio === '9:16' && 'h-7 w-4',
-                            ratio === '3:4' && 'h-7 w-5',
-                            ratio === '1:1' && 'size-6'
-                          )}
-                        />
-                        {ratio}
-                      </button>
-                    ))}
-                  </div>
-                </div>
-
-                <div
-                  ref={durationSpecsRef}
-                  className={cn(
-                    'grid grid-cols-[86px_1fr_auto] items-center gap-3 rounded-xl p-3 transition',
-                    activeSpecsSection === 'duration' && 'bg-indigo-50 ring-1 ring-indigo-100'
-                  )}
-                >
-                  <span className="text-sm font-black text-gray-500">
-                    {copy.videoDuration}
-                  </span>
-                  <div className="flex items-center gap-3">
-                    <span className="text-sm font-bold text-gray-400">
-                      {copy.durationMin}
-                    </span>
-                    <input
-                      type="range"
-                      min={MIN_DURATION_SECONDS}
-                      max={MAX_DURATION_SECONDS}
-                      step={1}
-                      value={durationSeconds}
-                      onChange={(event) => setDurationSeconds(Number(event.target.value))}
-                      disabled={isSubmitting}
-                      className="h-2 flex-1 accent-indigo-500"
-                    />
-                    <span className="text-sm font-bold text-gray-400">
-                      {copy.durationMax}
-                    </span>
-                  </div>
-                  <span className="rounded-full bg-gray-100 px-4 py-2 text-sm font-black text-gray-700">
-                    {durationSeconds} {copy.seconds}
-                  </span>
-                </div>
-
-                <div
-                  ref={qualitySpecsRef}
-                  className={cn(
-                    'grid grid-cols-[86px_1fr] items-center gap-3 rounded-xl p-3 transition',
-                    activeSpecsSection === 'quality' && 'bg-indigo-50 ring-1 ring-indigo-100'
-                  )}
-                >
-                  <span className="text-sm font-black text-gray-500">
-                    {copy.quality}
-                  </span>
-                  <div className="flex flex-wrap gap-5">
-                    <label className="inline-flex cursor-pointer items-center gap-2 text-sm font-bold text-gray-900">
-                      <input
-                        type="radio"
-                        name="qualityMode"
-                        value="standard"
-                        checked={qualityMode === 'standard'}
-                        onChange={() => setQualityMode('standard')}
-                        disabled={isSubmitting}
-                        className="size-5 accent-indigo-500"
-                      />
-                      {copy.qualityStandard}
-                      <span className="font-semibold text-gray-500">
-                        ({copy.qualityStandardHint})
-                      </span>
-                    </label>
-                    <label className="inline-flex cursor-pointer items-center gap-2 text-sm font-bold text-gray-900">
-                      <input
-                        type="radio"
-                        name="qualityMode"
-                        value="high"
-                        checked={qualityMode === 'high'}
-                        onChange={() => setQualityMode('high')}
-                        disabled={isSubmitting}
-                        className="size-5 accent-indigo-500"
-                      />
-                      {copy.qualityHigh}
-                      <span className="font-semibold text-gray-500">
-                        ({copy.qualityHighHint})
-                      </span>
-                    </label>
-                  </div>
-                </div>
-              </div>
-            </div>
-          ) : null}
-        </div>
 
         <PanelSection
           title={copy.inspiration}
@@ -1379,6 +1486,24 @@ export function ImageVideoWorkbench({
         <div className="mx-auto w-full max-w-4xl">
           {hasGenerationData ? (
             <>
+              {jobId &&
+              !terminalStatus(jobStatus?.status) &&
+              !selectedResultUrl ? (
+                <div className="mb-5 flex flex-wrap items-center justify-between gap-3 rounded-lg border border-indigo-100 bg-white/90 px-4 py-3 shadow-sm">
+                  <span className="inline-flex min-w-0 items-center gap-2 text-sm font-bold text-gray-700">
+                    <Loader2 className="size-4 shrink-0 animate-spin text-indigo-500" />
+                    <span className="truncate">{taskCopy.progressHint}</span>
+                  </span>
+                  <button
+                    type="button"
+                    onClick={() => setIsTaskFlowOpen(true)}
+                    className="inline-flex h-9 shrink-0 items-center gap-1.5 rounded-full bg-indigo-600 px-4 text-xs font-black text-white transition hover:bg-indigo-700"
+                  >
+                    <Layers3 className="size-4" />
+                    {taskCopy.viewTaskFlow}
+                  </button>
+                </div>
+              ) : null}
               <div className="grid items-center gap-10 md:grid-cols-[1fr_1.2fr]">
                 <figure className="text-center">
                   <div className="mx-auto flex aspect-[4/5] w-full max-w-[280px] items-center justify-center overflow-hidden rounded-lg bg-white shadow-sm">
@@ -1455,6 +1580,18 @@ export function ImageVideoWorkbench({
           )}
         </div>
       </CanvasStage>
+
+      <TaskFlowDrawer
+        copy={taskCopy}
+        inputPreview={primarySourcePreview}
+        isOpen={isTaskFlowOpen}
+        jobId={jobId}
+        jobStatus={jobStatus}
+        onClose={() => setIsTaskFlowOpen(false)}
+        prompt={trimmedPrompt}
+        resultPreview={selectedResultUrl}
+        statusLabel={statusLabel}
+      />
 
       {detailTemplate ? (
         <TemplateDetailModal

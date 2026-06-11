@@ -37,7 +37,9 @@ When updating this skill, edit the source under `plugins/image-video-studio/` fi
 - Use CodeGraph first for structural code questions, then read exact files only when needed.
 - Preserve user changes. The worktree may already be dirty.
 - For frontend work, default to the project frontend rendering contract: persistent dashboard shell, immediate local UI render, focused async data fetches with loading/error/retry, locale-preserving links/actions, and shared catalog/cost modules instead of hardcoded business values.
-- Treat first-party materials as a core product surface: use `library_assets` and its Admin flow for reusable images/videos instead of scattering one-off sample URLs inside workbenches.
+- Treat media URLs as an app-level contract, not a raw R2 contract: template thumbnails/previews should flow through `/api/template-media/{assetId}`, while user uploads and generated outputs should flow through `/api/asset-media/{assetId}`. `assets.public_url` is storage metadata and should not be returned to frontend workbenches/Admin previews as the display URL.
+- Treat first-party reusable browsing content as Templates/model-template imports. The old `library_assets` surface has been removed; do not revive it unless the product decision changes.
+- When debugging Trigger.dev, check the environment key first. `tr_dev_...` keys enqueue Development runs that require `trigger dev`; Production dashboard/deployments consume Production runs only.
 - After code changes, run the narrowest useful validation first, then expand to `pnpm typecheck`, `pnpm test`, and `pnpm build` when the change spans shared behavior.
 - When project understanding changes, update `project-kb/` or `docs/ecommerce-video-saas/` so the next session starts smarter.
 
@@ -68,7 +70,7 @@ Start with `project-kb/README.md`, then load only the section that matches the t
 
 For frontend-visible changes, also load `project-kb/code-kb/image-video/06-frontend-rendering-architecture.md` before editing routes or components.
 
-For material-library, template, workbench inspiration, or Admin asset-management work, also load `project-kb/code-kb/image-video/07-library-assets-and-admin.md`.
+For template media, user history, workbench inspiration, or Admin material/history work, also load `project-kb/code-kb/image-video/07-user-history-and-admin.md`.
 
 Also consult `docs/ecommerce-video-saas/06-implementation-progress-and-code-audit.md` for the latest implementation audit and known risks.
 
@@ -81,7 +83,7 @@ Use this checklist before and after frontend edits:
 - Keep static controls, plans, workbench forms, and marketing cards usable while optional data loads.
 - Use `lib/dashboard/locale-url.ts`, `useDashboardLocale()`, and hidden `locale` fields so links, redirects, and server actions preserve the workspace language.
 - Read prices, subscription metadata, credit packages, and generation costs from shared modules such as `lib/payments/catalog.ts` and `lib/generations/credit-costs.ts`.
-- Load workbench examples and inspiration through `/api/templates`, `/api/library-assets`, and `/api/model-assets` as appropriate; keep template IDs separate from library asset IDs unless a generation API explicitly supports both.
+- Load workbench examples and inspiration through `/api/templates`, `/api/user-media`, and `/api/model-assets` as appropriate; keep template IDs separate from user asset IDs unless a generation API explicitly supports both.
 - Add scoped loading, error, empty, and retry states for every async section.
 - Browser-smoke the changed route in the relevant locale after implementation.
 
@@ -127,6 +129,6 @@ For frontend-visible changes, verify the relevant route at `http://localhost:301
 
 - `references/agent-mode.md`: historical multi-agent orchestration guidance; use only when the user explicitly asks to revive multi-agent mode.
 - `references/kb-navigation.md`: KB map and update rules.
-- `project-kb/code-kb/image-video/07-library-assets-and-admin.md`: first-party reusable material library and Admin flow.
+- `project-kb/code-kb/image-video/07-user-history-and-admin.md`: templates, user media history, Admin material boundaries, and app media routes.
 - `project-kb/`: project-owned knowledge base.
 - `docs/ecommerce-video-saas/`: product, deployment, cost, and audit docs.

@@ -132,7 +132,7 @@ pnpm test tests/generations-validation.test.ts
 - `library_assets` schema、公开 API、Admin API、Admin 面板和 `lib/library-assets/*` 已从产品面移除。
 - 历史迁移 `0009_library_assets.sql`、`0013_simplify_library_assets.sql`、`0014_library_assets_category_unique.sql` 保留为 no-op；`0025_remove_library_assets.sql` 用于从已有数据库删除旧表、旧外键和旧来源值。
 - `user_media_history` 只引用用户自己的 `assets` 和可选 `generation_jobs`，来源收敛为 `user_upload`、`generated_image`、`generated_video`。
-- 三个工作台的可复用用户素材入口改为私域历史；智能试衣保留独立 `model_catalog_assets` 模特库。
+- 三个工作台的可复用用户素材入口改为私域历史；智能试衣模特库复用 `templates`，以 `type = 'model'` 存储模特，分类写入 `category`，详情文案写入 `prompt`。
 - Admin 只保留 `User History` 做支持/运营查看，generic `assets` Admin route/service 和 Library Assets 面板都不作为管理入口。
 
 ## 5. 下一步优先级

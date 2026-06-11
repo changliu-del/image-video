@@ -77,6 +77,10 @@ type TemplateOrderResponse = {
   total: number;
 };
 
+type ModelTemplateCategoriesResponse = {
+  categories?: string[];
+};
+
 type TemplateOrderFormState = {
   type: TemplateType;
   category: string;
@@ -100,7 +104,12 @@ const emptyUploadFiles: Record<TemplateMediaTarget, File | null> = {
 };
 
 function defaultCategoryForType(type: TemplateType) {
-  return getTemplateCategoriesForType(type)[0] ?? 'common';
+  return getTemplateCategoriesForType(type)[0] ?? (type === 'model' ? '' : 'common');
+}
+
+function normalizeFormCategoryForSubmit(type: TemplateType, category: string) {
+  const trimmed = category.trim();
+  return type === 'model' ? trimmed : trimmed.toLowerCase();
 }
 
 function freshEmptyForm(): TemplateFormState {
@@ -363,11 +372,18 @@ export function TemplatesPanel({
   const [loadingOrder, setLoadingOrder] = useState(false);
   const [savingOrder, setSavingOrder] = useState(false);
   const [orderError, setOrderError] = useState<string | null>(null);
+  const [modelOrderCategories, setModelOrderCategories] = useState<string[]>([]);
+  const [loadingModelOrderCategories, setLoadingModelOrderCategories] =
+    useState(false);
 
   const typeLabel = (type: TemplateType) =>
     templateTypeLabels[type]?.[locale] ?? type;
 
-  const orderCategoryOptions = getTemplateCategoriesForType(orderForm.type);
+  const orderCategoryOptions =
+    orderForm.type === 'model'
+      ? modelOrderCategories
+      : getTemplateCategoriesForType(orderForm.type);
+  const canSelectOrderCategory = orderCategoryOptions.length > 0;
 
   const columns = useMemo<AdminTableColumn<AdminTemplate>[]>(
     () => [
@@ -522,7 +538,7 @@ export function TemplatesPanel({
           form.titleTranslations,
           copy.fields.titleTranslations ?? 'Title translations'
         ),
-        category: form.category.trim().toLowerCase(),
+        category: normalizeFormCategoryForSubmit(form.type, form.category),
         promptTranslations: parseTranslationsJson(
           form.promptTranslations,
           copy.fields.promptTranslations ?? 'Prompt translations'
@@ -659,6 +675,12 @@ export function TemplatesPanel({
   }
 
   async function loadTemplateOrder(nextForm = orderForm) {
+    if (!nextForm.category.trim()) {
+      setOrderedTemplates([]);
+      setOrderError(null);
+      return;
+    }
+
     setLoadingOrder(true);
     setOrderError(null);
     try {
@@ -695,13 +717,68 @@ export function TemplatesPanel({
     void loadTemplateOrder();
   }
 
-  function updateOrderType(type: TemplateType) {
+  async function loadModelOrderCategories() {
+    if (modelOrderCategories.length > 0) return modelOrderCategories;
+
+    setLoadingModelOrderCategories(true);
+    try {
+      const result = await requestJson<ModelTemplateCategoriesResponse>(
+        `/api/templates?${new URLSearchParams({
+          type: 'model',
+          pageSize: '1',
+          locale,
+        })}`,
+        { method: 'GET' },
+        copy.errors.loadOrder ?? copy.errors.load
+      );
+      const categories = Array.from(
+        new Set(
+          (result.categories ?? [])
+            .map((category) => category.trim())
+            .filter(Boolean)
+        )
+      );
+      setModelOrderCategories(categories);
+      return categories;
+    } finally {
+      setLoadingModelOrderCategories(false);
+    }
+  }
+
+  async function updateOrderType(type: TemplateType) {
+    try {
+      const categories =
+        type === 'model'
+          ? await loadModelOrderCategories()
+          : getTemplateCategoriesForType(type);
+      const category = categories[0] ?? defaultCategoryForType(type);
+      const nextForm = {
+        type,
+        category,
+      };
+      setOrderForm(nextForm);
+      void loadTemplateOrder(nextForm);
+    } catch (loadError) {
+      setOrderForm({
+        type,
+        category: defaultCategoryForType(type),
+      });
+      setOrderedTemplates([]);
+      setOrderError(
+        loadError instanceof Error
+          ? loadError.message
+          : copy.errors.loadOrder ?? copy.errors.load
+      );
+    }
+  }
+
+  function updateOrderTypeFromSelect(type: TemplateType) {
     const nextForm = {
       type,
       category: defaultCategoryForType(type),
     };
     setOrderForm(nextForm);
-    void loadTemplateOrder(nextForm);
+    void updateOrderType(type);
   }
 
   function updateOrderCategory(category: string) {
@@ -912,7 +989,7 @@ export function TemplatesPanel({
               <select
                 value={orderForm.type}
                 onChange={(event) =>
-                  updateOrderType(event.target.value as TemplateType)
+                  updateOrderTypeFromSelect(event.target.value as TemplateType)
                 }
                 className="h-9 rounded-md border border-gray-200 bg-white px-3 text-sm"
               >
@@ -922,23 +999,42 @@ export function TemplatesPanel({
                 <option value="image_to_image">
                   {templateTypeLabels.image_to_image[locale]}
                 </option>
+                <option value="model">
+                  {templateTypeLabels.model[locale]}
+                </option>
                 <option value="try_on">
                   {templateTypeLabels.try_on[locale]}
                 </option>
               </select>
             </Field>
             <Field label={copy.fields.category}>
-              <select
-                value={orderForm.category}
-                onChange={(event) => updateOrderCategory(event.target.value)}
-                className="h-9 rounded-md border border-gray-200 bg-white px-3 text-sm"
-              >
-                {orderCategoryOptions.map((category) => (
-                  <option key={category} value={category}>
-                    {getTemplateCategoryLabel(category, locale)}
-                  </option>
-                ))}
-              </select>
+              {canSelectOrderCategory ? (
+                <select
+                  value={orderForm.category}
+                  onChange={(event) => updateOrderCategory(event.target.value)}
+                  className="h-9 rounded-md border border-gray-200 bg-white px-3 text-sm"
+                >
+                  {orderCategoryOptions.map((category) => (
+                    <option key={category} value={category}>
+                      {getTemplateCategoryLabel(category, locale)}
+                    </option>
+                  ))}
+                </select>
+              ) : (
+                <Input
+                  value={orderForm.category}
+                  placeholder={
+                    loadingModelOrderCategories ? common.loading : '男/青年/冷酷'
+                  }
+                  onChange={(event) =>
+                    setOrderForm((current) => ({
+                      ...current,
+                      category: event.target.value,
+                    }))
+                  }
+                  onBlur={() => loadTemplateOrder()}
+                />
+              )}
             </Field>
           </div>
 
@@ -1111,6 +1207,9 @@ export function TemplatesPanel({
                   </option>
                   <option value="image_to_image">
                     {templateTypeLabels.image_to_image[locale]}
+                  </option>
+                  <option value="model">
+                    {templateTypeLabels.model[locale]}
                   </option>
                   <option value="try_on">
                     {templateTypeLabels.try_on[locale]}

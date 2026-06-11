@@ -228,7 +228,7 @@ storage_key 必须包含 userId
 1. 获取 Wanxiang APPCODE
 2. 确认图生视频、商品图、单件试衣、多件试衣、模特素材 catalog endpoint
 3. 在服务端环境保存 APPCODE 和必要 endpoint override
-4. 用一张公开可访问图片分别测试 submit/query
+4. 用一张公开可访问图片分别测试图生视频 submit/query，submit body 只发送 `imgUrl` 和 `posPrompt`
 5. 记录一次图生视频、商品图、试衣的实际成本和平均耗时
 ```
 
@@ -594,7 +594,8 @@ R2 signed upload 成功
 创建 generation_job 成功
 Trigger.dev 收到 task
 Wanxiang 返回终态结果
-final image/video asset 写入 DB/R2
+provider final image/video 被 worker 复制到 R2
+final image/video asset 写入 DB，public_url 使用 R2_PUBLIC_BASE_URL
 user_media_history 写入 upload/generated 历史
 任务状态变为 succeeded
 用户可以预览和下载 final result
@@ -616,6 +617,7 @@ bucket 名称是否正确
 API token 是否有 bucket read/write 权限
 signed URL 是否过期
 文件大小是否超过限制
+Trigger.dev worker 是否也配置了 R2 变量，用于复制 provider 输出结果
 ```
 
 ### Vercel API 超时

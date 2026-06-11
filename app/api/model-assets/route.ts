@@ -1,7 +1,7 @@
 import { type NextRequest, NextResponse } from 'next/server';
 import { publicCatalogReadHeaders } from '@/lib/http/cache-control';
 import { isLocale } from '@/lib/marketing/content';
-import { listModelCatalogAssets } from '@/lib/model-assets/catalog';
+import { listModelTemplates } from '@/lib/model-assets/catalog';
 
 export const runtime = 'nodejs';
 
@@ -16,9 +16,8 @@ export async function GET(request: NextRequest) {
   const locale = isLocale(localeParam) ? localeParam : 'pt';
 
   try {
-    const items = await listModelCatalogAssets({
+    const items = await listModelTemplates({
       locale,
-      provider: searchParams.get('provider') ?? 'wanxiang',
       limit: parsePositiveInteger(searchParams.get('limit'), 24),
     });
 

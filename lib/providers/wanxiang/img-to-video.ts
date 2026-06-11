@@ -18,7 +18,7 @@ export function submitImageToVideo(
     options.url ||
       process.env.WANXIANG_IMG_TO_VIDEO_SUBMIT_URL ||
       DEFAULT_WANXIANG_IMG_TO_VIDEO_SUBMIT_URL,
-    payload,
+    toImageToVideoSubmitPayload(payload),
     { ...options, resultMediaType: 'video' }
   );
 }
@@ -38,4 +38,39 @@ export function queryImageToVideo(
 
 function toTaskPayload(task: string | WanxiangPayload): WanxiangPayload {
   return typeof task === 'string' ? { task_id: task } : task;
+}
+
+function toImageToVideoSubmitPayload(payload: WanxiangPayload): WanxiangPayload {
+  const imgUrl =
+    firstString(payload.imgUrl) ||
+    firstString(payload.imageUrl) ||
+    firstString(payload.inputImageUrl) ||
+    firstString(payload.inputImageUrls);
+  const posPrompt =
+    firstString(payload.posPrompt) ||
+    firstString(payload.prompt) ||
+    firstString(payload.positivePrompt);
+
+  return {
+    ...(imgUrl ? { imgUrl } : {}),
+    ...(posPrompt ? { posPrompt } : {}),
+  };
+}
+
+function firstString(value: unknown): string | undefined {
+  if (typeof value === 'string') {
+    const trimmed = value.trim();
+    return trimmed.length > 0 ? trimmed : undefined;
+  }
+
+  if (Array.isArray(value)) {
+    for (const item of value) {
+      const found = firstString(item);
+      if (found) {
+        return found;
+      }
+    }
+  }
+
+  return undefined;
 }

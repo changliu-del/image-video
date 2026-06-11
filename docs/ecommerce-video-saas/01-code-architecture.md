@@ -8,7 +8,7 @@
 
 ```text
 用户上传一张商品图
--> 选择模板或填写 prompt、比例、时长
+-> 选择模板或填写 prompt
 -> 系统生成电商短视频
 -> 用户预览和下载
 ```
@@ -44,7 +44,7 @@ Sentry + PostHog 监控分析
 ```text
 用户登录
 -> 上传商品图到 Cloudflare R2
--> 选择模板或填写 prompt/比例/时长
+-> 选择模板或填写 prompt
 -> Next.js API 创建 generation_job
 -> 冻结用户 credits
 -> 触发 Trigger.dev 后台任务
@@ -167,7 +167,7 @@ API 对前台输出 URL：列表只返回 `id`、按 `locale` 解析后的 `titl
 ```text
 素材上传或素材/模板库选择
 prompt 和创意预设
-比例、时长、模式、风格等工作台参数
+模式、风格等工作台参数；图生视频不暴露时长配置，固定 5s
 生成按钮，显示与后端一致的算力成本
 结果预览区
 ```
@@ -245,8 +245,6 @@ storageKey 必须带 userId，避免覆盖其他用户文件
   "inputAssetId": "asset_...",
   "generationType": "image_to_video",
   "prompt": "Create a premium product video with a clean ecommerce composition.",
-  "aspectRatio": "9:16",
-  "durationSeconds": 5,
   "templateId": "template_uuid"
 }
 ```
@@ -376,7 +374,6 @@ export interface ImageToVideoProvider {
   createJob(input: {
     imageUrl: string;
     prompt: string;
-    durationSeconds: number;
     aspectRatio: VideoAspectRatio;
   }): Promise<{
     providerJobId: string;
@@ -419,7 +416,7 @@ lib/providers/wanxiang/models.ts
 输入：
 
 ```text
-image_to_video: imageUrl, prompt, durationSeconds, aspectRatio
+image_to_video: one imageUrl, prompt; output is fixed 5s with no duration field
 apparel_image: imageUrl, prompt, strength, variants
 try_on: modelUrl, garment image URLs, mode, aspectRatio
 ```
@@ -470,8 +467,8 @@ payload：
 4. 调 Wanxiang 对应接口提交任务，写入 provider_task_id 并更新 status = running
 5. 查询 Wanxiang 任务状态
 6. running 时更新 output_json raw response，等待下一次 worker 调度
-7. succeeded 时创建一个输出 asset：优先 final_video，其次 final_image
-8. 把 output_asset_id 写回 generation_jobs
+7. succeeded 时下载 provider final_video/final_image 并上传到 R2，再用 R2 public URL 创建一个输出 asset
+8. 把 output_asset_id 写回 generation_jobs，状态接口和前端只读取输出 asset URL
 9. 记录 generated_image/generated_video 到 user_media_history
 10. 捕获 credits
 ```
@@ -507,9 +504,7 @@ deployment docs and cost model
 MVP 计费规则建议：
 
 ```text
-5s 480p/720p 草稿: 10 credits
-8s 标准: 18 credits
-10s 标准: 25 credits
+固定 5s 图生视频: 10 credits
 失败任务: 全额返还
 ```
 

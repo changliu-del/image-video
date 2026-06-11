@@ -1,6 +1,7 @@
 import { existsSync, readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { describe, expect, it } from 'vitest';
+import { normalizeTemplateCategoryForType } from '../lib/templates/category-config';
 
 function readSource(path: string) {
   return readFileSync(join(process.cwd(), path), 'utf8');
@@ -77,6 +78,16 @@ describe('template catalog routing contract', () => {
     expect(query).not.toContain('sortWeight');
     expect(query).toContain('sortOrder');
     expect(query).not.toContain('count(*)::int');
+  });
+
+  it('preserves model template categories while keeping other categories normalized', () => {
+    expect(normalizeTemplateCategoryForType('model', '男/青年/冷酷')).toBe(
+      '男/青年/冷酷'
+    );
+    expect(normalizeTemplateCategoryForType('image_to_video', 'General')).toBe(
+      'common'
+    );
+    expect(normalizeTemplateCategoryForType('image_to_video', '男/青年/冷酷')).toBeNull();
   });
 
   it('aligns public and image-to-video template categories', () => {
@@ -238,6 +249,7 @@ describe('template catalog routing contract', () => {
     const importScripts = [
       readSource('scripts/import-template-catalog.ts'),
       readSource('scripts/import-wanxiang-templates.ts'),
+      readSource('scripts/import-wanxiang-models.ts'),
     ];
     const snapshotColumns = [
       'thumbnail_url',
@@ -283,24 +295,17 @@ describe('template catalog routing contract', () => {
     expect(source).not.toContain('absolute inset-x-1 bottom-1');
   });
 
-  it('keeps the image-to-video specs toolbar compact', () => {
+  it('keeps image-to-video fixed to the current provider capability', () => {
     const source = readSource('components/create/image-video-workbench.tsx');
 
-    expect(source).toContain('RectangleHorizontal');
-    expect(source).toContain("type SpecsSection = 'aspect' | 'duration' | 'quality'");
-    expect(source).toContain("onClick={() => openSpecsSection('aspect')}");
-    expect(source).toContain("onClick={() => openSpecsSection('duration')}");
-    expect(source).toContain("onClick={() => openSpecsSection('quality')}");
-    expect(source).toContain('aria-label={`${copy.aspectRatio} ${aspectRatio}`}');
-    expect(source).toContain('aria-label={`${copy.videoDuration} ${durationSeconds}${copy.seconds}`}');
-    expect(source).toContain('aria-label={`${copy.quality} ${qualitySummary}`}');
-    expect(source).toContain('aspectSpecsRef');
-    expect(source).toContain('durationSpecsRef');
-    expect(source).toContain('qualitySpecsRef');
-    expect(source).toContain('overflow-x-auto whitespace-nowrap');
-    expect(source).toContain('bg-[#f4f6fb]');
-    expect(source).toContain('mx-3 h-5 w-px shrink-0 bg-gray-300');
-    expect(source).toContain('size-5 rounded-md accent-indigo-600');
+    expect(source).not.toContain('IMAGE_TO_VIDEO_DURATION_SECONDS');
+    expect(source).not.toContain('durationSeconds:');
+    expect(source).not.toContain('getCreditCostForDuration');
+    expect(source).not.toContain("type SpecsSection = 'aspect' | 'duration' | 'quality'");
+    expect(source).not.toContain("onClick={() => openSpecsSection('duration')}");
+    expect(source).not.toContain("onClick={() => openSpecsSection('quality')}");
+    expect(source).not.toContain('referenceVideoAssetIds');
+    expect(source).not.toContain('referenceAudioAssetIds');
     expect(source).not.toContain('flex-wrap items-center gap-2 rounded-xl border border-gray-200 bg-gray-100');
   });
 
@@ -309,8 +314,10 @@ describe('template catalog routing contract', () => {
     const copy = readSource('components/create/workbench-copy.ts');
 
     expect(source).toContain('const MAX_REFERENCE_IMAGE_FILE_COUNT = 1');
-    expect(source).toContain("multiple={action.kind !== 'image'}");
-    expect(source).toContain("kind === 'image'");
+    expect(source).not.toContain('multiple={');
+    expect(source).not.toContain("kind === 'image'");
+    expect(source).not.toContain('uploadReferenceVideo');
+    expect(source).not.toContain('uploadReferenceMusic');
     expect(source).toContain('setError(copy.referenceImageLimit)');
     expect(copy).toContain('referenceImageLimit');
   });

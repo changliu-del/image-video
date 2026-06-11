@@ -1,6 +1,7 @@
 import type { TemplateType } from '@/lib/templates/catalog';
 
 const categoryPattern = /^[a-z0-9][a-z0-9_-]*$/;
+const maxModelCategoryLength = 120;
 
 export const imageToVideoTemplateCategories = [
   'beauty',
@@ -29,11 +30,14 @@ export const tryOnTemplateCategories = [
   'tryon_indoor_casual',
 ] as const;
 
+export const modelTemplateCategories = [] as const;
+
 const templateCategoryOptionsByType: Partial<
   Record<TemplateType, readonly string[]>
 > = {
   image_to_video: imageToVideoTemplateCategories,
   image_to_image: imageToImageTemplateCategories,
+  model: modelTemplateCategories,
   try_on: tryOnTemplateCategories,
 };
 
@@ -67,6 +71,15 @@ export function normalizeTemplateCategoryValue(value: string | null | undefined)
   return categoryPattern.test(category) ? category : null;
 }
 
+export function normalizeModelTemplateCategoryValue(
+  value: string | null | undefined
+) {
+  const category = value?.trim();
+  if (!category || category.length > maxModelCategoryLength) return null;
+
+  return category;
+}
+
 export function getTemplateCategoriesForType(type: TemplateType) {
   return templateCategoryOptionsByType[type] ?? [];
 }
@@ -75,6 +88,10 @@ export function normalizeTemplateCategoryForType(
   type: TemplateType,
   value: string | null | undefined
 ) {
+  if (type === 'model') {
+    return normalizeModelTemplateCategoryValue(value);
+  }
+
   const category = normalizeTemplateCategoryValue(value);
   if (!category) return null;
 

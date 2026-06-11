@@ -18,7 +18,8 @@ import {
 } from '@/lib/templates/public-client';
 import { cn } from '@/lib/utils';
 
-type GalleryType = TemplateType | 'all';
+type GalleryTemplateType = Exclude<TemplateType, 'model'>;
+type GalleryType = GalleryTemplateType | 'all';
 type GalleryStatus = 'loading' | 'ready' | 'error';
 
 type TemplateBucket = {
@@ -40,7 +41,7 @@ type GalleryCopy = {
   useTemplate: string;
 };
 
-const galleryTypes: TemplateType[] = [
+const galleryTypes: GalleryTemplateType[] = [
   'image_to_video',
   'image_to_image',
   'try_on',
@@ -101,7 +102,7 @@ function templateHref(item: PublicTemplateItem, locale: DashboardLocale) {
   return withDashboardLocale(`/create/try-on?templateId=${item.id}`, locale);
 }
 
-function interleaveItems(buckets: Record<TemplateType, TemplateBucket>) {
+function interleaveItems(buckets: Record<GalleryTemplateType, TemplateBucket>) {
   const maxLength = Math.max(
     ...galleryTypes.map((type) => buckets[type].items.length)
   );
@@ -121,7 +122,9 @@ function useTemplateGallery(locale: DashboardLocale) {
   const [status, setStatus] = useState<GalleryStatus>('loading');
   const [isLoadingMore, setIsLoadingMore] = useState(false);
   const [reloadKey, setReloadKey] = useState(0);
-  const [buckets, setBuckets] = useState<Record<TemplateType, TemplateBucket>>({
+  const [buckets, setBuckets] = useState<
+    Record<GalleryTemplateType, TemplateBucket>
+  >({
     image_to_video: emptyBucket(),
     image_to_image: emptyBucket(),
     try_on: emptyBucket(),
@@ -169,7 +172,12 @@ function useTemplateGallery(locale: DashboardLocale) {
         );
 
         if (!ignore) {
-          setBuckets(Object.fromEntries(responses) as Record<TemplateType, TemplateBucket>);
+          setBuckets(
+            Object.fromEntries(responses) as Record<
+              GalleryTemplateType,
+              TemplateBucket
+            >
+          );
           setStatus('ready');
         }
       } catch {
@@ -283,7 +291,7 @@ function GalleryTabs({
   onChange,
 }: {
   active: GalleryType;
-  buckets: Record<TemplateType, TemplateBucket>;
+  buckets: Record<GalleryTemplateType, TemplateBucket>;
   copy: GalleryCopy;
   locale: DashboardLocale;
   onChange: (type: GalleryType) => void;

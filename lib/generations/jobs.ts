@@ -11,8 +11,8 @@ import {
   type TryOnMode,
 } from '@/lib/generations/validation';
 import {
-  getModelCatalogAsset,
-  type ModelCatalogAssetItem,
+  getModelTemplate,
+  type ModelTemplateItem,
 } from '@/lib/model-assets/catalog';
 import {
   queryCloth,
@@ -27,10 +27,21 @@ import {
   submitTryOnMulti,
   submitTryOnSingle,
 } from '@/lib/providers/wanxiang/starlink';
+import {
+  buildPublicUrl,
+  createSignedGetUrl,
+  uploadObjectToR2,
+} from '@/lib/storage/r2';
+import {
+  buildAbsoluteAssetMediaUrl,
+  buildAssetMediaUrl,
+} from '@/lib/assets/media-url';
 import { upsertUserMediaHistory } from '@/lib/user-media/service';
 
 const DEFAULT_PROVIDER = 'wanxiang';
 const PROVIDER_SUBMIT_LEASE_SECONDS = 120;
+const PROVIDER_RESULT_FETCH_TIMEOUT_MS = 120_000;
+const MAX_PROVIDER_RESULT_SIZE_BYTES = 200 * 1024 * 1024;
 const UUID_PATTERN =
   /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 type QueryableSql = postgres.Sql;
@@ -62,6 +73,45 @@ type JobRecord = {
   status: string;
 };
 
+type ProviderResultAssetType = 'final_image' | 'final_video';
+
+type ProviderResultSource = 'generated_image' | 'generated_video';
+
+const PROVIDER_RESULT_MIME_EXTENSIONS = {
+  'image/jpeg': 'jpg',
+  'image/png': 'png',
+  'image/webp': 'webp',
+  'video/mp4': 'mp4',
+  'video/webm': 'webm',
+} as const;
+
+type ProviderResultMimeType = keyof typeof PROVIDER_RESULT_MIME_EXTENSIONS;
+
+const PROVIDER_RESULT_EXTENSION_MIME_TYPES: Record<
+  string,
+  ProviderResultMimeType
+> = {
+  jpeg: 'image/jpeg',
+  jpg: 'image/jpeg',
+  mp4: 'video/mp4',
+  png: 'image/png',
+  webm: 'video/webm',
+  webp: 'image/webp',
+};
+
+type ProviderResultOutput = {
+  assetType: ProviderResultAssetType;
+  source: ProviderResultSource;
+  providerUrl: string;
+};
+
+type UploadedProviderResult = ProviderResultOutput & {
+  storageKey: string;
+  publicUrl: string;
+  mimeType: ProviderResultMimeType;
+  sizeBytes: number;
+};
+
 type GenerationJobRecord = {
   id: string;
   userId: number;
@@ -83,6 +133,12 @@ type JobStatusRecord = {
   generationId: string;
   generationType: GenerationType;
   tryOnMode: TryOnMode | null;
+  templateId: string | null;
+  prompt: string | null;
+  inputAssetId: string;
+  inputAssetIds: string[];
+  inputImageUrl: string | null;
+  inputImageUrls: string[];
   status: string;
   progressLabel: string;
   finalImageUrl: string | null;
@@ -171,9 +227,175 @@ function toJsonObject(value: unknown): Record<string, unknown> {
   return {};
 }
 
+function getErrorMessage(error: unknown) {
+  return error instanceof Error ? error.message : String(error);
+}
+
+function getProviderResultOutput(
+  queryResult: WanxiangQueryResult
+): ProviderResultOutput | null {
+  if (queryResult.videoUrl) {
+    return {
+      assetType: 'final_video',
+      source: 'generated_video',
+      providerUrl: queryResult.videoUrl,
+    };
+  }
+
+  if (queryResult.imageUrl) {
+    return {
+      assetType: 'final_image',
+      source: 'generated_image',
+      providerUrl: queryResult.imageUrl,
+    };
+  }
+
+  return null;
+}
+
+function isProviderResultMimeForAssetType(
+  mimeType: ProviderResultMimeType,
+  assetType: ProviderResultAssetType
+) {
+  return assetType === 'final_video'
+    ? mimeType.startsWith('video/')
+    : mimeType.startsWith('image/');
+}
+
+function normalizeProviderResultMimeType(
+  mimeType: string | null | undefined
+): ProviderResultMimeType | null {
+  const normalized = mimeType?.split(';')[0]?.trim().toLowerCase();
+
+  if (!normalized) {
+    return null;
+  }
+
+  if (normalized === 'image/jpg') {
+    return 'image/jpeg';
+  }
+
+  return normalized in PROVIDER_RESULT_MIME_EXTENSIONS
+    ? (normalized as ProviderResultMimeType)
+    : null;
+}
+
+function inferProviderResultMimeTypeFromUrl(providerUrl: string) {
+  try {
+    const extension = new URL(providerUrl).pathname
+      .split('.')
+      .pop()
+      ?.toLowerCase();
+
+    return extension
+      ? PROVIDER_RESULT_EXTENSION_MIME_TYPES[extension] ?? null
+      : null;
+  } catch {
+    return null;
+  }
+}
+
+function bytesEqual(
+  body: Uint8Array,
+  offset: number,
+  bytes: readonly number[]
+) {
+  if (body.byteLength < offset + bytes.length) {
+    return false;
+  }
+
+  return bytes.every((byte, index) => body[offset + index] === byte);
+}
+
+function sniffProviderResultMimeType(body: Uint8Array) {
+  if (bytesEqual(body, 0, [0xff, 0xd8, 0xff])) {
+    return 'image/jpeg' as const;
+  }
+
+  if (bytesEqual(body, 0, [0x89, 0x50, 0x4e, 0x47])) {
+    return 'image/png' as const;
+  }
+
+  if (
+    bytesEqual(body, 0, [0x52, 0x49, 0x46, 0x46]) &&
+    bytesEqual(body, 8, [0x57, 0x45, 0x42, 0x50])
+  ) {
+    return 'image/webp' as const;
+  }
+
+  if (bytesEqual(body, 4, [0x66, 0x74, 0x79, 0x70])) {
+    return 'video/mp4' as const;
+  }
+
+  if (bytesEqual(body, 0, [0x1a, 0x45, 0xdf, 0xa3])) {
+    return 'video/webm' as const;
+  }
+
+  return null;
+}
+
+function inferProviderResultMimeType(input: {
+  assetType: ProviderResultAssetType;
+  providerUrl: string;
+  responseContentType: string | null;
+  body: Uint8Array;
+}) {
+  const candidates = [
+    normalizeProviderResultMimeType(input.responseContentType),
+    inferProviderResultMimeTypeFromUrl(input.providerUrl),
+    sniffProviderResultMimeType(input.body),
+  ];
+
+  for (const candidate of candidates) {
+    if (
+      candidate &&
+      isProviderResultMimeForAssetType(candidate, input.assetType)
+    ) {
+      return candidate;
+    }
+  }
+
+  throw new GenerationApiError(
+    415,
+    'provider_result_mime_unsupported',
+    'Provider result MIME type is not supported'
+  );
+}
+
+function buildProviderResultStorageKey(input: {
+  userId: number;
+  jobId: string;
+  assetType: ProviderResultAssetType;
+  mimeType: ProviderResultMimeType;
+}) {
+  const extension = PROVIDER_RESULT_MIME_EXTENSIONS[input.mimeType];
+  const filename =
+    input.assetType === 'final_video' ? 'final-video' : 'final-image';
+
+  return `users/${input.userId}/generated/${input.jobId}/${filename}.${extension}`;
+}
+
 function getTryOnModeFromInput(input: Record<string, unknown>) {
   const mode = input.tryOnMode ?? input.mode;
   return mode === 'single' || mode === 'multi' ? mode : null;
+}
+
+function getStringFromInput(
+  input: Record<string, unknown>,
+  key: string
+) {
+  const value = input[key];
+  return typeof value === 'string' && value.trim() ? value : null;
+}
+
+function getInputAssetIdsFromJob(job: GenerationJobRecord) {
+  const ids = Array.isArray(job.inputJson.inputAssetIds)
+    ? job.inputJson.inputAssetIds.filter(
+        (value): value is string => typeof value === 'string' && Boolean(value)
+      )
+    : [];
+
+  return ids.length ? ids : [job.inputAssetId].filter(Boolean);
 }
 
 function mapAssetRow(row: Record<string, unknown>): AssetRecord {
@@ -325,22 +547,6 @@ function getInputAssetIds(generation: GenerationRequest) {
     for (const assetId of generation.inputAssetIds ?? []) {
       ids.add(assetId);
     }
-
-    for (const assetId of generation.referenceAssetIds ?? []) {
-      ids.add(assetId);
-    }
-
-    for (const assetId of generation.referenceImageAssetIds ?? []) {
-      ids.add(assetId);
-    }
-
-    for (const assetId of generation.referenceVideoAssetIds ?? []) {
-      ids.add(assetId);
-    }
-
-    for (const assetId of generation.referenceAudioAssetIds ?? []) {
-      ids.add(assetId);
-    }
   }
 
   if (generation.generationType === 'try_on') {
@@ -356,41 +562,50 @@ function getInputAssetIds(generation: GenerationRequest) {
   return [...ids];
 }
 
-function buildProviderInputAssets(
+async function resolveModelTemplateMediaUrl(
+  modelTemplate: ModelTemplateItem | null | undefined
+) {
+  if (modelTemplate?.imageStorageKey) {
+    return createSignedGetUrl({
+      storageKey: modelTemplate.imageStorageKey,
+      expiresInSeconds: 3600,
+    });
+  }
+
+  return (
+    modelTemplate?.imageUrl ??
+    modelTemplate?.thumbnailUrl ??
+    modelTemplate?.videoUrl ??
+    null
+  );
+}
+
+async function buildProviderInputAssets(
   generation: GenerationRequest,
   assetsById: Map<string, AssetRecord>,
-  modelCatalogAsset?: ModelCatalogAssetItem | null
-): Record<string, string | string[]> {
+  modelTemplate?: ModelTemplateItem | null
+): Promise<Record<string, string | string[]>> {
   switch (generation.generationType) {
     case 'image_to_video': {
       const inputImageUrls = (generation.inputAssetIds ?? [generation.inputAssetId])
-        .map((assetId) => assetsById.get(assetId)!.publicUrl);
-      const referenceImageUrls = (generation.referenceImageAssetIds ?? [])
-        .map((assetId) => assetsById.get(assetId)!.publicUrl);
-      const referenceVideoUrls = (generation.referenceVideoAssetIds ?? [])
-        .map((assetId) => assetsById.get(assetId)!.publicUrl);
-      const referenceAudioUrls = (generation.referenceAudioAssetIds ?? [])
-        .map((assetId) => assetsById.get(assetId)!.publicUrl);
+        .map((assetId) => buildAbsoluteAssetMediaUrl(assetsById.get(assetId)!.id));
 
       return {
         inputImageUrl: inputImageUrls[0],
         ...(inputImageUrls.length > 1 ? { inputImageUrls } : {}),
-        ...(referenceImageUrls.length ? { referenceImageUrls } : {}),
-        ...(referenceVideoUrls.length ? { referenceVideoUrls } : {}),
-        ...(referenceAudioUrls.length ? { referenceAudioUrls } : {}),
       };
     }
     case 'apparel_image':
       return {
-        inputImageUrl: assetsById.get(generation.inputAssetId)!.publicUrl,
+        inputImageUrl: buildAbsoluteAssetMediaUrl(
+          assetsById.get(generation.inputAssetId)!.id
+        ),
       };
     case 'try_on':
       const modelMediaUrl =
-        modelCatalogAsset?.imageUrl ??
-        modelCatalogAsset?.thumbnailUrl ??
-        modelCatalogAsset?.videoUrl ??
+        (await resolveModelTemplateMediaUrl(modelTemplate)) ??
         (generation.modelAssetId
-          ? assetsById.get(generation.modelAssetId)?.publicUrl
+          ? buildAbsoluteAssetMediaUrl(assetsById.get(generation.modelAssetId)!.id)
           : null);
 
       if (!modelMediaUrl) {
@@ -403,9 +618,9 @@ function buildProviderInputAssets(
 
       return {
         modelImageUrl: modelMediaUrl,
-        ...(modelCatalogAsset?.videoUrl ? { modelVideoUrl: modelCatalogAsset.videoUrl } : {}),
+        ...(modelTemplate?.videoUrl ? { modelVideoUrl: modelTemplate.videoUrl } : {}),
         garmentImageUrls: generation.garmentAssetIds.map(
-          (assetId) => assetsById.get(assetId)!.publicUrl
+          (assetId) => buildAbsoluteAssetMediaUrl(assetsById.get(assetId)!.id)
         ),
       };
   }
@@ -535,23 +750,6 @@ async function createQueuedGenerationJobWithCreditReservation(input: {
     `;
     const limitRow = limitRows[0] as Record<string, unknown> | undefined;
     const purchaseRow = purchaseRows[0] as Record<string, unknown> | undefined;
-    const limitViolation = getGenerationLimitViolation({
-      activeCount: Number(limitRow?.active_count ?? 0),
-      dailyCount: Number(limitRow?.daily_count ?? 0),
-      totalCount: Number(limitRow?.total_count ?? 0),
-      hasPurchasedCredits: toBooleanValue(
-        purchaseRow?.has_purchased_credits ?? false
-      ),
-    });
-
-    if (limitViolation) {
-      throw new GenerationApiError(
-        limitViolation.status,
-        limitViolation.code,
-        limitViolation.message
-      );
-    }
-
     const balanceRows = await sql`
       select credit_balance::integer as balance
       from users
@@ -565,6 +763,23 @@ async function createQueuedGenerationJobWithCreditReservation(input: {
     }
 
     const currentBalance = Number(balanceRow.balance ?? 0);
+    const limitViolation = getGenerationLimitViolation({
+      activeCount: Number(limitRow?.active_count ?? 0),
+      dailyCount: Number(limitRow?.daily_count ?? 0),
+      totalCount: Number(limitRow?.total_count ?? 0),
+      creditBalance: currentBalance,
+      hasPurchasedCredits: toBooleanValue(
+        purchaseRow?.has_purchased_credits ?? false
+      ),
+    });
+
+    if (limitViolation) {
+      throw new GenerationApiError(
+        limitViolation.status,
+        limitViolation.code,
+        limitViolation.message
+      );
+    }
     if (currentBalance < input.creditReserved) {
       throw new GenerationApiError(
         402,
@@ -801,20 +1016,20 @@ export async function createGenerationForUser(
   const creditReserved = getCreditCostForGeneration(generation);
   await assertInputAssetsForUser(generation, userId);
   const templateId = await assertTemplateForGeneration(generation);
-  const modelCatalogAsset =
-    generation.generationType === 'try_on' && generation.modelCatalogAssetId
-      ? await getModelCatalogAsset({ id: generation.modelCatalogAssetId })
+  const modelTemplate =
+    generation.generationType === 'try_on' && generation.modelTemplateId
+      ? await getModelTemplate({ id: generation.modelTemplateId })
       : null;
 
   if (
     generation.generationType === 'try_on' &&
-    generation.modelCatalogAssetId &&
-    !modelCatalogAsset
+    generation.modelTemplateId &&
+    !modelTemplate
   ) {
     throw new GenerationApiError(
       404,
-      'model_catalog_asset_not_found',
-      'Model catalog asset was not found'
+      'model_template_not_found',
+      'Model template was not found'
     );
   }
 
@@ -1274,18 +1489,166 @@ async function refundReservedCreditsInTransaction(
   `;
 }
 
+async function downloadProviderResult(input: ProviderResultOutput) {
+  const controller = new AbortController();
+  const timeout = setTimeout(
+    () => controller.abort(),
+    PROVIDER_RESULT_FETCH_TIMEOUT_MS
+  );
+  let response: Response;
+
+  try {
+    response = await fetch(input.providerUrl, {
+      signal: controller.signal,
+    });
+  } catch (error) {
+    clearTimeout(timeout);
+    throw new GenerationApiError(
+      502,
+      'provider_result_download_failed',
+      `Failed to download provider result: ${getErrorMessage(error)}`
+    );
+  }
+
+  if (!response.ok) {
+    clearTimeout(timeout);
+    throw new GenerationApiError(
+      502,
+      'provider_result_download_failed',
+      `Failed to download provider result: HTTP ${response.status}`
+    );
+  }
+
+  const contentLength = toNullableNumber(response.headers.get('content-length'));
+  if (
+    contentLength != null &&
+    contentLength > MAX_PROVIDER_RESULT_SIZE_BYTES
+  ) {
+    clearTimeout(timeout);
+    throw new GenerationApiError(
+      413,
+      'provider_result_too_large',
+      'Provider result is too large to store'
+    );
+  }
+
+  let body: Buffer;
+
+  try {
+    body = Buffer.from(await response.arrayBuffer());
+  } catch (error) {
+    clearTimeout(timeout);
+    throw new GenerationApiError(
+      502,
+      'provider_result_download_failed',
+      `Failed to read provider result: ${getErrorMessage(error)}`
+    );
+  }
+  clearTimeout(timeout);
+
+  if (body.byteLength === 0) {
+    throw new GenerationApiError(
+      502,
+      'provider_result_empty',
+      'Provider result download was empty'
+    );
+  }
+
+  if (body.byteLength > MAX_PROVIDER_RESULT_SIZE_BYTES) {
+    throw new GenerationApiError(
+      413,
+      'provider_result_too_large',
+      'Provider result is too large to store'
+    );
+  }
+
+  return {
+    body,
+    mimeType: inferProviderResultMimeType({
+      assetType: input.assetType,
+      providerUrl: input.providerUrl,
+      responseContentType: response.headers.get('content-type'),
+      body,
+    }),
+    sizeBytes: body.byteLength,
+  };
+}
+
+async function copyProviderResultToR2(input: {
+  job: GenerationJobRecord;
+  queryResult: WanxiangQueryResult;
+}): Promise<UploadedProviderResult> {
+  const output = getProviderResultOutput(input.queryResult);
+
+  if (!output) {
+    throw new GenerationApiError(
+      502,
+      'provider_result_missing',
+      'Generation provider succeeded without a result URL'
+    );
+  }
+
+  const downloaded = await downloadProviderResult(output);
+  const storageKey = buildProviderResultStorageKey({
+    userId: input.job.userId,
+    jobId: input.job.id,
+    assetType: output.assetType,
+    mimeType: downloaded.mimeType,
+  });
+
+  try {
+    const publicUrl = buildPublicUrl(storageKey);
+    const uploadedPublicUrl = await uploadObjectToR2({
+      storageKey,
+      body: downloaded.body,
+      mimeType: downloaded.mimeType,
+    });
+
+    return {
+      ...output,
+      storageKey,
+      publicUrl: uploadedPublicUrl || publicUrl,
+      mimeType: downloaded.mimeType,
+      sizeBytes: downloaded.sizeBytes,
+    };
+  } catch (error) {
+    throw new GenerationApiError(
+      502,
+      'provider_result_upload_failed',
+      `Failed to upload provider result to R2: ${getErrorMessage(error)}`
+    );
+  }
+}
+
+function buildSucceededOutputJson(input: {
+  queryResult: WanxiangQueryResult;
+  output: UploadedProviderResult;
+  outputAssetId: string;
+}) {
+  const outputMediaUrl = buildAssetMediaUrl(input.outputAssetId);
+
+  return {
+    ...(input.queryResult.outputJson ?? {}),
+    finalImageUrl:
+      input.output.assetType === 'final_image' ? outputMediaUrl : null,
+    finalVideoUrl:
+      input.output.assetType === 'final_video' ? outputMediaUrl : null,
+    outputAssetId: input.outputAssetId,
+    outputStorageKey: input.output.storageKey,
+    outputMimeType: input.output.mimeType,
+    outputSizeBytes: input.output.sizeBytes,
+    rawResponse: input.queryResult.rawResponse,
+  };
+}
+
 async function createProviderResultAsset(
-  input: {
+  input: UploadedProviderResult & {
     userId: number;
     jobId: string;
-    assetType: 'final_image' | 'final_video';
-    publicUrl: string;
   },
   sql: QueryableSql = client
 ) {
   const assetId = randomUUID();
-  const extension = input.assetType === 'final_image' ? 'image' : 'video';
-  const storageKey = `provider-results/${input.userId}/${input.jobId}/${assetId}-${extension}`;
 
   const rows = await sql`
     insert into assets (
@@ -1295,6 +1658,8 @@ async function createProviderResultAsset(
       status,
       storage_key,
       public_url,
+      mime_type,
+      size_bytes,
       created_at,
       updated_at
     )
@@ -1303,11 +1668,22 @@ async function createProviderResultAsset(
       ${input.userId},
       ${input.assetType},
       'uploaded',
-      ${storageKey},
+      ${input.storageKey},
       ${input.publicUrl},
+      ${input.mimeType},
+      ${input.sizeBytes},
       now(),
       now()
     )
+    on conflict (storage_key) do update
+    set
+      user_id = excluded.user_id,
+      type = excluded.type,
+      status = 'uploaded',
+      public_url = excluded.public_url,
+      mime_type = excluded.mime_type,
+      size_bytes = excluded.size_bytes,
+      updated_at = now()
     returning id
   `;
 
@@ -1317,17 +1693,25 @@ async function createProviderResultAsset(
 async function mapJobStatus(job: GenerationJobRecord): Promise<JobStatusRecord> {
   const rows = await client`
     select
-      output_asset.public_url as output_url,
+      input_asset.id as input_asset_id,
+      input_asset.mime_type as input_mime_type,
+      output_asset.id as output_asset_id,
       output_asset.type as output_type,
       output_asset.mime_type as output_mime_type
     from generation_jobs
+    left join assets input_asset
+      on input_asset.id = generation_jobs.input_asset_id
+      and input_asset.user_id = generation_jobs.user_id
     left join assets output_asset
       on output_asset.id = generation_jobs.output_asset_id
     where generation_jobs.id = ${job.id}
     limit 1
   `;
   const row = rows[0] as Record<string, unknown> | undefined;
-  const outputUrl = toNullableString(row?.output_url);
+  const inputAssetId = toNullableString(row?.input_asset_id) ?? job.inputAssetId;
+  const inputMimeType = toNullableString(row?.input_mime_type);
+  const inputIsImage = inputMimeType?.startsWith('image/') ?? false;
+  const outputAssetId = toNullableString(row?.output_asset_id) ?? job.outputAssetId;
   const outputType = toNullableString(row?.output_type);
   const outputMimeType = toNullableString(row?.output_mime_type);
   const outputIsVideo =
@@ -1340,10 +1724,20 @@ async function mapJobStatus(job: GenerationJobRecord): Promise<JobStatusRecord> 
     generationId: job.id,
     generationType: job.generationType,
     tryOnMode: getTryOnModeFromInput(job.inputJson),
+    templateId: getStringFromInput(job.inputJson, 'templateId'),
+    prompt: getStringFromInput(job.inputJson, 'prompt'),
+    inputAssetId: job.inputAssetId,
+    inputAssetIds: getInputAssetIdsFromJob(job),
+    inputImageUrl:
+      inputIsImage && inputAssetId ? buildAssetMediaUrl(inputAssetId) : null,
+    inputImageUrls:
+      inputIsImage && inputAssetId ? [buildAssetMediaUrl(inputAssetId)] : [],
     status: job.status,
     progressLabel: getProgressLabel(job.status),
-    finalImageUrl: outputIsImage ? outputUrl : null,
-    finalVideoUrl: outputIsVideo ? outputUrl : null,
+    finalImageUrl:
+      outputIsImage && outputAssetId ? buildAssetMediaUrl(outputAssetId) : null,
+    finalVideoUrl:
+      outputIsVideo && outputAssetId ? buildAssetMediaUrl(outputAssetId) : null,
     thumbnailUrl: null,
     outputJson: job.outputJson,
     errorMessage: job.errorMessage,
@@ -1355,10 +1749,7 @@ async function markJobSucceeded(input: {
   job: GenerationJobRecord;
   queryResult: WanxiangQueryResult;
 }) {
-  const outputJson = {
-    ...(input.queryResult.outputJson ?? {}),
-    rawResponse: input.queryResult.rawResponse,
-  };
+  const uploadedOutput = await copyProviderResultToR2(input);
   const transitioned = await client.begin(async (sql) => {
     await sql`select pg_advisory_xact_lock(${input.job.userId})`;
 
@@ -1366,7 +1757,6 @@ async function markJobSucceeded(input: {
       update generation_jobs
       set
         status = 'succeeded',
-        output_json = ${JSON.stringify(outputJson)}::jsonb,
         error_message = null,
         updated_at = now()
       where id = ${input.job.id}
@@ -1379,36 +1769,25 @@ async function markJobSucceeded(input: {
       return null;
     }
 
-    const output =
-      input.queryResult.videoUrl
-        ? {
-            assetType: 'final_video' as const,
-            publicUrl: input.queryResult.videoUrl,
-            source: 'generated_video' as const,
-          }
-        : input.queryResult.imageUrl
-          ? {
-              assetType: 'final_image' as const,
-              publicUrl: input.queryResult.imageUrl,
-              source: 'generated_image' as const,
-            }
-          : null;
-    const outputAssetId = output
-      ? await createProviderResultAsset(
-          {
-            userId: input.job.userId,
-            jobId: input.job.id,
-            assetType: output.assetType,
-            publicUrl: output.publicUrl,
-          },
-          sql
-        )
-      : null;
+    const outputAssetId = await createProviderResultAsset(
+      {
+        ...uploadedOutput,
+        userId: input.job.userId,
+        jobId: input.job.id,
+      },
+      sql
+    );
+    const outputJson = buildSucceededOutputJson({
+      queryResult: input.queryResult,
+      output: uploadedOutput,
+      outputAssetId,
+    });
 
     await sql`
       update generation_jobs
       set
         output_asset_id = ${outputAssetId},
+        output_json = ${JSON.stringify(outputJson)}::jsonb,
         updated_at = now()
       where id = ${input.job.id}
         and user_id = ${input.job.userId}
@@ -1428,12 +1807,10 @@ async function markJobSucceeded(input: {
       sql
     );
 
-    return outputAssetId && output
-      ? {
-          outputAssetId,
-          source: output.source,
-        }
-      : null;
+    return {
+      outputAssetId,
+      source: uploadedOutput.source,
+    };
   });
 
   if (!transitioned) {
@@ -1513,7 +1890,6 @@ export async function runWanxiangGenerationJob(
     Number(deps.maxAttempts ?? attemptNumber)
   );
   let job = await getGenerationJobRecord(payload.jobId);
-  let terminalProviderStatus: WanxiangQueryResult['status'] | null = null;
 
   if (!job) {
     throw new Error(`generation job not found: ${payload.jobId}`);
@@ -1555,20 +1931,20 @@ export async function runWanxiangGenerationJob(
 
       const generation = generationRequestSchema.parse(job.inputJson);
       const assetsById = await assertInputAssetsForUser(generation, job.userId);
-      const modelCatalogAsset =
-        generation.generationType === 'try_on' && generation.modelCatalogAssetId
-          ? await getModelCatalogAsset({ id: generation.modelCatalogAssetId })
+      const modelTemplate =
+        generation.generationType === 'try_on' && generation.modelTemplateId
+          ? await getModelTemplate({ id: generation.modelTemplateId })
           : null;
 
       if (
         generation.generationType === 'try_on' &&
-        generation.modelCatalogAssetId &&
-        !modelCatalogAsset
+        generation.modelTemplateId &&
+        !modelTemplate
       ) {
         throw new GenerationApiError(
           404,
-          'model_catalog_asset_not_found',
-          'Model catalog asset was not found'
+          'model_template_not_found',
+          'Model template was not found'
         );
       }
 
@@ -1576,10 +1952,10 @@ export async function runWanxiangGenerationJob(
         generationType: generation.generationType,
         tryOnMode:
           generation.generationType === 'try_on' ? generation.tryOnMode : undefined,
-        inputAssetUrls: buildProviderInputAssets(
+        inputAssetUrls: await buildProviderInputAssets(
           generation,
           assetsById,
-          modelCatalogAsset
+          modelTemplate
         ),
         inputJson: job.inputJson,
         metadata: {
@@ -1628,8 +2004,6 @@ export async function runWanxiangGenerationJob(
       };
     }
 
-    terminalProviderStatus = queryResult.status;
-
     if (queryResult.status === 'succeeded') {
       await markJobSucceeded({ job, queryResult });
     } else {
@@ -1646,15 +2020,10 @@ export async function runWanxiangGenerationJob(
       status: updatedJob?.status ?? queryResult.status,
     };
   } catch (error) {
-    const errorMessage = error instanceof Error ? error.message : String(error);
+    const errorMessage = getErrorMessage(error);
     const latestJob = (await getGenerationJobRecord(payload.jobId)) ?? job;
 
-    if (terminalProviderStatus) {
-      await markJobWorkerErrorForRetry({
-        jobId: latestJob.id,
-        errorMessage,
-      });
-    } else if (attemptNumber >= maxAttempts) {
+    if (attemptNumber >= maxAttempts) {
       await markJobFailed({
         job: latestJob,
         errorMessage,
