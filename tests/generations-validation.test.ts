@@ -62,6 +62,7 @@ describe('imageToVideoGenerationRequestSchema', () => {
     );
 
     expect(parsed.durationSeconds).toBe(IMAGE_TO_VIDEO_DURATION_SECONDS);
+    expect(parsed.inputAssetIds).toEqual([validImageToVideoRequest.inputAssetId]);
     expect(getCreditCostForDuration(IMAGE_TO_VIDEO_DURATION_SECONDS)).toBe(10);
     expect(getCreditCostForGeneration(parsed)).toBe(10);
   });
@@ -151,6 +152,7 @@ describe('imageToVideoGenerationRequestSchema', () => {
 
     expect(missingAsset.success).toBe(false);
     expect(aliasAsset.inputAssetId).toBe('asset_from_alias');
+    expect(aliasAsset.inputAssetIds).toEqual(['asset_from_alias']);
   });
 
   it('rejects multiple product images because the provider accepts one image', () => {

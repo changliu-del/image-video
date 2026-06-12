@@ -53,6 +53,13 @@ describe('provider output storage contract', () => {
     const mapJobStatus = functionBody(jobs, 'mapJobStatus');
 
     expect(mapJobStatus).toContain('output_asset.id as output_asset_id');
+    expect(mapJobStatus).toContain(
+      'const inputAssetIds = getInputAssetIdsFromJob(job)'
+    );
+    expect(mapJobStatus).toContain("job.generationType === 'image_to_video'");
+    expect(mapJobStatus).toContain(
+      'inputAssetIds.map((assetId) => buildAssetMediaUrl(assetId))'
+    );
     expect(mapJobStatus).toContain('buildAssetMediaUrl(outputAssetId)');
     expect(mapJobStatus).not.toContain('job.outputJson.finalVideoUrl');
     expect(mapJobStatus).not.toContain('job.outputJson.finalImageUrl');

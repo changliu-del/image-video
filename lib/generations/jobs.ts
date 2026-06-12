@@ -1708,7 +1708,8 @@ async function mapJobStatus(job: GenerationJobRecord): Promise<JobStatusRecord> 
     limit 1
   `;
   const row = rows[0] as Record<string, unknown> | undefined;
-  const inputAssetId = toNullableString(row?.input_asset_id) ?? job.inputAssetId;
+  const databaseInputAssetId =
+    toNullableString(row?.input_asset_id) ?? job.inputAssetId;
   const inputMimeType = toNullableString(row?.input_mime_type);
   const inputIsImage = inputMimeType?.startsWith('image/') ?? false;
   const outputAssetId = toNullableString(row?.output_asset_id) ?? job.outputAssetId;
@@ -1718,6 +1719,14 @@ async function mapJobStatus(job: GenerationJobRecord): Promise<JobStatusRecord> 
     outputType === 'final_video' || outputMimeType?.startsWith('video/');
   const outputIsImage =
     outputType === 'final_image' || outputMimeType?.startsWith('image/');
+  const inputAssetIds = getInputAssetIdsFromJob(job);
+  const primaryInputAssetId = inputAssetIds[0] ?? databaseInputAssetId;
+  const inputImageUrls =
+    job.generationType === 'image_to_video'
+      ? inputAssetIds.map((assetId) => buildAssetMediaUrl(assetId))
+      : inputIsImage && databaseInputAssetId
+        ? [buildAssetMediaUrl(databaseInputAssetId)]
+        : [];
 
   return {
     id: job.id,
@@ -1726,12 +1735,10 @@ async function mapJobStatus(job: GenerationJobRecord): Promise<JobStatusRecord> 
     tryOnMode: getTryOnModeFromInput(job.inputJson),
     templateId: getStringFromInput(job.inputJson, 'templateId'),
     prompt: getStringFromInput(job.inputJson, 'prompt'),
-    inputAssetId: job.inputAssetId,
-    inputAssetIds: getInputAssetIdsFromJob(job),
-    inputImageUrl:
-      inputIsImage && inputAssetId ? buildAssetMediaUrl(inputAssetId) : null,
-    inputImageUrls:
-      inputIsImage && inputAssetId ? [buildAssetMediaUrl(inputAssetId)] : [],
+    inputAssetId: primaryInputAssetId,
+    inputAssetIds,
+    inputImageUrl: inputImageUrls[0] ?? null,
+    inputImageUrls,
     status: job.status,
     progressLabel: getProgressLabel(job.status),
     finalImageUrl:

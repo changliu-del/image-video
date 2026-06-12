@@ -792,7 +792,10 @@ export function ImageVideoWorkbench({
   const selectedResultUrl = resultUrl(jobStatus);
   const selectedTemplateId =
     selectedTemplate?.id == null ? '' : String(selectedTemplate.id);
-  const primarySourcePreview = sourcePreviews[0] ?? selectedInputImageUrl ?? null;
+  const hasLocalReferenceImage = referenceImageFiles.length > 0;
+  const primarySourcePreview =
+    sourcePreviews[0] ??
+    (!hasLocalReferenceImage ? selectedInputImageUrl : null);
   const referenceFileCount = referenceImageFiles.length;
   const hasGenerationData = Boolean(jobId || jobStatus || selectedResultUrl);
   const canSubmit = Boolean(
@@ -854,11 +857,11 @@ export function ImageVideoWorkbench({
             id: nextStatus.templateId ?? undefined,
           }));
         }
-        if (nextStatus.inputAssetId) {
+        if (!hasLocalReferenceImage && nextStatus.inputAssetId) {
           setSelectedInputAssetId(nextStatus.inputAssetId);
         }
         const restoredInputUrl = inputImageUrl(nextStatus);
-        if (restoredInputUrl) {
+        if (!hasLocalReferenceImage && restoredInputUrl) {
           setSelectedInputImageUrl(restoredInputUrl);
         }
       } catch (statusError) {
@@ -876,7 +879,7 @@ export function ImageVideoWorkbench({
     return () => {
       cancelled = true;
     };
-  }, [commonCopy, jobId, jobStatus]);
+  }, [commonCopy, hasLocalReferenceImage, jobId, jobStatus]);
 
   useEffect(() => {
     if (!jobId) return;
@@ -1064,10 +1067,14 @@ export function ImageVideoWorkbench({
         const nextStatus = await fetchJobStatus(jobId, commonCopy);
         if (!cancelled) {
           setJobStatus(nextStatus);
-          if (!selectedInputAssetId && nextStatus.inputAssetId) {
+          if (
+            !hasLocalReferenceImage &&
+            !selectedInputAssetId &&
+            nextStatus.inputAssetId
+          ) {
             setSelectedInputAssetId(nextStatus.inputAssetId);
           }
-          if (!selectedInputImageUrl) {
+          if (!hasLocalReferenceImage && !selectedInputImageUrl) {
             const restoredInputUrl = inputImageUrl(nextStatus);
             if (restoredInputUrl) setSelectedInputImageUrl(restoredInputUrl);
           }
@@ -1097,6 +1104,7 @@ export function ImageVideoWorkbench({
     jobId,
     jobStatus?.nextPollMs,
     jobStatus?.status,
+    hasLocalReferenceImage,
     selectedInputAssetId,
     selectedInputImageUrl,
   ]);
@@ -1187,7 +1195,8 @@ export function ImageVideoWorkbench({
           : [];
       const inputAssetId = inputAssetIds[0];
       const nextInputImageUrl =
-        uploadedAssets[0]?.publicUrl ?? selectedInputImageUrl ?? null;
+        uploadedAssets[0]?.publicUrl ??
+        (!hasLocalReferenceImage ? selectedInputImageUrl : null);
 
       if (!inputAssetId) {
         throw new Error(commonCopy.imageSaveError);

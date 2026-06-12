@@ -255,9 +255,7 @@ export const imageToVideoGenerationRequestSchema = z
         durationSeconds: IMAGE_TO_VIDEO_DURATION_SECONDS,
         generationType: 'image_to_video' as const,
         inputAssetId: primaryInputAssetId,
-        ...(inputAssetIds?.length
-          ? { inputAssetIds: normalizedInputAssetIds }
-          : {}),
+        inputAssetIds: normalizedInputAssetIds,
       };
     }
   );
