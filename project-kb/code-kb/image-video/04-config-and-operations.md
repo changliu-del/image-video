@@ -1,6 +1,6 @@
 # Config and Operations
 
-Updated: 2026-06-11
+Updated: 2026-06-24
 
 ## Common Environment Variables
 
@@ -58,6 +58,32 @@ to be consumed by the Production deployment.
 ## Build Notes
 
 `pnpm build` currently passes cleanly.
+
+## Completion Deployment Workflow
+
+For image-video development tasks, a finished implementation should normally
+continue through repository and deployment verification instead of stopping at
+local validation:
+
+1. Run the narrowest useful test first, then `pnpm typecheck` and `pnpm build`
+   when the change touches shared runtime, API routes, or user-visible flows.
+2. Review `git status --short` and stage only files that belong to the current
+   task. If unrelated user changes are present and cannot be cleanly separated,
+   ask before committing.
+3. Commit with a concise task summary and push the current branch to `origin`.
+4. After push, check the Vercel deployment dashboard when it is accessible:
+   `https://vercel.com/changliu-s-projects/image-video/deployments`.
+   If Vercel requires browser login or cannot be inspected from Codex, wait 5
+   minutes after the successful push, then validate the affected production
+   route or API directly.
+5. Report the pushed branch, commit, dashboard/live acceptance result, and any
+   remaining risk.
+
+If Vercel shows a failed deployment and the failure is caused by the current
+change, fix it in the same workflow, validate again, commit, push, and re-check
+the dashboard or live route after the 5-minute wait. If neither dashboard nor
+live acceptance can be verified from Codex, report the exact URL and the last
+status that could be verified locally.
 
 ## Wanxiang Image-to-Video
 
