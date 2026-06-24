@@ -41,7 +41,7 @@ When updating this skill, edit the source under `plugins/image-video-studio/` fi
 - Treat first-party reusable browsing content as Templates/model-template imports. The old `library_assets` surface has been removed; do not revive it unless the product decision changes.
 - When debugging Trigger.dev, check the environment key first. `tr_dev_...` keys enqueue Development runs that require `trigger dev`; Production dashboard/deployments consume Production runs only.
 - After code changes, run the narrowest useful validation first, then expand to `pnpm typecheck`, `pnpm test`, and `pnpm build` when the change spans shared behavior.
-- When a development task is complete, continue through git and deployment verification by default: commit the task-relevant changes, push the current branch to `origin`, then check `https://vercel.com/changliu-s-projects/image-video/deployments` when it is accessible. If Vercel requires browser login or cannot be inspected from Codex, wait 5 minutes after the successful push and then validate the affected production route or API directly.
+- When a development task is complete, continue through git and live acceptance by default: commit the task-relevant changes, push the current branch to `origin`, wait 5 minutes after the successful push, then validate the affected production route or API directly.
 - When project understanding changes, update `project-kb/` or `docs/ecommerce-video-saas/` so the next session starts smarter.
 
 ## Local Development
@@ -111,7 +111,7 @@ Keep `references/agent-mode.md` as historical guidance only. Do not follow it as
 4. Validate with focused tests, then broader checks when shared code changed.
 5. Update KB/docs when new facts, risks, decisions, or workflow preferences were discovered.
 6. Review `git status --short`, stage only task-relevant files, commit, and push the current branch unless the user explicitly asked not to commit/push or unrelated changes make safe staging ambiguous.
-7. Check the Vercel deployment dashboard at `https://vercel.com/changliu-s-projects/image-video/deployments` after push when it is accessible. If browser authentication or dashboard access blocks verification, wait 5 minutes after the successful push, then validate the affected production route or API directly and report the dashboard limitation.
+7. Wait 5 minutes after the successful push, then validate the affected production route or API directly. Treat live route/API behavior as the default acceptance signal.
 8. When this skill itself needs a durable workflow update, edit the source skill under `plugins/image-video-studio/` first and sync the installed cache copy.
 9. Final response should include changed files, validations, commit/push result, deployment status, and remaining risks.
 
