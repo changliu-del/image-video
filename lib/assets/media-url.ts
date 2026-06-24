@@ -1,8 +1,8 @@
-export function buildAssetMediaUrl(assetId: string) {
+export function buildAssetMediaUrl(assetId: string | number) {
   return `/api/asset-media/${assetId}`;
 }
 
-export function buildAbsoluteAssetMediaUrl(assetId: string) {
+export function buildAbsoluteAssetMediaUrl(assetId: string | number) {
   const baseUrl = process.env.BASE_URL?.trim().replace(/\/+$/, '');
 
   if (!baseUrl) {

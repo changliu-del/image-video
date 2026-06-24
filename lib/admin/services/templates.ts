@@ -1,9 +1,14 @@
 import 'server-only';
 
-import { randomUUID } from 'crypto';
-import { and, asc, desc, eq, or, sql } from 'drizzle-orm';
+import { and, asc, desc, eq, or, sql, type SQL } from 'drizzle-orm';
 import { z } from 'zod';
 import { db } from '@/lib/db/drizzle';
+import {
+  dbIdSchema,
+  dbIdSequences,
+  reserveDbId,
+  toDbIdString,
+} from '@/lib/db/ids';
 import { assets, templates } from '@/lib/db/schema';
 import {
   hasAdminAccess,
@@ -14,7 +19,10 @@ import {
   type TemplateCatalogDetailItem,
   type TemplateType,
 } from '@/lib/templates/catalog';
-import { normalizeTemplateCategoryForType } from '@/lib/templates/category-config';
+import {
+  getTemplateCategoriesForType,
+  normalizeTemplateCategoryForType,
+} from '@/lib/templates/category-config';
 import {
   buildPublicUrl,
   buildTemplatePreviewStorageKey,
@@ -40,8 +48,8 @@ import {
 } from './shared';
 
 const MAX_TEMPLATE_PREVIEW_BYTES = 80 * 1024 * 1024;
-const templateIdSchema = z.string().uuid();
-const localeSchema = z.enum(['pt', 'en', 'zh']);
+const templateIdSchema = dbIdSchema;
+const localeSchema = z.enum(['pt']);
 const templateTypeSchema = z.enum([
   'image_to_image',
   'image_to_video',
@@ -75,17 +83,21 @@ export type AdminTemplateListItem = TemplateCatalogDetailItem & {
   updatedAt: string;
 };
 
+export type AdminTemplateListResult = PaginatedResult<AdminTemplateListItem> & {
+  categories: string[];
+};
+
 type TemplateMediaTarget = z.infer<typeof templateMediaTargetSchema>;
 
 const templatePayloadSchema = z
   .object({
-    id: z.string().uuid().optional(),
+    id: dbIdSchema.optional(),
     type: templateTypeSchema,
     category: templateCategorySchema,
     title: z.string().trim().min(1).max(140),
     titleTranslations: titleTranslationsSchema,
-    thumbnailAssetId: z.string().uuid(),
-    previewAssetId: z.string().uuid(),
+    thumbnailAssetId: dbIdSchema,
+    previewAssetId: dbIdSchema,
     prompt: z.string().trim().min(4).max(5000),
     promptTranslations: promptTranslationsSchema,
   })
@@ -100,13 +112,13 @@ const templateGroupSchema = z
 
 const templateOrderPayloadSchema = templateGroupSchema
   .extend({
-    templateIds: z.array(z.string().uuid()).max(500),
+    templateIds: z.array(dbIdSchema).max(500),
   })
   .strict();
 
 const presignTemplatePreviewSchema = z
   .object({
-    templateId: z.string().uuid(),
+    templateId: dbIdSchema,
     target: templateMediaTargetSchema.optional(),
     fileName: z.string().trim().min(1).max(255),
     mimeType: z.string().trim().min(1).max(120),
@@ -116,9 +128,9 @@ const presignTemplatePreviewSchema = z
 
 const completeTemplatePreviewSchema = z
   .object({
-    templateId: z.string().uuid(),
+    templateId: dbIdSchema,
     target: templateMediaTargetSchema.optional(),
-    assetId: z.string().uuid(),
+    assetId: dbIdSchema,
     storageKey: z.string().trim().min(1).max(512),
   })
   .strict();
@@ -168,7 +180,7 @@ async function getNextTemplateSortOrder(input: {
   return Number(row?.nextSortOrder ?? 1);
 }
 
-async function getUploadedAsset(assetId: string) {
+async function getUploadedAsset(assetId: number) {
   const [asset] = await db
     .select()
     .from(assets)
@@ -179,8 +191,8 @@ async function getUploadedAsset(assetId: string) {
 }
 
 async function assertTemplateAssets(input: {
-  thumbnailAssetId: string;
-  previewAssetId: string;
+  thumbnailAssetId: number;
+  previewAssetId: number;
 }) {
   const [thumbnailAsset, previewAsset] = await Promise.all([
     getUploadedAsset(input.thumbnailAssetId),
@@ -240,8 +252,75 @@ function requireTemplateAssetMimeType(mimeType: string | null | undefined) {
   return mimeType;
 }
 
+function normalizeAdminTemplateCategoryFilter(
+  type: TemplateType | undefined,
+  value: string | null | undefined
+) {
+  const category = value?.trim();
+  if (!category) return undefined;
+
+  if (!type) return category;
+  return normalizeTemplateCategoryForType(type, category) ?? undefined;
+}
+
+function normalizeAdminModelCategoryFilter(value: string | null | undefined) {
+  const tag = value?.trim();
+  return tag || undefined;
+}
+
+function modelCategorySegmentCondition(value: string | null | undefined) {
+  const tag = normalizeAdminModelCategoryFilter(value);
+  return tag
+    ? sql`${tag} = any(regexp_split_to_array(${templates.category}, '[\\/，、,]+'))`
+    : undefined;
+}
+
+function sortAdminTemplateCategories(
+  type: TemplateType | undefined,
+  categories: string[]
+) {
+  if (!type) {
+    return [...categories].sort((left, right) => left.localeCompare(right));
+  }
+
+  const preferredCategories = getTemplateCategoriesForType(type);
+  const rank = new Map(
+    preferredCategories.map((category, index) => [category, index])
+  );
+
+  return [...categories].sort((left, right) => {
+    const leftRank = rank.get(left) ?? Number.POSITIVE_INFINITY;
+    const rightRank = rank.get(right) ?? Number.POSITIVE_INFINITY;
+
+    if (leftRank !== rightRank) return leftRank - rightRank;
+    return left.localeCompare(right);
+  });
+}
+
+async function listAdminTemplateCategories(type: TemplateType | undefined) {
+  const rows = await db
+    .select({ category: templates.category })
+    .from(templates)
+    .where(type ? eq(templates.type, type) : undefined)
+    .groupBy(templates.category)
+    .orderBy(asc(templates.category));
+  const dbCategories = rows
+    .map((row) =>
+      type
+        ? (normalizeTemplateCategoryForType(type, row.category) ?? row.category)
+        : row.category
+    )
+    .filter(Boolean);
+  const configuredCategories = type ? getTemplateCategoriesForType(type) : [];
+
+  return sortAdminTemplateCategories(
+    type,
+    Array.from(new Set([...configuredCategories, ...dbCategories]))
+  );
+}
+
 async function refreshTemplateMediaCacheAfterAdminWrite(
-  assetIds: string[],
+  assetIds: number[],
   context: string
 ) {
   try {
@@ -252,7 +331,7 @@ async function refreshTemplateMediaCacheAfterAdminWrite(
 }
 
 async function refreshSingleTemplateMediaCacheAfterAdminWrite(
-  assetId: string,
+  assetId: number,
   context: string
 ) {
   try {
@@ -266,16 +345,16 @@ function adminTemplateRecordToListItem(
   row: typeof templates.$inferSelect
 ): AdminTemplateListItem {
   return {
-    id: row.id,
+    id: toDbIdString(row.id),
     title: row.title,
     titleTranslations: row.titleTranslations,
     type: row.type,
     category: row.category,
     thumbnailUrl: row.thumbnailUrl,
-    thumbnailAssetId: row.thumbnailAssetId,
+    thumbnailAssetId: toDbIdString(row.thumbnailAssetId),
     thumbnailMimeType: row.thumbnailMimeType,
     previewUrl: row.previewUrl,
-    previewAssetId: row.previewAssetId,
+    previewAssetId: toDbIdString(row.previewAssetId),
     previewMimeType: row.previewMimeType,
     prompt: row.prompt,
     promptTranslations: row.promptTranslations,
@@ -285,7 +364,7 @@ function adminTemplateRecordToListItem(
   };
 }
 
-async function getAdminTemplateDetail(id: string) {
+async function getAdminTemplateDetail(id: number) {
   const [row] = await db
     .select()
     .from(templates)
@@ -300,14 +379,27 @@ async function getAdminTemplateDetail(id: string) {
 }
 
 export async function listAdminTemplates(params: {
+  age?: string;
+  category?: string;
+  gender?: string;
+  id?: string;
   search?: string;
   page?: number;
   pageSize?: number;
-}): Promise<PaginatedResult<AdminTemplateListItem>> {
+  style?: string;
+  title?: string;
+  type?: TemplateType;
+}): Promise<AdminTemplateListResult> {
   await requireOpsOrAdmin();
-  const { search = '', page = 1, pageSize = 20 } = params;
+  const { search = '', page = 1, pageSize = 20, type } = params;
   const query = normalizeAdminSearchQuery(search);
-  const where = query
+  const idQuery = normalizeAdminSearchQuery(params.id);
+  const titleQuery = normalizeAdminSearchQuery(params.title);
+  const category = normalizeAdminTemplateCategoryFilter(
+    type,
+    params.category
+  );
+  const searchWhere = query
     ? or(
         exactCol(templates.id, query),
         exactCol(templates.thumbnailAssetId, query),
@@ -320,8 +412,29 @@ export async function listAdminTemplates(params: {
         sql`${templates.promptTranslations}::text ilike ${`%${query}%`}`
       )
     : undefined;
+  const conditions = [
+    type ? eq(templates.type, type) : undefined,
+    idQuery ? ilikeCol(templates.id, idQuery) : undefined,
+    titleQuery
+      ? or(
+          ilikeCol(templates.title, titleQuery),
+          sql`${templates.titleTranslations}::text ilike ${`%${titleQuery}%`}`
+        )
+      : undefined,
+    category ? eq(templates.category, category) : undefined,
+    type === 'model' ? modelCategorySegmentCondition(params.gender) : undefined,
+    type === 'model' ? modelCategorySegmentCondition(params.age) : undefined,
+    type === 'model' ? modelCategorySegmentCondition(params.style) : undefined,
+    searchWhere,
+  ].filter(Boolean) as SQL[];
+  const where =
+    conditions.length === 0
+      ? undefined
+      : conditions.length === 1
+        ? conditions[0]
+        : and(...conditions);
 
-  const [rows, countRows] = await Promise.all([
+  const [rows, countRows, categories] = await Promise.all([
     withPagination(
       db
         .select()
@@ -335,10 +448,12 @@ export async function listAdminTemplates(params: {
       .select({ count: sql<number>`count(*)::int` })
       .from(templates)
       .where(where),
+    listAdminTemplateCategories(type),
   ]);
 
   return {
     list: rows.map(adminTemplateRecordToListItem),
+    categories,
     total: Number(countRows[0]?.count ?? 0),
     page,
     pageSize,
@@ -378,9 +493,9 @@ export async function updateAdminTemplateOrder(input: unknown) {
     category: payload.category,
   });
   const current = await listAdminTemplateOrder(group);
-  const expectedIds = current.list.map((template) => template.id);
+  const expectedIds = current.list.map((template) => Number(template.id));
   const expectedIdSet = new Set(expectedIds);
-  const seenIds = new Set<string>();
+  const seenIds = new Set<number>();
 
   if (payload.templateIds.length !== expectedIds.length) {
     throw new Error(
@@ -575,7 +690,7 @@ export async function createTemplatePreviewPresign(input: unknown) {
     throw new Error('Template not found');
   }
 
-  const assetId = randomUUID();
+  const assetId = await reserveDbId(dbIdSequences.assets);
   const mimeType = payload.mimeType as AdminMediaMimeType;
   const storageKey = buildTemplatePreviewStorageKey(
     payload.templateId,
@@ -600,7 +715,7 @@ export async function createTemplatePreviewPresign(input: unknown) {
     sizeBytes: payload.sizeBytes,
   });
 
-  return { assetId, uploadUrl, storageKey, publicUrl };
+  return { assetId: toDbIdString(assetId), uploadUrl, storageKey, publicUrl };
 }
 
 export async function completeTemplatePreviewUpload(input: unknown) {
@@ -701,7 +816,7 @@ export async function completeTemplatePreviewUpload(input: unknown) {
   clearPublishedTemplateCatalogCache();
 
   return {
-    assetId: payload.assetId,
+    assetId: toDbIdString(payload.assetId),
     publicUrl: buildTemplateMediaUrl(asset.id),
     target,
     status: 'uploaded',

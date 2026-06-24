@@ -10,15 +10,23 @@ function parsePositiveInteger(value: string | null, fallback: number) {
   return Number.isFinite(parsed) && parsed > 0 ? parsed : fallback;
 }
 
+function optionalSearchParam(searchParams: URLSearchParams, key: string) {
+  const value = searchParams.get(key)?.trim();
+  return value ? value : undefined;
+}
+
 export async function GET(request: NextRequest) {
   const { searchParams } = request.nextUrl;
-  const localeParam = searchParams.get('locale') ?? 'pt';
-  const locale = isLocale(localeParam) ? localeParam : 'pt';
+  const localeParam = searchParams.get('locale') ?? 'en';
+  const locale = isLocale(localeParam) ? localeParam : 'en';
 
   try {
     const items = await listModelTemplates({
+      age: optionalSearchParam(searchParams, 'age'),
+      gender: optionalSearchParam(searchParams, 'gender'),
       locale,
       limit: parsePositiveInteger(searchParams.get('limit'), 24),
+      style: optionalSearchParam(searchParams, 'style'),
     });
 
     return NextResponse.json({ items }, { headers: publicCatalogReadHeaders });

@@ -10,6 +10,7 @@ import {
   getCreditCostForDuration,
   getTryOnCreditCost,
 } from './credit-costs';
+import { dbIdStringSchema } from '../db/id-schema';
 
 export {
   MAX_CTA_TEXT_LENGTH,
@@ -75,15 +76,7 @@ export type GenerationType = (typeof GENERATION_TYPES)[number];
 export const TRY_ON_MODES = ['single', 'multi'] as const;
 export type TryOnMode = (typeof TRY_ON_MODES)[number];
 
-export const idStringSchema = z.preprocess(
-  (value) => (typeof value === 'number' ? String(value) : value),
-  z
-    .string()
-    .trim()
-    .min(1)
-    .max(128)
-    .regex(/^[A-Za-z0-9_-]+$/)
-);
+export const idStringSchema = dbIdStringSchema;
 
 const cleanPromptField = z
   .string()

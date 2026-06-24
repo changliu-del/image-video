@@ -3,14 +3,12 @@ import {
   index,
   jsonb,
   pgTable,
-  serial,
-  uniqueIndex,
-  uuid,
   varchar,
   text,
   timestamp,
   integer,
   boolean,
+  uniqueIndex,
 } from 'drizzle-orm/pg-core';
 import { relations, sql } from 'drizzle-orm';
 
@@ -98,7 +96,9 @@ export type CreditLedgerReason = (typeof CREDIT_LEDGER_REASONS)[number];
 export const users = pgTable(
   'users',
   {
-    id: serial('id').primaryKey(),
+    id: integer('id')
+      .primaryKey()
+      .default(sql`nextval('users_id_seq'::regclass)`),
     name: varchar('name', { length: 100 }),
     email: varchar('email', { length: 255 }).notNull().unique(),
     passwordHash: text('password_hash').notNull(),
@@ -117,6 +117,7 @@ export const users = pgTable(
     deletedAt: timestamp('deleted_at'),
   },
   (table) => [
+    check('users_id_positive_check', sql`${table.id} > 0`),
     check('users_credit_balance_check', sql`${table.creditBalance} >= 0`),
     check(
       'users_role_check',
@@ -128,7 +129,9 @@ export const users = pgTable(
 export const emailVerificationCodes = pgTable(
   'email_verification_codes',
   {
-    id: uuid('id').defaultRandom().primaryKey(),
+    id: integer('id')
+      .primaryKey()
+      .default(sql`nextval('email_verification_codes_id_seq'::regclass)`),
     email: varchar('email', { length: 255 }).notNull(),
     purpose: varchar('purpose', { length: 32 })
       .$type<EmailVerificationPurpose>()
@@ -162,7 +165,9 @@ export const emailVerificationCodes = pgTable(
 export const assets = pgTable(
   'assets',
   {
-    id: uuid('id').defaultRandom().primaryKey(),
+    id: integer('id')
+      .primaryKey()
+      .default(sql`nextval('assets_id_seq'::regclass)`),
     userId: integer('user_id')
       .notNull()
       .references(() => users.id),
@@ -219,7 +224,9 @@ export const assets = pgTable(
 export const templates = pgTable(
   'templates',
   {
-    id: uuid('id').defaultRandom().primaryKey(),
+    id: integer('id')
+      .primaryKey()
+      .default(sql`nextval('templates_id_seq'::regclass)`),
     type: text('type')
       .$type<TemplateType>()
       .notNull()
@@ -230,10 +237,10 @@ export const templates = pgTable(
       .notNull()
       .default(sql`'{}'::jsonb`),
     category: text('category').notNull(),
-    thumbnailAssetId: uuid('thumbnail_asset_id')
+    thumbnailAssetId: integer('thumbnail_asset_id')
       .notNull()
       .references(() => assets.id),
-    previewAssetId: uuid('preview_asset_id')
+    previewAssetId: integer('preview_asset_id')
       .notNull()
       .references(() => assets.id),
     thumbnailUrl: text('thumbnail_url').notNull(),
@@ -278,7 +285,9 @@ export const templates = pgTable(
 export const generationJobs = pgTable(
   'generation_jobs',
   {
-    id: uuid('id').defaultRandom().primaryKey(),
+    id: integer('id')
+      .primaryKey()
+      .default(sql`nextval('generation_jobs_id_seq'::regclass)`),
     userId: integer('user_id')
       .notNull()
       .references(() => users.id),
@@ -289,10 +298,10 @@ export const generationJobs = pgTable(
     generationType: text('generation_type')
       .$type<GenerationType>()
       .notNull(),
-    inputAssetId: uuid('input_asset_id')
+    inputAssetId: integer('input_asset_id')
       .notNull()
       .references(() => assets.id),
-    outputAssetId: uuid('output_asset_id').references(() => assets.id),
+    outputAssetId: integer('output_asset_id').references(() => assets.id),
     provider: text('provider').notNull().default('wanxiang'),
     providerTaskId: text('provider_task_id'),
     triggerRunId: text('trigger_run_id'),
@@ -339,14 +348,16 @@ export const generationJobs = pgTable(
 export const userMediaHistory = pgTable(
   'user_media_history',
   {
-    id: uuid('id').defaultRandom().primaryKey(),
+    id: integer('id')
+      .primaryKey()
+      .default(sql`nextval('user_media_history_id_seq'::regclass)`),
     userId: integer('user_id')
       .notNull()
       .references(() => users.id),
-    assetId: uuid('asset_id')
+    assetId: integer('asset_id')
       .notNull()
       .references(() => assets.id),
-    generationJobId: uuid('generation_job_id').references(() => generationJobs.id, {
+    generationJobId: integer('generation_job_id').references(() => generationJobs.id, {
       onDelete: 'set null',
     }),
     source: varchar('source', { length: 32 })
@@ -416,11 +427,13 @@ export const userMediaHistory = pgTable(
 export const creditLedger = pgTable(
   'credit_ledger',
   {
-    id: uuid('id').defaultRandom().primaryKey(),
+    id: integer('id')
+      .primaryKey()
+      .default(sql`nextval('credit_ledger_id_seq'::regclass)`),
     userId: integer('user_id')
       .notNull()
       .references(() => users.id),
-    jobId: uuid('job_id').references(() => generationJobs.id),
+    jobId: integer('job_id').references(() => generationJobs.id),
     stripeEventId: text('stripe_event_id'),
     delta: integer('delta').notNull(),
     reason: text('reason').$type<CreditLedgerReason>().notNull(),

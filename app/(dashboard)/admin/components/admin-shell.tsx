@@ -25,13 +25,16 @@ import {
 import {
   getAdminContent,
   type AdminContent,
+  type AdminLocale,
   type AdminTabKey,
 } from '@/lib/admin/content';
-import { getDashboardContent } from '@/lib/dashboard/content';
 import {
-  useDashboardLocale,
-  withDashboardLocale,
-} from '@/lib/dashboard/use-dashboard-locale';
+  adminTemplateTypes,
+  getAdminTemplateTypeLabel,
+  normalizeAdminTemplateType,
+} from '@/lib/admin/template-types';
+import { getDashboardContent } from '@/lib/dashboard/content';
+import type { TemplateType } from '@/lib/templates/catalog';
 import { cn } from '@/lib/utils';
 
 const TABLES = [
@@ -85,6 +88,13 @@ const MANAGEMENT_TABLE_KEYS = [
   'generation-jobs',
   'credit-ledger',
 ] as const satisfies readonly ManagementTableKey[];
+
+const TEMPLATE_TYPE_ICONS = {
+  image_to_video: Film,
+  model: Users,
+  image_to_image: Images,
+  try_on: LayoutTemplate,
+};
 
 function normalizeAdminTab(
   value: string | null,
@@ -460,6 +470,79 @@ function AdminNavButton({
   );
 }
 
+function AdminTemplatesDropdown({
+  activeType,
+  content,
+  locale,
+  onSelect,
+  onShowCurrent,
+  open,
+}: {
+  activeType: TemplateType;
+  content: AdminContent;
+  locale: AdminLocale;
+  onSelect: (type: TemplateType) => void;
+  onShowCurrent: () => void;
+  open: boolean;
+}) {
+  return (
+    <div>
+      <button
+        type="button"
+        onClick={onShowCurrent}
+        className={cn(
+          'flex w-full items-center gap-3 px-4 py-2.5 text-left text-sm transition-colors',
+          open
+            ? 'bg-orange-50 font-medium text-orange-700'
+            : 'text-gray-600 hover:bg-gray-100 hover:text-gray-950'
+        )}
+        aria-current={open ? 'page' : undefined}
+        aria-expanded={open}
+        title={content.tabs.templates}
+      >
+        <LayoutTemplate className="size-5 flex-shrink-0" />
+        <span className="min-w-0 flex-1 truncate">
+          {content.tabs.templates}
+        </span>
+        <ChevronDown
+          className={cn(
+            'size-4 flex-shrink-0 transition-transform',
+            open && 'rotate-180'
+          )}
+        />
+      </button>
+      {open ? (
+        <div className="border-y border-gray-100 bg-gray-50 py-1">
+          {adminTemplateTypes.map((type) => {
+            const Icon = TEMPLATE_TYPE_ICONS[type];
+            const active = activeType === type;
+            const label = getAdminTemplateTypeLabel(type, locale);
+
+            return (
+              <button
+                key={type}
+                type="button"
+                onClick={() => onSelect(type)}
+                className={cn(
+                  'flex w-full items-center gap-2 px-5 py-2 text-left text-xs transition-colors',
+                  active
+                    ? 'bg-white font-medium text-orange-700'
+                    : 'text-gray-600 hover:bg-white hover:text-gray-950'
+                )}
+                aria-current={active ? 'page' : undefined}
+                title={label}
+              >
+                <Icon className="size-4 flex-shrink-0" />
+                <span className="truncate">{label}</span>
+              </button>
+            );
+          })}
+        </div>
+      ) : null}
+    </div>
+  );
+}
+
 function AdminHelpDropdown({
   activeKey,
   content,
@@ -535,7 +618,7 @@ function AdminHelpDropdown({
 }
 
 export function AdminShell() {
-  const locale = useDashboardLocale();
+  const locale: AdminLocale = 'en';
   const content = getAdminContent(locale);
   const dashboardContent = getDashboardContent(locale);
   const [user, setUser] = useState<AdminShellUser | null>(null);
@@ -564,11 +647,16 @@ export function AdminShell() {
     searchParams.get('tab'),
     visibleTables
   );
+  const activeTemplateTypeFromUrl = normalizeAdminTemplateType(
+    searchParams.get('type')
+  );
   const activeHelpKeyFromUrl = normalizeHelpTab(
     searchParams.get('help'),
     helpItems
   );
   const [activeTab, setActiveTab] = useState<TableKey>(activeTabFromUrl);
+  const [activeTemplateType, setActiveTemplateType] =
+    useState<TemplateType>(activeTemplateTypeFromUrl);
   const [activeHelpKey, setActiveHelpKey] =
     useState<AdminTabKey>(activeHelpKeyFromUrl);
   const [visitedTabs, setVisitedTabs] = useState<TableKey[]>([
@@ -613,11 +701,12 @@ export function AdminShell() {
 
   useEffect(() => {
     setActiveTab(activeTabFromUrl);
+    setActiveTemplateType(activeTemplateTypeFromUrl);
     setVisitedTabs((current) => rememberVisitedTab(current, activeTabFromUrl));
     if (activeTabFromUrl === 'help') {
       setActiveHelpKey(activeHelpKeyFromUrl);
     }
-  }, [activeHelpKeyFromUrl, activeTabFromUrl]);
+  }, [activeHelpKeyFromUrl, activeTabFromUrl, activeTemplateTypeFromUrl]);
 
   useEffect(() => {
     function handlePopState() {
@@ -629,7 +718,11 @@ export function AdminShell() {
         new URLSearchParams(window.location.search).get('help'),
         helpItems
       );
+      const nextTemplateType = normalizeAdminTemplateType(
+        new URLSearchParams(window.location.search).get('type')
+      );
       setActiveTab(nextTab);
+      setActiveTemplateType(nextTemplateType);
       setActiveHelpKey(nextHelpKey);
       setVisitedTabs((current) => rememberVisitedTab(current, nextTab));
     }
@@ -644,6 +737,8 @@ export function AdminShell() {
     const adminHref =
       tab === 'overview'
         ? '/admin'
+        : tab === 'templates'
+          ? `/admin?tab=templates&type=${activeTemplateType}`
         : tab === 'help'
           ? `/admin?tab=help&help=${activeHelpKey}`
           : `/admin?tab=${tab}`;
@@ -651,7 +746,7 @@ export function AdminShell() {
     window.history.pushState(
       null,
       '',
-      withDashboardLocale(adminHref, locale)
+      adminHref
     );
   }
 
@@ -662,7 +757,18 @@ export function AdminShell() {
     window.history.pushState(
       null,
       '',
-      withDashboardLocale(`/admin?tab=help&help=${tab}`, locale)
+      `/admin?tab=help&help=${tab}`
+    );
+  }
+
+  function selectTemplateType(type: TemplateType) {
+    setActiveTab('templates');
+    setActiveTemplateType(type);
+    setVisitedTabs((current) => rememberVisitedTab(current, 'templates'));
+    window.history.pushState(
+      null,
+      '',
+      `/admin?tab=templates&type=${type}`
     );
   }
 
@@ -695,7 +801,7 @@ export function AdminShell() {
       <aside className="flex w-56 flex-col border-r border-gray-200 bg-white">
         <div className="border-b border-gray-200 px-3 py-3">
           <Link
-            href={withDashboardLocale('/dashboard', locale)}
+            href="/dashboard?locale=en"
             className="mb-3 flex h-9 w-full items-center gap-2 rounded-lg border border-gray-200 bg-white px-3 text-sm font-semibold text-gray-700 shadow-sm transition hover:border-orange-200 hover:bg-orange-50 hover:text-orange-700"
           >
             <Home className="size-4 flex-shrink-0" />
@@ -716,6 +822,16 @@ export function AdminShell() {
                 onSelect={selectHelpTab}
                 onShowCurrent={() => selectTab('help')}
                 open={activeTab === 'help'}
+              />
+            ) : table.key === 'templates' ? (
+              <AdminTemplatesDropdown
+                key={table.key}
+                activeType={activeTemplateType}
+                content={content}
+                locale={locale}
+                onSelect={selectTemplateType}
+                onShowCurrent={() => selectTab('templates')}
+                open={activeTab === 'templates'}
               />
             ) : (
               <AdminNavButton
@@ -739,6 +855,7 @@ export function AdminShell() {
         {visitedTabs.includes('templates') ? (
           <div hidden={activeTab !== 'templates'}>
             <TemplatesPanel
+              activeType={activeTemplateType}
               canPublish={canManageUsers}
               content={content}
               locale={locale}

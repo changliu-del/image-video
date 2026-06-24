@@ -48,12 +48,18 @@ import {
   normalizePublicTemplateDetail,
   type PublicTemplateDetailItem,
 } from '@/lib/templates/public-client';
+import {
+  localizeModelCategoryTag,
+  parseModelCategoryParts,
+  type ModelCategoryParts,
+} from '@/lib/model-assets/localization';
 import { cn } from '@/lib/utils';
 
 type TryOnMode = 'single' | 'multi';
 type TryOnAspectRatio = '1:1' | '3:4' | '9:16';
 type ModelAgeFilter = 'all' | 'child' | 'youth' | 'middle' | 'senior';
 type ModelGenderFilter = 'all' | 'female' | 'male';
+type ModelStyleFilter = 'all' | string;
 
 type ModelTemplateItem = {
   id: string;
@@ -62,6 +68,7 @@ type ModelTemplateItem = {
   thumbnailUrl?: string | null;
   imageUrl?: string | null;
   videoUrl?: string | null;
+  categoryParts?: ModelCategoryParts;
   tags?: string[];
   displayTags?: string[];
 };
@@ -155,6 +162,14 @@ function getModelTags(item: ModelTemplateItem | null) {
 function modelHasTag(item: ModelTemplateItem, tag: string | null) {
   if (!tag) return true;
   return (item.tags ?? []).some((itemTag) => itemTag.trim() === tag);
+}
+
+function getModelCategoryParts(item: ModelTemplateItem) {
+  return item.categoryParts ?? parseModelCategoryParts((item.tags ?? []).join('/'));
+}
+
+function getModelStyleTag(item: ModelTemplateItem) {
+  return getModelCategoryParts(item).style;
 }
 
 function terminalStatus(status?: string) {
@@ -482,6 +497,8 @@ export function TryOnWorkbench({
   const [modelAgeFilter, setModelAgeFilter] = useState<ModelAgeFilter>('all');
   const [modelGenderFilter, setModelGenderFilter] =
     useState<ModelGenderFilter>('all');
+  const [modelStyleFilter, setModelStyleFilter] =
+    useState<ModelStyleFilter>('all');
   const [historyItems, setHistoryItems] = useState<LibraryItem[]>([]);
   const [hasLoadedHistory, setHasLoadedHistory] = useState(false);
   const [isLoadingHistory, setIsLoadingHistory] = useState(false);
@@ -556,14 +573,34 @@ export function TryOnWorkbench({
     value,
     label: copy.modelGenderOptions[value],
   }));
+  const modelStyleOptions = useMemo(() => {
+    const styles = Array.from(
+      new Set(modelAssets.map(getModelStyleTag).filter(Boolean))
+    );
+
+    return [
+      {
+        value: 'all',
+        label: copy.modelAgeOptions.all,
+      },
+      ...styles.map((style) => ({
+        value: style,
+        label: localizeModelCategoryTag(style, locale) || style,
+      })),
+    ];
+  }, [copy.modelAgeOptions.all, locale, modelAssets]);
   const filteredModelAssets = useMemo(
     () =>
       modelAssets.filter(
         (model) =>
           modelHasTag(model, modelAgeTags[modelAgeFilter]) &&
-          modelHasTag(model, modelGenderTags[modelGenderFilter])
+          modelHasTag(model, modelGenderTags[modelGenderFilter]) &&
+          modelHasTag(
+            model,
+            modelStyleFilter === 'all' ? null : modelStyleFilter
+          )
       ),
-    [modelAgeFilter, modelAssets, modelGenderFilter]
+    [modelAgeFilter, modelAssets, modelGenderFilter, modelStyleFilter]
   );
 
   const canSubmit = useMemo(() => {
@@ -1052,7 +1089,7 @@ export function TryOnWorkbench({
 
         <PanelSection title={copy.chooseModel} required>
           <div className="mb-3 grid gap-2 rounded-lg border border-gray-100 bg-gray-50 p-2">
-            <div className="grid grid-cols-[2.5rem_1fr] items-center gap-2">
+            <div className="grid grid-cols-[3.25rem_1fr] items-center gap-2">
               <span className="text-xs font-bold text-gray-500">
                 {copy.modelAgeFilter}
               </span>
@@ -1084,7 +1121,7 @@ export function TryOnWorkbench({
                 })}
               </div>
             </div>
-            <div className="grid grid-cols-[2.5rem_1fr] items-center gap-2">
+            <div className="grid grid-cols-[3.25rem_1fr] items-center gap-2">
               <span className="text-xs font-bold text-gray-500">
                 {copy.modelGenderFilter}
               </span>
@@ -1102,6 +1139,38 @@ export function TryOnWorkbench({
                       type="button"
                       aria-pressed={active}
                       onClick={() => setModelGenderFilter(option.value)}
+                      disabled={isSubmitting}
+                      className={cn(
+                        'h-8 min-w-12 rounded-md px-3 text-xs font-bold transition focus:outline-none focus-visible:ring-2 focus-visible:ring-indigo-300',
+                        active
+                          ? 'bg-indigo-600 text-white shadow-sm'
+                          : 'bg-white text-gray-600 hover:bg-indigo-50 hover:text-indigo-600'
+                      )}
+                    >
+                      {option.label}
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+            <div className="grid grid-cols-[3.25rem_1fr] items-center gap-2">
+              <span className="text-xs font-bold text-gray-500">
+                {copy.modelStyleFilter}
+              </span>
+              <div
+                className="flex flex-wrap gap-1.5"
+                role="group"
+                aria-label={copy.modelStyleFilter}
+              >
+                {modelStyleOptions.map((option) => {
+                  const active = modelStyleFilter === option.value;
+
+                  return (
+                    <button
+                      key={option.value}
+                      type="button"
+                      aria-pressed={active}
+                      onClick={() => setModelStyleFilter(option.value)}
                       disabled={isSubmitting}
                       className={cn(
                         'h-8 min-w-12 rounded-md px-3 text-xs font-bold transition focus:outline-none focus-visible:ring-2 focus-visible:ring-indigo-300',

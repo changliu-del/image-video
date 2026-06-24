@@ -43,6 +43,16 @@ Key tables are defined in `lib/db/schema.ts`:
 - `user_media_history`
 - `credit_ledger`
 
+Active DB primary keys are integer sequences, not UUIDs. User IDs are the
+exception to the zero-start rule: `users.id` starts at `1` and has a positive
+ID check, so `uid = 0` must never exist. Resource IDs such as assets,
+templates, jobs, history rows, credit ledger entries, and verification rows can
+start at `0`. API payloads and route params still serialize these IDs as
+numeric strings so frontend contracts stay string-based while DB joins and
+foreign keys stay integer-based. `0029_rekey_primary_ids_to_sequences.sql` is
+the destructive rekey migration for this rule; after applying it, run seed/import
+flows again.
+
 `templates` is the minimal public template catalog. Its semantic fields are
 `id`, `type`, `category`, `thumbnail_asset_id`, `preview_asset_id`,
 `thumbnail_url`, `preview_url`, `thumbnail_mime_type`, `preview_mime_type`,

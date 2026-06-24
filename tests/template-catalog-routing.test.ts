@@ -205,6 +205,69 @@ describe('template catalog routing contract', () => {
     expect(publicClient).not.toContain('sortOrder');
   });
 
+  it('routes Admin template sub-tabs through the template type field', () => {
+    const adminShell = readSource(
+      'app/(dashboard)/admin/components/admin-shell.tsx'
+    );
+    const adminPanel = readSource('components/admin/templates-panel.tsx');
+    const adminRoute = readSource('app/api/admin/templates/route.ts');
+    const adminTemplates = readSource('lib/admin/services/templates.ts');
+    const adminTemplateTypes = readSource('lib/admin/template-types.ts');
+
+    expect(adminTemplateTypes).toContain('adminTemplateTypes = [');
+    expect(adminTemplateTypes).toContain("'image_to_video'");
+    expect(adminTemplateTypes).toContain("'model'");
+    expect(adminTemplateTypes).toContain("'image_to_image'");
+    expect(adminTemplateTypes).toContain("'try_on'");
+    expect(adminShell).toContain('AdminTemplatesDropdown');
+    expect(adminShell).toContain("searchParams.get('type')");
+    expect(adminShell).toContain('selectTemplateType');
+    expect(adminShell).toContain('`/admin?tab=templates&type=${type}`');
+    expect(adminPanel).toContain("type: activeType");
+    expect(adminPanel).not.toContain('onTypeChange');
+    expect(adminPanel).not.toContain('updateFormType');
+    expect(adminPanel).not.toContain('updateOrderTypeFromSelect');
+    expect(adminRoute).toContain(
+      "normalizeTemplateType(searchParams.get('type'))"
+    );
+    expect(adminTemplates).toContain('eq(templates.type, type)');
+  });
+
+  it('supports field-specific Admin template filters inside each type tab', () => {
+    const adminPanel = readSource('components/admin/templates-panel.tsx');
+    const adminRoute = readSource('app/api/admin/templates/route.ts');
+    const adminTemplates = readSource('lib/admin/services/templates.ts');
+
+    expect(adminPanel).toContain('TemplateFilterState');
+    expect(adminPanel).toContain("params.set('id', appliedFilters.id)");
+    expect(adminPanel).toContain("params.set('title', appliedFilters.title)");
+    expect(adminPanel).toContain(
+      "params.set('category', appliedFilters.category)"
+    );
+    expect(adminPanel).toContain("params.set('gender', appliedFilters.gender)");
+    expect(adminPanel).toContain("params.set('age', appliedFilters.age)");
+    expect(adminPanel).toContain("params.set('style', appliedFilters.style)");
+    expect(adminPanel).toContain('updateModelCategoryPart');
+    expect(adminPanel).toContain('categoryFilterOptions');
+    expect(adminPanel).toContain('copy.allCategories');
+    expect(adminRoute).toContain("optionalSearchParam(searchParams, 'id')");
+    expect(adminRoute).toContain("optionalSearchParam(searchParams, 'title')");
+    expect(adminRoute).toContain(
+      "optionalSearchParam(searchParams, 'category')"
+    );
+    expect(adminRoute).toContain("optionalSearchParam(searchParams, 'gender')");
+    expect(adminRoute).toContain("optionalSearchParam(searchParams, 'age')");
+    expect(adminRoute).toContain("optionalSearchParam(searchParams, 'style')");
+    expect(adminRoute).toContain('return value ? value : undefined');
+    expect(adminTemplates).toContain(
+      'idQuery ? ilikeCol(templates.id, idQuery)'
+    );
+    expect(adminTemplates).toContain('ilikeCol(templates.title, titleQuery)');
+    expect(adminTemplates).toContain('eq(templates.category, category)');
+    expect(adminTemplates).toContain('modelCategorySegmentCondition');
+    expect(adminTemplates).toContain('listAdminTemplateCategories(type)');
+  });
+
   it('streams template media through the app route with range support', () => {
     const mediaRoute = readSource('app/api/template-media/[assetId]/route.ts');
 
@@ -260,15 +323,14 @@ describe('template catalog routing contract', () => {
 
     for (const source of importScripts) {
       expect(source).toContain('buildTemplateMediaUrl');
+      expect(source).toContain('where storage_key in ${tx(assetKeys)}');
       for (const column of snapshotColumns) {
         expect(source).toContain(`'${column}'`);
       }
-      expect(source).toContain('thumbnail_url = excluded.thumbnail_url');
-      expect(source).toContain('preview_url = excluded.preview_url');
-      expect(source).toContain(
-        'thumbnail_mime_type = excluded.thumbnail_mime_type'
-      );
-      expect(source).toContain('preview_mime_type = excluded.preview_mime_type');
+      expect(source).toContain('thumbnail_url = ${buildTemplateMediaUrl(');
+      expect(source).toContain('preview_url = ${buildTemplateMediaUrl(');
+      expect(source).toContain('thumbnail_mime_type = ${');
+      expect(source).toContain('preview_mime_type = ${');
       expect(source).not.toContain('Legacy templates columns still present');
     }
   });

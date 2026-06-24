@@ -3,18 +3,18 @@ import { describe, expect, it, vi } from 'vitest';
 import { getLegacyLoginHref } from '../app/(login)/legacy-login-url';
 
 vi.mock('@/lib/marketing/content', () => ({
-  isLocale: (value: string) => ['pt', 'en', 'zh'].includes(value),
+  isLocale: (value: string) => ['pt', 'en'].includes(value),
 }));
 
 describe('getLegacyLoginHref', () => {
-  it('uses the locale search param for legacy sign-in redirects', () => {
+  it('normalizes invalid legacy locale params for sign-in redirects', () => {
     const href = getLegacyLoginHref('signin', {
       locale: 'zh',
       redirect: '/create/video?locale=zh',
     });
 
     expect(href).toBe(
-      '/zh/login?locale=zh&redirect=%2Fcreate%2Fvideo%3Flocale%3Dzh'
+      '/en/login?locale=en&redirect=%2Fcreate%2Fvideo%3Flocale%3Den'
     );
   });
 

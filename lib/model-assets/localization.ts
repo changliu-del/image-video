@@ -127,6 +127,25 @@ const phraseKeys = Object.keys(phraseTranslations).sort(
   (left, right) => right.length - left.length
 );
 
+export const modelGenderTagOptions = ['女', '男'] as const;
+export const modelAgeTagOptions = ['儿童', '青年', '中年', '老年'] as const;
+
+export type ModelCategoryParts = {
+  age: string;
+  gender: string;
+  style: string;
+  tags: string[];
+};
+
+type ModelCategoryFilterInput = {
+  age?: string | null;
+  gender?: string | null;
+  style?: string | null;
+};
+
+const modelGenderTagSet = new Set<string>(modelGenderTagOptions);
+const modelAgeTagSet = new Set<string>(modelAgeTagOptions);
+
 function toStringValue(value: unknown) {
   return value == null ? '' : String(value);
 }
@@ -155,7 +174,7 @@ function hasCjk(value: string) {
 export function normalizeModelLocale(locale: string): ModelLocale {
   return supportedLocales.has(locale as ModelLocale)
     ? (locale as ModelLocale)
-    : 'pt';
+    : 'en';
 }
 
 export function stripModelAgePrefix(title: unknown) {
@@ -170,8 +189,63 @@ export function modelCategoryTags(category: unknown) {
     .slice(0, 8);
 }
 
+function normalizeModelCategoryFilter(value: string | null | undefined) {
+  const trimmed = value?.trim();
+  return trimmed || undefined;
+}
+
+export function parseModelCategoryParts(category: unknown): ModelCategoryParts {
+  const tags = modelCategoryTags(category);
+  const gender = tags.find((tag) => modelGenderTagSet.has(tag)) ?? '';
+  const age = tags.find((tag) => modelAgeTagSet.has(tag)) ?? '';
+  const style =
+    tags.find((tag) => !modelGenderTagSet.has(tag) && !modelAgeTagSet.has(tag)) ??
+    '';
+
+  return {
+    age,
+    gender,
+    style,
+    tags,
+  };
+}
+
+export function buildModelCategoryFromParts(input: ModelCategoryFilterInput) {
+  return [input.gender, input.age, input.style]
+    .map((value) => value?.trim() ?? '')
+    .filter(Boolean)
+    .join('/');
+}
+
+export function modelCategoryMatchesFilters(
+  category: unknown,
+  filters: ModelCategoryFilterInput
+) {
+  const parts = parseModelCategoryParts(category);
+  const matches = (filter: string | null | undefined, value: string) => {
+    const normalized = normalizeModelCategoryFilter(filter);
+    return !normalized || value === normalized || parts.tags.includes(normalized);
+  };
+
+  return (
+    matches(filters.gender, parts.gender) &&
+    matches(filters.age, parts.age) &&
+    matches(filters.style, parts.style)
+  );
+}
+
 function localizePhrase(value: string, locale: Exclude<ModelLocale, 'zh'>) {
   return phraseTranslations[value]?.[locale] ?? '';
+}
+
+export function localizeModelCategoryTag(tag: unknown, localeInput: string) {
+  const value = toStringValue(tag).trim();
+  if (!value) return '';
+
+  const locale = normalizeModelLocale(localeInput);
+  if (locale === 'zh') return value;
+
+  return localizePhrase(value, locale) || (!hasCjk(value) ? value : '');
 }
 
 function translateModelText(value: unknown, locale: Exclude<ModelLocale, 'zh'>) {
@@ -202,11 +276,7 @@ function translateModelText(value: unknown, locale: Exclude<ModelLocale, 'zh'>) 
 }
 
 function localizedTraitTitle(category: unknown, locale: Exclude<ModelLocale, 'zh'>) {
-  const tags = modelCategoryTags(category);
-  const age = tags.find((tag) =>
-    ['儿童', '青年', '中年', '老年'].includes(tag)
-  );
-  const gender = tags.find((tag) => ['女', '男'].includes(tag));
+  const { age, gender } = parseModelCategoryParts(category);
   const ageLabel = age ? localizePhrase(age, locale) : '';
   const genderLabel = gender ? localizePhrase(gender, locale) : '';
 
@@ -227,7 +297,7 @@ export function localizeModelCategoryTags(
   if (locale === 'zh') return tags;
 
   return tags
-    .map((tag) => localizePhrase(tag, locale) || (!hasCjk(tag) ? tag : ''))
+    .map((tag) => localizeModelCategoryTag(tag, locale))
     .filter(Boolean)
     .slice(0, 8);
 }

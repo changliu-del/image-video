@@ -1,9 +1,8 @@
-import { randomUUID } from 'crypto';
-
 import { getUser } from '@/lib/db/queries';
 import { buildAssetMediaUrl } from '@/lib/assets/media-url';
 import { createPendingUploadAsset } from '@/lib/generations/jobs';
 import { presignAssetRequestSchema } from '@/lib/generations/validation';
+import { dbIdSequences, reserveDbId, toDbIdString } from '@/lib/db/ids';
 import {
   buildPublicUrl,
   buildUserUploadStorageKey,
@@ -38,7 +37,7 @@ export async function POST(request: NextRequest) {
     );
   }
 
-  const assetId = randomUUID();
+  const assetId = await reserveDbId(dbIdSequences.assets);
   const storageKey = buildUserUploadStorageKey(
     user.id,
     assetId,
@@ -63,7 +62,7 @@ export async function POST(request: NextRequest) {
     });
 
     return NextResponse.json({
-      assetId,
+      assetId: toDbIdString(assetId),
       uploadUrl,
       storageKey,
       publicUrl: buildAssetMediaUrl(assetId),

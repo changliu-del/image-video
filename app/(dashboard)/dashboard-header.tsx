@@ -222,7 +222,8 @@ export function DashboardHeader({
   const pathname = usePathname();
   const previousPathname = useRef(pathname);
   const isAdminPage = pathname === '/admin' || pathname.startsWith('/admin/');
-  const locale = useDashboardLocale();
+  const dashboardLocale = useDashboardLocale();
+  const locale = isAdminPage ? 'en' : dashboardLocale;
   const content = getDashboardContent(locale);
   const homeHref = isAdminPage ? withDashboardLocale('/dashboard', locale) : `/${locale}`;
   const { data: loadedUser, mutate: refreshUser } = useSWR<DashboardHeaderUser | null>(
@@ -310,7 +311,9 @@ export function DashboardHeader({
             </Link>
             </>
           ) : null}
-          <DashboardLanguageMenu locale={locale} content={content} />
+          {!isAdminPage ? (
+            <DashboardLanguageMenu locale={locale} content={content} />
+          ) : null}
         </div>
         <div className="ml-2 flex items-center space-x-3">
           <UserMenu user={user} templateAdminUrl={templateAdminUrl} labels={content.userMenu} />

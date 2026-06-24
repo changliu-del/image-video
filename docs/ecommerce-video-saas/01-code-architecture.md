@@ -205,10 +205,10 @@ prompt 和创意预设
 
 ```json
 {
-  "assetId": "asset_...",
+  "assetId": "0",
   "uploadUrl": "https://...",
-  "storageKey": "users/{userId}/uploads/{assetId}.png",
-  "publicUrl": "https://cdn.yourdomain.com/users/{userId}/uploads/{assetId}.png"
+  "storageKey": "users/{userId}/uploads/0.png",
+  "publicUrl": "/api/asset-media/0"
 }
 ```
 
@@ -229,8 +229,8 @@ storageKey 必须带 userId，避免覆盖其他用户文件
 
 ```json
 {
-  "assetId": "asset_...",
-  "storageKey": "users/{userId}/uploads/{assetId}.png"
+  "assetId": "0",
+  "storageKey": "users/{userId}/uploads/0.png"
 }
 ```
 
@@ -242,10 +242,10 @@ storageKey 必须带 userId，避免覆盖其他用户文件
 
 ```json
 {
-  "inputAssetId": "asset_...",
+  "inputAssetId": "0",
   "generationType": "image_to_video",
   "prompt": "Create a premium product video with a clean ecommerce composition.",
-  "templateId": "template_uuid"
+  "templateId": "1"
 }
 ```
 
@@ -266,7 +266,7 @@ storageKey 必须带 userId，避免覆盖其他用户文件
 
 ```json
 {
-  "jobId": "job_...",
+  "jobId": "0",
   "status": "queued"
 }
 ```
@@ -279,7 +279,7 @@ storageKey 必须带 userId，避免覆盖其他用户文件
 
 ```json
 {
-  "id": "job_...",
+  "id": "0",
   "status": "rendering",
   "progressLabel": "Adding product overlays",
   "finalVideoUrl": null,
@@ -290,7 +290,7 @@ storageKey 必须带 userId，避免覆盖其他用户文件
 
 ## 6. 数据库设计
 
-表名使用复数，ID 使用 `uuid` 或 starter 里已有 ID 风格。当前保留核心表：`users`、`assets`、`generation_jobs`、`credit_ledger`；供应商调用和渲染输出不再单独建表，分别归入 `generation_jobs` 状态字段和最终 `assets` 记录。
+表名使用复数，活跃表主键使用 PostgreSQL integer sequence，不再使用 UUID 随机字符。`users.id` 必须是正整数并从 `1` 开始，不能存在 `uid = 0`；媒体、模板、任务、历史、账务等资源表可以从 `0` 开始。API 边界仍把这些 DB ID 序列化为数字字符串，例如 `"0"`、`"1"`。当前保留核心表：`users`、`assets`、`templates`、`generation_jobs`、`user_media_history`、`credit_ledger`；供应商调用和渲染输出不再单独建表，分别归入 `generation_jobs` 状态字段和最终 `assets` 记录。`0029_rekey_primary_ids_to_sequences.sql` 会重建 UUID 时代业务表并清空本地数据，应用后需要重新 seed/import。
 
 ### `assets`
 
@@ -454,7 +454,7 @@ payload：
 
 ```json
 {
-  "jobId": "job_..."
+  "jobId": "0"
 }
 ```
 

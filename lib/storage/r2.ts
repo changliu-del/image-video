@@ -123,7 +123,7 @@ export function getUploadExtension(mimeType: UploadMimeType) {
 
 export function buildUserUploadStorageKey(
   userId: number,
-  assetId: string,
+  assetId: string | number,
   mimeType: UploadMimeType
 ) {
   return `users/${userId}/uploads/${assetId}.${getUploadExtension(mimeType)}`;
@@ -147,8 +147,8 @@ export function isAdminMediaMimeType(
 }
 
 export function buildTemplatePreviewStorageKey(
-  templateId: string,
-  assetId: string,
+  templateId: string | number,
+  assetId: string | number,
   mimeType: AdminMediaMimeType
 ) {
   return `templates/${templateId}/${assetId}.${getAdminMediaExtension(mimeType)}`;
@@ -164,7 +164,7 @@ export function storageKeyBelongsToUser(userId: number, storageKey: string) {
 
 export function storageKeyMatchesUploadAsset(
   userId: number,
-  assetId: string,
+  assetId: string | number,
   storageKey: string
 ) {
   if (!storageKeyBelongsToUser(userId, storageKey)) {
@@ -179,8 +179,8 @@ export function storageKeyMatchesUploadAsset(
 }
 
 export function storageKeyMatchesTemplatePreview(
-  templateId: string,
-  assetId: string,
+  templateId: string | number,
+  assetId: string | number,
   storageKey: string
 ) {
   if (

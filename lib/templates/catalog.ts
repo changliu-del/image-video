@@ -190,10 +190,9 @@ const resource = (name: string) => `/resources/${name}`;
 export const starterTemplateSeeds: StarterTemplateSeed[] = [
   {
     seedKey: 'product-soft-motion',
-    title: 'Produto com movimento suave',
+    title: 'Soft product motion',
     titleTranslations: {
-      en: 'Soft product motion',
-      zh: '商品柔和运镜',
+      pt: 'Produto com movimento suave',
     },
     type: 'image_to_video',
     category: 'product',
@@ -202,18 +201,16 @@ export const starterTemplateSeeds: StarterTemplateSeed[] = [
     thumbnailUrl: resource('example1.png'),
     previewUrl: resource('example1.mp4'),
     prompt:
-      'Transforme a foto do produto em um video curto de ecommerce com movimento suave de camera, luz limpa, produto centralizado e acabamento premium.',
+      'Turn the product photo into a short ecommerce video with smooth camera motion, clean lighting, centered product framing, and a premium finish.',
     promptTranslations: {
-      en: 'Turn the product photo into a short ecommerce video with smooth camera motion, clean lighting, centered product framing, and a premium finish.',
-      zh: '把商品照片转换成短电商视频，使用柔和运镜、干净光线、商品居中构图和高级质感。',
+      pt: 'Transforme a foto do produto em um video curto de ecommerce com movimento suave de camera, luz limpa, produto centralizado e acabamento premium.',
     },
   },
   {
     seedKey: 'fashion-model-motion',
-    title: 'Lookbook de moda em movimento',
+    title: 'Fashion lookbook in motion',
     titleTranslations: {
-      en: 'Fashion lookbook in motion',
-      zh: '动态服饰 Lookbook',
+      pt: 'Lookbook de moda em movimento',
     },
     type: 'image_to_video',
     category: 'fashion',
@@ -222,18 +219,16 @@ export const starterTemplateSeeds: StarterTemplateSeed[] = [
     thumbnailUrl: resource('example2.png'),
     previewUrl: resource('example2.mp4'),
     prompt:
-      'Crie um video vertical de moda a partir da imagem, com movimento natural, tecido em destaque, fundo de estudio moderno e ritmo social.',
+      'Create a vertical fashion video from the image with natural movement, highlighted fabric texture, a modern studio background, and social rhythm.',
     promptTranslations: {
-      en: 'Create a vertical fashion video from the image with natural movement, highlighted fabric texture, a modern studio background, and social rhythm.',
-      zh: '基于图片生成竖版服饰视频，动作自然，突出面料质感，现代影棚背景，节奏适合社媒。',
+      pt: 'Crie um video vertical de moda a partir da imagem, com movimento natural, tecido em destaque, fundo de estudio moderno e ritmo social.',
     },
   },
   {
     seedKey: 'food-fresh-closeup',
-    title: 'Close-up fresco de alimento',
+    title: 'Fresh food close-up',
     titleTranslations: {
-      en: 'Fresh food close-up',
-      zh: '食物新鲜特写',
+      pt: 'Close-up fresco de alimento',
     },
     type: 'image_to_video',
     category: 'food',
@@ -242,18 +237,16 @@ export const starterTemplateSeeds: StarterTemplateSeed[] = [
     thumbnailUrl: resource('example3.png'),
     previewUrl: resource('example3.mp4'),
     prompt:
-      'Transforme a foto do alimento em um video apetitoso com brilho natural, movimento lento, textura em destaque e sensacao fresca.',
+      'Turn the food photo into an appetizing video with natural gloss, slow motion, highlighted texture, and a fresh feeling.',
     promptTranslations: {
-      en: 'Turn the food photo into an appetizing video with natural gloss, slow motion, highlighted texture, and a fresh feeling.',
-      zh: '把食物照片转换成诱人的视频，保留自然光泽、慢动作、突出纹理和新鲜感。',
+      pt: 'Transforme a foto do alimento em um video apetitoso com brilho natural, movimento lento, textura em destaque e sensacao fresca.',
     },
   },
   {
     seedKey: 'beauty-premium-detail',
-    title: 'Detalhe premium de beleza',
+    title: 'Premium beauty detail',
     titleTranslations: {
-      en: 'Premium beauty detail',
-      zh: '美妆高级细节',
+      pt: 'Detalhe premium de beleza',
     },
     type: 'image_to_video',
     category: 'beauty',
@@ -262,18 +255,16 @@ export const starterTemplateSeeds: StarterTemplateSeed[] = [
     thumbnailUrl: resource('example4.png'),
     previewUrl: resource('example4.mp4'),
     prompt:
-      'Crie um video premium de beleza com close-up elegante, reflexos suaves, embalagem em foco e movimento de camera delicado.',
+      'Create a premium beauty video with an elegant close-up, soft reflections, focused packaging, and delicate camera movement.',
     promptTranslations: {
-      en: 'Create a premium beauty video with an elegant close-up, soft reflections, focused packaging, and delicate camera movement.',
-      zh: '生成高级美妆视频，使用优雅特写、柔和反光、包装聚焦和细腻运镜。',
+      pt: 'Crie um video premium de beleza com close-up elegante, reflexos suaves, embalagem em foco e movimento de camera delicado.',
     },
   },
   {
     seedKey: 'electronics-launch',
-    title: 'Lancamento de eletronico',
+    title: 'Electronics launch',
     titleTranslations: {
-      en: 'Electronics launch',
-      zh: '数码新品发布',
+      pt: 'Lancamento de eletronico',
     },
     type: 'image_to_video',
     category: 'electronics',
@@ -282,18 +273,16 @@ export const starterTemplateSeeds: StarterTemplateSeed[] = [
     thumbnailUrl: resource('example5.png'),
     previewUrl: resource('example5.mp4'),
     prompt:
-      'Gere um video de lancamento para produto eletronico com luz tecnica, movimento preciso, detalhes de material e atmosfera moderna.',
+      'Generate a launch video for an electronics product with technical lighting, precise motion, material detail, and a modern atmosphere.',
     promptTranslations: {
-      en: 'Generate a launch video for an electronics product with technical lighting, precise motion, material detail, and a modern atmosphere.',
-      zh: '生成数码产品发布视频，使用科技感灯光、精准运动、材质细节和现代氛围。',
+      pt: 'Gere um video de lancamento para produto eletronico com luz tecnica, movimento preciso, detalhes de material e atmosfera moderna.',
     },
   },
   {
     seedKey: 'home-lifestyle-scene',
-    title: 'Cena de casa e decoracao',
+    title: 'Home lifestyle scene',
     titleTranslations: {
-      en: 'Home lifestyle scene',
-      zh: '家居生活场景',
+      pt: 'Cena de casa e decoracao',
     },
     type: 'image_to_video',
     category: 'home',
@@ -302,10 +291,9 @@ export const starterTemplateSeeds: StarterTemplateSeed[] = [
     thumbnailUrl: resource('example6.png'),
     previewUrl: resource('example6.mp4'),
     prompt:
-      'Transforme a imagem em um video de casa e decoracao com cena realista, luz natural, movimento calmo e uso cotidiano do produto.',
+      'Turn the image into a home and decor video with a realistic scene, natural light, calm movement, and everyday product usage.',
     promptTranslations: {
-      en: 'Turn the image into a home and decor video with a realistic scene, natural light, calm movement, and everyday product usage.',
-      zh: '把图片转换成家居装饰视频，场景真实、自然光、运动平稳，并展示产品日常使用感。',
+      pt: 'Transforme a imagem em um video de casa e decoracao com cena realista, luz natural, movimento calmo e uso cotidiano do produto.',
     },
   },
 ];

@@ -16,7 +16,7 @@ import {
 
 const validImageToVideoRequest = {
   generationType: 'image_to_video',
-  inputAssetId: 'asset_123',
+  inputAssetId: '123',
   prompt: 'Create a polished product video from the uploaded image.',
 } as const;
 
@@ -107,11 +107,11 @@ describe('imageToVideoGenerationRequestSchema', () => {
   it('accepts template metadata and defaults image-to-video to 5s', () => {
     const parsed = imageToVideoGenerationRequestSchema.parse({
       ...validImageToVideoRequest,
-      templateId: 'template_123',
+      templateId: '456',
     });
 
     expect(parsed.prompt).toBe(validImageToVideoRequest.prompt);
-    expect(parsed.templateId).toBe('template_123');
+    expect(parsed.templateId).toBe('456');
     expect(parsed.durationSeconds).toBe(IMAGE_TO_VIDEO_DURATION_SECONDS);
   });
 
@@ -147,19 +147,19 @@ describe('imageToVideoGenerationRequestSchema', () => {
     const aliasAsset = imageToVideoGenerationRequestSchema.parse({
       ...validImageToVideoRequest,
       inputAssetId: undefined,
-      inputAsset: 'asset_from_alias',
+      inputAsset: '124',
     });
 
     expect(missingAsset.success).toBe(false);
-    expect(aliasAsset.inputAssetId).toBe('asset_from_alias');
-    expect(aliasAsset.inputAssetIds).toEqual(['asset_from_alias']);
+    expect(aliasAsset.inputAssetId).toBe('124');
+    expect(aliasAsset.inputAssetIds).toEqual(['124']);
   });
 
   it('rejects multiple product images because the provider accepts one image', () => {
     const result = imageToVideoGenerationRequestSchema.safeParse({
       ...validImageToVideoRequest,
       inputAssetId: undefined,
-      inputAssetIds: ['asset_a', 'asset_b', 'asset_c'],
+      inputAssetIds: ['123', '124', '125'],
     });
 
     expect(result.success).toBe(false);
@@ -180,7 +180,7 @@ describe('apparelImageGenerationRequestSchema', () => {
   it('accepts apparel image requests', () => {
     const parsed = apparelImageGenerationRequestSchema.parse({
       generationType: 'apparel_image',
-      inputAssetId: 'asset_123',
+      inputAssetId: '123',
       prompt: 'Generate a clean studio apparel image.',
       aspectRatio: '1:1',
     });
@@ -192,22 +192,22 @@ describe('apparelImageGenerationRequestSchema', () => {
   it('accepts workbench controls for apparel image requests', () => {
     const parsed = apparelImageGenerationRequestSchema.parse({
       generationType: 'apparel_image',
-      inputAssetId: 'asset_123',
+      inputAssetId: '123',
       prompt: 'Generate a clean studio apparel image.',
-      templateId: 'template_123',
+      templateId: '456',
       aspectRatio: '1:1',
       strength: '64',
       variants: 4,
     });
 
-    expect(parsed.templateId).toBe('template_123');
+    expect(parsed.templateId).toBe('456');
     expect(parsed.strength).toBe(64);
     expect(parsed.variants).toBe(4);
   });
 
   it('requires the apparel_image discriminator', () => {
     const result = apparelImageGenerationRequestSchema.safeParse({
-      inputAssetId: 'asset_123',
+      inputAssetId: '123',
       prompt: 'Generate a clean studio apparel image.',
     });
 
@@ -220,14 +220,14 @@ describe('tryOnGenerationRequestSchema', () => {
     const parsed = tryOnGenerationRequestSchema.parse({
       generationType: 'try_on',
       tryOnMode: 'single',
-      modelAssetId: 'model_asset',
-      garmentAssetId: 'garment_asset',
+      modelAssetId: '201',
+      garmentAssetId: '301',
     });
 
     expect(parsed.generationType).toBe('try_on');
     expect(parsed.tryOnMode).toBe('single');
-    expect(parsed.inputAssetId).toBe('model_asset');
-    expect(parsed.garmentAssetIds).toEqual(['garment_asset']);
+    expect(parsed.inputAssetId).toBe('201');
+    expect(parsed.garmentAssetIds).toEqual(['301']);
     expect(getCreditCostForGeneration(parsed)).toBe(5);
   });
 
@@ -235,12 +235,12 @@ describe('tryOnGenerationRequestSchema', () => {
     const parsed = tryOnGenerationRequestSchema.parse({
       generationType: 'try_on',
       mode: 'multi',
-      inputAssetId: 'model_asset',
-      garmentAssetIds: ['top_asset', 'bottom_asset'],
+      inputAssetId: '201',
+      garmentAssetIds: ['301', '302'],
     });
 
     expect(parsed.tryOnMode).toBe('multi');
-    expect(parsed.modelAssetId).toBe('model_asset');
+    expect(parsed.modelAssetId).toBe('201');
     expect(getCreditCostForGeneration(parsed)).toBe(10);
   });
 
@@ -248,21 +248,21 @@ describe('tryOnGenerationRequestSchema', () => {
     const parsed = tryOnGenerationRequestSchema.parse({
       generationType: 'try_on',
       tryOnMode: 'single',
-      modelTemplateId: 'model_template_123',
-      garmentAssetId: 'garment_asset',
+      modelTemplateId: '401',
+      garmentAssetId: '301',
     });
 
-    expect(parsed.modelTemplateId).toBe('model_template_123');
+    expect(parsed.modelTemplateId).toBe('401');
     expect(parsed.modelAssetId).toBeUndefined();
-    expect(parsed.garmentAssetIds).toEqual(['garment_asset']);
+    expect(parsed.garmentAssetIds).toEqual(['301']);
   });
 
   it('requires at least two garments for multi try-on', () => {
     const result = tryOnGenerationRequestSchema.safeParse({
       generationType: 'try_on',
       tryOnMode: 'multi',
-      modelAssetId: 'model_asset',
-      garmentAssetIds: ['top_asset'],
+      modelAssetId: '201',
+      garmentAssetIds: ['301'],
     });
 
     expect(result.success).toBe(false);
@@ -272,16 +272,16 @@ describe('tryOnGenerationRequestSchema', () => {
     const parsed = tryOnGenerationRequestSchema.parse({
       generationType: 'try_on',
       tryOnMode: 'single',
-      modelAssetId: 'model_asset',
-      garmentAssetId: 'garment_asset',
+      modelAssetId: '201',
+      garmentAssetId: '301',
       prompt: '',
       aspectRatio: '9:16',
-      templateId: 'template_123',
+      templateId: '456',
     });
 
     expect(parsed.prompt).toBeUndefined();
     expect(parsed.aspectRatio).toBe('9:16');
-    expect(parsed.templateId).toBe('template_123');
+    expect(parsed.templateId).toBe('456');
   });
 });
 
@@ -293,14 +293,14 @@ describe('generationApiRequestSchema', () => {
     expect(
       generationApiRequestSchema.parse({
         generationType: 'apparel_image',
-        inputAssetId: 'asset_123',
+        inputAssetId: '123',
       }).generationType
     ).toBe('apparel_image');
     expect(
       generationApiRequestSchema.parse({
         generationType: 'try_on',
-        modelAssetId: 'model_asset',
-        garmentAssetId: 'garment_asset',
+        modelAssetId: '201',
+        garmentAssetId: '301',
       }).generationType
     ).toBe('try_on');
   });
@@ -317,7 +317,7 @@ describe('generationApiRequestSchema', () => {
   it('enforces prompt length where prompts are accepted', () => {
     const result = generationApiRequestSchema.safeParse({
       generationType: 'apparel_image',
-      inputAssetId: 'asset_123',
+      inputAssetId: '123',
       prompt: 'x'.repeat(MAX_TEXT_TO_IMAGE_PROMPT_LENGTH + 1),
     });
 

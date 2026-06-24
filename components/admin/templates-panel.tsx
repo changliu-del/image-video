@@ -12,6 +12,7 @@ import {
   Loader2,
   Plus,
   Save,
+  Search,
   Trash2,
   Upload,
 } from 'lucide-react';
@@ -26,14 +27,21 @@ import {
   type AdminTableColumn,
 } from '@/components/admin/admin-management-table';
 import type { AdminContent, AdminLocale } from '@/lib/admin/content';
+import { getAdminTemplateTypeLabel } from '@/lib/admin/template-types';
 import {
   getTemplateCategoryLabel,
-  templateTypeLabels,
   type TemplateCatalogDetailItem,
   type TemplateType,
 } from '@/lib/templates/catalog';
 import { getTemplateCategoriesForType } from '@/lib/templates/category-config';
 import { buildTemplateMediaUrl } from '@/lib/templates/media-url';
+import {
+  buildModelCategoryFromParts,
+  localizeModelCategoryTag,
+  modelAgeTagOptions,
+  modelGenderTagOptions,
+  parseModelCategoryParts,
+} from '@/lib/model-assets/localization';
 
 type AdminTemplate = TemplateCatalogDetailItem & {
   titleTranslations: Record<string, string>;
@@ -64,10 +72,20 @@ type TemplateFormState = {
 type ModalMode = 'create' | 'view' | 'edit';
 
 type PaginatedTemplates = {
+  categories: string[];
   list: AdminTemplate[];
   total: number;
   page: number;
   pageSize: number;
+};
+
+type TemplateFilterState = {
+  age: string;
+  id: string;
+  title: string;
+  category: string;
+  gender: string;
+  style: string;
 };
 
 type TemplateOrderResponse = {
@@ -97,14 +115,34 @@ const emptyForm: TemplateFormState = {
   promptTranslations: '{}',
 };
 
-const defaultOrderType: TemplateType = 'image_to_video';
+const defaultTemplateType: TemplateType = 'image_to_video';
 const emptyUploadFiles: Record<TemplateMediaTarget, File | null> = {
   thumbnail: null,
   preview: null,
 };
+const emptyTemplateFilters: TemplateFilterState = {
+  age: '',
+  id: '',
+  title: '',
+  category: '',
+  gender: '',
+  style: '',
+};
+
+const modelCategoryFieldLabels: Record<
+  AdminLocale,
+  Record<'age' | 'gender' | 'style', string>
+> = {
+  pt: { age: 'Idade', gender: 'Genero', style: 'Estilo' },
+  en: { age: 'Age', gender: 'Gender', style: 'Style' },
+  zh: { age: '年龄', gender: '性别', style: '风格' },
+};
 
 function defaultCategoryForType(type: TemplateType) {
-  return getTemplateCategoriesForType(type)[0] ?? (type === 'model' ? '' : 'common');
+  return (
+    getTemplateCategoriesForType(type)[0] ??
+    (type === 'model' ? '' : 'common')
+  );
 }
 
 function normalizeFormCategoryForSubmit(type: TemplateType, category: string) {
@@ -112,8 +150,44 @@ function normalizeFormCategoryForSubmit(type: TemplateType, category: string) {
   return type === 'model' ? trimmed : trimmed.toLowerCase();
 }
 
-function freshEmptyForm(): TemplateFormState {
-  return { ...emptyForm };
+function modelCategoryPartOptions(
+  categories: string[],
+  key: 'age' | 'gender' | 'style',
+  extras: string[] = []
+) {
+  return Array.from(
+    new Set(
+      [
+        ...categories.map((category) => parseModelCategoryParts(category)[key]),
+        ...extras,
+      ]
+        .map((value) => value.trim())
+        .filter(Boolean)
+    )
+  );
+}
+
+function updateModelCategoryPart(
+  category: string,
+  key: 'age' | 'gender' | 'style',
+  value: string
+) {
+  const parts = parseModelCategoryParts(category);
+  return buildModelCategoryFromParts({
+    age: key === 'age' ? value : parts.age,
+    gender: key === 'gender' ? value : parts.gender,
+    style: key === 'style' ? value : parts.style,
+  });
+}
+
+function freshEmptyForm(
+  type: TemplateType = defaultTemplateType
+): TemplateFormState {
+  return {
+    ...emptyForm,
+    type,
+    category: defaultCategoryForType(type),
+  };
 }
 
 function templateToForm(template: AdminTemplate): TemplateFormState {
@@ -160,8 +234,8 @@ function parseTranslationsJson(value: string, label: string) {
 
   const normalized: Record<string, string> = {};
   for (const [key, rawValue] of Object.entries(parsed)) {
-    if (!['pt', 'en', 'zh'].includes(key)) {
-      throw new Error(`${label} only supports pt, en, and zh keys.`);
+    if (key !== 'pt') {
+      throw new Error(`${label} only supports the pt key.`);
     }
 
     if (typeof rawValue !== 'string' || !rawValue.trim()) {
@@ -334,10 +408,12 @@ function TemplateMediaField({
 }
 
 export function TemplatesPanel({
+  activeType,
   canPublish,
   content,
   locale,
 }: {
+  activeType: TemplateType;
   canPublish: boolean;
   content: AdminContent;
   locale: AdminLocale;
@@ -345,14 +421,19 @@ export function TemplatesPanel({
   const copy = content.templates;
   const common = content.common;
   const [data, setData] = useState<PaginatedTemplates>({
+    categories: [],
     list: [],
     total: 0,
     page: 1,
     pageSize: 20,
   });
-  const [search, setSearch] = useState('');
-  const [appliedSearch, setAppliedSearch] = useState('');
-  const [form, setForm] = useState<TemplateFormState>(freshEmptyForm);
+  const [filters, setFilters] =
+    useState<TemplateFilterState>(emptyTemplateFilters);
+  const [appliedFilters, setAppliedFilters] =
+    useState<TemplateFilterState>(emptyTemplateFilters);
+  const [form, setForm] = useState<TemplateFormState>(() =>
+    freshEmptyForm(activeType)
+  );
   const [selectedTemplate, setSelectedTemplate] =
     useState<AdminTemplate | null>(null);
   const [modalMode, setModalMode] = useState<ModalMode | null>(null);
@@ -365,8 +446,8 @@ export function TemplatesPanel({
   const [error, setError] = useState<string | null>(null);
   const [orderModalOpen, setOrderModalOpen] = useState(false);
   const [orderForm, setOrderForm] = useState<TemplateOrderFormState>({
-    type: defaultOrderType,
-    category: defaultCategoryForType(defaultOrderType),
+    type: activeType,
+    category: defaultCategoryForType(activeType),
   });
   const [orderedTemplates, setOrderedTemplates] = useState<AdminTemplate[]>([]);
   const [loadingOrder, setLoadingOrder] = useState(false);
@@ -376,14 +457,64 @@ export function TemplatesPanel({
   const [loadingModelOrderCategories, setLoadingModelOrderCategories] =
     useState(false);
 
-  const typeLabel = (type: TemplateType) =>
-    templateTypeLabels[type]?.[locale] ?? type;
+  const activeTypeLabel = getAdminTemplateTypeLabel(activeType, locale);
 
   const orderCategoryOptions =
-    orderForm.type === 'model'
+    activeType === 'model'
       ? modelOrderCategories
-      : getTemplateCategoriesForType(orderForm.type);
+      : getTemplateCategoriesForType(activeType);
   const canSelectOrderCategory = orderCategoryOptions.length > 0;
+  const formCategoryOptions = getTemplateCategoriesForType(activeType);
+  const canSelectFormCategory = formCategoryOptions.length > 0;
+  const categoryFilterOptions = useMemo(() => {
+    const options = data.categories.length
+      ? data.categories
+      : getTemplateCategoriesForType(activeType);
+
+    return Array.from(
+      new Set(
+        [...options, filters.category, appliedFilters.category].filter(Boolean)
+      )
+    );
+  }, [activeType, appliedFilters.category, data.categories, filters.category]);
+  const modelFieldLabels = modelCategoryFieldLabels[locale];
+  const modelFormParts = parseModelCategoryParts(form.category);
+  const modelCategoryFilterOptions = useMemo(
+    () => ({
+      age: modelCategoryPartOptions(data.categories, 'age', [
+        ...modelAgeTagOptions,
+        filters.age,
+        appliedFilters.age,
+      ]),
+      gender: modelCategoryPartOptions(data.categories, 'gender', [
+        ...modelGenderTagOptions,
+        filters.gender,
+        appliedFilters.gender,
+      ]),
+      style: modelCategoryPartOptions(data.categories, 'style', [
+        filters.style,
+        appliedFilters.style,
+        modelFormParts.style,
+      ]),
+    }),
+    [
+      appliedFilters.age,
+      appliedFilters.gender,
+      appliedFilters.style,
+      data.categories,
+      filters.age,
+      filters.gender,
+      filters.style,
+      modelFormParts.style,
+    ]
+  );
+  const modelFormStyleOptions = useMemo(
+    () =>
+      Array.from(
+        new Set([...modelCategoryFilterOptions.style, modelFormParts.style])
+      ).filter(Boolean),
+    [modelCategoryFilterOptions.style, modelFormParts.style]
+  );
 
   const columns = useMemo<AdminTableColumn<AdminTemplate>[]>(
     () => [
@@ -393,13 +524,8 @@ export function TemplatesPanel({
         kind: 'primary',
         width: 260,
         render: (template) => (
-          <div>
-            <div className="break-words font-mono text-xs text-gray-900">
-              {template.id}
-            </div>
-            <div className="mt-1 text-xs font-medium text-gray-500">
-              {typeLabel(template.type)}
-            </div>
+          <div className="break-words font-mono text-xs text-gray-900">
+            {template.id}
           </div>
         ),
       },
@@ -416,8 +542,32 @@ export function TemplatesPanel({
       {
         key: 'category',
         label: copy.columns.category,
-        kind: 'status',
-        width: 140,
+        width: activeType === 'model' ? 220 : 140,
+        render: (template) => {
+          if (template.type === 'model') {
+            const parts = parseModelCategoryParts(template.category);
+            const tags = [parts.gender, parts.age, parts.style].filter(Boolean);
+
+            return (
+              <div className="flex flex-wrap gap-1">
+                {tags.map((tag) => (
+                  <span
+                    key={tag}
+                    className="inline-flex min-h-6 items-center rounded-md bg-gray-100 px-2 text-xs font-semibold text-gray-600"
+                  >
+                    {localizeModelCategoryTag(tag, locale) || tag}
+                  </span>
+                ))}
+              </div>
+            );
+          }
+
+          return (
+            <span className="inline-flex min-h-6 items-center rounded-md bg-gray-100 px-2 text-xs font-semibold text-gray-600">
+              {getTemplateCategoryLabel(template.category, locale)}
+            </span>
+          );
+        },
       },
       {
         key: 'sortOrder',
@@ -450,7 +600,7 @@ export function TemplatesPanel({
         ),
       },
     ],
-    [copy, locale]
+    [activeType, copy, locale]
   );
 
   async function loadTemplates(page = 1) {
@@ -460,8 +610,17 @@ export function TemplatesPanel({
       const params = new URLSearchParams({
         page: String(page),
         pageSize: String(data.pageSize),
+        type: activeType,
       });
-      if (appliedSearch) params.set('search', appliedSearch);
+      if (appliedFilters.id) params.set('id', appliedFilters.id);
+      if (appliedFilters.title) params.set('title', appliedFilters.title);
+      if (activeType === 'model') {
+        if (appliedFilters.gender) params.set('gender', appliedFilters.gender);
+        if (appliedFilters.age) params.set('age', appliedFilters.age);
+        if (appliedFilters.style) params.set('style', appliedFilters.style);
+      } else if (appliedFilters.category) {
+        params.set('category', appliedFilters.category);
+      }
       const result = await requestJson<PaginatedTemplates>(
         `/api/admin/templates?${params}`,
         { method: 'GET' },
@@ -490,11 +649,25 @@ export function TemplatesPanel({
   useEffect(() => {
     loadTemplates(1);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [appliedSearch]);
+  }, [activeType, appliedFilters]);
+
+  useEffect(() => {
+    setSelectedTemplate(null);
+    setModalMode(null);
+    setForm(freshEmptyForm(activeType));
+    setOrderForm({
+      type: activeType,
+      category: defaultCategoryForType(activeType),
+    });
+    setOrderedTemplates([]);
+    setOrderError(null);
+    setFilters(emptyTemplateFilters);
+    setAppliedFilters(emptyTemplateFilters);
+  }, [activeType]);
 
   function openCreate() {
     setSelectedTemplate(null);
-    setForm(freshEmptyForm());
+    setForm(freshEmptyForm(activeType));
     setUploadFiles(emptyUploadFiles);
     setModalMode('create');
     setError(null);
@@ -533,12 +706,13 @@ export function TemplatesPanel({
     try {
       const payload = {
         ...form,
+        type: activeType,
         title: form.title.trim(),
         titleTranslations: parseTranslationsJson(
           form.titleTranslations,
           copy.fields.titleTranslations ?? 'Title translations'
         ),
-        category: normalizeFormCategoryForSubmit(form.type, form.category),
+        category: normalizeFormCategoryForSubmit(activeType, form.category),
         promptTranslations: parseTranslationsJson(
           form.promptTranslations,
           copy.fields.promptTranslations ?? 'Prompt translations'
@@ -559,7 +733,7 @@ export function TemplatesPanel({
       await loadTemplates(form.id ? data.page : 1);
       if (!form.id) {
         setModalMode(null);
-        setForm(freshEmptyForm());
+        setForm(freshEmptyForm(activeType));
       } else {
         setModalMode('view');
       }
@@ -588,7 +762,7 @@ export function TemplatesPanel({
       );
       setSelectedTemplate(null);
       setModalMode(null);
-      setForm(freshEmptyForm());
+      setForm(freshEmptyForm(activeType));
       await loadTemplates(data.page);
     } catch (deleteError) {
       setError(
@@ -714,7 +888,33 @@ export function TemplatesPanel({
   function openOrderManager() {
     setOrderModalOpen(true);
     setOrderError(null);
-    void loadTemplateOrder();
+    if (activeType !== 'model') {
+      const nextForm = {
+        type: activeType,
+        category: orderForm.category || defaultCategoryForType(activeType),
+      };
+      setOrderForm(nextForm);
+      void loadTemplateOrder(nextForm);
+      return;
+    }
+
+    void loadModelOrderCategories()
+      .then((categories) => {
+        const nextForm = {
+          type: activeType,
+          category: orderForm.category || categories[0] || '',
+        };
+        setOrderForm(nextForm);
+        void loadTemplateOrder(nextForm);
+      })
+      .catch((loadError) => {
+        setOrderedTemplates([]);
+        setOrderError(
+          loadError instanceof Error
+            ? loadError.message
+            : copy.errors.loadOrder ?? copy.errors.load
+        );
+      });
   }
 
   async function loadModelOrderCategories() {
@@ -743,42 +943,6 @@ export function TemplatesPanel({
     } finally {
       setLoadingModelOrderCategories(false);
     }
-  }
-
-  async function updateOrderType(type: TemplateType) {
-    try {
-      const categories =
-        type === 'model'
-          ? await loadModelOrderCategories()
-          : getTemplateCategoriesForType(type);
-      const category = categories[0] ?? defaultCategoryForType(type);
-      const nextForm = {
-        type,
-        category,
-      };
-      setOrderForm(nextForm);
-      void loadTemplateOrder(nextForm);
-    } catch (loadError) {
-      setOrderForm({
-        type,
-        category: defaultCategoryForType(type),
-      });
-      setOrderedTemplates([]);
-      setOrderError(
-        loadError instanceof Error
-          ? loadError.message
-          : copy.errors.loadOrder ?? copy.errors.load
-      );
-    }
-  }
-
-  function updateOrderTypeFromSelect(type: TemplateType) {
-    const nextForm = {
-      type,
-      category: defaultCategoryForType(type),
-    };
-    setOrderForm(nextForm);
-    void updateOrderType(type);
   }
 
   function updateOrderCategory(category: string) {
@@ -831,8 +995,26 @@ export function TemplatesPanel({
   }
 
   function resetSearch() {
-    setSearch('');
-    setAppliedSearch('');
+    setFilters(emptyTemplateFilters);
+    setAppliedFilters(emptyTemplateFilters);
+  }
+
+  function applyFilters() {
+    setAppliedFilters({
+      age: activeType === 'model' ? filters.age.trim() : '',
+      id: filters.id.trim(),
+      title: filters.title.trim(),
+      category: activeType === 'model' ? '' : filters.category.trim(),
+      gender: activeType === 'model' ? filters.gender.trim() : '',
+      style: activeType === 'model' ? filters.style.trim() : '',
+    });
+  }
+
+  function updateFilter<K extends keyof TemplateFilterState>(
+    key: K,
+    value: TemplateFilterState[K]
+  ) {
+    setFilters((current) => ({ ...current, [key]: value }));
   }
 
   function tableActions(
@@ -894,7 +1076,7 @@ export function TemplatesPanel({
   const previewMimeType =
     selectedTemplate?.previewAssetId === form.previewAssetId
       ? selectedTemplate.previewMimeType
-      : form.type === 'image_to_video'
+      : activeType === 'image_to_video'
         ? 'video/mp4'
         : 'image/png';
   const uploadDisabled = !form.id || Boolean(uploadingTarget);
@@ -913,8 +1095,7 @@ export function TemplatesPanel({
         onRefresh={() => loadTemplates(data.page)}
         onReset={resetSearch}
         onRowClick={openView}
-        onSearch={() => setAppliedSearch(search.trim())}
-        onSearchValueChange={setSearch}
+        onSearch={applyFilters}
         pagination={{
           page: data.page,
           pageSize: data.pageSize,
@@ -939,12 +1120,128 @@ export function TemplatesPanel({
         }
         rowKey={(template, index) => String(template.id ?? index)}
         rows={data.list}
-        searchPlaceholder={copy.searchPlaceholder}
-        searchValue={search}
         selectedRowKey={selectedKey}
         statusLabels={content.statusLabels}
         tableMinWidth={1000}
-        title={copy.title}
+        title={`${copy.title}: ${activeTypeLabel}`}
+        toolbarFilters={
+          <>
+            <label className="grid min-w-0 gap-1 sm:w-48">
+              <span className="text-xs font-semibold uppercase text-gray-500">
+                {copy.fields.id}
+              </span>
+              <Input
+                value={filters.id}
+                onChange={(event) => updateFilter('id', event.target.value)}
+                placeholder={copy.fields.id}
+                className="h-9"
+              />
+            </label>
+            <label className="grid min-w-0 gap-1 sm:w-56">
+              <span className="text-xs font-semibold uppercase text-gray-500">
+                {copy.fields.title}
+              </span>
+              <Input
+                value={filters.title}
+                onChange={(event) => updateFilter('title', event.target.value)}
+                placeholder={copy.fields.title}
+                className="h-9"
+              />
+            </label>
+            {activeType === 'model' ? (
+              <>
+                <label className="grid min-w-0 gap-1 sm:w-36">
+                  <span className="text-xs font-semibold uppercase text-gray-500">
+                    {modelFieldLabels.gender}
+                  </span>
+                  <select
+                    value={filters.gender}
+                    onChange={(event) =>
+                      updateFilter('gender', event.target.value)
+                    }
+                    className="h-9 rounded-md border border-gray-200 bg-white px-3 text-sm"
+                    aria-label={modelFieldLabels.gender}
+                  >
+                    <option value="">{copy.allCategories}</option>
+                    {modelCategoryFilterOptions.gender.map((gender) => (
+                      <option key={gender} value={gender}>
+                        {localizeModelCategoryTag(gender, locale) || gender}
+                      </option>
+                    ))}
+                  </select>
+                </label>
+                <label className="grid min-w-0 gap-1 sm:w-36">
+                  <span className="text-xs font-semibold uppercase text-gray-500">
+                    {modelFieldLabels.age}
+                  </span>
+                  <select
+                    value={filters.age}
+                    onChange={(event) =>
+                      updateFilter('age', event.target.value)
+                    }
+                    className="h-9 rounded-md border border-gray-200 bg-white px-3 text-sm"
+                    aria-label={modelFieldLabels.age}
+                  >
+                    <option value="">{copy.allCategories}</option>
+                    {modelCategoryFilterOptions.age.map((age) => (
+                      <option key={age} value={age}>
+                        {localizeModelCategoryTag(age, locale) || age}
+                      </option>
+                    ))}
+                  </select>
+                </label>
+                <label className="grid min-w-0 gap-1 sm:w-40">
+                  <span className="text-xs font-semibold uppercase text-gray-500">
+                    {modelFieldLabels.style}
+                  </span>
+                  <select
+                    value={filters.style}
+                    onChange={(event) =>
+                      updateFilter('style', event.target.value)
+                    }
+                    className="h-9 rounded-md border border-gray-200 bg-white px-3 text-sm"
+                    aria-label={modelFieldLabels.style}
+                  >
+                    <option value="">{copy.allCategories}</option>
+                    {modelCategoryFilterOptions.style.map((style) => (
+                      <option key={style} value={style}>
+                        {localizeModelCategoryTag(style, locale) || style}
+                      </option>
+                    ))}
+                  </select>
+                </label>
+              </>
+            ) : (
+              <label className="grid min-w-0 gap-1 sm:w-56">
+                <span className="text-xs font-semibold uppercase text-gray-500">
+                  {copy.fields.category}
+                </span>
+                <select
+                  value={filters.category}
+                  onChange={(event) =>
+                    updateFilter('category', event.target.value)
+                  }
+                  className="h-9 rounded-md border border-gray-200 bg-white px-3 text-sm"
+                  aria-label={copy.fields.category}
+                >
+                  <option value="">{copy.allCategories}</option>
+                  {categoryFilterOptions.map((category) => (
+                    <option key={category} value={category}>
+                      {getTemplateCategoryLabel(category, locale)}
+                    </option>
+                  ))}
+                </select>
+              </label>
+            )}
+            <Button
+              type="submit"
+              className="bg-orange-600 text-white hover:bg-orange-700"
+            >
+              <Search className="size-4" />
+              {common.search}
+            </Button>
+          </>
+        }
       />
 
       <AdminModal
@@ -985,28 +1282,6 @@ export function TemplatesPanel({
           ) : null}
 
           <div className="grid gap-4 md:grid-cols-2">
-            <Field label={copy.fields.type ?? 'Type'}>
-              <select
-                value={orderForm.type}
-                onChange={(event) =>
-                  updateOrderTypeFromSelect(event.target.value as TemplateType)
-                }
-                className="h-9 rounded-md border border-gray-200 bg-white px-3 text-sm"
-              >
-                <option value="image_to_video">
-                  {templateTypeLabels.image_to_video[locale]}
-                </option>
-                <option value="image_to_image">
-                  {templateTypeLabels.image_to_image[locale]}
-                </option>
-                <option value="model">
-                  {templateTypeLabels.model[locale]}
-                </option>
-                <option value="try_on">
-                  {templateTypeLabels.try_on[locale]}
-                </option>
-              </select>
-            </Field>
             <Field label={copy.fields.category}>
               {canSelectOrderCategory ? (
                 <select
@@ -1194,38 +1469,117 @@ export function TemplatesPanel({
                   }
                 />
               </Field>
-              <Field label={copy.fields.type ?? 'Type'}>
-                <select
-                  value={form.type}
-                  onChange={(event) =>
-                    updateForm('type', event.target.value as TemplateType)
-                  }
-                  className="h-9 rounded-md border border-gray-200 bg-white px-3 text-sm"
-                >
-                  <option value="image_to_video">
-                    {templateTypeLabels.image_to_video[locale]}
-                  </option>
-                  <option value="image_to_image">
-                    {templateTypeLabels.image_to_image[locale]}
-                  </option>
-                  <option value="model">
-                    {templateTypeLabels.model[locale]}
-                  </option>
-                  <option value="try_on">
-                    {templateTypeLabels.try_on[locale]}
-                  </option>
-                </select>
-              </Field>
-              <Field label={copy.fields.category}>
-                <Input
-                  value={form.category}
-                  placeholder="product"
-                  onChange={(event) =>
-                    updateForm('category', event.target.value)
-                  }
-                />
-              </Field>
+              {activeType !== 'model' ? (
+                <Field label={copy.fields.category}>
+                  {canSelectFormCategory ? (
+                    <select
+                      value={form.category}
+                      onChange={(event) =>
+                        updateForm('category', event.target.value)
+                      }
+                      className="h-9 rounded-md border border-gray-200 bg-white px-3 text-sm"
+                    >
+                      {!formCategoryOptions.includes(form.category) &&
+                      form.category ? (
+                        <option value={form.category}>
+                          {getTemplateCategoryLabel(form.category, locale)}
+                        </option>
+                      ) : null}
+                      {formCategoryOptions.map((category) => (
+                        <option key={category} value={category}>
+                          {getTemplateCategoryLabel(category, locale)}
+                        </option>
+                      ))}
+                    </select>
+                  ) : (
+                    <Input
+                      value={form.category}
+                      placeholder="product"
+                      onChange={(event) =>
+                        updateForm('category', event.target.value)
+                      }
+                    />
+                  )}
+                </Field>
+              ) : null}
             </div>
+
+            {activeType === 'model' ? (
+              <div className="grid gap-4 md:grid-cols-3">
+                <Field label={modelFieldLabels.gender}>
+                  <select
+                    value={modelFormParts.gender}
+                    onChange={(event) =>
+                      updateForm(
+                        'category',
+                        updateModelCategoryPart(
+                          form.category,
+                          'gender',
+                          event.target.value
+                        )
+                      )
+                    }
+                    className="h-9 rounded-md border border-gray-200 bg-white px-3 text-sm"
+                  >
+                    <option value="">{modelFieldLabels.gender}</option>
+                    {modelCategoryFilterOptions.gender.map((gender) => (
+                      <option key={gender} value={gender}>
+                        {localizeModelCategoryTag(gender, locale) || gender}
+                      </option>
+                    ))}
+                  </select>
+                </Field>
+                <Field label={modelFieldLabels.age}>
+                  <select
+                    value={modelFormParts.age}
+                    onChange={(event) =>
+                      updateForm(
+                        'category',
+                        updateModelCategoryPart(
+                          form.category,
+                          'age',
+                          event.target.value
+                        )
+                      )
+                    }
+                    className="h-9 rounded-md border border-gray-200 bg-white px-3 text-sm"
+                  >
+                    <option value="">{modelFieldLabels.age}</option>
+                    {modelCategoryFilterOptions.age.map((age) => (
+                      <option key={age} value={age}>
+                        {localizeModelCategoryTag(age, locale) || age}
+                      </option>
+                    ))}
+                  </select>
+                </Field>
+                <Field label={modelFieldLabels.style}>
+                  <Input
+                    list="admin-model-style-options"
+                    value={modelFormParts.style}
+                    placeholder={modelFieldLabels.style}
+                    onChange={(event) =>
+                      updateForm(
+                        'category',
+                        updateModelCategoryPart(
+                          form.category,
+                          'style',
+                          event.target.value
+                        )
+                      )
+                    }
+                  />
+                  <datalist id="admin-model-style-options">
+                    {modelFormStyleOptions.map((style) => (
+                      <option
+                        key={style}
+                        value={style}
+                        label={localizeModelCategoryTag(style, locale) || style}
+                      />
+                    ))}
+                  </datalist>
+                </Field>
+              </div>
+            ) : null}
 
             <Field label={copy.fields.titleTranslations ?? 'Title translations'}>
               <textarea

@@ -2,6 +2,7 @@ import { type NextRequest, NextResponse } from 'next/server';
 import { eq } from 'drizzle-orm';
 
 import { db } from '@/lib/db/drizzle';
+import { dbIdSchema } from '@/lib/db/id-schema';
 import { assets } from '@/lib/db/schema';
 import { getObjectFromR2 } from '@/lib/storage/r2';
 
@@ -46,6 +47,10 @@ export async function GET(
   { params }: { params: Promise<{ assetId: string }> }
 ) {
   const { assetId } = await params;
+  const parsedAssetId = dbIdSchema.safeParse(assetId);
+  if (!parsedAssetId.success) {
+    return NextResponse.json({ error: 'Asset media not found' }, { status: 404 });
+  }
   const requestRange = request.headers.get('range');
 
   try {
@@ -56,7 +61,7 @@ export async function GET(
         storageKey: assets.storageKey,
       })
       .from(assets)
-      .where(eq(assets.id, assetId))
+      .where(eq(assets.id, parsedAssetId.data))
       .limit(1);
 
     if (

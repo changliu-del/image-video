@@ -19,13 +19,13 @@ const templateCatalogMetadataCacheKey =
 const templateCatalogMetadataCacheTtlMs = 5 * 60 * 1000;
 
 type TemplateListRow = {
-  id: string;
+  id: number;
   title: string;
   titleTranslations: Record<string, string>;
   type: TemplateType;
   category: string;
-  thumbnailAssetId: string;
-  previewAssetId: string;
+  thumbnailAssetId: number;
+  previewAssetId: number;
   thumbnailUrl: string;
   previewUrl: string;
   sortOrder: number;
@@ -68,7 +68,7 @@ export type PublishedTemplatesResult = {
   hasMore: boolean;
 };
 
-const supportedLocales = new Set<Locale>(['pt', 'en', 'zh']);
+const supportedLocales = new Set(['pt', 'en']);
 
 function templateCatalogCacheState() {
   const globalScope = globalThis as typeof globalThis & {
@@ -87,9 +87,9 @@ function templateCatalogCacheState() {
 }
 
 function normalizeTemplateLocale(value: string | null | undefined): Locale {
-  return value && supportedLocales.has(value as Locale)
+  return value && supportedLocales.has(value)
     ? (value as Locale)
-    : 'pt';
+    : 'en';
 }
 
 function resolveLocalizedText(
@@ -106,7 +106,7 @@ function mapTemplateListRow(
   locale: Locale
 ): TemplateCatalogListItem {
   return {
-    id: row.id,
+    id: String(row.id),
     title: resolveLocalizedText(row.title, row.titleTranslations, locale),
     type: row.type,
     category:
@@ -208,7 +208,7 @@ function sortTemplateRows<T extends TemplateListRow>(type: TemplateType, rows: T
       left.createdAt.getTime() - right.createdAt.getTime();
     if (createdAtDelta !== 0) return createdAtDelta;
 
-    return left.id.localeCompare(right.id);
+    return String(left.id).localeCompare(String(right.id));
   });
 }
 
@@ -230,7 +230,7 @@ function templateMatchesSearch(row: TemplateDetailRow, search: string) {
   const normalized = search.toLowerCase();
   const values = [
     row.category,
-    row.id,
+    String(row.id),
     row.prompt,
     row.title,
     ...Object.values(row.promptTranslations ?? {}),
@@ -299,7 +299,7 @@ function getCachedTemplateDetailById(id: string) {
 
   for (const cached of state.records.values()) {
     if (cached.expiresAt <= now) continue;
-    const row = cached.rows.find((template) => template.id === id);
+    const row = cached.rows.find((template) => String(template.id) === id);
     if (row) return row;
   }
 

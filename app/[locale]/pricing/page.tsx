@@ -37,7 +37,6 @@ export async function generateMetadata({
       languages: {
         pt: '/pt/pricing',
         en: '/en/pricing',
-        zh: '/zh/pricing',
       },
     },
   };

@@ -9,7 +9,6 @@ import { buildTemplateMediaUrl } from '../lib/templates/media-url';
 const DEFAULT_SOURCE_ROOT = '/private/tmp/image-jpeg';
 const TEMPLATE_TYPE = 'image_to_video';
 const DEFAULT_OWNER_EMAIL = 'codex-admin@local.test';
-const UUID_NAMESPACE = 'image-video-template-catalog-import-v1';
 const R2_CONCURRENCY = 4;
 
 const categoryMap = {
@@ -45,7 +44,6 @@ type SourceFileSet = {
 };
 
 type TemplateImportItem = {
-  id: string;
   title: string;
   titleTranslations: Record<string, string>;
   category: TemplateCategory;
@@ -59,7 +57,6 @@ type TemplateImportItem = {
 };
 
 type ImportAsset = {
-  id: string;
   storageKey: string;
   publicUrl: string;
   sourcePath: string;
@@ -68,7 +65,13 @@ type ImportAsset = {
 };
 
 type ScanIssue = {
-  type: 'missing' | 'invalid_mime' | 'empty_prompt' | 'unknown_category' | 'unexpected_file';
+  type:
+    | 'missing'
+    | 'missing_translation'
+    | 'invalid_mime'
+    | 'empty_prompt'
+    | 'unknown_category'
+    | 'unexpected_file';
   path: string;
   message: string;
 };
@@ -176,7 +179,7 @@ function parseArgs(argv: string[]): CliArgs {
 
 function parseOwnerUserId(value: string) {
   const parsed = Number(value);
-  if (!Number.isInteger(parsed) || parsed <= 0) {
+  if (!Number.isInteger(parsed) || parsed < 0) {
     throw new Error(`Invalid --owner-user-id value: ${value}`);
   }
 
@@ -200,34 +203,32 @@ Options:
 `);
 }
 
-function deterministicUuid(value: string) {
-  const bytes = Uint8Array.from(
-    createHash('sha1').update(UUID_NAMESPACE).update(':').update(value).digest()
-  ).slice(0, 16);
-
-  bytes[6] = (bytes[6] & 0x0f) | 0x50;
-  bytes[8] = (bytes[8] & 0x3f) | 0x80;
-
-  const hex = Array.from(bytes, (byte) => byte.toString(16).padStart(2, '0')).join(
-    ''
-  );
-  return `${hex.slice(0, 8)}-${hex.slice(8, 12)}-${hex.slice(12, 16)}-${hex.slice(
-    16,
-    20
-  )}-${hex.slice(20)}`;
+function shortHash(value: string) {
+  return createHash('sha1').update(value).digest('hex').slice(0, 16);
 }
 
 function isKnownCategoryName(name: string): name is SourceCategoryName {
   return Object.prototype.hasOwnProperty.call(categoryMap, name);
 }
 
-function storageKeyFor(templateId: string, assetId: string, mimeType: MediaMimeType) {
+function storageKeyFor(seed: string, kind: 'preview' | 'thumbnail', mimeType: MediaMimeType) {
   const extension = mimeType === 'image/jpeg' ? 'jpg' : 'mp4';
-  return `templates/${templateId}/${assetId}.${extension}`;
+  return `templates/import/${TEMPLATE_TYPE}/${shortHash(`${kind}:${seed}`)}.${extension}`;
 }
 
 function publicUrlFor(storageKey: string, publicBaseUrl: string) {
   return `${publicBaseUrl.replace(/\/+$/, '')}/${storageKey}`;
+}
+
+function hasCjk(value: string) {
+  return /[\u3400-\u9fff]/.test(value);
+}
+
+function ptTranslation(
+  value: Record<string, string> | undefined
+): Record<string, string> {
+  const pt = value?.pt?.trim();
+  return pt ? { pt } : {};
 }
 
 async function loadTemplateTranslations(): Promise<TemplateTranslationMap> {
@@ -424,30 +425,46 @@ async function scanTemplateCatalog(sourceRoot: string): Promise<ScanResult> {
     const seed = `${group.sourceCategoryName}:${group.category}:${group.baseName}`;
     const sourceKey = `${group.sourceCategoryName}/${group.baseName}`;
     const translation = translations[sourceKey] ?? {};
-    const templateId = deterministicUuid(`template:${seed}`);
-    const thumbnailAssetId = deterministicUuid(`asset:thumbnail:${seed}`);
-    const previewAssetId = deterministicUuid(`asset:preview:${seed}`);
+    const title = translation.title?.en?.trim() || group.baseName;
+    const promptEn = translation.prompt?.en?.trim() || prompt;
+
+    if (hasCjk(title)) {
+      issues.push({
+        type: 'missing_translation',
+        path: path.join(sourceRoot, group.sourceCategoryName, group.baseName),
+        message: 'English title translation is required before importing.',
+      });
+      continue;
+    }
+
+    if (hasCjk(promptEn)) {
+      issues.push({
+        type: 'missing_translation',
+        path: txtPath,
+        message: 'English prompt translation is required before importing.',
+      });
+      continue;
+    }
+
     const thumbnailStorageKey = storageKeyFor(
-      templateId,
-      thumbnailAssetId,
+      seed,
+      'thumbnail',
       'image/jpeg'
     );
-    const previewStorageKey = storageKeyFor(templateId, previewAssetId, 'video/mp4');
+    const previewStorageKey = storageKeyFor(seed, 'preview', 'video/mp4');
     const sortOrder = (sortOrderByCategory.get(group.category) ?? 0) + 1;
     sortOrderByCategory.set(group.category, sortOrder);
 
     items.push({
-      id: templateId,
-      title: group.baseName,
-      titleTranslations: translation.title ?? {},
+      title,
+      titleTranslations: ptTranslation(translation.title),
       category: group.category,
       sourceCategoryName: group.sourceCategoryName,
       baseName: group.baseName,
-      prompt,
-      promptTranslations: translation.prompt ?? {},
+      prompt: promptEn,
+      promptTranslations: ptTranslation(translation.prompt),
       sortOrder,
       thumbnailAsset: {
-        id: thumbnailAssetId,
         storageKey: thumbnailStorageKey,
         publicUrl: publicUrlFor(thumbnailStorageKey, publicBaseUrl),
         sourcePath: jpgPath,
@@ -455,7 +472,6 @@ async function scanTemplateCatalog(sourceRoot: string): Promise<ScanResult> {
         sizeBytes: jpgStat.size,
       },
       previewAsset: {
-        id: previewAssetId,
         storageKey: previewStorageKey,
         publicUrl: publicUrlFor(previewStorageKey, publicBaseUrl),
         sourcePath: mp4Path,
@@ -657,7 +673,7 @@ async function ensureFinalTemplateSchema(sql: postgres.Sql) {
 }
 
 async function resolveOwnerUserId(sql: postgres.Sql, args: CliArgs) {
-  if (args.ownerUserId) {
+  if (args.ownerUserId !== undefined) {
     return args.ownerUserId;
   }
 
@@ -715,7 +731,6 @@ async function applyImport(result: ScanResult, args: CliArgs) {
 
     const now = new Date();
     const assetRows = assetsToUpload.map((asset) => ({
-      id: asset.id,
       user_id: ownerUserId,
       type: 'upload',
       status: 'uploaded',
@@ -723,24 +738,6 @@ async function applyImport(result: ScanResult, args: CliArgs) {
       public_url: asset.publicUrl,
       mime_type: asset.mimeType,
       size_bytes: asset.sizeBytes,
-      created_at: now,
-      updated_at: now,
-    }));
-    const templateRows = result.items.map((item) => ({
-      id: item.id,
-      type: TEMPLATE_TYPE,
-      title: item.title,
-      title_translations_json: item.titleTranslations,
-      category: item.category,
-      thumbnail_asset_id: item.thumbnailAsset.id,
-      preview_asset_id: item.previewAsset.id,
-      thumbnail_url: buildTemplateMediaUrl(item.thumbnailAsset.id),
-      preview_url: buildTemplateMediaUrl(item.previewAsset.id),
-      thumbnail_mime_type: item.thumbnailAsset.mimeType,
-      preview_mime_type: item.previewAsset.mimeType,
-      prompt: item.prompt,
-      prompt_translations_json: item.promptTranslations,
-      sort_order: item.sortOrder,
       created_at: now,
       updated_at: now,
     }));
@@ -756,7 +753,6 @@ async function applyImport(result: ScanResult, args: CliArgs) {
       await tx`
         insert into assets ${tx(
           assetRows,
-          'id',
           'user_id',
           'type',
           'status',
@@ -767,56 +763,109 @@ async function applyImport(result: ScanResult, args: CliArgs) {
           'created_at',
           'updated_at'
         )}
-        on conflict (id) do update set
+        on conflict (storage_key) do update set
           user_id = excluded.user_id,
           type = excluded.type,
           status = excluded.status,
-          storage_key = excluded.storage_key,
           public_url = excluded.public_url,
           mime_type = excluded.mime_type,
           size_bytes = excluded.size_bytes,
           updated_at = current_timestamp
       `;
 
-      await tx`
-        insert into templates ${tx(
-          templateRows,
-          'id',
-          'type',
-          'title',
-          'title_translations_json',
-          'category',
-          'thumbnail_asset_id',
-          'preview_asset_id',
-          'thumbnail_url',
-          'preview_url',
-          'thumbnail_mime_type',
-          'preview_mime_type',
-          'prompt',
-          'prompt_translations_json',
-          'sort_order',
-          'created_at',
-          'updated_at'
-        )}
-        on conflict (id) do update set
-          type = excluded.type,
-          title = excluded.title,
-          title_translations_json = excluded.title_translations_json,
-          category = excluded.category,
-          thumbnail_asset_id = excluded.thumbnail_asset_id,
-          preview_asset_id = excluded.preview_asset_id,
-          thumbnail_url = excluded.thumbnail_url,
-          preview_url = excluded.preview_url,
-          thumbnail_mime_type = excluded.thumbnail_mime_type,
-          preview_mime_type = excluded.preview_mime_type,
-          prompt = excluded.prompt,
-          prompt_translations_json = excluded.prompt_translations_json,
-          updated_at = current_timestamp
+      const assetKeys = assetRows.map((asset) => asset.storage_key);
+      const persistedAssets = await tx<{ id: number; storage_key: string }[]>`
+        select id, storage_key
+        from assets
+        where storage_key in ${tx(assetKeys)}
       `;
+      const assetIdByStorageKey = new Map(
+        persistedAssets.map((asset) => [asset.storage_key, asset.id])
+      );
+
+      for (const item of result.items) {
+        const thumbnailAssetId = assetIdByStorageKey.get(
+          item.thumbnailAsset.storageKey
+        );
+        const previewAssetId = assetIdByStorageKey.get(
+          item.previewAsset.storageKey
+        );
+        if (thumbnailAssetId == null || previewAssetId == null) {
+          throw new Error(`Missing imported asset id for template ${item.title}`);
+        }
+
+        const existingRows = args.replace
+          ? []
+          : await tx<{ id: number }[]>`
+              select id
+              from templates
+              where type = ${TEMPLATE_TYPE}
+                and category = ${item.category}
+                and title = ${item.title}
+              limit 1
+            `;
+        const existingTemplate = existingRows[0];
+
+        if (existingTemplate) {
+          await tx`
+            update templates
+            set
+              title_translations_json = ${JSON.stringify(item.titleTranslations)}::jsonb,
+              thumbnail_asset_id = ${thumbnailAssetId},
+              preview_asset_id = ${previewAssetId},
+              thumbnail_url = ${buildTemplateMediaUrl(thumbnailAssetId)},
+              preview_url = ${buildTemplateMediaUrl(previewAssetId)},
+              thumbnail_mime_type = ${item.thumbnailAsset.mimeType},
+              preview_mime_type = ${item.previewAsset.mimeType},
+              prompt = ${item.prompt},
+              prompt_translations_json = ${JSON.stringify(item.promptTranslations)}::jsonb,
+              sort_order = ${item.sortOrder},
+              updated_at = current_timestamp
+            where id = ${existingTemplate.id}
+          `;
+        } else {
+          await tx`
+            insert into templates (
+              type,
+              title,
+              title_translations_json,
+              category,
+              thumbnail_asset_id,
+              preview_asset_id,
+              thumbnail_url,
+              preview_url,
+              thumbnail_mime_type,
+              preview_mime_type,
+              prompt,
+              prompt_translations_json,
+              sort_order,
+              created_at,
+              updated_at
+            )
+            values (
+              ${TEMPLATE_TYPE},
+              ${item.title},
+              ${JSON.stringify(item.titleTranslations)}::jsonb,
+              ${item.category},
+              ${thumbnailAssetId},
+              ${previewAssetId},
+              ${buildTemplateMediaUrl(thumbnailAssetId)},
+              ${buildTemplateMediaUrl(previewAssetId)},
+              ${item.thumbnailAsset.mimeType},
+              ${item.previewAsset.mimeType},
+              ${item.prompt},
+              ${JSON.stringify(item.promptTranslations)}::jsonb,
+              ${item.sortOrder},
+              ${now},
+              ${now}
+            )
+          `;
+        }
+      }
     });
 
     console.log(
-      `Applied import: ${templateRows.length} templates and ${assetRows.length} assets.`
+      `Applied import: ${result.items.length} templates and ${assetRows.length} assets.`
     );
   } finally {
     await sql.end({ timeout: 5 });

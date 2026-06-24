@@ -1,6 +1,7 @@
 import { and, desc, eq, sql } from 'drizzle-orm';
 
 import { db } from '@/lib/db/drizzle';
+import { parseDbId } from '@/lib/db/id-schema';
 import {
   creditLedger,
   generationJobs,
@@ -20,7 +21,7 @@ export type GenerationCreditEstimateInput =
 
 export type ReserveCreditsForJobInput = {
   userId: number;
-  jobId: string;
+  jobId: string | number;
   amount?: number;
   credits?: number;
   durationSeconds?: number;
@@ -30,13 +31,13 @@ export type ReserveCreditsForJobInput = {
 
 export type CaptureReservedCreditsInput = {
   userId: number;
-  jobId: string;
+  jobId: string | number;
   metadata?: CreditLedgerMetadata;
 };
 
 export type RefundReservedCreditsInput = {
   userId: number;
-  jobId: string;
+  jobId: string | number;
   metadata?: CreditLedgerMetadata;
 };
 
@@ -140,6 +141,7 @@ export async function reserveCreditsForJob(
   input: ReserveCreditsForJobInput
 ): Promise<CreditLedgerOperationResult> {
   const amount = getReserveAmount(input);
+  const jobId = parseDbId(input.jobId, 'job ID');
 
   return db.transaction(async (tx) => {
     await tx.execute(sql`select pg_advisory_xact_lock(${input.userId})`);
@@ -150,7 +152,7 @@ export async function reserveCreditsForJob(
       .where(
         and(
           eq(creditLedger.userId, input.userId),
-          eq(creditLedger.jobId, input.jobId),
+          eq(creditLedger.jobId, jobId),
           eq(creditLedger.reason, 'reserve')
         )
       )
@@ -191,7 +193,7 @@ export async function reserveCreditsForJob(
       .insert(creditLedger)
       .values({
         userId: input.userId,
-        jobId: input.jobId,
+        jobId,
         delta: -amount,
         reason: 'reserve',
         balanceAfter,
@@ -210,6 +212,8 @@ export async function reserveCreditsForJob(
 export async function captureReservedCredits(
   input: CaptureReservedCreditsInput
 ): Promise<CreditLedgerOperationResult> {
+  const jobId = parseDbId(input.jobId, 'job ID');
+
   return db.transaction(async (tx) => {
     await tx.execute(sql`select pg_advisory_xact_lock(${input.userId})`);
 
@@ -219,7 +223,7 @@ export async function captureReservedCredits(
       .where(
         and(
           eq(creditLedger.userId, input.userId),
-          eq(creditLedger.jobId, input.jobId),
+          eq(creditLedger.jobId, jobId),
           eq(creditLedger.reason, 'capture')
         )
       )
@@ -240,7 +244,7 @@ export async function captureReservedCredits(
       .where(
         and(
           eq(creditLedger.userId, input.userId),
-          eq(creditLedger.jobId, input.jobId),
+          eq(creditLedger.jobId, jobId),
           eq(creditLedger.reason, 'refund')
         )
       )
@@ -261,7 +265,7 @@ export async function captureReservedCredits(
       .where(
         and(
           eq(creditLedger.userId, input.userId),
-          eq(creditLedger.jobId, input.jobId),
+          eq(creditLedger.jobId, jobId),
           eq(creditLedger.reason, 'reserve')
         )
       )
@@ -287,7 +291,7 @@ export async function captureReservedCredits(
       .insert(creditLedger)
       .values({
         userId: input.userId,
-        jobId: input.jobId,
+        jobId,
         delta: 0,
         reason: 'capture',
         balanceAfter: balance,
@@ -306,7 +310,7 @@ export async function captureReservedCredits(
       })
       .where(
         and(
-          eq(generationJobs.id, input.jobId),
+          eq(generationJobs.id, jobId),
           eq(generationJobs.userId, input.userId)
         )
       );
@@ -322,6 +326,8 @@ export async function captureReservedCredits(
 export async function refundReservedCredits(
   input: RefundReservedCreditsInput
 ): Promise<CreditLedgerOperationResult> {
+  const jobId = parseDbId(input.jobId, 'job ID');
+
   return db.transaction(async (tx) => {
     await tx.execute(sql`select pg_advisory_xact_lock(${input.userId})`);
 
@@ -331,7 +337,7 @@ export async function refundReservedCredits(
       .where(
         and(
           eq(creditLedger.userId, input.userId),
-          eq(creditLedger.jobId, input.jobId),
+          eq(creditLedger.jobId, jobId),
           eq(creditLedger.reason, 'refund')
         )
       )
@@ -352,7 +358,7 @@ export async function refundReservedCredits(
       .where(
         and(
           eq(creditLedger.userId, input.userId),
-          eq(creditLedger.jobId, input.jobId),
+          eq(creditLedger.jobId, jobId),
           eq(creditLedger.reason, 'capture')
         )
       )
@@ -373,7 +379,7 @@ export async function refundReservedCredits(
       .where(
         and(
           eq(creditLedger.userId, input.userId),
-          eq(creditLedger.jobId, input.jobId),
+          eq(creditLedger.jobId, jobId),
           eq(creditLedger.reason, 'reserve')
         )
       )
@@ -408,7 +414,7 @@ export async function refundReservedCredits(
       .insert(creditLedger)
       .values({
         userId: input.userId,
-        jobId: input.jobId,
+        jobId,
         delta: refundCredits,
         reason: 'refund',
         balanceAfter,

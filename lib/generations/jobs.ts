@@ -1,7 +1,7 @@
-import { randomUUID } from 'crypto';
 import type postgres from 'postgres';
 
 import { client } from '@/lib/db/drizzle';
+import { dbIdSequences, reserveDbId } from '@/lib/db/ids';
 import { getGenerationLimitViolation } from '@/lib/generations/limits';
 import {
   getCreditCostForGeneration,
@@ -42,8 +42,6 @@ const DEFAULT_PROVIDER = 'wanxiang';
 const PROVIDER_SUBMIT_LEASE_SECONDS = 120;
 const PROVIDER_RESULT_FETCH_TIMEOUT_MS = 120_000;
 const MAX_PROVIDER_RESULT_SIZE_BYTES = 200 * 1024 * 1024;
-const UUID_PATTERN =
-  /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 type QueryableSql = postgres.Sql;
 
 type TemplateType = 'image_to_video' | 'image_to_image' | 'try_on';
@@ -437,7 +435,7 @@ function mapGenerationJobRow(row: Record<string, unknown>): GenerationJobRecord 
 }
 
 export async function createPendingUploadAsset(input: {
-  assetId: string;
+  assetId: number;
   userId: number;
   storageKey: string;
   publicUrl: string;
@@ -635,11 +633,11 @@ async function assertTemplateForGeneration(generation: GenerationRequest) {
     return null;
   }
 
-  if (!UUID_PATTERN.test(generation.templateId)) {
+  if (!/^\d+$/.test(generation.templateId)) {
     throw new GenerationApiError(
       400,
       'invalid_template_id',
-      'Template ID must be a valid UUID'
+      'Template ID must be a non-negative integer'
     );
   }
 
@@ -718,7 +716,7 @@ async function assertInputAssetsForUser(
 }
 
 async function createQueuedGenerationJobWithCreditReservation(input: {
-  jobId: string;
+  jobId: number;
   userId: number;
   generation: GenerationRequest;
   templateId: string | null;
@@ -1033,7 +1031,7 @@ export async function createGenerationForUser(
     );
   }
 
-  const jobId = randomUUID();
+  const jobId = await reserveDbId(dbIdSequences.generationJobs);
   const inputJson = buildInputJson(generation);
   const job = await createQueuedGenerationJobWithCreditReservation({
     jobId,
@@ -1648,11 +1646,8 @@ async function createProviderResultAsset(
   },
   sql: QueryableSql = client
 ) {
-  const assetId = randomUUID();
-
   const rows = await sql`
     insert into assets (
-      id,
       user_id,
       type,
       status,
@@ -1664,7 +1659,6 @@ async function createProviderResultAsset(
       updated_at
     )
     values (
-      ${assetId},
       ${input.userId},
       ${input.assetType},
       'uploaded',

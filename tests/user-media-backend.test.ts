@@ -10,25 +10,27 @@ describe('user media history schema', () => {
   it('keeps private user media as history over owned assets and generation jobs', () => {
     const schema = readSource('lib/db/schema.ts');
     const migration = readSource(
-      'lib/db/migrations/0017_user_media_history.sql'
+      'lib/db/migrations/0029_rekey_primary_ids_to_sequences.sql'
     );
 
     expect(schema).toContain("export const userMediaHistory = pgTable");
-    expect(schema).toContain("assetId: uuid('asset_id')");
-    expect(schema).not.toContain("libraryAssetId: uuid('library_asset_id')");
-    expect(schema).toContain("generationJobId: uuid('generation_job_id')");
-    expect(migration).toContain('references assets(id)');
+    expect(schema).toContain("assetId: integer('asset_id')");
+    expect(schema).not.toContain("libraryAssetId: integer('library_asset_id')");
+    expect(schema).toContain("generationJobId: integer('generation_job_id')");
+    expect(migration).toContain('REFERENCES "assets"("id")');
     expect(migration).not.toContain('references library_assets(id)');
-    expect(migration).toContain('references generation_jobs(id) on delete set null');
     expect(migration).toContain(
-      "source in ('user_upload', 'generated_image', 'generated_video')"
+      'REFERENCES "generation_jobs"("id") ON DELETE SET NULL'
+    );
+    expect(migration).toContain(
+      "\"source\" in ('user_upload', 'generated_image', 'generated_video')"
     );
     expect(migration).not.toContain('ops_library_used');
     expect(migration).toContain(
-      "role in ('input', 'output', 'reference', 'garment', 'model')"
+      "\"role\" in ('input', 'output', 'reference', 'garment', 'model')"
     );
     expect(migration).toContain(
-      "visibility in ('active', 'hidden', 'deleted')"
+      "\"visibility\" in ('active', 'hidden', 'deleted')"
     );
     expect(migration).toContain('user_media_history_user_visibility_updated_idx');
   });

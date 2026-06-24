@@ -2,6 +2,7 @@ import 'server-only';
 
 import { and, desc, eq, isNull, or, sql, type SQL } from 'drizzle-orm';
 import { db } from '@/lib/db/drizzle';
+import { parseDbId, toDbIdString } from '@/lib/db/id-schema';
 import { buildAssetMediaUrl } from '@/lib/assets/media-url';
 import {
   assets,
@@ -94,8 +95,8 @@ function mapUserMediaRecord({
   const mediaUrl = buildAssetMediaUrl(asset.id);
 
   return {
-    id: userMedia.id,
-    assetId: userMedia.assetId,
+    id: toDbIdString(userMedia.id),
+    assetId: toDbIdString(userMedia.assetId),
     source: userMedia.source,
     title: userMedia.title,
     description: userMedia.description,
@@ -119,7 +120,8 @@ function roleWhere(role: UserMediaHistory['role']) {
     : eq(userMediaHistory.role, role);
 }
 
-async function getUserMediaRecord(userId: number, id: string) {
+async function getUserMediaRecord(userId: number, id: string | number) {
+  const userMediaId = parseDbId(id, 'user media ID');
   const [row] = await db
     .select({
       userMedia: userMediaHistory,
@@ -127,7 +129,7 @@ async function getUserMediaRecord(userId: number, id: string) {
     })
     .from(userMediaHistory)
     .innerJoin(assets, eq(userMediaHistory.assetId, assets.id))
-    .where(and(eq(userMediaHistory.id, id), eq(userMediaHistory.userId, userId)))
+    .where(and(eq(userMediaHistory.id, userMediaId), eq(userMediaHistory.userId, userId)))
     .limit(1);
 
   return row ?? null;
@@ -140,6 +142,7 @@ async function getGenerationJobForUser(
   if (!generationJobId) {
     return null;
   }
+  const jobId = parseDbId(generationJobId, 'generation job ID');
 
   const [row] = await db
     .select({
@@ -148,7 +151,7 @@ async function getGenerationJobForUser(
       generationType: generationJobs.generationType,
     })
     .from(generationJobs)
-    .where(and(eq(generationJobs.id, generationJobId), eq(generationJobs.userId, userId)))
+    .where(and(eq(generationJobs.id, jobId), eq(generationJobs.userId, userId)))
     .limit(1);
 
   return row ?? null;
@@ -160,7 +163,7 @@ async function normalizeCreateInput(input: CreateUserMediaHistoryInput) {
   const [asset] = await db
     .select()
     .from(assets)
-    .where(eq(assets.id, payload.assetId))
+    .where(eq(assets.id, parseDbId(payload.assetId, 'asset ID')))
     .limit(1);
 
   if (!asset) {
@@ -210,7 +213,7 @@ async function normalizeCreateInput(input: CreateUserMediaHistoryInput) {
     asset,
     values: {
       userId: payload.userId,
-      assetId: payload.assetId,
+      assetId: parseDbId(payload.assetId, 'asset ID'),
       generationJobId: generationJob?.id ?? null,
       source: payload.source,
       generationType,

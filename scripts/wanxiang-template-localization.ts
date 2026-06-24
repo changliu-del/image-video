@@ -1,5 +1,5 @@
 type WanxiangTemplateType = 'image_to_image' | 'try_on';
-type WanxiangLocale = 'pt' | 'en' | 'zh';
+type WanxiangLocale = 'pt' | 'en';
 type LocalizedText = Record<WanxiangLocale, string>;
 
 type WanxiangLocalizationInput = {
@@ -424,8 +424,6 @@ function fallbackTitle(input: WanxiangLocalizationInput, locale: Exclude<Wanxian
 }
 
 function localizedTitle(input: WanxiangLocalizationInput, locale: WanxiangLocale) {
-  if (locale === 'zh') return input.title;
-
   const translated = translateTitleByRules(input.title, locale);
   return translated && translated !== 'Undefined'
     ? translated
@@ -433,8 +431,6 @@ function localizedTitle(input: WanxiangLocalizationInput, locale: WanxiangLocale
 }
 
 function localizedPrompt(input: WanxiangLocalizationInput, locale: WanxiangLocale) {
-  if (locale === 'zh') return input.prompt;
-
   const title = localizedTitle(input, locale);
   const category = categoryLabel(input.category, locale);
   const details = translatePromptDetails(input.prompt, locale);
@@ -488,12 +484,10 @@ export function buildWanxiangTemplateLocalization(
     titleTranslations: {
       pt: localizedTitle(input, 'pt'),
       en: localizedTitle(input, 'en'),
-      zh: input.title,
     },
     promptTranslations: {
       pt: localizedPrompt(input, 'pt'),
       en: localizedPrompt(input, 'en'),
-      zh: input.prompt,
     },
   };
 }

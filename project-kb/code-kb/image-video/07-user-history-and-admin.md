@@ -61,6 +61,13 @@ Admin search fields, and Help copy aligned with these active areas:
 - Credit Ledger
 - Help
 
+The Templates Admin sidebar entry expands into type-scoped sub-tabs backed by
+`templates.type`: image-to-video, model, image generation, and smart try-on.
+Use `type` for the operational page/workbench and `category` only for the
+business classification within that type. Each template sub-tab exposes
+field-specific Admin filters for template ID, title, and category; avoid
+collapsing those controls back into a single generic search box.
+
 Template rows keep `thumbnail_asset_id` and `preview_asset_id` for upload
 integrity, but also store `thumbnail_url`, `preview_url`,
 `thumbnail_mime_type`, and `preview_mime_type` as read snapshots. Public and
@@ -90,7 +97,24 @@ source values before tightening the source check constraint.
 `0028_drop_model_catalog_assets.sql` drops the old model catalog table. Model
 imports should write `templates.type = 'model'`, put model classifications such
 as `男/青年/冷酷` in `category`, put the display name in `title`, and put the
-style/feature description in `prompt`.
+style/feature description in `prompt`. Keep age or segment labels such as
+`大童`, `中童`, and `小童` out of `title`; those belong in `category`, while
+the title should remain the model name, for example `贝拉`.
+
+Model category storage remains a single `templates.category` string, but the
+application treats it as three virtual dimensions for operations and browsing:
+gender, age, and style. User-facing try-on model selection and Admin model
+template filters/edit forms should parse values such as `男/青年/冷酷` into
+`男`, `青年`, and `冷酷`, then compose the same single category string when
+saving Admin changes.
+
+`0029_rekey_primary_ids_to_sequences.sql` resets the active DB identity model:
+`users`, `assets`, `templates`, `generation_jobs`, `user_media_history`,
+`credit_ledger`, and email verification rows use integer sequences. `users.id`
+starts at `1` and has a positive ID check; resource tables can start at `0`.
+The migration preserves existing rows, rekeys UUID-era resource IDs to integer
+sequences, updates dependent foreign keys, rewrites stored template media route
+URLs, and updates JSON ID references in generation and credit metadata.
 
 ## Validation
 

@@ -3,7 +3,10 @@ import 'server-only';
 import { inArray } from 'drizzle-orm';
 import { db } from '@/lib/db/drizzle';
 import { assets, templates } from '@/lib/db/schema';
+import { parseDbId } from '@/lib/db/id-schema';
 import { getObjectFromR2 } from '@/lib/storage/r2';
+
+type MediaId = string | number;
 
 type TemplateMediaCacheEntry = {
   assetId: string;
@@ -22,7 +25,7 @@ type TemplateMediaCacheState = {
 };
 
 type TemplateMediaAssetRow = {
-  id: string;
+  id: number;
   mimeType: string | null;
   sizeBytes: number | null;
   status: string;
@@ -88,12 +91,17 @@ function cacheState() {
   return globalScope[globalCacheKey]!;
 }
 
-function deleteEntry(state: TemplateMediaCacheState, assetId: string) {
-  const current = state.entries.get(assetId);
+function cacheKey(assetId: MediaId) {
+  return String(parseDbId(assetId, 'asset ID'));
+}
+
+function deleteEntry(state: TemplateMediaCacheState, assetId: MediaId) {
+  const key = cacheKey(assetId);
+  const current = state.entries.get(key);
   if (!current) return;
 
   state.totalBytes -= current.body.byteLength;
-  state.entries.delete(assetId);
+  state.entries.delete(key);
 }
 
 function evictToFit(state: TemplateMediaCacheState) {
@@ -148,8 +156,10 @@ function isTemplateMediaAsset(asset: TemplateMediaAssetRow) {
   return asset.status === 'uploaded' && asset.storageKey.startsWith('templates/');
 }
 
-async function getTemplateMediaAssets(assetIds: string[]) {
-  const ids = Array.from(new Set(assetIds.filter(Boolean)));
+async function getTemplateMediaAssets(assetIds: MediaId[]) {
+  const ids = Array.from(
+    new Set(assetIds.filter((id) => id !== '' && id != null).map((id) => parseDbId(id, 'asset ID')))
+  );
   if (ids.length === 0) return [];
 
   return db
@@ -181,14 +191,15 @@ async function getAllTemplateMediaAssetIds() {
 
 async function cacheTemplateMediaAsset(asset: TemplateMediaAssetRow) {
   const state = cacheState();
+  const key = cacheKey(asset.id);
 
   if (!isTemplateMediaAsset(asset)) {
-    deleteEntry(state, asset.id);
+    deleteEntry(state, key);
     return false;
   }
 
   if (asset.sizeBytes != null && asset.sizeBytes > maxItemBytes()) {
-    deleteEntry(state, asset.id);
+    deleteEntry(state, key);
     return false;
   }
 
@@ -196,13 +207,13 @@ async function cacheTemplateMediaAsset(asset: TemplateMediaAssetRow) {
   const body = await bodyToBytes(object.Body);
 
   if (!body || body.byteLength > maxItemBytes()) {
-    deleteEntry(state, asset.id);
+    deleteEntry(state, key);
     return false;
   }
 
-  deleteEntry(state, asset.id);
-  state.entries.set(asset.id, {
-    assetId: asset.id,
+  deleteEntry(state, key);
+  state.entries.set(key, {
+    assetId: key,
     body,
     contentType: object.ContentType ?? asset.mimeType,
     etag: object.ETag ?? null,
@@ -216,10 +227,10 @@ async function cacheTemplateMediaAsset(asset: TemplateMediaAssetRow) {
   return true;
 }
 
-async function cacheTemplateMediaAssets(assetIds: string[]) {
-  const ids = Array.from(new Set(assetIds.filter(Boolean)));
+async function cacheTemplateMediaAssets(assetIds: MediaId[]) {
+  const ids = Array.from(new Set(assetIds.filter((id) => id !== '' && id != null).map(cacheKey)));
   const assetRows = await getTemplateMediaAssets(ids);
-  const foundAssetIds = new Set(assetRows.map((asset) => asset.id));
+  const foundAssetIds = new Set(assetRows.map((asset) => cacheKey(asset.id)));
   const result: TemplateMediaCacheRefreshResult = {
     cached: 0,
     failed: 0,
@@ -250,15 +261,15 @@ async function cacheTemplateMediaAssets(assetIds: string[]) {
   return result;
 }
 
-export function getTemplateMediaCacheEntry(assetId: string) {
-  return cacheState().entries.get(assetId) ?? null;
+export function getTemplateMediaCacheEntry(assetId: MediaId) {
+  return cacheState().entries.get(cacheKey(assetId)) ?? null;
 }
 
-export async function refreshTemplateMediaCache(assetIds: string[]) {
+export async function refreshTemplateMediaCache(assetIds: MediaId[]) {
   return cacheTemplateMediaAssets(assetIds);
 }
 
-export async function refreshTemplateMediaCacheForAsset(assetId: string) {
+export async function refreshTemplateMediaCacheForAsset(assetId: MediaId) {
   const [asset] = await getTemplateMediaAssets([assetId]);
   if (!asset) {
     deleteTemplateMediaCacheEntries([assetId]);
@@ -291,7 +302,7 @@ export function startTemplateMediaCachePreload() {
   return state.preloadPromise;
 }
 
-export function deleteTemplateMediaCacheEntries(assetIds: string[]) {
+export function deleteTemplateMediaCacheEntries(assetIds: MediaId[]) {
   const state = cacheState();
 
   for (const assetId of assetIds) {

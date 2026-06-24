@@ -14,6 +14,12 @@ Updated: 2026-06-11
 - Apparel controls: `strength`, `variants`.
 - Try-on modes: `single`, `multi`.
 
+All DB-backed resource IDs in request fields such as `inputAssetId`,
+`templateId`, `modelTemplateId`, `modelAssetId`, and `garmentAssetId` are
+numeric strings. Resource primary keys are integer sequences that may start at
+`0`; user IDs are positive integers starting at `1`. Avoid legacy UUID-style
+values such as `template_uuid` or `asset_123` in new tests and fixtures.
+
 ## Credits
 
 `lib/credits.ts` supports:

@@ -24,19 +24,31 @@ describe('wanxiang model import contract', () => {
     expect(categoryConfig).toContain('modelTemplateCategories = []');
     expect(publicClient).toContain("'model'");
     expect(importer).toContain("const TEMPLATE_TYPE = 'model'");
-    expect(importer).toContain('buildTemplateMediaUrl(item.thumbnailAsset.id)');
-    expect(importer).toContain('buildTemplateMediaUrl(item.detailAsset.id)');
-    expect(importer).toContain("type: TEMPLATE_TYPE");
-    expect(importer).toContain('category: item.category');
-    expect(importer).toContain('prompt: item.prompt');
+    expect(importer).toContain('where storage_key in ${tx(assetKeys)}');
+    expect(importer).toContain('assetIdByStorageKey');
+    expect(importer).toContain('buildTemplateMediaUrl(thumbnailAssetId)');
+    expect(importer).toContain('buildTemplateMediaUrl(detailAssetId)');
+    expect(importer).toContain('where type = ${TEMPLATE_TYPE}');
+    expect(importer).toContain('category = ${item.category}');
+    expect(importer).toContain('prompt = ${item.prompt}');
+    expect(importer).toContain('${TEMPLATE_TYPE},');
+    expect(importer).toContain('${item.category},');
+    expect(importer).toContain('${item.prompt},');
     expect(importer).toContain('buildModelTemplateLocalization');
     expect(importer).toContain('stripModelAgePrefix(name)');
-    expect(importer).toContain('title_translations_json: item.titleTranslations');
-    expect(importer).toContain('prompt_translations_json: item.promptTranslations');
-    expect(importer).toContain('thumbnail_url: buildTemplateMediaUrl(item.thumbnailAsset.id)');
-    expect(importer).toContain('preview_url: buildTemplateMediaUrl(item.detailAsset.id)');
+    expect(importer).toContain('sourceTitle: name');
+    expect(importer).toContain(
+      'title_translations_json = ${JSON.stringify(item.titleTranslations)}::jsonb'
+    );
+    expect(importer).toContain(
+      'prompt_translations_json = ${JSON.stringify(item.promptTranslations)}::jsonb'
+    );
     expect(importer).toContain('function buildModelCategory');
-    expect(importer).toContain('where id in ${tx(templateIds)}');
+    expect(importer).toContain('and title in ${tx(titles)}');
+    expect(importer).toContain('or title = ${item.sourceTitle}');
+    expect(importer).toContain('or thumbnail_asset_id = ${thumbnailAssetId}');
+    expect(importer).toContain('or preview_asset_id = ${detailAssetId}');
+    expect(importer).toContain('title = ${item.title}');
     expect(importer).not.toContain('insert into model_catalog_assets');
     expect(importer).not.toContain('provider_payload_json');
     expect(importer).not.toContain("model.isNew ? 'new' : ''");
@@ -60,6 +72,7 @@ describe('wanxiang model import contract', () => {
     expect(copy).toContain("senior: '老年'");
     expect(copy).toContain("modelGenderFilter: '性别'");
     expect(copy).toContain("modelGenderOptions: { all: '全部', female: '女', male: '男' }");
+    expect(copy).toContain("modelStyleFilter: '风格'");
     expect(copy).toContain("modelDisplayImage: '展示图'");
     expect(copy).toContain("modelStyleIntro: '个人风格介绍'");
     expect(copy).toContain("useThisModel: '使用这个模特'");
@@ -72,6 +85,8 @@ describe('wanxiang model import contract', () => {
     expect(tryOn).toContain('const modelGenderTags');
     expect(tryOn).toContain('modelHasTag(model, modelAgeTags[modelAgeFilter])');
     expect(tryOn).toContain('modelHasTag(model, modelGenderTags[modelGenderFilter])');
+    expect(tryOn).toContain("modelStyleFilter === 'all' ? null : modelStyleFilter");
+    expect(tryOn).toContain('localizeModelCategoryTag(style, locale)');
     expect(tryOn).toContain('filteredModelAssets.some((model) => model.id === current.id)');
     expect(tryOn).toContain('const MODEL_ASSET_LIMIT = 96');
     expect(tryOn).toContain('limit: String(MODEL_ASSET_LIMIT)');

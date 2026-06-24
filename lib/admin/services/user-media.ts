@@ -4,6 +4,7 @@ import { and, desc, eq, or, sql } from 'drizzle-orm';
 import { z } from 'zod';
 import { db } from '@/lib/db/drizzle';
 import { buildAssetMediaUrl } from '@/lib/assets/media-url';
+import { dbIdSchema, toDbIdString } from '@/lib/db/id-schema';
 import {
   assets,
   generationJobs,
@@ -20,7 +21,7 @@ import {
   type PaginatedResult,
 } from './shared';
 
-const userMediaIdSchema = z.string().uuid();
+const userMediaIdSchema = dbIdSchema;
 
 const updateUserMediaAdminSchema = z
   .object({
@@ -104,8 +105,8 @@ function userMediaRecordToListItem({
   const mediaKind = inferMediaKind(asset);
 
   return {
-    id: userMedia.id,
-    assetId: userMedia.assetId,
+    id: toDbIdString(userMedia.id),
+    assetId: toDbIdString(userMedia.assetId),
     userId: userMedia.userId,
     userEmail: user.email,
     userName: user.name,
@@ -243,7 +244,7 @@ export async function updateAdminUserMedia(id: string, input: unknown) {
   }
 
   const result = await listAdminUserMedia({
-    search: row.id,
+    search: String(row.id),
     page: 1,
     pageSize: 1,
   });

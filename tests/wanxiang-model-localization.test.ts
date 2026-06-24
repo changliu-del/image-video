@@ -1,8 +1,11 @@
 import { describe, expect, it } from 'vitest';
 
 import {
+  buildModelCategoryFromParts,
   buildModelTemplateLocalization,
   localizeModelCategoryTags,
+  modelCategoryMatchesFilters,
+  parseModelCategoryParts,
   resolveModelPrompt,
   resolveModelTitle,
   stripModelAgePrefix,
@@ -18,6 +21,7 @@ describe('Wanxiang model localization', () => {
     expect(stripModelAgePrefix('大童 | 海伦')).toBe('海伦');
     expect(stripModelAgePrefix('小童｜伊恩')).toBe('伊恩');
     expect(stripModelAgePrefix('中童 - 科迪')).toBe('科迪');
+    expect(stripModelAgePrefix('中童 | 贝拉')).toBe('贝拉');
   });
 
   it('builds multilingual model title and prompt translations', () => {
@@ -36,6 +40,20 @@ describe('Wanxiang model localization', () => {
     expect(localization.promptTranslations.pt).toContain(
       'Modelo para prova virtual'
     );
+  });
+
+  it('keeps model tags out of the persisted title translations', () => {
+    const localization = buildModelTemplateLocalization({
+      category: '女/儿童/微笑',
+      prompt: '风格：甜美\n特征：微笑/长卷发/欧美',
+      title: '中童 | 贝拉',
+    });
+
+    expect(localization.titleTranslations).toEqual({
+      en: 'Bella',
+      pt: 'Bella',
+      zh: '贝拉',
+    });
   });
 
   it('falls back from stale Chinese translations at read time', () => {
@@ -84,5 +102,33 @@ describe('Wanxiang model localization', () => {
       '儿童',
       '冷酷',
     ]);
+  });
+
+  it('parses model category into virtual admin dimensions', () => {
+    expect(parseModelCategoryParts('男/青年/冷酷')).toEqual({
+      gender: '男',
+      age: '青年',
+      style: '冷酷',
+      tags: ['男', '青年', '冷酷'],
+    });
+    expect(
+      buildModelCategoryFromParts({
+        gender: '男',
+        age: '青年',
+        style: '冷酷',
+      })
+    ).toBe('男/青年/冷酷');
+    expect(
+      modelCategoryMatchesFilters('男/青年/冷酷', {
+        gender: '男',
+        age: '青年',
+        style: '冷酷',
+      })
+    ).toBe(true);
+    expect(
+      modelCategoryMatchesFilters('男/青年/冷酷', {
+        gender: '女',
+      })
+    ).toBe(false);
   });
 });

@@ -8,7 +8,7 @@ function expectLocalizedText(value: string) {
 }
 
 describe('Wanxiang template localization', () => {
-  it('creates multilingual title and prompt text for product-image templates', () => {
+  it('creates English and Brazilian Portuguese text for product-image templates', () => {
     const localization = buildWanxiangTemplateLocalization({
       category: 'goods_display_window',
       prompt: '白色平台，红橙渐变背景',
@@ -17,8 +17,6 @@ describe('Wanxiang template localization', () => {
       type: 'image_to_image',
     });
 
-    expect(localization.titleTranslations.zh).toBe('红橙渐变');
-    expect(localization.promptTranslations.zh).toBe('白色平台，红橙渐变背景');
     expectLocalizedText(localization.titleTranslations.en);
     expectLocalizedText(localization.titleTranslations.pt);
     expectLocalizedText(localization.promptTranslations.en);
@@ -46,7 +44,7 @@ describe('Wanxiang template localization', () => {
     expect(localization.titleTranslations.pt).toContain('Paisagem Natural');
   });
 
-  it('creates multilingual title and prompt text for try-on templates', () => {
+  it('creates English and Brazilian Portuguese text for try-on templates', () => {
     const localization = buildWanxiangTemplateLocalization({
       category: 'tryon_solid_background',
       prompt:
@@ -56,8 +54,6 @@ describe('Wanxiang template localization', () => {
       type: 'try_on',
     });
 
-    expect(localization.titleTranslations.zh).toBe('素净灰白');
-    expect(localization.promptTranslations.zh).toContain('模特站立');
     expectLocalizedText(localization.titleTranslations.en);
     expectLocalizedText(localization.titleTranslations.pt);
     expectLocalizedText(localization.promptTranslations.en);

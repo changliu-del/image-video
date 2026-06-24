@@ -7,14 +7,12 @@ import postgres from 'postgres';
 import {
   buildModelTemplateLocalization,
   stripModelAgePrefix,
-  type ModelLocalizedText,
 } from '../lib/model-assets/localization';
 import { buildTemplateMediaUrl } from '../lib/templates/media-url';
 
 const DEFAULT_SOURCE =
   '/Users/changliu/workspace/src/github.com/image-video/.tmp/wanxiang-models-europe-usa-20260609/models-europe-us.json';
 const DEFAULT_OWNER_EMAIL = 'codex-admin@local.test';
-const UUID_NAMESPACE = 'image-video-wanxiang-model-import-v1';
 const TEMPLATE_TYPE = 'model';
 const R2_CONCURRENCY = 8;
 
@@ -70,7 +68,6 @@ type CrawlFile = {
 };
 
 type ImportAsset = {
-  id: string;
   mimeType: MediaMimeType;
   publicUrl: string;
   sizeBytes: number;
@@ -81,14 +78,15 @@ type ImportAsset = {
 type NormalizedModelImportItem = {
   category: string;
   detailAsset: ImportAsset;
-  id: string;
   model: CrawledWanxiangModel;
+  modelId: string;
   prompt: string;
-  promptTranslations: ModelLocalizedText;
+  promptTranslations: Record<'pt', string>;
+  sourceTitle: string;
   sortOrder: number;
   thumbnailAsset: ImportAsset;
   title: string;
-  titleTranslations: ModelLocalizedText;
+  titleTranslations: Record<'pt', string>;
 };
 
 type ScanIssue = {
@@ -192,7 +190,7 @@ function parseArgs(argv: string[]): CliArgs {
 
 function parseOwnerUserId(value: string) {
   const parsed = Number(value);
-  if (!Number.isInteger(parsed) || parsed <= 0) {
+  if (!Number.isInteger(parsed) || parsed < 0) {
     throw new Error(`Invalid --owner-user-id value: ${value}`);
   }
 
@@ -216,23 +214,6 @@ Options:
 `);
 }
 
-function deterministicUuid(value: string) {
-  const bytes = Uint8Array.from(
-    createHash('sha1').update(UUID_NAMESPACE).update(':').update(value).digest()
-  ).slice(0, 16);
-
-  bytes[6] = (bytes[6] & 0x0f) | 0x50;
-  bytes[8] = (bytes[8] & 0x3f) | 0x80;
-
-  const hex = Array.from(bytes, (byte) => byte.toString(16).padStart(2, '0')).join(
-    ''
-  );
-  return `${hex.slice(0, 8)}-${hex.slice(8, 12)}-${hex.slice(12, 16)}-${hex.slice(
-    16,
-    20
-  )}-${hex.slice(20)}`;
-}
-
 function readString(value: unknown) {
   return typeof value === 'string' ? value.trim() : '';
 }
@@ -241,10 +222,10 @@ function publicUrlFor(storageKey: string, publicBaseUrl: string) {
   return `${publicBaseUrl.replace(/\/+$/, '')}/${storageKey}`;
 }
 
-function templateStorageKey(templateId: string, assetId: string, mimeType: MediaMimeType) {
+function templateStorageKey(modelId: string, assetKind: 'detail' | 'thumbnail', mimeType: MediaMimeType) {
   const extension =
     mimeType === 'image/jpeg' ? 'jpg' : mimeType === 'image/png' ? 'png' : 'webp';
-  return `templates/${templateId}/${assetId}.${extension}`;
+  return `templates/models/${modelId}/${assetKind}.${extension}`;
 }
 
 async function detectImageMimeType(filePath: string): Promise<MediaMimeType | null> {
@@ -287,7 +268,6 @@ async function buildImportAsset(input: {
   issues: ScanIssue[];
   modelId: string;
   sourcePath: string;
-  templateId: string;
 }) {
   const pathForIssue = `${input.sourcePath}`;
   if (!input.sourcePath) {
@@ -330,14 +310,12 @@ async function buildImportAsset(input: {
     return null;
   }
 
-  const assetId = deterministicUuid(`asset:model:${input.modelId}:${input.assetKind}`);
   return {
-    id: assetId,
     mimeType,
     publicUrl: '',
     sizeBytes: stat.size,
     sourcePath: input.sourcePath,
-    storageKey: templateStorageKey(input.templateId, assetId, mimeType),
+    storageKey: templateStorageKey(input.modelId, input.assetKind, mimeType),
   } satisfies ImportAsset;
 }
 
@@ -400,20 +378,17 @@ async function normalizeModel(input: {
   }
 
   const title = stripModelAgePrefix(name);
-  const templateId = deterministicUuid(`template:model:${modelId}:${name}`);
   const thumbnailAsset = await buildImportAsset({
     assetKind: 'thumbnail',
     issues: input.issues,
     modelId,
     sourcePath: readString(input.model.localThumbnailPath),
-    templateId,
   });
   const detailAsset = await buildImportAsset({
     assetKind: 'detail',
     issues: input.issues,
     modelId,
     sourcePath: readString(input.model.localDetailImagePath),
-    templateId,
   });
 
   if (!thumbnailAsset || !detailAsset) return null;
@@ -426,18 +401,25 @@ async function normalizeModel(input: {
     prompt,
     title,
   });
+  const englishTitle = localization.titleTranslations.en;
+  const englishPrompt = localization.promptTranslations.en;
 
   return {
     category,
     detailAsset,
-    id: templateId,
     model: input.model,
-    prompt,
-    promptTranslations: localization.promptTranslations,
+    modelId,
+    prompt: englishPrompt,
+    promptTranslations: {
+      pt: localization.promptTranslations.pt,
+    },
+    sourceTitle: name,
     sortOrder,
     thumbnailAsset,
-    title,
-    titleTranslations: localization.titleTranslations,
+    title: englishTitle,
+    titleTranslations: {
+      pt: localization.titleTranslations.pt,
+    },
   } satisfies NormalizedModelImportItem;
 }
 
@@ -477,7 +459,7 @@ async function scanWanxiangModels(args: CliArgs): Promise<ScanResult> {
     };
   }
 
-  const itemsById = new Map<string, NormalizedModelImportItem>();
+  const itemsByKey = new Map<string, NormalizedModelImportItem>();
   let duplicateCount = 0;
 
   for (let index = 0; index < parsed.models.length; index += 1) {
@@ -489,15 +471,16 @@ async function scanWanxiangModels(args: CliArgs): Promise<ScanResult> {
     });
     if (!item) continue;
 
-    if (itemsById.has(item.id)) {
+    const key = `${item.modelId}:${item.title}`;
+    if (itemsByKey.has(key)) {
       duplicateCount += 1;
       continue;
     }
 
-    itemsById.set(item.id, item);
+    itemsByKey.set(key, item);
   }
 
-  const items = Array.from(itemsById.values()).sort(
+  const items = Array.from(itemsByKey.values()).sort(
     (left, right) => left.sortOrder - right.sortOrder
   );
 
@@ -603,12 +586,12 @@ async function uploadAsset(client: S3Client, bucket: string, asset: ImportAsset)
 function uniqueAssets(items: NormalizedModelImportItem[]) {
   const assets = new Map<string, ImportAsset>();
   for (const item of items) {
-    assets.set(item.thumbnailAsset.id, item.thumbnailAsset);
-    assets.set(item.detailAsset.id, item.detailAsset);
+    assets.set(item.thumbnailAsset.storageKey, item.thumbnailAsset);
+    assets.set(item.detailAsset.storageKey, item.detailAsset);
   }
 
   return Array.from(assets.values()).sort((left, right) =>
-    left.id.localeCompare(right.id)
+    left.storageKey.localeCompare(right.storageKey)
   );
 }
 
@@ -665,7 +648,7 @@ async function ensureImportSchema(sql: postgres.Sql) {
 }
 
 async function resolveOwnerUserId(sql: postgres.Sql, args: CliArgs) {
-  if (args.ownerUserId) {
+  if (args.ownerUserId !== undefined) {
     return args.ownerUserId;
   }
 
@@ -715,7 +698,6 @@ async function applyImport(result: ScanResult, args: CliArgs) {
 
     const now = new Date();
     const dbAssetRows = assetRows.map((asset) => ({
-      id: asset.id,
       user_id: ownerUserId,
       type: 'upload',
       status: 'uploaded',
@@ -726,33 +708,15 @@ async function applyImport(result: ScanResult, args: CliArgs) {
       created_at: now,
       updated_at: now,
     }));
-    const templateRows = result.items.map((item) => ({
-      id: item.id,
-      type: TEMPLATE_TYPE,
-      title: item.title,
-      title_translations_json: item.titleTranslations,
-      category: item.category,
-      thumbnail_asset_id: item.thumbnailAsset.id,
-      preview_asset_id: item.detailAsset.id,
-      thumbnail_url: buildTemplateMediaUrl(item.thumbnailAsset.id),
-      preview_url: buildTemplateMediaUrl(item.detailAsset.id),
-      thumbnail_mime_type: item.thumbnailAsset.mimeType,
-      preview_mime_type: item.detailAsset.mimeType,
-      prompt: item.prompt,
-      prompt_translations_json: item.promptTranslations,
-      sort_order: item.sortOrder,
-      created_at: now,
-      updated_at: now,
-    }));
 
     await sql.begin(async (tx) => {
       if (args.replace) {
-        const templateIds = templateRows.map((row) => row.id);
-        if (templateIds.length > 0) {
+        const titles = result.items.map((item) => item.title);
+        if (titles.length > 0) {
           await tx`
             delete from templates
-            where id in ${tx(templateIds)}
-              and type = ${TEMPLATE_TYPE}
+            where type = ${TEMPLATE_TYPE}
+              and title in ${tx(titles)}
           `;
         }
       }
@@ -761,7 +725,6 @@ async function applyImport(result: ScanResult, args: CliArgs) {
         await tx`
           insert into assets ${tx(
             dbAssetRows,
-            'id',
             'user_id',
             'type',
             'status',
@@ -772,11 +735,10 @@ async function applyImport(result: ScanResult, args: CliArgs) {
             'created_at',
             'updated_at'
           )}
-          on conflict (id) do update set
+          on conflict (storage_key) do update set
             user_id = excluded.user_id,
             type = excluded.type,
             status = excluded.status,
-            storage_key = excluded.storage_key,
             public_url = excluded.public_url,
             mime_type = excluded.mime_type,
             size_bytes = excluded.size_bytes,
@@ -784,49 +746,106 @@ async function applyImport(result: ScanResult, args: CliArgs) {
         `;
       }
 
-      if (templateRows.length > 0) {
-        await tx`
-          insert into templates ${tx(
-            templateRows,
-            'id',
-            'type',
-            'title',
-            'title_translations_json',
-            'category',
-            'thumbnail_asset_id',
-            'preview_asset_id',
-            'thumbnail_url',
-            'preview_url',
-            'thumbnail_mime_type',
-            'preview_mime_type',
-            'prompt',
-            'prompt_translations_json',
-            'sort_order',
-            'created_at',
-            'updated_at'
-          )}
-          on conflict (id) do update set
-            type = excluded.type,
-            title = excluded.title,
-            title_translations_json = excluded.title_translations_json,
-            category = excluded.category,
-            thumbnail_asset_id = excluded.thumbnail_asset_id,
-            preview_asset_id = excluded.preview_asset_id,
-            thumbnail_url = excluded.thumbnail_url,
-            preview_url = excluded.preview_url,
-            thumbnail_mime_type = excluded.thumbnail_mime_type,
-            preview_mime_type = excluded.preview_mime_type,
-            prompt = excluded.prompt,
-            prompt_translations_json = excluded.prompt_translations_json,
-            sort_order = excluded.sort_order,
-            updated_at = current_timestamp
-        `;
+      const assetKeys = dbAssetRows.map((asset) => asset.storage_key);
+      const persistedAssets = assetKeys.length
+        ? await tx<{ id: number; storage_key: string }[]>`
+            select id, storage_key
+            from assets
+            where storage_key in ${tx(assetKeys)}
+          `
+        : [];
+      const assetIdByStorageKey = new Map(
+        persistedAssets.map((asset) => [asset.storage_key, asset.id])
+      );
+
+      for (const item of result.items) {
+        const thumbnailAssetId = assetIdByStorageKey.get(
+          item.thumbnailAsset.storageKey
+        );
+        const detailAssetId = assetIdByStorageKey.get(item.detailAsset.storageKey);
+        if (thumbnailAssetId == null || detailAssetId == null) {
+          throw new Error(`Missing imported asset id for model ${item.title}`);
+        }
+
+        const existingRows = args.replace
+          ? []
+          : await tx<{ id: number }[]>`
+            select id
+            from templates
+            where type = ${TEMPLATE_TYPE}
+              and (
+                title = ${item.title}
+                or title = ${item.sourceTitle}
+                or thumbnail_asset_id = ${thumbnailAssetId}
+                or preview_asset_id = ${detailAssetId}
+              )
+              limit 1
+            `;
+        const existingTemplate = existingRows[0];
+
+        if (existingTemplate) {
+          await tx`
+            update templates
+            set
+              title = ${item.title},
+              title_translations_json = ${JSON.stringify(item.titleTranslations)}::jsonb,
+              category = ${item.category},
+              thumbnail_asset_id = ${thumbnailAssetId},
+              preview_asset_id = ${detailAssetId},
+              thumbnail_url = ${buildTemplateMediaUrl(thumbnailAssetId)},
+              preview_url = ${buildTemplateMediaUrl(detailAssetId)},
+              thumbnail_mime_type = ${item.thumbnailAsset.mimeType},
+              preview_mime_type = ${item.detailAsset.mimeType},
+              prompt = ${item.prompt},
+              prompt_translations_json = ${JSON.stringify(item.promptTranslations)}::jsonb,
+              sort_order = ${item.sortOrder},
+              updated_at = current_timestamp
+            where id = ${existingTemplate.id}
+          `;
+        } else {
+          await tx`
+            insert into templates (
+              type,
+              title,
+              title_translations_json,
+              category,
+              thumbnail_asset_id,
+              preview_asset_id,
+              thumbnail_url,
+              preview_url,
+              thumbnail_mime_type,
+              preview_mime_type,
+              prompt,
+              prompt_translations_json,
+              sort_order,
+              created_at,
+              updated_at
+            )
+            values (
+              ${TEMPLATE_TYPE},
+              ${item.title},
+              ${JSON.stringify(item.titleTranslations)}::jsonb,
+              ${item.category},
+              ${thumbnailAssetId},
+              ${detailAssetId},
+              ${buildTemplateMediaUrl(thumbnailAssetId)},
+              ${buildTemplateMediaUrl(detailAssetId)},
+              ${item.thumbnailAsset.mimeType},
+              ${item.detailAsset.mimeType},
+              ${item.prompt},
+              ${JSON.stringify(item.promptTranslations)}::jsonb,
+              ${item.sortOrder},
+              ${now},
+              ${now}
+            )
+          `;
+        }
       }
 
     });
 
     console.log(
-      `Applied import: ${templateRows.length} model templates and ${dbAssetRows.length} image assets.`
+      `Applied import: ${result.items.length} model templates and ${dbAssetRows.length} image assets.`
     );
   } finally {
     await sql.end({ timeout: 5 });

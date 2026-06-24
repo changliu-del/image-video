@@ -1,6 +1,6 @@
-export const locales = ['pt', 'en', 'zh'] as const;
+export const locales = ['en', 'pt'] as const;
 
-export type Locale = (typeof locales)[number];
+export type Locale = (typeof locales)[number] | 'zh';
 
 type NavItem = {
   label: string;
@@ -1709,7 +1709,7 @@ const contentByLocale: Record<Locale, MarketingContent> = {
 };
 
 export function isLocale(value: string): value is Locale {
-  return locales.includes(value as Locale);
+  return locales.includes(value as (typeof locales)[number]);
 }
 
 export function getMarketingContent(locale: Locale) {

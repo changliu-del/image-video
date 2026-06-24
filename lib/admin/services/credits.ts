@@ -3,6 +3,7 @@ import 'server-only';
 import { and, desc, eq, or, sql, type SQL } from 'drizzle-orm';
 import { z } from 'zod';
 import { db } from '@/lib/db/drizzle';
+import { dbIdSchema } from '@/lib/db/id-schema';
 import { creditLedger, generationJobs, users } from '@/lib/db/schema';
 import { requireAdmin } from '@/lib/db/queries';
 import {
@@ -18,7 +19,7 @@ import {
   type PaginatedResult,
 } from './shared';
 
-const creditLedgerIdSchema = z.string().uuid();
+const creditLedgerIdSchema = dbIdSchema;
 type AdminCreditLedgerRecord = {
   entry: typeof creditLedger.$inferSelect;
   user: Pick<typeof users.$inferSelect, 'email' | 'name'> | null;

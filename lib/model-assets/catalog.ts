@@ -1,9 +1,12 @@
 import { client } from '@/lib/db/drizzle';
 import {
   localizeModelCategoryTags,
+  modelCategoryMatchesFilters,
   modelCategoryTags,
+  parseModelCategoryParts,
   resolveModelPrompt,
   resolveModelTitle,
+  type ModelCategoryParts,
 } from '@/lib/model-assets/localization';
 
 export type ModelTemplateItem = {
@@ -13,6 +16,7 @@ export type ModelTemplateItem = {
   thumbnailUrl: string | null;
   imageUrl: string | null;
   videoUrl: string | null;
+  categoryParts: ModelCategoryParts;
   tags: string[];
   displayTags: string[];
   sortWeight: number;
@@ -58,6 +62,7 @@ function mapModelTemplateRow(
     thumbnailUrl: toNullableString(row.thumbnail_url),
     imageUrl: toNullableString(row.preview_url),
     videoUrl: null,
+    categoryParts: parseModelCategoryParts(category),
     tags: modelCategoryTags(category),
     displayTags: localizeModelCategoryTags(category, locale),
     sortWeight: 100_000 - sortOrder,
@@ -67,10 +72,14 @@ function mapModelTemplateRow(
 }
 
 export async function listModelTemplates(input: {
+  age?: string;
+  gender?: string;
   locale: string;
   limit?: number;
+  style?: string;
 }) {
   const limit = Math.min(Math.max(input.limit ?? 24, 1), 96);
+  const queryLimit = input.age || input.gender || input.style ? 500 : limit;
   const rows = await client`
     select
       t.id,
@@ -91,12 +100,24 @@ export async function listModelTemplates(input: {
       and length(trim(t.thumbnail_url)) > 0
       and length(trim(t.preview_url)) > 0
     order by t.sort_order asc, t.created_at asc, t.title asc
-    limit ${limit}
+    limit ${queryLimit}
   `;
 
-  return rows.map((row) =>
-    mapModelTemplateRow(row as Record<string, unknown>, input.locale)
-  );
+  return rows
+    .filter((row) =>
+      modelCategoryMatchesFilters(
+        (row as Record<string, unknown>).category,
+        {
+          age: input.age,
+          gender: input.gender,
+          style: input.style,
+        }
+      )
+    )
+    .slice(0, limit)
+    .map((row) =>
+      mapModelTemplateRow(row as Record<string, unknown>, input.locale)
+    );
 }
 
 export async function getModelTemplate(input: { id: string; locale?: string }) {

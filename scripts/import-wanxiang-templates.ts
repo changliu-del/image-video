@@ -8,7 +8,6 @@ import { buildTemplateMediaUrl } from '../lib/templates/media-url';
 
 const DEFAULT_SOURCE = '/private/tmp';
 const DEFAULT_OWNER_EMAIL = 'codex-admin@local.test';
-const UUID_NAMESPACE = 'image-video-wanxiang-template-import-v1';
 const EXTERNAL_STORAGE_PREFIX = 'external/wanxiang/';
 
 type TemplateType = 'image_to_image' | 'try_on';
@@ -34,21 +33,19 @@ type RawWanxiangTemplate = {
 type NormalizedWanxiangTemplate = {
   asset: ImportAsset;
   category: string;
-  id: string;
   imageUrl: string;
   prompt: string;
-  promptTranslations: Record<'pt' | 'en' | 'zh', string>;
+  promptTranslations: Record<'pt', string>;
   sortOrder: number;
   sourceCategory: string;
   sourceFile: string;
   sourceProduct: SourceProduct;
   title: string;
-  titleTranslations: Record<'pt' | 'en' | 'zh', string>;
+  titleTranslations: Record<'pt', string>;
   type: TemplateType;
 };
 
 type ImportAsset = {
-  id: string;
   mimeType: string;
   publicUrl: string;
   storageKey: string;
@@ -213,7 +210,7 @@ function parseArgs(argv: string[]): CliArgs {
 
 function parseOwnerUserId(value: string) {
   const parsed = Number(value);
-  if (!Number.isInteger(parsed) || parsed <= 0) {
+  if (!Number.isInteger(parsed) || parsed < 0) {
     throw new Error(`Invalid --owner-user-id value: ${value}`);
   }
 
@@ -234,23 +231,6 @@ Options:
   --owner-email <email>   Asset owner lookup email. Default: ${DEFAULT_OWNER_EMAIL}
   --owner-user-id <id>    Asset owner user id. Overrides --owner-email.
 `);
-}
-
-function deterministicUuid(value: string) {
-  const bytes = Uint8Array.from(
-    createHash('sha1').update(UUID_NAMESPACE).update(':').update(value).digest()
-  ).slice(0, 16);
-
-  bytes[6] = (bytes[6] & 0x0f) | 0x50;
-  bytes[8] = (bytes[8] & 0x3f) | 0x80;
-
-  const hex = Array.from(bytes, (byte) => byte.toString(16).padStart(2, '0')).join(
-    ''
-  );
-  return `${hex.slice(0, 8)}-${hex.slice(8, 12)}-${hex.slice(12, 16)}-${hex.slice(
-    16,
-    20
-  )}-${hex.slice(20)}`;
 }
 
 function shortHash(value: string) {
@@ -424,10 +404,6 @@ function normalizeRawItem(input: {
     return null;
   }
 
-  const templateId = deterministicUuid(
-    `template:${category.type}:${category.slug}:${title}:${imageUrl}`
-  );
-  const assetId = deterministicUuid(`asset:${imageUrl}`);
   const mimeType = mimeTypeForUrl(imageUrl);
   const extension = extensionForMimeType(mimeType);
   const storageKey = `${EXTERNAL_STORAGE_PREFIX}${category.type}/${category.slug}/${shortHash(
@@ -441,24 +417,29 @@ function normalizeRawItem(input: {
     type: category.type,
   });
 
+  const englishTitle = localization.titleTranslations.en;
+  const englishPrompt = localization.promptTranslations.en;
+
   return {
     asset: {
-      id: assetId,
       mimeType,
       publicUrl: imageUrl,
       storageKey,
     },
     category: category.slug,
-    id: templateId,
     imageUrl,
-    prompt,
-    promptTranslations: localization.promptTranslations,
+    prompt: englishPrompt,
+    promptTranslations: {
+      pt: localization.promptTranslations.pt,
+    },
     sortOrder: 0,
     sourceCategory,
     sourceFile: input.filePath,
     sourceProduct,
-    title,
-    titleTranslations: localization.titleTranslations,
+    title: englishTitle,
+    titleTranslations: {
+      pt: localization.titleTranslations.pt,
+    },
     type: category.type,
   } satisfies NormalizedWanxiangTemplate;
 }
@@ -466,7 +447,7 @@ function normalizeRawItem(input: {
 async function scanWanxiangTemplates(args: CliArgs): Promise<ScanResult> {
   const issues: ScanIssue[] = [];
   const files = await listSourceFiles(args.source);
-  const itemsById = new Map<string, NormalizedWanxiangTemplate>();
+  const itemsByKey = new Map<string, NormalizedWanxiangTemplate>();
   let duplicateCount = 0;
   let rowsSeen = 0;
 
@@ -483,12 +464,13 @@ async function scanWanxiangTemplates(args: CliArgs): Promise<ScanResult> {
       });
       if (!item) continue;
 
-      if (itemsById.has(item.id)) {
+      const key = `${item.type}:${item.category}:${item.title}:${item.imageUrl}`;
+      if (itemsByKey.has(key)) {
         duplicateCount += 1;
         continue;
       }
 
-      itemsById.set(item.id, item);
+      itemsByKey.set(key, item);
     }
   }
 
@@ -500,7 +482,7 @@ async function scanWanxiangTemplates(args: CliArgs): Promise<ScanResult> {
     });
   }
 
-  const items = Array.from(itemsById.values()).sort((left, right) =>
+  const items = Array.from(itemsByKey.values()).sort((left, right) =>
     `${left.type}:${left.category}:${left.title}`.localeCompare(
       `${right.type}:${right.category}:${right.title}`
     )
@@ -536,7 +518,7 @@ function summarizeByTypeAndCategory(items: NormalizedWanxiangTemplate[]) {
 }
 
 function printScanSummary(result: ScanResult, args: CliArgs) {
-  const assetIds = new Set(result.items.map((item) => item.asset.id));
+  const assetKeys = new Set(result.items.map((item) => item.asset.storageKey));
 
   console.log('Wanxiang template import check');
   console.log(`Source: ${result.source}`);
@@ -545,13 +527,13 @@ function printScanSummary(result: ScanResult, args: CliArgs) {
   console.log(`Files seen: ${result.files.length}`);
   console.log(`Rows seen: ${result.rowsSeen}`);
   console.log(`Templates ready: ${result.items.length}`);
-  console.log(`Unique image assets ready: ${assetIds.size}`);
+  console.log(`Unique image assets ready: ${assetKeys.size}`);
   console.log(`Duplicates skipped: ${result.duplicateCount}`);
   console.log(
-    `Localized titles ready: ${result.items.filter((item) => item.titleTranslations.en && item.titleTranslations.pt).length}`
+    `Brazilian Portuguese titles ready: ${result.items.filter((item) => item.titleTranslations.pt).length}`
   );
   console.log(
-    `Localized prompts ready: ${result.items.filter((item) => item.promptTranslations.en && item.promptTranslations.pt).length}`
+    `Brazilian Portuguese prompts ready: ${result.items.filter((item) => item.promptTranslations.pt).length}`
   );
   console.log('Categories:');
 
@@ -664,7 +646,7 @@ async function ensureTemplateSchema(sql: postgres.Sql) {
 }
 
 async function resolveOwnerUserId(sql: postgres.Sql, args: CliArgs) {
-  if (args.ownerUserId) {
+  if (args.ownerUserId !== undefined) {
     return args.ownerUserId;
   }
 
@@ -687,11 +669,11 @@ async function resolveOwnerUserId(sql: postgres.Sql, args: CliArgs) {
 function uniqueAssets(items: NormalizedWanxiangTemplate[]) {
   const assets = new Map<string, ImportAsset>();
   for (const item of items) {
-    assets.set(item.asset.id, item.asset);
+    assets.set(item.asset.storageKey, item.asset);
   }
 
   return Array.from(assets.values()).sort((left, right) =>
-    left.id.localeCompare(right.id)
+    left.storageKey.localeCompare(right.storageKey)
   );
 }
 
@@ -709,7 +691,6 @@ async function applyImport(result: ScanResult, args: CliArgs) {
     const ownerUserId = await resolveOwnerUserId(sql, args);
     const now = new Date();
     const assetRows = uniqueAssets(result.items).map((asset) => ({
-      id: asset.id,
       user_id: ownerUserId,
       type: 'upload',
       status: 'uploaded',
@@ -717,24 +698,6 @@ async function applyImport(result: ScanResult, args: CliArgs) {
       public_url: asset.publicUrl,
       mime_type: asset.mimeType,
       size_bytes: null,
-      created_at: now,
-      updated_at: now,
-    }));
-    const templateRows = result.items.map((item) => ({
-      id: item.id,
-      type: item.type,
-      title: item.title,
-      title_translations_json: item.titleTranslations,
-      category: item.category,
-      thumbnail_asset_id: item.asset.id,
-      preview_asset_id: item.asset.id,
-      thumbnail_url: buildTemplateMediaUrl(item.asset.id),
-      preview_url: buildTemplateMediaUrl(item.asset.id),
-      thumbnail_mime_type: item.asset.mimeType,
-      preview_mime_type: item.asset.mimeType,
-      prompt: item.prompt,
-      prompt_translations_json: item.promptTranslations,
-      sort_order: item.sortOrder,
       created_at: now,
       updated_at: now,
     }));
@@ -764,7 +727,6 @@ async function applyImport(result: ScanResult, args: CliArgs) {
         await tx`
           insert into assets ${tx(
             assetRows,
-            'id',
             'user_id',
             'type',
             'status',
@@ -775,11 +737,10 @@ async function applyImport(result: ScanResult, args: CliArgs) {
             'created_at',
             'updated_at'
           )}
-          on conflict (id) do update set
+          on conflict (storage_key) do update set
             user_id = excluded.user_id,
             type = excluded.type,
             status = excluded.status,
-            storage_key = excluded.storage_key,
             public_url = excluded.public_url,
             mime_type = excluded.mime_type,
             size_bytes = excluded.size_bytes,
@@ -787,47 +748,96 @@ async function applyImport(result: ScanResult, args: CliArgs) {
         `;
       }
 
-      if (templateRows.length > 0) {
-        await tx`
-          insert into templates ${tx(
-            templateRows,
-            'id',
-            'type',
-            'title',
-            'title_translations_json',
-            'category',
-            'thumbnail_asset_id',
-            'preview_asset_id',
-            'thumbnail_url',
-            'preview_url',
-            'thumbnail_mime_type',
-            'preview_mime_type',
-            'prompt',
-            'prompt_translations_json',
-            'sort_order',
-            'created_at',
-            'updated_at'
-          )}
-          on conflict (id) do update set
-            type = excluded.type,
-            title = excluded.title,
-            title_translations_json = excluded.title_translations_json,
-            category = excluded.category,
-            thumbnail_asset_id = excluded.thumbnail_asset_id,
-            preview_asset_id = excluded.preview_asset_id,
-            thumbnail_url = excluded.thumbnail_url,
-            preview_url = excluded.preview_url,
-            thumbnail_mime_type = excluded.thumbnail_mime_type,
-            preview_mime_type = excluded.preview_mime_type,
-            prompt = excluded.prompt,
-            prompt_translations_json = excluded.prompt_translations_json,
-            updated_at = current_timestamp
-        `;
+      const assetKeys = assetRows.map((asset) => asset.storage_key);
+      const persistedAssets = assetKeys.length
+        ? await tx<{ id: number; storage_key: string }[]>`
+            select id, storage_key
+            from assets
+            where storage_key in ${tx(assetKeys)}
+          `
+        : [];
+      const assetIdByStorageKey = new Map(
+        persistedAssets.map((asset) => [asset.storage_key, asset.id])
+      );
+
+      for (const item of result.items) {
+        const assetId = assetIdByStorageKey.get(item.asset.storageKey);
+        if (assetId == null) {
+          throw new Error(`Missing imported asset id for template ${item.title}`);
+        }
+
+        const existingRows = args.replace
+          ? []
+          : await tx<{ id: number }[]>`
+              select id
+              from templates
+              where type = ${item.type}
+                and category = ${item.category}
+                and title = ${item.title}
+              limit 1
+            `;
+        const existingTemplate = existingRows[0];
+
+        if (existingTemplate) {
+          await tx`
+            update templates
+            set
+              title_translations_json = ${JSON.stringify(item.titleTranslations)}::jsonb,
+              thumbnail_asset_id = ${assetId},
+              preview_asset_id = ${assetId},
+              thumbnail_url = ${buildTemplateMediaUrl(assetId)},
+              preview_url = ${buildTemplateMediaUrl(assetId)},
+              thumbnail_mime_type = ${item.asset.mimeType},
+              preview_mime_type = ${item.asset.mimeType},
+              prompt = ${item.prompt},
+              prompt_translations_json = ${JSON.stringify(item.promptTranslations)}::jsonb,
+              sort_order = ${item.sortOrder},
+              updated_at = current_timestamp
+            where id = ${existingTemplate.id}
+          `;
+        } else {
+          await tx`
+            insert into templates (
+              type,
+              title,
+              title_translations_json,
+              category,
+              thumbnail_asset_id,
+              preview_asset_id,
+              thumbnail_url,
+              preview_url,
+              thumbnail_mime_type,
+              preview_mime_type,
+              prompt,
+              prompt_translations_json,
+              sort_order,
+              created_at,
+              updated_at
+            )
+            values (
+              ${item.type},
+              ${item.title},
+              ${JSON.stringify(item.titleTranslations)}::jsonb,
+              ${item.category},
+              ${assetId},
+              ${assetId},
+              ${buildTemplateMediaUrl(assetId)},
+              ${buildTemplateMediaUrl(assetId)},
+              ${item.asset.mimeType},
+              ${item.asset.mimeType},
+              ${item.prompt},
+              ${JSON.stringify(item.promptTranslations)}::jsonb,
+              ${item.sortOrder},
+              ${now},
+              ${now}
+            )
+          `;
+        }
       }
     });
 
     console.log(
-      `Applied import: ${templateRows.length} templates and ${assetRows.length} image assets.`
+      `Applied import: ${result.items.length} templates and ${assetRows.length} image assets.`
     );
   } finally {
     await sql.end({ timeout: 5 });

@@ -5,6 +5,7 @@ import { alias } from 'drizzle-orm/pg-core';
 import { z } from 'zod';
 import { db } from '@/lib/db/drizzle';
 import { buildAssetMediaUrl } from '@/lib/assets/media-url';
+import { dbIdSchema } from '@/lib/db/id-schema';
 import {
   assets,
   GENERATION_JOB_STATUSES,
@@ -25,7 +26,7 @@ import {
   type PaginatedResult,
 } from './shared';
 
-const jobIdSchema = z.string().uuid();
+const jobIdSchema = dbIdSchema;
 type AdminMediaKind = 'image' | 'video' | 'file';
 type AdminAssetPreviewSource = Pick<
   typeof assets.$inferSelect,
@@ -189,7 +190,7 @@ function selectJobsWithAssets() {
     .leftJoin(outputAsset, eq(generationJobs.outputAssetId, outputAsset.id));
 }
 
-async function getAdminGenerationJobRecord(id: string) {
+async function getAdminGenerationJobRecord(id: number) {
   const [row] = await selectJobsWithAssets()
     .where(eq(generationJobs.id, id))
     .limit(1);

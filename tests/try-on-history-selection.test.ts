@@ -18,6 +18,7 @@ describe('try-on history material selection', () => {
     expect(source).toContain('...selectedGarmentAssetIds');
     expect(source).toContain('...uploadedGarmentAssetIds');
     expect(source).toContain('garmentAssetIds,');
-    expect(source).toContain('selectedGarmentAssetIds.includes(assetId)');
+    expect(source).toContain('getItemAssetId(item) === assetId');
+    expect(source).toContain('!selectedIds.has(getItemAssetId(asset))');
   });
 });

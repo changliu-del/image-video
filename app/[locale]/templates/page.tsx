@@ -37,7 +37,6 @@ export async function generateMetadata({
       languages: {
         pt: '/pt/templates',
         en: '/en/templates',
-        zh: '/zh/templates',
       },
     },
   };

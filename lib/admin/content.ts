@@ -192,6 +192,7 @@ type AdminTemplatesCopy = {
   moveUp: string;
   moveDown: string;
   selectSavedTemplate: string;
+  allCategories: string;
   confirmDelete: (name: string) => string;
   columns: Record<string, string>;
   fields: Record<string, string>;
@@ -650,7 +651,7 @@ export const adminContent: Record<AdminLocale, AdminContent> = {
     },
     templates: {
       title: 'Templates',
-      description: 'Gerencie titulo, tipo, categoria, midias e prompt dos templates.',
+      description: '',
       emptyText: 'Nenhum template.',
       searchPlaceholder: 'ID, titulo, tipo, categoria ou prompt...',
       create: 'Criar',
@@ -669,6 +670,7 @@ export const adminContent: Record<AdminLocale, AdminContent> = {
       moveUp: 'Mover para cima',
       moveDown: 'Mover para baixo',
       selectSavedTemplate: 'Selecione um template salvo e um arquivo primeiro.',
+      allCategories: 'Todas as categorias',
       confirmDelete: (name) => `Excluir template ${name}?`,
       columns: {
         id: 'ID',
@@ -696,8 +698,10 @@ export const adminContent: Record<AdminLocale, AdminContent> = {
         sortOrder: 'Ordem',
       },
       categoryOptions: {
-        image_to_image: 'Imagem',
         image_to_video: 'Imagem para vídeo',
+        model: 'Modelos',
+        image_to_image: 'Imagem IA',
+        try_on: 'Provador virtual',
       },
       errors: {
         load: 'Falha ao carregar',
@@ -788,7 +792,7 @@ export const adminContent: Record<AdminLocale, AdminContent> = {
 
 ## Uso
 
-Templates agora sao registros pequenos de imagem para video. A tabela de templates guarda type, categoria de negocio, thumbnail_asset_id, preview_asset_id, prompt e sort_order. A biblioteca da home reutiliza os mesmos registros do workbench de imagem para video, enquanto a API entrega URLs prontas para a interface.
+Templates agora sao registros pequenos por tipo de pagina. A tabela de templates guarda type, categoria de negocio, thumbnail_asset_id, preview_asset_id, prompt e sort_order. O type escolhe a pagina operacional: image_to_video, model, image_to_image ou try_on.
 
 ## Onde operar e conferir
 
@@ -796,7 +800,7 @@ Templates agora sao registros pequenos de imagem para video. A tabela de templat
 
 ![Admin template list](/admin-help/placements/template-admin-list.png)
 
-- Use a busca para encontrar por id, type, category ou prompt antes de criar outro template parecido.
+- Use os filtros separados de ID, titulo e categoria dentro do type atual antes de criar outro template parecido.
 - A tabela mostra id, type, category, ordem, prompt e updated_at para decidir o que revisar primeiro.
 - O botao Criar abre o formulario. Upload de preview fica dentro do detalhe ou edicao.
 - O botao Ordenar abre a lista do type e category escolhidos para ajustar a sequencia visivel ao usuario.
@@ -806,7 +810,7 @@ Templates agora sao registros pequenos de imagem para video. A tabela de templat
 ![Admin template form](/admin-help/placements/template-admin-form.png)
 
 - Preencha type, category, thumbnail_asset_id, preview_asset_id e prompt.
-- type=image_to_video e o valor usado pela home e pelo workbench de video.
+- type=image_to_video, model, image_to_image ou try_on escolhe a pagina onde o template aparece.
 - category e a classificacao de negocio dentro desse type, por exemplo product, fashion ou food.
 - sort_order e ajustado pela acao Ordenar e vale apenas dentro do mesmo type e category.
 - Em templates ja salvos, envie ou selecione a miniatura e o preview para explicar o resultado esperado.
@@ -823,15 +827,15 @@ Templates agora sao registros pequenos de imagem para video. A tabela de templat
 
 ![Creation workbench template placement](/admin-help/placements/video-workbench.png)
 
-- O workbench de video carrega os mesmos templates com type=image_to_video.
+- Cada pagina operacional carrega templates pelo seu type.
 - Ao escolher um template, o prompt entra no campo editavel do usuario.
 - O template salvo deve funcionar com uma imagem de produto real.
 
 ## Campos que a operacao precisa revisar
 
 - ID: identificador gerado pelo sistema para links, tarefas e busca. Use para localizar um template em suporte ou investigacao.
-- type: tipo de capacidade. Hoje a home e o workbench usam type=image_to_video.
-- category: classificacao de negocio. Nao use category para representar pagina ou workbench.
+- type: tipo de capacidade e pagina operacional do template.
+- category: classificacao de negocio dentro desse type. Nao use category para representar pagina ou workbench.
 - sort_order: ordem do template dentro do mesmo type e category; a API aplica a ordem na lista, mas nao publica esse campo.
 - thumbnail_asset_id: asset da miniatura da lista; a API publica como thumbnailUrl.
 - preview_asset_id: asset do video ou imagem principal; a API de detalhe publica como previewUrl.
@@ -840,16 +844,16 @@ Templates agora sao registros pequenos de imagem para video. A tabela de templat
 
 ## Checklist
 
-- Nao crie duplicado sem buscar por id, category e prompt.
+- Nao crie duplicado sem filtrar por ID, titulo e categoria.
 - Nao deixe template sem preview compreensivel quando ele for importante para navegacao.
 - O prompt precisa bater com a geracao real.
-- Depois de salvar, confira a biblioteca de templates e o workbench de video.`,
+- Depois de salvar, confira a pagina operacional correspondente e o workbench correto.`,
           purpose:
-            'Manter templates mínimos de imagem para vídeo usados pela home e pelo workbench de vídeo.',
+            'Manter templates mínimos por type e conferir que aparecem na pagina operacional correta.',
           dailyActions: [
             'Criar, editar e ordenar templates por type e category.',
             'Enviar ou selecionar miniatura e preview para explicar o resultado.',
-            'Conferir a biblioteca da home e o workbench de vídeo depois de salvar.',
+            'Conferir a pagina operacional e o workbench correto depois de salvar.',
           ],
           keyFields: [
             'id, type, category, sort_order, created_at e updated_at.',
@@ -857,7 +861,7 @@ Templates agora sao registros pequenos de imagem para video. A tabela de templat
             'prompt.',
           ],
           riskSignals: [
-            'type errado faz o template sumir da home e do workbench de vídeo.',
+            'type errado faz o template aparecer na página operacional errada.',
             'Template sem preview claro reduz confiança do usuário.',
             'category muito genérica dificulta a navegação.',
           ],
@@ -1284,7 +1288,7 @@ Templates agora sao registros pequenos de imagem para video. A tabela de templat
     },
     templates: {
       title: 'Templates',
-      description: 'Manage template title, type, category, media, and prompt.',
+      description: '',
       emptyText: 'No templates.',
       searchPlaceholder: 'ID, title, type, category, or prompt...',
       create: 'Create',
@@ -1303,11 +1307,12 @@ Templates agora sao registros pequenos de imagem para video. A tabela de templat
       moveUp: 'Move up',
       moveDown: 'Move down',
       selectSavedTemplate: 'Select a saved template and a file first.',
+      allCategories: 'All categories',
       confirmDelete: (name) => `Delete template ${name}?`,
       columns: {
         id: 'ID',
         title: 'Title',
-        titleTranslations: 'Title translations',
+        titleTranslations: 'Brazilian Portuguese title',
         type: 'Type',
         category: 'Category',
         sortOrder: 'Order',
@@ -1317,6 +1322,7 @@ Templates agora sao registros pequenos de imagem para video. A tabela de templat
       fields: {
         id: 'ID',
         title: 'Title',
+        titleTranslations: 'Brazilian Portuguese title',
         type: 'Type',
         category: 'Category',
         thumbnailAssetId: 'Thumbnail asset ID',
@@ -1326,12 +1332,14 @@ Templates agora sao registros pequenos de imagem para video. A tabela de templat
         thumbnailMimeType: 'Thumbnail MIME type',
         previewMimeType: 'Preview MIME type',
         prompt: 'Prompt',
-        promptTranslations: 'Prompt translations',
+        promptTranslations: 'Brazilian Portuguese prompt',
         sortOrder: 'Order',
       },
       categoryOptions: {
-        image_to_image: 'Image',
         image_to_video: 'Image to video',
+        model: 'Models',
+        image_to_image: 'Image generation',
+        try_on: 'Smart try-on',
       },
       errors: {
         load: 'Load failed',
@@ -1422,7 +1430,7 @@ Templates agora sao registros pequenos de imagem para video. A tabela de templat
 
 ## Purpose
 
-Templates are now small image-to-video records. The templates table stores type, business category, thumbnail_asset_id, preview_asset_id, prompt, and sort_order. The homepage template library reuses the same records as the image-to-video workbench, while the API returns ready-to-render URLs.
+Templates are now small records grouped by type page. The templates table stores type, business category, thumbnail_asset_id, preview_asset_id, prompt, and sort_order. The type chooses the operational page: image_to_video, model, image_to_image, or try_on.
 
 ## Where to operate and verify
 
@@ -1430,7 +1438,7 @@ Templates are now small image-to-video records. The templates table stores type,
 
 ![Admin template list](/admin-help/placements/template-admin-list.png)
 
-- Search by id, type, category, or prompt before creating another similar template.
+- Use the separate ID, title, and category filters inside the current type before creating another similar template.
 - The table shows id, type, category, order, prompt, and updated_at so operators can decide what to review first.
 - Create opens the form. Preview uploads happen from detail or edit views.
 - Reorder opens the selected type and category so operators can adjust the visible sequence.
@@ -1440,7 +1448,7 @@ Templates are now small image-to-video records. The templates table stores type,
 ![Admin template form](/admin-help/placements/template-admin-form.png)
 
 - Fill type, category, thumbnail_asset_id, preview_asset_id, and prompt.
-- type=image_to_video is the value used by the homepage and video workbench.
+- type=image_to_video, model, image_to_image, or try_on chooses the page where the template appears.
 - category is the business classification inside that type, for example product, fashion, or food.
 - sort_order is changed through Reorder and only applies inside the same type and category.
 - For saved templates, upload or select thumbnail and preview media to explain the expected result.
@@ -1457,15 +1465,15 @@ Templates are now small image-to-video records. The templates table stores type,
 
 ![Creation workbench template placement](/admin-help/placements/video-workbench.png)
 
-- The video workbench loads the same templates with type=image_to_video.
+- Each operational page loads templates by its own type.
 - When a user chooses a template, the prompt fills the editable prompt field.
 - The saved template must work with a real product image.
 
 ## Fields operators need to review
 
 - ID: system-generated identifier for links, tasks, and search. Use it to locate a template in support or investigation.
-- type: capability type. Today the homepage and workbench use type=image_to_video.
-- category: business classification. Do not use category to represent a page or workbench.
+- type: capability type and operational page for the template.
+- category: business classification inside that type. Do not use category to represent a page or workbench.
 - sort_order: order inside the same type and category; the API applies it to list results but does not publish the field.
 - thumbnail_asset_id: asset used for the list thumbnail; the API publishes it as thumbnailUrl.
 - preview_asset_id: asset used for the main video or image; the detail API publishes it as previewUrl.
@@ -1474,16 +1482,16 @@ Templates are now small image-to-video records. The templates table stores type,
 
 ## Checklist
 
-- Do not create a duplicate without searching by id, category, and prompt.
+- Do not create a duplicate without filtering by ID, title, and category.
 - Do not leave important browsing templates without understandable preview media.
 - The prompt must match the real generation flow.
-- After saving, check the frontend template library and the video workbench.`,
+- After saving, check the matching frontend page and workbench.`,
           purpose:
-            'Maintain minimal image-to-video templates used by the homepage and video workbench.',
+            'Maintain minimal templates by type and confirm they appear on the right operational page.',
           dailyActions: [
             'Create, edit, and reorder templates by type and category.',
             'Upload or select thumbnail and preview media to explain the result.',
-            'Check the homepage library and video workbench after saving.',
+            'Check the matching frontend page and workbench after saving.',
           ],
           keyFields: [
             'id, type, category, sort_order, created_at, and updated_at.',
@@ -1491,7 +1499,7 @@ Templates are now small image-to-video records. The templates table stores type,
             'prompt.',
           ],
           riskSignals: [
-            'Wrong type makes the template disappear from the homepage and video workbench.',
+            'Wrong type puts the template on the wrong operational page.',
             'A template without clear preview media lowers user confidence.',
             'A vague category makes browsing harder.',
           ],
@@ -1916,7 +1924,7 @@ Templates are now small image-to-video records. The templates table stores type,
     },
     templates: {
       title: '模板',
-      description: '管理模板的标题、类型、类目、媒体和提示词。',
+      description: '',
       emptyText: '暂无模板。',
       searchPlaceholder: '搜索 ID、标题、类型、类目或提示词...',
       create: '创建',
@@ -1935,6 +1943,7 @@ Templates are now small image-to-video records. The templates table stores type,
       moveUp: '上移',
       moveDown: '下移',
       selectSavedTemplate: '请先选择已保存的模板和文件。',
+      allCategories: '全部类目',
       confirmDelete: (name) => `确认删除模板 ${name}？`,
       columns: {
         id: 'ID',
@@ -1962,8 +1971,10 @@ Templates are now small image-to-video records. The templates table stores type,
         sortOrder: '顺序',
       },
       categoryOptions: {
-        image_to_image: '图片',
-        image_to_video: '图生视频',
+        image_to_video: '图生视频页',
+        model: '模特页',
+        image_to_image: '生图页',
+        try_on: '智能穿衣页',
       },
       errors: {
         load: '加载失败',
@@ -2059,13 +2070,13 @@ Templates are now small image-to-video records. The templates table stores type,
 
 ### 编写目的
 
-本文用于指导运营在管理后台维护模板。模板是用户选择创作方向的入口：它告诉用户适合什么商品和场景、预期生成什么效果，并把默认提示词带到图生视频工作台。
+本文用于指导运营在管理后台维护模板。模板是用户选择创作方向的入口：它告诉用户适合什么商品和场景、预期生成什么效果，并把默认提示词带到对应创作页面。
 
 ### 注意事项
 
 - 先从用户视角判断模板：用户能不能一眼看懂用途、预览效果和适合的商品场景。
 - 模板保存后要按用户路径检查：先看前台模板库页面是否方便发现和理解，再看对应创作工作台能否正确选择并生成。
-- type 决定模板能力类型；category 是业务分类，不表示页面或工作台入口。
+- type 决定模板能力类型和页面入口：type=image_to_video 是图生视频页，model 是模特页，image_to_image 是生图页，try_on 是智能穿衣页；category 是当前 type 下的业务分类。
 - 缩略图和主预览都来自 assets 表，模板表只保存 thumbnail_asset_id 和 preview_asset_id。
 - sort_order 控制同一个 type 和 category 下的展示顺序，通过“调整顺序”维护。
 - API 对前台输出 thumbnailUrl、previewUrl 和 prompt，前台不直接依赖模板表里的 asset id。
@@ -2076,16 +2087,16 @@ Templates are now small image-to-video records. The templates table stores type,
 
 - 系统 URL：使用管理员提供的后台域名进入系统。
 - 登录方式：使用管理员账号登录后进入管理后台。
-- 功能入口：左侧菜单选择“管理后台 > 模板”。
-- 前台验证位置：首页模板库、前台模板库页面，以及图生视频创作工作台。
+- 功能入口：左侧菜单选择“管理后台 > 模板”，再在下拉子项选择图生视频页、模特页、生图页或智能穿衣页。
+- 前台验证位置：首页模板库、前台模板库页面，以及对应创作工作台。
 
 ### 模板管理列表页面介绍
 
 ![模板管理列表页](/admin-help/placements/template-admin-list.png)
 
-模板管理列表页是运营每天查找、创建、排序和复核模板的入口。截图里本地环境暂无模板，但页面结构就是线上运营要看的结构：搜索框用于按 id、type、category 或 prompt 定位模板；“创建”用于新增模板；“调整顺序”用于维护当前 type 和 category 下的模板展示顺序；列表列位用于快速判断模板类型、业务类目、顺序、提示词和 updated_at；操作列用于查看、编辑、上传预览媒体或删除。
+模板管理列表页是运营每天查找、创建、排序和复核模板的入口。截图里本地环境暂无模板，但页面结构就是线上运营要看的结构：先在左侧模板子页确定 type，再用独立的 ID、标题和类目筛选控件定位模板；“创建”用于新增模板；“调整顺序”用于维护当前 type 和 category 下的模板展示顺序；列表列位用于快速判断模板类型、业务类目、顺序、提示词和 updated_at；操作列用于查看、编辑、上传预览媒体或删除。
 
-运营在列表页先看三件事：是否已经有相似模板、type 是否是当前要展示的能力、category 是否是清晰的业务分类。不要把 category 当成页面或工作台入口，首页模板库和图生视频工作台复用 type=image_to_video 这一批模板。
+运营在列表页先看三件事：是否已经有相似模板、type 是否是当前要展示的页面能力、category 是否是清晰的业务分类。不要把 category 当成页面或工作台入口；页面入口统一由 type 选择。
 
 ### 模板编辑表单页面介绍
 
@@ -2103,24 +2114,24 @@ Templates are now small image-to-video records. The templates table stores type,
 
 ![创作工作台模板入口](/admin-help/placements/video-workbench.png)
 
-创作工作台验证模板是否真的能用于生成。当前模板表只在首页模板库和图生视频工作台展示，两处都读取 type=image_to_video。用户选择模板后，prompt 会进入可编辑输入框，用户仍然可以继续改写。
+创作工作台验证模板是否真的能用于生成。不同页面读取不同 type 的模板。用户选择模板后，prompt 会进入可编辑输入框，用户仍然可以继续改写。
 
 ## 三、功能介绍
 
 ### 创建和编辑模板
 
 - 新建模板时填写 type、category、thumbnail_asset_id、preview_asset_id 和 prompt。
-- type 控制能力类型；当前首页模板库和图生视频都用 type=image_to_video。
+- type 控制能力类型和页面入口，可选图生视频页、模特页、生图页、智能穿衣页。
 - category 是业务分类，例如 product、fashion、food。
 - sort_order 由“调整顺序”维护，只在同一个 type 和 category 下生效。
 - 需要解释效果时，上传或选择缩略图 asset 和 preview asset。
-- 模板保存后要按用户路径检查：首页模板库能看到，图生视频工作台能选中并带入 prompt。
+- 模板保存后要按用户路径检查：对应页面能看到，工作台能选中并带入 prompt。
 
 ### 字段说明
 
 - ID：系统生成的模板唯一标识，用于跳转、任务记录和定位。创建后自动产生，运营复制给技术或客服定位即可。
-- type：能力类型。当前首页模板库和图生视频工作台都读取 type=image_to_video。
-- category：业务分类。category 是业务分类，不表示首页、工作台或展示位置。
+- type：能力类型和页面入口，由它决定模板属于图生视频页、模特页、生图页还是智能穿衣页。
+- category：当前 type 下的业务分类。category 是业务分类，不表示首页、工作台或展示位置。
 - sort_order：同一个 type 和 category 内的模板顺序。前台列表会应用这个顺序，但不会展示这个字段。
 - thumbnail_asset_id：卡片缩略图对应的 assets.id，列表 API 会输出为 thumbnailUrl。
 - preview_asset_id：模板主预览对应的 assets.id，详情 API 会输出为 previewUrl。
@@ -2131,7 +2142,7 @@ Templates are now small image-to-video records. The templates table stores type,
 
 - 保存前检查 type、category、thumbnail_asset_id、preview_asset_id 和 prompt 是否完整。
 - 调整顺序前先确认 type 和 category，保存后只影响这一组模板。
-- 保存后到首页模板库和图生视频工作台验证是否出现。
+- 保存后到对应前台页面和工作台验证是否出现。
 - 过期或错误模板可以删除；删除前确认没有还需要排查的历史任务。
 
 ## 四、业务操作指引
@@ -2140,7 +2151,7 @@ Templates are now small image-to-video records. The templates table stores type,
 
 新增模板：进入“模板”页面，点击创建，填写 type、category、thumbnail_asset_id、preview_asset_id 和 prompt，并确认两个 asset 都已上传完成。新模板会追加到当前 type/category 的末尾。
 
-查询模板：通过 id、type、category 或 prompt 查找模板。找不到时先确认是否应该是 type=image_to_video。
+查询模板：通过左侧模板下拉选择 type 子页，再分别用 ID、标题和类目筛选定位模板。找不到时先确认是否选中了正确 type。
 
 修改模板：先判断要改的是媒体还是生成提示。媒体通常替换 thumbnail_asset_id 或 preview_asset_id；生成效果通常修改 prompt；归类问题修改 category。
 
@@ -2148,13 +2159,13 @@ Templates are now small image-to-video records. The templates table stores type,
 
 删除模板：删除前确认模板不是当前活动入口，也不会影响历史任务排查。
 
-保存后验证：保存后先看前台模板库是否能被搜索和按 category 筛选到，再进入图生视频工作台检查模板入口和默认 prompt 是否正确。`,
+保存后验证：保存后先看对应前台页面是否能被搜索和按 category 筛选到，再进入对应工作台检查模板入口和默认 prompt 是否正确。`,
           purpose:
-            '维护首页模板库和图生视频工作台共用的最小模板记录。',
+            '维护不同 type 子页共用的最小模板记录，并确认它们进入正确创作页面。',
           dailyActions: [
             '点击“创建”维护模板内容，点击“调整顺序”维护同一 type/category 下的展示顺序。',
             '进入已保存模板，上传或选择缩略图和主预览，让用户能看懂结果预期。',
-            '保存后到首页模板库和图生视频工作台查看模板是否出现。',
+            '保存后到对应前台页面和工作台查看模板是否出现。',
           ],
           keyFields: [
             'ID：系统生成的模板唯一标识，用于跳转、任务记录和定位。',
@@ -2165,7 +2176,7 @@ Templates are now small image-to-video records. The templates table stores type,
             'created_at 和 updated_at：用于判断创建和最近修改时间。',
           ],
           riskSignals: [
-            'type 填错会让模板从首页模板库和图生视频工作台消失。',
+            'type 填错会让模板进入错误的模板子页。',
             '没有清晰预览的模板不要作为主推入口，用户不知道会生成什么。',
             'category 太泛会让用户难以按业务类目浏览。',
             '删除模板前确认没有历史排查需求。',

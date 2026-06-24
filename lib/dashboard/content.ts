@@ -40,7 +40,7 @@ export const dashboardContent: Record<DashboardLocale, DashboardContent> = {
     localeNames: {
       pt: 'Português',
       en: 'English',
-      zh: '中文',
+      zh: 'Chinese',
     },
     nav: {
       home: 'Início',
@@ -74,7 +74,7 @@ export const dashboardContent: Record<DashboardLocale, DashboardContent> = {
     localeNames: {
       pt: 'Português',
       en: 'English',
-      zh: '中文',
+      zh: 'Chinese',
     },
     nav: {
       home: 'Home',
@@ -108,7 +108,7 @@ export const dashboardContent: Record<DashboardLocale, DashboardContent> = {
     localeNames: {
       pt: 'Português',
       en: 'English',
-      zh: '中文',
+      zh: 'Chinese',
     },
     nav: {
       home: '首页',
@@ -141,7 +141,7 @@ export const dashboardContent: Record<DashboardLocale, DashboardContent> = {
 };
 
 export function normalizeDashboardLocale(value: string | null | undefined): DashboardLocale {
-  return typeof value === 'string' && isLocale(value) ? value : 'pt';
+  return typeof value === 'string' && isLocale(value) ? value : 'en';
 }
 
 export function getDashboardContent(locale: string | null | undefined) {

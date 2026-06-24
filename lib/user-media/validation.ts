@@ -5,6 +5,7 @@ import {
   USER_MEDIA_HISTORY_SOURCES,
   USER_MEDIA_HISTORY_VISIBILITIES,
 } from '@/lib/db/schema';
+import { dbIdSchema, dbIdStringSchema } from '@/lib/db/id-schema';
 
 const visibleMediaVisibilities = ['active', 'hidden'] as const;
 
@@ -31,13 +32,13 @@ const optionalDateSchema = z
   .nullable()
   .optional();
 
-export const userMediaIdSchema = z.string().uuid();
+export const userMediaIdSchema = dbIdSchema;
 
 export const createUserMediaHistoryInputSchema = z
   .object({
     userId: z.number().int().positive(),
-    assetId: z.string().uuid(),
-    generationJobId: z.string().uuid().nullable().optional(),
+    assetId: dbIdStringSchema,
+    generationJobId: dbIdStringSchema.nullable().optional(),
     source: z.enum(USER_MEDIA_HISTORY_SOURCES),
     generationType: z.enum(GENERATION_TYPES).nullable().optional(),
     role: z.enum(USER_MEDIA_HISTORY_ROLES).nullable().optional(),

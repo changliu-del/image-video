@@ -21,10 +21,9 @@ type MarketingShellProps = {
 type MarketingContent = ReturnType<typeof getMarketingContent>;
 type MarketingNavItem = MarketingContent['navItems'][number];
 
-const localeNames: Record<Locale, string> = {
+const localeNames: Record<(typeof locales)[number], string> = {
   pt: 'Português',
   en: 'English',
-  zh: '中文',
 };
 
 function Brand({ locale }: { locale: Locale }) {
@@ -47,7 +46,7 @@ function Brand({ locale }: { locale: Locale }) {
 
 function localizedPath(pathname: string, nextLocale: Locale) {
   const segments = pathname.split('/').filter(Boolean);
-  const rest = locales.includes(segments[0] as Locale)
+  const rest = locales.includes(segments[0] as (typeof locales)[number])
     ? segments.slice(1)
     : segments;
 
