@@ -177,7 +177,12 @@ export class WanxiangClient {
     if (!response.ok) {
       throw new WanxiangProviderError({
         code: 'HTTP_ERROR',
-        message: `Wanxiang API returned HTTP ${response.status}`,
+        message: [
+          `Wanxiang API returned HTTP ${response.status}`,
+          formatRawResponseForError(rawResponse)
+        ]
+          .filter(Boolean)
+          .join(': '),
         retriable: response.status >= 500 || response.status === 429,
         rawResponse,
         statusCode: response.status
@@ -377,6 +382,19 @@ async function parseResponseBody(response: Response): Promise<unknown> {
   } catch {
     return text;
   }
+}
+
+function formatRawResponseForError(rawResponse: unknown) {
+  if (rawResponse === undefined || rawResponse === null || rawResponse === '') {
+    return undefined;
+  }
+
+  const text =
+    typeof rawResponse === 'string'
+      ? rawResponse
+      : JSON.stringify(rawResponse);
+
+  return text.length > 500 ? `${text.slice(0, 500)}...` : text;
 }
 
 function isAbortError(error: unknown) {

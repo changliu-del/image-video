@@ -108,8 +108,10 @@ fetch.
 User uploads and generated outputs should follow the same app-route pattern:
 status APIs, user history, Admin previews, and workbench upload completion
 should return `/api/asset-media/{assetId}` for browser display. Provider-facing
-payloads that require an absolute URL should derive it from `BASE_URL` plus that
-route, not from `R2_PUBLIC_BASE_URL`.
+payloads must not use `/api/asset-media/{assetId}` because that route is private
+and requires the user's session cookie. For Wanxiang submit payloads, resolve
+uploaded input assets to short-lived R2 signed GET URLs server-side; keep
+`/api/asset-media/{assetId}` as the browser display contract only.
 
 ## Architecture Caveat
 

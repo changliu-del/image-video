@@ -32,10 +32,7 @@ import {
   createSignedGetUrl,
   uploadObjectToR2,
 } from '@/lib/storage/r2';
-import {
-  buildAbsoluteAssetMediaUrl,
-  buildAssetMediaUrl,
-} from '@/lib/assets/media-url';
+import { buildAssetMediaUrl } from '@/lib/assets/media-url';
 import { upsertUserMediaHistory } from '@/lib/user-media/service';
 
 const DEFAULT_PROVIDER = 'wanxiang';
@@ -578,6 +575,13 @@ async function resolveModelTemplateMediaUrl(
   );
 }
 
+function buildProviderAssetUrl(asset: AssetRecord) {
+  return createSignedGetUrl({
+    storageKey: asset.storageKey,
+    expiresInSeconds: 3600,
+  });
+}
+
 async function buildProviderInputAssets(
   generation: GenerationRequest,
   assetsById: Map<string, AssetRecord>,
@@ -585,8 +589,11 @@ async function buildProviderInputAssets(
 ): Promise<Record<string, string | string[]>> {
   switch (generation.generationType) {
     case 'image_to_video': {
-      const inputImageUrls = (generation.inputAssetIds ?? [generation.inputAssetId])
-        .map((assetId) => buildAbsoluteAssetMediaUrl(assetsById.get(assetId)!.id));
+      const inputImageUrls = await Promise.all(
+        (generation.inputAssetIds ?? [generation.inputAssetId]).map((assetId) =>
+          buildProviderAssetUrl(assetsById.get(assetId)!)
+        )
+      );
 
       return {
         inputImageUrl: inputImageUrls[0],
@@ -595,15 +602,15 @@ async function buildProviderInputAssets(
     }
     case 'apparel_image':
       return {
-        inputImageUrl: buildAbsoluteAssetMediaUrl(
-          assetsById.get(generation.inputAssetId)!.id
+        inputImageUrl: await buildProviderAssetUrl(
+          assetsById.get(generation.inputAssetId)!
         ),
       };
     case 'try_on':
       const modelMediaUrl =
         (await resolveModelTemplateMediaUrl(modelTemplate)) ??
         (generation.modelAssetId
-          ? buildAbsoluteAssetMediaUrl(assetsById.get(generation.modelAssetId)!.id)
+          ? await buildProviderAssetUrl(assetsById.get(generation.modelAssetId)!)
           : null);
 
       if (!modelMediaUrl) {
@@ -617,8 +624,10 @@ async function buildProviderInputAssets(
       return {
         modelImageUrl: modelMediaUrl,
         ...(modelTemplate?.videoUrl ? { modelVideoUrl: modelTemplate.videoUrl } : {}),
-        garmentImageUrls: generation.garmentAssetIds.map(
-          (assetId) => buildAbsoluteAssetMediaUrl(assetsById.get(assetId)!.id)
+        garmentImageUrls: await Promise.all(
+          generation.garmentAssetIds.map((assetId) =>
+            buildProviderAssetUrl(assetsById.get(assetId)!)
+          )
         ),
       };
   }

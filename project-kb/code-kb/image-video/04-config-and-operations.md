@@ -45,9 +45,11 @@ or external template assets must use a non-R2 prefix such as `external/` and a
 resources in `public/resources/*` are `external/starter/...` assets, not
 `templates/starter/...` R2 objects.
 
-`BASE_URL` must be the externally reachable app origin for cloud workers and
-provider callbacks. Generation provider payloads can derive absolute media URLs
-from `BASE_URL` plus the app media route.
+`BASE_URL` must be the externally reachable app origin for app redirects,
+payments, and any cloud-worker app callbacks. Wanxiang provider input media
+must not use `BASE_URL + /api/asset-media/{assetId}` because that app media route
+is private and requires the user's session cookie; use short-lived R2 signed GET
+URLs for provider submit payloads.
 
 Trigger.dev keys are environment-specific. A local `TRIGGER_SECRET_KEY` starting
 with `tr_dev_` enqueues runs into the Development environment; they will not
