@@ -278,14 +278,14 @@ describe('template catalog routing contract', () => {
 
     expect(mediaRoute).toContain('getTemplateMediaCacheEntry');
     expect(mediaRoute).toContain('createCachedTemplateMediaResponse');
-    expect(mediaRoute).toContain('getObjectFromR2');
+    expect(mediaRoute).toContain('buildPublicUrl(asset.storageKey)');
     expect(mediaRoute).toContain("asset.storageKey.startsWith('external/')");
-    expect(mediaRoute).toContain('new URL(input.publicUrl, input.baseUrl)');
-    expect(mediaRoute).toContain('proxyExternalTemplateMedia({');
+    expect(mediaRoute).toContain('new URL(input.sourceUrl, input.baseUrl)');
+    expect(mediaRoute).toContain('proxyTemplateMediaSource({');
     expect(mediaRoute).toContain("request.headers.get('range')");
     expect(mediaRoute).toContain("'Accept-Ranges'");
     expect(mediaRoute).toContain('Content-Range');
-    expect(mediaRoute).not.toContain('buildPublicUrl');
+    expect(mediaRoute).not.toContain('getObjectFromR2');
     expect(mediaRoute).not.toContain('falling back to public URL');
     expect(mediaRoute).not.toContain('NextResponse.redirect');
     expect(mediaRoute).not.toContain('createSignedGetUrl');
@@ -323,6 +323,8 @@ describe('template catalog routing contract', () => {
     expect(mediaCache).toContain('getAllTemplateMediaAssetIds');
     expect(mediaCache).toContain('refreshTemplateMediaCache');
     expect(mediaCache).toContain('preloadPromise');
+    expect(mediaCache).toContain('buildPublicUrl(asset.storageKey)');
+    expect(mediaCache).not.toContain('getObjectFromR2');
     expect(mediaCache).toContain('deleteTemplateMediaCacheEntries');
     expect(adminTemplates).toContain('refreshTemplateMediaCacheAfterAdminWrite');
     expect(adminTemplates).toContain('clearPublishedTemplateCatalogCache');

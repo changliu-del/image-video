@@ -4,7 +4,7 @@ import { inArray } from 'drizzle-orm';
 import { db } from '@/lib/db/drizzle';
 import { assets, templates } from '@/lib/db/schema';
 import { parseDbId } from '@/lib/db/id-schema';
-import { getObjectFromR2 } from '@/lib/storage/r2';
+import { buildPublicUrl } from '@/lib/storage/r2';
 
 type MediaId = string | number;
 
@@ -30,11 +30,6 @@ type TemplateMediaAssetRow = {
   sizeBytes: number | null;
   status: string;
   storageKey: string;
-};
-
-type ObjectBody = {
-  transformToByteArray?: () => Promise<Uint8Array>;
-  transformToWebStream?: () => ReadableStream<Uint8Array>;
 };
 
 type CachedMediaResponse = {
@@ -114,44 +109,6 @@ function evictToFit(state: TemplateMediaCacheState) {
   }
 }
 
-async function bodyToBytes(body: unknown) {
-  if (!body || typeof body !== 'object') {
-    return null;
-  }
-
-  const objectBody = body as ObjectBody;
-  if (typeof objectBody.transformToByteArray === 'function') {
-    return objectBody.transformToByteArray();
-  }
-
-  if (typeof objectBody.transformToWebStream !== 'function') {
-    return null;
-  }
-
-  const reader = objectBody.transformToWebStream().getReader();
-  const chunks: Uint8Array[] = [];
-  let total = 0;
-
-  while (true) {
-    const { done, value } = await reader.read();
-    if (done) break;
-
-    const chunk =
-      value instanceof Uint8Array ? value : new Uint8Array(value);
-    chunks.push(chunk);
-    total += chunk.byteLength;
-  }
-
-  const bytes = new Uint8Array(total);
-  let offset = 0;
-  for (const chunk of chunks) {
-    bytes.set(chunk, offset);
-    offset += chunk.byteLength;
-  }
-
-  return bytes;
-}
-
 function isTemplateMediaAsset(asset: TemplateMediaAssetRow) {
   return asset.status === 'uploaded' && asset.storageKey.startsWith('templates/');
 }
@@ -203,8 +160,23 @@ async function cacheTemplateMediaAsset(asset: TemplateMediaAssetRow) {
     return false;
   }
 
-  const object = await getObjectFromR2({ storageKey: asset.storageKey });
-  const body = await bodyToBytes(object.Body);
+  const response = await fetch(buildPublicUrl(asset.storageKey), {
+    next: { revalidate: 300 },
+  });
+
+  if (!response.ok) {
+    throw new Error(
+      `Template media source returned ${response.status} for asset ${asset.id}`
+    );
+  }
+
+  const contentLength = Number(response.headers.get('Content-Length'));
+  if (Number.isFinite(contentLength) && contentLength > maxItemBytes()) {
+    deleteEntry(state, key);
+    return false;
+  }
+
+  const body = new Uint8Array(await response.arrayBuffer());
 
   if (!body || body.byteLength > maxItemBytes()) {
     deleteEntry(state, key);
@@ -215,9 +187,9 @@ async function cacheTemplateMediaAsset(asset: TemplateMediaAssetRow) {
   state.entries.set(key, {
     assetId: key,
     body,
-    contentType: object.ContentType ?? asset.mimeType,
-    etag: object.ETag ?? null,
-    lastModified: object.LastModified?.toUTCString() ?? null,
+    contentType: response.headers.get('Content-Type') ?? asset.mimeType,
+    etag: response.headers.get('ETag'),
+    lastModified: response.headers.get('Last-Modified'),
     storageKey: asset.storageKey,
     updatedAt: Date.now(),
   });

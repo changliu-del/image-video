@@ -91,7 +91,7 @@ masked with fallback URLs. Assets whose `storage_key` starts with `templates/`
 are treated as R2 template objects and should exist in R2. Bundled starter
 examples from `public/resources/*` use `external/starter/...` storage keys so
 the explicit external/static branch serves them through `/api/template-media/*`
-without entering the R2 preload/read path.
+without entering the normal R2 public-base preload/read path.
 
 ## Migration Notes
 

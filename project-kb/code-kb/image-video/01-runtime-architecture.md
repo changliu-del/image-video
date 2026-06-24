@@ -99,8 +99,10 @@ browser-readable.
 Template media follows this pattern already: Admin upload writes regular
 `assets` rows with R2 metadata, but `templates.thumbnail_url` and
 `templates.preview_url` store `/api/template-media/{assetId}`. That route reads
-the R2 object server-side, supports byte ranges for video, and sets public media
-cache headers.
+the configured `R2_PUBLIC_BASE_URL` plus the asset `storage_key` server-side,
+supports byte ranges for video, and sets public media cache headers. The
+frontend still sees only the app media route; the route owns the storage-origin
+fetch.
 
 User uploads and generated outputs should follow the same app-route pattern:
 status APIs, user history, Admin previews, and workbench upload completion

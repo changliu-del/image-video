@@ -3,7 +3,7 @@ import { eq } from 'drizzle-orm';
 import { db } from '@/lib/db/drizzle';
 import { dbIdSchema } from '@/lib/db/id-schema';
 import { assets } from '@/lib/db/schema';
-import { getObjectFromR2 } from '@/lib/storage/r2';
+import { buildPublicUrl } from '@/lib/storage/r2';
 import {
   createCachedTemplateMediaResponse,
   getTemplateMediaCacheEntry,
@@ -11,41 +11,15 @@ import {
 
 export const runtime = 'nodejs';
 
-type WebStreamBody = {
-  transformToWebStream?: () => ReadableStream<Uint8Array>;
-};
-
-function toWebStream(body: unknown) {
-  if (
-    body &&
-    typeof body === 'object' &&
-    typeof (body as WebStreamBody).transformToWebStream === 'function'
-  ) {
-    return (body as WebStreamBody).transformToWebStream!();
-  }
-
-  return null;
-}
-
-function errorStatus(error: unknown) {
-  if (!error || typeof error !== 'object' || !('$metadata' in error)) {
-    return null;
-  }
-
-  const metadata = (error as { $metadata?: { httpStatusCode?: number } })
-    .$metadata;
-  return metadata?.httpStatusCode ?? null;
-}
-
-async function proxyExternalTemplateMedia(input: {
+async function proxyTemplateMediaSource(input: {
   baseUrl: string;
   mimeType: string | null;
-  publicUrl: string;
   range: string | null;
+  sourceUrl: string;
 }) {
   let url: URL;
   try {
-    url = new URL(input.publicUrl, input.baseUrl);
+    url = new URL(input.sourceUrl, input.baseUrl);
   } catch {
     return NextResponse.json(
       { error: 'Template media not found' },
@@ -69,6 +43,15 @@ async function proxyExternalTemplateMedia(input: {
     headers: upstreamHeaders,
     next: { revalidate: 300 },
   });
+
+  if (upstream.status === 416) {
+    return new Response(null, {
+      status: 416,
+      headers: {
+        'Accept-Ranges': 'bytes',
+      },
+    });
+  }
 
   if (!upstream.ok || !upstream.body) {
     return NextResponse.json(
@@ -158,63 +141,21 @@ export async function GET(
         );
       }
 
-      return proxyExternalTemplateMedia({
+      return proxyTemplateMediaSource({
         baseUrl: request.nextUrl.origin,
         mimeType: asset.mimeType,
-        publicUrl: asset.publicUrl,
         range: requestRange,
+        sourceUrl: asset.publicUrl,
       });
     }
 
-    const object = await getObjectFromR2({
-      storageKey: asset.storageKey,
+    return proxyTemplateMediaSource({
+      baseUrl: request.nextUrl.origin,
+      mimeType: asset.mimeType,
       range: requestRange,
-    });
-    const body = toWebStream(object.Body);
-
-    if (!body) {
-      return NextResponse.json(
-        { error: 'Template media body not found' },
-        { status: 404 }
-      );
-    }
-
-    const headers = new Headers({
-      'Accept-Ranges': 'bytes',
-      'Cache-Control': 'public, max-age=300, stale-while-revalidate=3600',
-    });
-
-    const contentType = object.ContentType ?? asset.mimeType;
-    if (contentType) {
-      headers.set('Content-Type', contentType);
-    }
-    if (object.ContentLength != null) {
-      headers.set('Content-Length', String(object.ContentLength));
-    }
-    if (object.ContentRange) {
-      headers.set('Content-Range', object.ContentRange);
-    }
-    if (object.ETag) {
-      headers.set('ETag', object.ETag);
-    }
-    if (object.LastModified) {
-      headers.set('Last-Modified', object.LastModified.toUTCString());
-    }
-
-    return new Response(body, {
-      status: object.ContentRange ? 206 : 200,
-      headers,
+      sourceUrl: buildPublicUrl(asset.storageKey),
     });
   } catch (error) {
-    if (errorStatus(error) === 416) {
-      return new Response(null, {
-        status: 416,
-        headers: {
-          'Accept-Ranges': 'bytes',
-        },
-      });
-    }
-
     console.error('Failed to load template media', error);
     return NextResponse.json(
       { error: 'Failed to load template media' },
