@@ -175,13 +175,15 @@ prompt 和创意预设
 前端行为：
 
 ```text
-1. 调 /api/assets/presign 获取 signed upload URL
-2. 浏览器直传图片到 R2
-3. 调 /api/assets/complete 记录 asset
-4. 调 /api/generations 创建 generation_job
-5. 工作台内联轮询 /api/generations/{jobId}/status
-6. 若主状态接口不可用，兼容回退 /api/jobs/{jobId}
+1. 图生视频参考图 POST /api/assets/upload，由同源服务端写入 R2 并记录 asset
+2. 调 /api/generations 创建 generation_job
+3. 工作台内联轮询 /api/generations/{jobId}/status
+4. 若主状态接口不可用，兼容回退 /api/jobs/{jobId}
 ```
+
+保留 `/api/assets/presign` + `/api/assets/complete` 给需要浏览器直传 R2
+的上传面使用。图生视频工作台不走浏览器直传，避免 bucket CORS 配置缺失时
+在 `OPTIONS` 预检阶段返回 403，导致 Generate 前置上传失败。
 
 `/generate` 仅作为兼容入口重定向到 `/create/video`。旧 `/jobs/[id]` 前端页面已移除，任务状态由三个工作台内联展示。
 

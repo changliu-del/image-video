@@ -85,6 +85,10 @@ through `/api/asset-media/{assetId}` for browser display, mirroring the template
 media route. Keep list/detail APIs private, but do not send raw
 `assets.public_url` values to workbenches or Admin previews; that column is R2
 storage metadata and can point at a bucket endpoint that is not public.
+`/api/asset-media/{assetId}` is also private user data: it must require the
+current session user, scope the asset lookup by `assets.user_id`, and return
+`Cache-Control: private, no-store`. Public cache headers belong only on public
+template media routes.
 
 Template media route failures should be fixed at the asset ownership layer, not
 masked with fallback URLs. Assets whose `storage_key` starts with `templates/`

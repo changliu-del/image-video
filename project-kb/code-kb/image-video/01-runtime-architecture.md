@@ -6,9 +6,10 @@ Updated: 2026-06-11
 
 ```text
 Workbench selects file and options
--> POST /api/assets/presign
--> browser uploads to signed R2 PUT URL
--> POST /api/assets/complete
+-> /create/video uploads the reference image through POST /api/assets/upload
+   (same-origin server upload to R2, no browser-to-R2 CORS dependency)
+-> direct-upload surfaces may still use POST /api/assets/presign
+   -> browser uploads to signed R2 PUT URL -> POST /api/assets/complete
 -> POST /api/generations
 -> lib/generations/validation.ts normalizes payload
 -> lib/generations/jobs.ts validates assets, limits, and credits

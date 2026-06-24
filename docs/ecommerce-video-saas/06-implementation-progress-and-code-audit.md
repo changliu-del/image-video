@@ -15,7 +15,7 @@
 | 官网/营销页 | 多语言首页、模板页、价格页已有 | 可继续打磨转化文案和真实案例 |
 | 登录和 dashboard | SaaS starter 登录、dashboard shell、多语言导航、真实余额展示、订阅/算力工作台已有 | 可用，后续重点是移动端 smoke 和设置页细节 |
 | 创作工作台 | 图生视频、商品图、智能试衣三个入口已有 | 主流程基本成型，API schema 已补齐当前 payload 兼容 |
-| 上传/R2 | presign、浏览器直传、complete 落库已有，complete 已做 R2 对象 metadata 校验 | 可用，后续重点是 route 测试和生产 R2 smoke |
+| 上传/R2 | 图生视频参考图已走同源 `/api/assets/upload` 服务端写 R2；presign、浏览器直传、complete 落库链路仍保留给其他上传面，complete 已做 R2 对象 metadata 校验 | 可用，后续重点是 route 测试和生产 R2 smoke |
 | 生成任务 | 当前主线是 DB-first queued job + Trigger.dev `generate-wanxiang` worker + 万相 submit/query | 主链路已避开 provider submit 先于本地落库的问题，后续重点是生产 worker/env/并发验证 |
 | Trigger/fal/FFmpeg runner | 旧 `generate-video` runner 已 disabled | 不在 active path；后续应删除归档或按简化 schema 重建 |
 | 支付/积分 | Stripe webhook、mock payments、credit ledger、reserve/capture/refund 已有 | 主体完整，仍需真实 price metadata 和生产 webhook 联调 |
@@ -39,7 +39,7 @@
 
 ### 2.2 API 和服务层
 
-- 资产上传：`app/api/assets/presign/route.ts`、`app/api/assets/complete/route.ts`、`lib/storage/r2.ts`。
+- 资产上传：`app/api/assets/upload/route.ts`、`app/api/assets/presign/route.ts`、`app/api/assets/complete/route.ts`、`lib/storage/r2.ts`。
 - 生成创建和查询：`app/api/generations/route.ts`、`app/api/generations/[id]/status/route.ts`、`lib/generations/jobs.ts`。
 - 兼容旧 job 查询：`app/api/jobs/[id]/route.ts` 仍作为三个工作台的状态查询 fallback。
 - 模板、用户历史素材和模型素材：`app/api/templates/route.ts`、`app/api/user-media/*`、`app/api/model-assets/route.ts`、`lib/templates/query.ts`、`lib/user-media/service.ts`、`lib/model-assets/catalog.ts`。

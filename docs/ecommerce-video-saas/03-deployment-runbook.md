@@ -215,7 +215,8 @@ R2_PUBLIC_BASE_URL=https://cdn.yourdomain.com
 安全建议：
 
 ```text
-用户上传使用 signed upload URL
+图生视频参考图通过同源 /api/assets/upload 上传，由服务端写 R2
+其他 signed upload URL 直传面需要 R2 bucket CORS 允许 app origin 的 OPTIONS/PUT 和 Content-Type
 不要把 R2 secret 暴露给浏览器
 storage_key 必须包含 userId
 ```
@@ -589,7 +590,7 @@ SENTRY_DSN=
 dashboard 可以访问
 Stripe test payment 成功
 付款后 credits 增加
-R2 signed upload 成功
+图生视频 /api/assets/upload 成功，仍使用 signed upload 的页面确认 R2 bucket CORS 后直传成功
 图片 public URL 可访问
 创建 generation_job 成功
 Trigger.dev 收到 task

@@ -38,12 +38,6 @@ import {
 } from '@/lib/templates/public-client';
 import { cn } from '@/lib/utils';
 
-type PresignResponse = {
-  assetId: string;
-  uploadUrl: string;
-  storageKey: string;
-};
-
 type CompleteAssetResponse = {
   assetId: string;
   status: string;
@@ -687,36 +681,21 @@ async function postJson<T>(url: string, body: Record<string, unknown>, fallback:
 }
 
 async function uploadAsset(file: File, labels: typeof commonWorkbenchCopy.en) {
-  const presign = await postJson<PresignResponse>(
-    '/api/assets/presign',
-    {
-      fileName: file.name,
-      mimeType: file.type,
-      sizeBytes: file.size,
-    },
-    labels.uploadPrepareError
-  );
+  const body = new FormData();
+  body.append('file', file);
 
-  const uploadResponse = await fetch(presign.uploadUrl, {
-    method: 'PUT',
-    headers: { 'Content-Type': file.type },
-    body: file,
+  const uploadResponse = await fetch('/api/assets/upload', {
+    method: 'POST',
+    body,
   });
 
   if (!uploadResponse.ok) {
-    throw new Error(labels.uploadFailed);
+    throw new Error(
+      await readResponseError(uploadResponse, labels.uploadFailed)
+    );
   }
 
-  const completedAsset = await postJson<CompleteAssetResponse>(
-    '/api/assets/complete',
-    {
-      assetId: presign.assetId,
-      storageKey: presign.storageKey,
-    },
-    labels.imageSaveError
-  );
-
-  return completedAsset;
+  return (await uploadResponse.json()) as CompleteAssetResponse;
 }
 
 async function fetchJobStatus(jobId: string, labels: typeof commonWorkbenchCopy.en) {

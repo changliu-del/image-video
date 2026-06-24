@@ -82,12 +82,29 @@ describe('user media catalog contract', () => {
 
     expect(mediaUrl).toContain('buildAssetMediaUrl');
     expect(mediaUrl).toContain('/api/asset-media/');
+    expect(mediaRoute).toContain('getUser()');
+    expect(mediaRoute).toContain('eq(assets.userId, user.id)');
     expect(mediaRoute).toContain("storageKey.startsWith('users/')");
     expect(mediaRoute).toContain('getObjectFromR2({');
     expect(mediaRoute).toContain("'Accept-Ranges': 'bytes'");
+    expect(mediaRoute).toContain("'Cache-Control': 'private, no-store'");
+    expect(mediaRoute).toContain('Unauthorized');
     expect(mediaRoute).not.toContain('createSignedGetUrl');
     expect(mediaRoute).not.toContain('proxyExternal');
+    expect(mediaRoute).not.toContain("'Cache-Control': 'public");
     expect(completeRoute).toContain('publicUrl: buildAssetMediaUrl(updatedAsset.id)');
+  });
+
+  it('lets the image-to-video workbench upload through the same-origin asset API', () => {
+    const uploadRoute = readSource('app/api/assets/upload/route.ts');
+    const workbench = readSource('components/create/image-video-workbench.tsx');
+
+    expect(uploadRoute).toContain('request.formData()');
+    expect(uploadRoute).toContain('uploadObjectToR2({');
+    expect(uploadRoute).toContain('markAssetUploaded({');
+    expect(uploadRoute).toContain("source: 'user_upload'");
+    expect(workbench).toContain("fetch('/api/assets/upload'");
+    expect(workbench).not.toContain('fetch(presign.uploadUrl');
   });
 
   it('keeps deleted history hidden on later upserts and sorts null usage after recency', () => {

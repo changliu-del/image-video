@@ -1,8 +1,9 @@
 import { type NextRequest, NextResponse } from 'next/server';
-import { eq } from 'drizzle-orm';
+import { and, eq } from 'drizzle-orm';
 
 import { db } from '@/lib/db/drizzle';
 import { dbIdSchema } from '@/lib/db/id-schema';
+import { getUser } from '@/lib/db/queries';
 import { assets } from '@/lib/db/schema';
 import { getObjectFromR2 } from '@/lib/storage/r2';
 
@@ -11,6 +12,14 @@ export const runtime = 'nodejs';
 type WebStreamBody = {
   transformToWebStream?: () => ReadableStream<Uint8Array>;
 };
+
+const privateHeaders = {
+  'Cache-Control': 'private, no-store',
+};
+
+function json(body: unknown, status = 200) {
+  return NextResponse.json(body, { status, headers: privateHeaders });
+}
 
 function toWebStream(body: unknown) {
   if (
@@ -49,8 +58,15 @@ export async function GET(
   const { assetId } = await params;
   const parsedAssetId = dbIdSchema.safeParse(assetId);
   if (!parsedAssetId.success) {
-    return NextResponse.json({ error: 'Asset media not found' }, { status: 404 });
+    return json({ error: 'Asset media not found' }, 404);
   }
+
+  const user = await getUser();
+
+  if (!user) {
+    return json({ error: 'Unauthorized' }, 401);
+  }
+
   const requestRange = request.headers.get('range');
 
   try {
@@ -61,7 +77,9 @@ export async function GET(
         storageKey: assets.storageKey,
       })
       .from(assets)
-      .where(eq(assets.id, parsedAssetId.data))
+      .where(
+        and(eq(assets.id, parsedAssetId.data), eq(assets.userId, user.id))
+      )
       .limit(1);
 
     if (
@@ -69,10 +87,7 @@ export async function GET(
       asset.status !== 'uploaded' ||
       !isUserAssetStorageKey(asset.storageKey)
     ) {
-      return NextResponse.json(
-        { error: 'Asset media not found' },
-        { status: 404 }
-      );
+      return json({ error: 'Asset media not found' }, 404);
     }
 
     const object = await getObjectFromR2({
@@ -82,15 +97,12 @@ export async function GET(
     const body = toWebStream(object.Body);
 
     if (!body) {
-      return NextResponse.json(
-        { error: 'Asset media body not found' },
-        { status: 404 }
-      );
+      return json({ error: 'Asset media body not found' }, 404);
     }
 
     const headers = new Headers({
       'Accept-Ranges': 'bytes',
-      'Cache-Control': 'public, max-age=300, stale-while-revalidate=3600',
+      'Cache-Control': 'private, no-store',
     });
 
     const contentType = object.ContentType ?? asset.mimeType;
@@ -120,14 +132,12 @@ export async function GET(
         status: 416,
         headers: {
           'Accept-Ranges': 'bytes',
+          'Cache-Control': 'private, no-store',
         },
       });
     }
 
     console.error('Failed to load asset media', error);
-    return NextResponse.json(
-      { error: 'Failed to load asset media' },
-      { status: 500 }
-    );
+    return json({ error: 'Failed to load asset media' }, 500);
   }
 }
