@@ -1,24 +1,25 @@
-import { postWanxiangJson } from './client';
+import {
+  getDashScopeTask,
+  getDashScopeVideoSynthesisUrl,
+  postDashScopeJson,
+} from './dashscope';
 import {
   type WanxiangNormalizedResponse,
   type WanxiangPayload,
   type WanxiangRequestOptions
 } from './types';
 
-export const DEFAULT_WANXIANG_IMG_TO_VIDEO_SUBMIT_URL =
-  'https://imgtovideo.market.alicloudapi.com/maigc/api/imgToVideo/submit';
-export const DEFAULT_WANXIANG_IMG_TO_VIDEO_QUERY_URL =
-  'https://imgtovideo.market.alicloudapi.com/maigc/api/imgToVideo/query';
+export const DEFAULT_WANXIANG_IMAGE_TO_VIDEO_MODEL = 'wan2.6-i2v-flash';
+export const DEFAULT_WANXIANG_IMAGE_TO_VIDEO_RESOLUTION = '720P';
+export const DEFAULT_WANXIANG_IMAGE_TO_VIDEO_DURATION_SECONDS = 5;
 
 export function submitImageToVideo(
   payload: WanxiangPayload,
   options: WanxiangRequestOptions = {}
 ): Promise<WanxiangNormalizedResponse> {
-  return postWanxiangJson(
-    options.url ||
-      process.env.WANXIANG_IMG_TO_VIDEO_SUBMIT_URL ||
-      DEFAULT_WANXIANG_IMG_TO_VIDEO_SUBMIT_URL,
-    toImageToVideoSubmitPayload(payload),
+  return postDashScopeJson(
+    options.url || getDashScopeVideoSynthesisUrl(),
+    toDashScopeImageToVideoSubmitPayload(payload),
     { ...options, resultMediaType: 'video' }
   );
 }
@@ -27,20 +28,29 @@ export function queryImageToVideo(
   task: string | WanxiangPayload,
   options: WanxiangRequestOptions = {}
 ): Promise<WanxiangNormalizedResponse> {
-  return postWanxiangJson(
-    options.url ||
-      process.env.WANXIANG_IMG_TO_VIDEO_QUERY_URL ||
-      DEFAULT_WANXIANG_IMG_TO_VIDEO_QUERY_URL,
-    toTaskPayload(task),
-    { ...options, resultMediaType: 'video' }
-  );
+  return getDashScopeTask(toTaskId(task), options);
 }
 
-function toTaskPayload(task: string | WanxiangPayload): WanxiangPayload {
-  return typeof task === 'string' ? { task_id: task } : task;
+function toTaskId(task: string | WanxiangPayload) {
+  if (typeof task === 'string') {
+    return task;
+  }
+
+  const taskId =
+    firstString(task.task_id) ||
+    firstString(task.taskId) ||
+    firstString(task.providerTaskId);
+
+  if (!taskId) {
+    throw new Error('DashScope task id is required for image-to-video query');
+  }
+
+  return taskId;
 }
 
-function toImageToVideoSubmitPayload(payload: WanxiangPayload): WanxiangPayload {
+function toDashScopeImageToVideoSubmitPayload(
+  payload: WanxiangPayload
+): WanxiangPayload {
   const imgUrl =
     firstString(payload.imgUrl) ||
     firstString(payload.imageUrl) ||
@@ -50,10 +60,32 @@ function toImageToVideoSubmitPayload(payload: WanxiangPayload): WanxiangPayload 
     firstString(payload.posPrompt) ||
     firstString(payload.prompt) ||
     firstString(payload.positivePrompt);
+  const model =
+    process.env.WANXIANG_IMAGE_TO_VIDEO_MODEL?.trim() ||
+    DEFAULT_WANXIANG_IMAGE_TO_VIDEO_MODEL;
+  const parameters: WanxiangPayload = {
+    resolution:
+      process.env.WANXIANG_IMAGE_TO_VIDEO_RESOLUTION?.trim() ||
+      DEFAULT_WANXIANG_IMAGE_TO_VIDEO_RESOLUTION,
+    duration: firstPositiveInteger(payload.durationSeconds) ??
+      DEFAULT_WANXIANG_IMAGE_TO_VIDEO_DURATION_SECONDS,
+    prompt_extend: readBooleanEnv(
+      'WANXIANG_IMAGE_TO_VIDEO_PROMPT_EXTEND',
+      true
+    ),
+  };
+
+  if (model === 'wan2.6-i2v-flash') {
+    parameters.audio = readBooleanEnv('WANXIANG_IMAGE_TO_VIDEO_AUDIO', false);
+  }
 
   return {
-    ...(imgUrl ? { imgUrl } : {}),
-    ...(posPrompt ? { posPrompt } : {}),
+    model,
+    input: {
+      ...(imgUrl ? { img_url: imgUrl } : {}),
+      ...(posPrompt ? { prompt: posPrompt } : {}),
+    },
+    parameters,
   };
 }
 
@@ -73,4 +105,20 @@ function firstString(value: unknown): string | undefined {
   }
 
   return undefined;
+}
+
+function firstPositiveInteger(value: unknown): number | undefined {
+  const numericValue = typeof value === 'number' ? value : Number(value);
+  return Number.isInteger(numericValue) && numericValue > 0
+    ? numericValue
+    : undefined;
+}
+
+function readBooleanEnv(name: string, fallback: boolean) {
+  const value = process.env[name]?.trim().toLowerCase();
+  if (!value) {
+    return fallback;
+  }
+
+  return ['1', 'true', 'yes', 'on'].includes(value);
 }

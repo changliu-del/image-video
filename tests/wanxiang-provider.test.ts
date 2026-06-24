@@ -6,7 +6,10 @@ import {
   submitCloth
 } from '../lib/providers/wanxiang/cloth';
 import {
-  DEFAULT_WANXIANG_IMG_TO_VIDEO_SUBMIT_URL,
+  DEFAULT_WANXIANG_IMAGE_TO_VIDEO_DURATION_SECONDS,
+  DEFAULT_WANXIANG_IMAGE_TO_VIDEO_MODEL,
+  DEFAULT_WANXIANG_IMAGE_TO_VIDEO_RESOLUTION,
+  queryImageToVideo,
   submitImageToVideo
 } from '../lib/providers/wanxiang/img-to-video';
 import {
@@ -154,6 +157,25 @@ describe('normalizeWanxiangResponse', () => {
     );
   });
 
+  it('normalizes DashScope task status and video URL fields', () => {
+    expect(
+      normalizeWanxiangResponse({
+        output: {
+          task_id: 'dashscope-task',
+          task_status: 'SUCCEEDED',
+          video_url: 'https://dashscope-result.test/final.mp4'
+        },
+        request_id: 'request-123'
+      })
+    ).toEqual(
+      expect.objectContaining({
+        providerTaskId: 'dashscope-task',
+        status: 'succeeded',
+        finalVideoUrl: 'https://dashscope-result.test/final.mp4'
+      })
+    );
+  });
+
   it('extracts image result URLs and treats result presence as success', () => {
     expect(
       normalizeWanxiangResponse({
@@ -191,16 +213,18 @@ describe('normalizeWanxiangResponse', () => {
 });
 
 describe('Wanxiang capability exports', () => {
-  it('uses endpoint env overrides for image-to-video submit', async () => {
-    vi.stubEnv('WANXIANG_APPCODE', 'env-code');
-    vi.stubEnv('WANXIANG_IMG_TO_VIDEO_SUBMIT_URL', 'https://override.test/i2v');
-    const fetchMock = mockJsonFetch({ code: 0, data: { task_id: 'i2v-task' } });
+  it('submits image-to-video jobs through Bailian DashScope', async () => {
+    vi.stubEnv('DASHSCOPE_API_KEY', 'dashscope-key');
+    vi.stubEnv('DASHSCOPE_VIDEO_SYNTHESIS_URL', 'https://override.test/i2v');
+    const fetchMock = mockJsonFetch({
+      output: { task_id: 'i2v-task', task_status: 'PENDING' }
+    });
 
     await submitImageToVideo(
       {
         inputImageUrl: 'https://img.test/product.png',
         prompt: '模特转动身体展示衣服',
-        durationSeconds: 10,
+        durationSeconds: DEFAULT_WANXIANG_IMAGE_TO_VIDEO_DURATION_SECONDS,
         metadata: { jobId: 'local-job' }
       },
       { fetch: fetchMock }
@@ -209,33 +233,55 @@ describe('Wanxiang capability exports', () => {
     expect(fetchMock).toHaveBeenCalledWith(
       'https://override.test/i2v',
       expect.objectContaining({
+        method: 'POST',
+        headers: expect.objectContaining({
+          Authorization: 'Bearer dashscope-key',
+          'X-DashScope-Async': 'enable',
+          'Content-Type': 'application/json'
+        }),
         body: JSON.stringify({
-          imgUrl: 'https://img.test/product.png',
-          posPrompt: '模特转动身体展示衣服'
+          model: DEFAULT_WANXIANG_IMAGE_TO_VIDEO_MODEL,
+          input: {
+            img_url: 'https://img.test/product.png',
+            prompt: '模特转动身体展示衣服'
+          },
+          parameters: {
+            resolution: DEFAULT_WANXIANG_IMAGE_TO_VIDEO_RESOLUTION,
+            duration: DEFAULT_WANXIANG_IMAGE_TO_VIDEO_DURATION_SECONDS,
+            prompt_extend: true,
+            audio: false
+          }
         })
       })
     );
   });
 
-  it('uses the Alibaba Cloud Market image-to-video default endpoint and payload shape', async () => {
-    vi.stubEnv('WANXIANG_APPCODE', 'env-code');
-    const fetchMock = mockJsonFetch({ code: 0, data: { taskId: 'i2v-task' } });
+  it('queries image-to-video jobs through Bailian DashScope task API', async () => {
+    vi.stubEnv('DASHSCOPE_API_KEY', 'dashscope-key');
+    vi.stubEnv('DASHSCOPE_BASE_URL', 'https://dashscope.example/api/v1');
+    const fetchMock = mockJsonFetch({
+      output: {
+        task_id: 'i2v-task',
+        task_status: 'SUCCEEDED',
+        video_url: 'https://dashscope-result.test/final.mp4'
+      }
+    });
 
-    await submitImageToVideo(
-      {
-        imgUrl: 'https://aliyun-tmp.oss-cn-beijing.aliyuncs.com/imgToVideo.png',
-        posPrompt: '模特转动身体展示衣服'
-      },
-      { fetch: fetchMock }
-    );
+    const result = await queryImageToVideo('i2v-task', { fetch: fetchMock });
 
     expect(fetchMock).toHaveBeenCalledWith(
-      DEFAULT_WANXIANG_IMG_TO_VIDEO_SUBMIT_URL,
+      'https://dashscope.example/api/v1/tasks/i2v-task',
       expect.objectContaining({
-        body: JSON.stringify({
-          imgUrl: 'https://aliyun-tmp.oss-cn-beijing.aliyuncs.com/imgToVideo.png',
-          posPrompt: '模特转动身体展示衣服'
+        method: 'GET',
+        headers: expect.objectContaining({
+          Authorization: 'Bearer dashscope-key'
         })
+      })
+    );
+    expect(result).toEqual(
+      expect.objectContaining({
+        status: 'succeeded',
+        finalVideoUrl: 'https://dashscope-result.test/final.mp4'
       })
     );
   });

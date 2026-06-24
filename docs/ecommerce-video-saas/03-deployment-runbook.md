@@ -221,24 +221,31 @@ R2_PUBLIC_BASE_URL=https://cdn.yourdomain.com
 storage_key 必须包含 userId
 ```
 
-## 6. 配置 Wanxiang API
+## 6. 配置 Wanxiang / Bailian API
 
 操作：
 
 ```text
-1. 获取 Wanxiang APPCODE
-2. 确认图生视频、商品图、单件试衣、多件试衣、模特素材 catalog endpoint
-3. 在服务端环境保存 APPCODE 和必要 endpoint override
-4. 用一张公开可访问图片分别测试图生视频 submit/query，submit body 只发送 `imgUrl` 和 `posPrompt`
-5. 记录一次图生视频、商品图、试衣的实际成本和平均耗时
+1. 获取百炼 DashScope API Key，用于图生视频。
+2. 获取 Wanxiang APPCODE，用于尚未迁移的商品图、单件试衣、多件试衣、模特素材 catalog endpoint。
+3. 在 Vercel server env 和 Trigger.dev Production env 保存 DashScope key、APPCODE 和必要 endpoint override。
+4. 用一张公开可访问图片测试百炼图生视频 submit/query，submit body 使用 `input.img_url`、`input.prompt` 和 `parameters.duration/resolution`。
+5. 记录一次图生视频、商品图、试衣的实际成本和平均耗时。
 ```
 
 环境变量：
 
 ```text
+DASHSCOPE_API_KEY=
+DASHSCOPE_BASE_URL=https://dashscope.aliyuncs.com/api/v1
+DASHSCOPE_VIDEO_SYNTHESIS_URL=
+DASHSCOPE_TASKS_URL=
+WANXIANG_IMAGE_TO_VIDEO_MODEL=wan2.6-i2v-flash
+WANXIANG_IMAGE_TO_VIDEO_RESOLUTION=720P
+WANXIANG_IMAGE_TO_VIDEO_PROMPT_EXTEND=true
+WANXIANG_IMAGE_TO_VIDEO_AUDIO=false
+
 WANXIANG_APPCODE=
-WANXIANG_IMG_TO_VIDEO_SUBMIT_URL=
-WANXIANG_IMG_TO_VIDEO_QUERY_URL=
 WANXIANG_CLOTH_SUBMIT_URL=
 WANXIANG_CLOTH_QUERY_URL=
 WANXIANG_TRY_ON_SINGLE_SUBMIT_URL=
@@ -250,9 +257,9 @@ WANXIANG_MODEL_CATALOG_URL=
 验证方式：
 
 ```text
-1. 运行 provider 单测或手动调用 Wanxiang submit/query
-2. 确认 APPCODE 鉴权成功
-3. 确认 submit 返回 providerTaskId
+1. 运行 provider 单测或手动调用 Bailian DashScope submit/query
+2. 确认 Bearer DASHSCOPE_API_KEY 鉴权成功
+3. 确认 submit 返回 output.task_id
 4. 确认 query 可以返回 running/succeeded/failed 终态
 5. 确认输出 URL 可被 worker 记录为 final asset
 ```
@@ -260,8 +267,8 @@ WANXIANG_MODEL_CATALOG_URL=
 注意：
 
 ```text
-WANXIANG_APPCODE 只配置在 Vercel server env 和 Trigger.dev env。
-不要使用 NEXT_PUBLIC_WANXIANG_APPCODE。
+DASHSCOPE_API_KEY 和 WANXIANG_APPCODE 只配置在 Vercel server env 和 Trigger.dev env。
+不要使用 NEXT_PUBLIC_DASHSCOPE_API_KEY 或 NEXT_PUBLIC_WANXIANG_APPCODE。
 ```
 
 ## 7. 创建 Trigger.dev project
@@ -296,9 +303,16 @@ Trigger.dev 环境变量：
 
 ```text
 POSTGRES_URL=
+DASHSCOPE_API_KEY=
+DASHSCOPE_BASE_URL=https://dashscope.aliyuncs.com/api/v1
+DASHSCOPE_VIDEO_SYNTHESIS_URL=
+DASHSCOPE_TASKS_URL=
+WANXIANG_IMAGE_TO_VIDEO_MODEL=wan2.6-i2v-flash
+WANXIANG_IMAGE_TO_VIDEO_RESOLUTION=720P
+WANXIANG_IMAGE_TO_VIDEO_PROMPT_EXTEND=true
+WANXIANG_IMAGE_TO_VIDEO_AUDIO=false
+
 WANXIANG_APPCODE=
-WANXIANG_IMG_TO_VIDEO_SUBMIT_URL=
-WANXIANG_IMG_TO_VIDEO_QUERY_URL=
 WANXIANG_CLOTH_SUBMIT_URL=
 WANXIANG_CLOTH_QUERY_URL=
 WANXIANG_TRY_ON_SINGLE_SUBMIT_URL=
@@ -557,9 +571,16 @@ NEXT_PUBLIC_POSTHOG_HOST=https://app.posthog.com
 ```text
 POSTGRES_URL=
 
+DASHSCOPE_API_KEY=
+DASHSCOPE_BASE_URL=https://dashscope.aliyuncs.com/api/v1
+DASHSCOPE_VIDEO_SYNTHESIS_URL=
+DASHSCOPE_TASKS_URL=
+WANXIANG_IMAGE_TO_VIDEO_MODEL=wan2.6-i2v-flash
+WANXIANG_IMAGE_TO_VIDEO_RESOLUTION=720P
+WANXIANG_IMAGE_TO_VIDEO_PROMPT_EXTEND=true
+WANXIANG_IMAGE_TO_VIDEO_AUDIO=false
+
 WANXIANG_APPCODE=
-WANXIANG_IMG_TO_VIDEO_SUBMIT_URL=
-WANXIANG_IMG_TO_VIDEO_QUERY_URL=
 WANXIANG_CLOTH_SUBMIT_URL=
 WANXIANG_CLOTH_QUERY_URL=
 WANXIANG_TRY_ON_SINGLE_SUBMIT_URL=
@@ -635,10 +656,11 @@ Vercel API 只创建任务并触发 Trigger.dev。
 检查：
 
 ```text
-WANXIANG_APPCODE 是否正确
+DASHSCOPE_API_KEY 是否正确（图生视频）
+WANXIANG_APPCODE 是否正确（商品图/试衣）
 对应 submit/query endpoint 是否仍可用
-Trigger.dev worker env 是否包含 Wanxiang、Postgres、R2 变量
-image_url 是否公开可访问
+Trigger.dev worker env 是否包含 Bailian/Wanxiang、Postgres、R2 变量
+img_url 是否公开可访问
 prompt 是否过长或违规
 ```
 

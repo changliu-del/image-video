@@ -21,10 +21,10 @@ const TASK_ID_PATHS = [
   ['data', 'taskID'],
   ['data', 'id'],
   ['data', 'job_id'],
+  ['output', 'task_id'],
+  ['output', 'taskId'],
   ['result', 'task_id'],
   ['result', 'taskId'],
-  ['output', 'task_id'],
-  ['output', 'taskId']
 ];
 
 const STATUS_PATHS = [
@@ -38,6 +38,8 @@ const STATUS_PATHS = [
   ['data', 'state'],
   ['data', 'task_status'],
   ['data', 'taskStatus'],
+  ['output', 'task_status'],
+  ['output', 'taskStatus'],
   ['result', 'status'],
   ['result', 'state'],
   ['output', 'status'],
@@ -54,6 +56,10 @@ const ERROR_PATHS = [
   ['data', 'error_message'],
   ['data', 'message'],
   ['data', 'msg'],
+  ['output', 'errorMessage'],
+  ['output', 'error_message'],
+  ['output', 'message'],
+  ['output', 'msg'],
   ['result', 'errorMessage'],
   ['result', 'message']
 ];
@@ -241,7 +247,8 @@ function assertWanxiangApiSuccess(rawResponse: unknown) {
     ['code'],
     ['statusCode'],
     ['status_code'],
-    ['data', 'code']
+    ['data', 'code'],
+    ['output', 'code']
   ]);
   if (code === undefined || code === null || code === '') {
     return;

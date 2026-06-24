@@ -12,9 +12,15 @@ Updated: 2026-06-24
 - `R2_SECRET_ACCESS_KEY`
 - `R2_BUCKET`
 - `R2_PUBLIC_BASE_URL`
+- `DASHSCOPE_API_KEY`
+- `DASHSCOPE_BASE_URL` (optional, defaults to `https://dashscope.aliyuncs.com/api/v1`)
+- `DASHSCOPE_VIDEO_SYNTHESIS_URL` (optional)
+- `DASHSCOPE_TASKS_URL` (optional)
+- `WANXIANG_IMAGE_TO_VIDEO_MODEL` (optional, defaults to `wan2.6-i2v-flash`)
+- `WANXIANG_IMAGE_TO_VIDEO_RESOLUTION` (optional, defaults to `720P`)
+- `WANXIANG_IMAGE_TO_VIDEO_PROMPT_EXTEND` (optional, defaults to `true`)
+- `WANXIANG_IMAGE_TO_VIDEO_AUDIO` (optional, defaults to `false` for `wan2.6-i2v-flash`)
 - `WANXIANG_APPCODE`
-- `WANXIANG_IMG_TO_VIDEO_SUBMIT_URL`
-- `WANXIANG_IMG_TO_VIDEO_QUERY_URL`
 - `WANXIANG_CLOTH_SUBMIT_URL`
 - `WANXIANG_CLOTH_QUERY_URL`
 - `WANXIANG_TRY_ON_SINGLE_SUBMIT_URL`
@@ -87,19 +93,28 @@ verified locally.
 
 ## Wanxiang Image-to-Video
 
-`WANXIANG_APPCODE` is the Aliyun API Gateway AppCode used in the server-side
-`Authorization: APPCODE <code>` header. The image-to-video adapter defaults to:
+Image-to-video uses Alibaba Model Studio / Bailian DashScope, not the Alibaba
+Cloud Market APPCODE endpoint. Configure `DASHSCOPE_API_KEY` in Vercel server
+env and Trigger.dev Production env. The adapter sends
+`Authorization: Bearer <DASHSCOPE_API_KEY>` plus `X-DashScope-Async: enable`.
 
-- submit: `https://imgtovideo.market.alicloudapi.com/maigc/api/imgToVideo/submit`
-- query: `https://imgtovideo.market.alicloudapi.com/maigc/api/imgToVideo/query`
+Defaults:
 
-Only configure `WANXIANG_IMG_TO_VIDEO_SUBMIT_URL` or
-`WANXIANG_IMG_TO_VIDEO_QUERY_URL` when the purchased API product provides a
-different endpoint. The project-level payload is normalized before submit:
-`inputImageUrl` / `prompt` become the Aliyun Cloud Market fields `imgUrl` /
-`posPrompt`. The current image-to-video API is treated as fixed 5 seconds and
-single-image only; reference video and audio fields are not accepted for
-`image_to_video`.
+- base URL: `https://dashscope.aliyuncs.com/api/v1`
+- submit: `/services/aigc/video-generation/video-synthesis`
+- query: `/tasks/{task_id}`
+- model: `wan2.6-i2v-flash`
+- resolution: `720P`
+- prompt extend: `true`
+- audio: `false` for `wan2.6-i2v-flash`
+
+The project-level payload is normalized before submit: `inputImageUrl` /
+`prompt` become Bailian fields `input.img_url` / `input.prompt`, and the fixed
+5-second duration is sent through `parameters.duration`. Reference video and
+audio fields are still not accepted by the current `image_to_video` workbench.
+
+`WANXIANG_APPCODE` remains relevant for the older Alibaba Cloud Market cloth,
+try-on, and model-catalog endpoints until those providers are migrated too.
 
 The Trigger.dev `generate-wanxiang` worker also needs the R2 env vars. On a
 successful provider terminal status it downloads the provider result, uploads it

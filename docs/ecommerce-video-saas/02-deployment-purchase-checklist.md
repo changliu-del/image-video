@@ -16,7 +16,7 @@
 | 数据库 | Neon Postgres | https://neon.com | Free 起步，上线后 Launch | 否 |
 | 后台任务 | Trigger.dev Cloud | https://trigger.dev | Free/Hobby 起步，上线后 Pro | 否 |
 | 文件存储 | Cloudflare R2 | https://www.cloudflare.com/products/r2/ | Standard Storage | 否 |
-| 生成模型 | Wanxiang API | 按供应商账号/合同入口 | 开通图生视频、商品图、试衣 API 和 APPCODE | 否 |
+| 生成模型 | Bailian DashScope / Wanxiang API | 按供应商账号/合同入口 | 图生视频开通百炼 DashScope API Key；商品图/试衣暂保留 Wanxiang APPCODE | 否 |
 | 支付 | Stripe | https://stripe.com | 标准账户 | 否 |
 | 邮件 | Resend | https://resend.com | Free 起步，Pro 视发送量升级 | 否 |
 | 错误监控 | Sentry | https://sentry.io | Developer 免费，团队用 Team | 否 |
@@ -311,9 +311,16 @@ https://trigger.dev/pricing/
 
 ```text
 POSTGRES_URL=
+DASHSCOPE_API_KEY=
+DASHSCOPE_BASE_URL=https://dashscope.aliyuncs.com/api/v1
+DASHSCOPE_VIDEO_SYNTHESIS_URL=
+DASHSCOPE_TASKS_URL=
+WANXIANG_IMAGE_TO_VIDEO_MODEL=wan2.6-i2v-flash
+WANXIANG_IMAGE_TO_VIDEO_RESOLUTION=720P
+WANXIANG_IMAGE_TO_VIDEO_PROMPT_EXTEND=true
+WANXIANG_IMAGE_TO_VIDEO_AUDIO=false
+
 WANXIANG_APPCODE=
-WANXIANG_IMG_TO_VIDEO_SUBMIT_URL=
-WANXIANG_IMG_TO_VIDEO_QUERY_URL=
 WANXIANG_CLOTH_SUBMIT_URL=
 WANXIANG_CLOTH_QUERY_URL=
 WANXIANG_TRY_ON_SINGLE_SUBMIT_URL=
@@ -363,9 +370,16 @@ SENTRY_DSN=
 推荐环境变量：
 
 ```text
+DASHSCOPE_API_KEY=
+DASHSCOPE_BASE_URL=https://dashscope.aliyuncs.com/api/v1
+DASHSCOPE_VIDEO_SYNTHESIS_URL=
+DASHSCOPE_TASKS_URL=
+WANXIANG_IMAGE_TO_VIDEO_MODEL=wan2.6-i2v-flash
+WANXIANG_IMAGE_TO_VIDEO_RESOLUTION=720P
+WANXIANG_IMAGE_TO_VIDEO_PROMPT_EXTEND=true
+WANXIANG_IMAGE_TO_VIDEO_AUDIO=false
+
 WANXIANG_APPCODE=
-WANXIANG_IMG_TO_VIDEO_SUBMIT_URL=
-WANXIANG_IMG_TO_VIDEO_QUERY_URL=
 WANXIANG_CLOTH_SUBMIT_URL=
 WANXIANG_CLOTH_QUERY_URL=
 WANXIANG_TRY_ON_SINGLE_SUBMIT_URL=
@@ -377,7 +391,7 @@ WANXIANG_MODEL_CATALOG_URL=
 注意：
 
 ```text
-WANXIANG_APPCODE 只能存在服务端环境变量中。
+DASHSCOPE_API_KEY 和 WANXIANG_APPCODE 只能存在服务端环境变量中。
 不要放到 NEXT_PUBLIC_ 变量。
 不要传给浏览器。
 旧 fal.ai/FFmpeg runner 不是当前 active path；不要按旧 runner 采购或部署。

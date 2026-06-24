@@ -12,6 +12,7 @@ export type WanxiangPayload = Record<string, unknown>;
 
 export interface WanxiangClientOptions {
   appCode?: string;
+  dashScopeApiKey?: string;
   fetch?: typeof fetch;
   resultMediaType?: 'image' | 'video';
   timeoutMs?: number;
