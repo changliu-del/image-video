@@ -7,6 +7,8 @@ import {
 } from './dashboard-header';
 import { AppShell } from './app-shell';
 
+export const dynamic = 'force-dynamic';
+
 function toHeaderUser(userId: number) {
   return {
     id: userId,

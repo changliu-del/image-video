@@ -38,13 +38,14 @@ function errorStatus(error: unknown) {
 }
 
 async function proxyExternalTemplateMedia(input: {
+  baseUrl: string;
   mimeType: string | null;
   publicUrl: string;
   range: string | null;
 }) {
   let url: URL;
   try {
-    url = new URL(input.publicUrl);
+    url = new URL(input.publicUrl, input.baseUrl);
   } catch {
     return NextResponse.json(
       { error: 'Template media not found' },
@@ -158,6 +159,7 @@ export async function GET(
       }
 
       return proxyExternalTemplateMedia({
+        baseUrl: request.nextUrl.origin,
         mimeType: asset.mimeType,
         publicUrl: asset.publicUrl,
         range: requestRange,

@@ -204,6 +204,13 @@
       "when": 1780000026000,
       "tag": "0029_rekey_primary_ids_to_sequences",
       "breakpoints": true
+    },
+    {
+      "idx": 29,
+      "version": "7",
+      "when": 1780000027000,
+      "tag": "0030_normalize_starter_template_assets",
+      "breakpoints": true
     }
   ]
 }

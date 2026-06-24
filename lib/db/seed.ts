@@ -95,13 +95,13 @@ async function seedStarterTemplateCatalog() {
 
     const thumbnailAssetId = await upsertStarterTemplateAsset({
       userId: admin.id,
-      storageKey: `templates/starter/${template.seedKey}/thumbnail`,
+      storageKey: `external/starter/${template.seedKey}/thumbnail`,
       publicUrl: template.thumbnailUrl,
       mimeType: 'image/png',
     });
     const previewAssetId = await upsertStarterTemplateAsset({
       userId: admin.id,
-      storageKey: `templates/starter/${template.seedKey}/preview`,
+      storageKey: `external/starter/${template.seedKey}/preview`,
       publicUrl: template.previewUrl,
       mimeType: 'video/mp4',
     });

@@ -1,6 +1,7 @@
 import 'server-only';
 
 import { asc, sql } from 'drizzle-orm';
+import { revalidateTag, unstable_cache } from 'next/cache';
 import { db } from '@/lib/db/drizzle';
 import { templates } from '@/lib/db/schema';
 import type {
@@ -17,6 +18,8 @@ import {
 const templateCatalogMetadataCacheKey =
   '__imageVideoPublishedTemplateCatalogMetadataCache';
 const templateCatalogMetadataCacheTtlMs = 5 * 60 * 1000;
+const templateCatalogDataCacheTag = 'image-video-published-template-catalog';
+const templateCatalogDataCacheRevalidateSeconds = 5 * 60;
 
 type TemplateListRow = {
   id: number;
@@ -36,6 +39,14 @@ type TemplateListRow = {
 type TemplateDetailRow = TemplateListRow & {
   prompt: string;
   promptTranslations: Record<string, string>;
+};
+
+type SerializedTemplateDetailRow = Omit<
+  TemplateDetailRow,
+  'createdAt' | 'updatedAt'
+> & {
+  createdAt: string;
+  updatedAt: string;
 };
 
 type CachedPublishedTemplateMetadata = {
@@ -241,7 +252,7 @@ function templateMatchesSearch(row: TemplateDetailRow, search: string) {
 }
 
 async function loadPublishedTemplateRowsForType(type: TemplateType) {
-  return baseTemplateDetailQuery()
+  const rows = await baseTemplateDetailQuery()
     .where(
       sql`${templates.type} = ${type}
         and length(trim(${templates.thumbnailUrl})) > 0
@@ -253,6 +264,37 @@ async function loadPublishedTemplateRowsForType(type: TemplateType) {
       asc(templates.createdAt),
       asc(templates.id)
     );
+
+  return rows.map(serializeTemplateDetailRow);
+}
+
+const loadPublishedTemplateRowsForTypeFromNextCache = unstable_cache(
+  loadPublishedTemplateRowsForType,
+  ['image-video-published-template-rows-v1'],
+  {
+    tags: [templateCatalogDataCacheTag],
+    revalidate: templateCatalogDataCacheRevalidateSeconds,
+  }
+);
+
+function serializeTemplateDetailRow(
+  row: TemplateDetailRow
+): SerializedTemplateDetailRow {
+  return {
+    ...row,
+    createdAt: row.createdAt.toISOString(),
+    updatedAt: row.updatedAt.toISOString(),
+  };
+}
+
+function deserializeTemplateDetailRow(
+  row: SerializedTemplateDetailRow
+): TemplateDetailRow {
+  return {
+    ...row,
+    createdAt: new Date(row.createdAt),
+    updatedAt: new Date(row.updatedAt),
+  };
 }
 
 async function getCachedPublishedTemplateMetadataForType(type: TemplateType) {
@@ -270,9 +312,12 @@ async function getCachedPublishedTemplateMetadataForType(type: TemplateType) {
   }
 
   const version = state.version;
-  const pendingLoad = loadPublishedTemplateRowsForType(type)
+  const pendingLoad = loadPublishedTemplateRowsForTypeFromNextCache(type)
     .then((rows) => {
-      const sortedRows = sortTemplateRows(type, rows);
+      const sortedRows = sortTemplateRows(
+        type,
+        rows.map(deserializeTemplateDetailRow)
+      );
       const metadata: CachedPublishedTemplateMetadata = {
         categories: categoriesFromTemplateRows(type, sortedRows),
         expiresAt: Date.now() + templateCatalogMetadataCacheTtlMs,
@@ -311,6 +356,7 @@ export function clearPublishedTemplateCatalogCache() {
   state.version += 1;
   state.records.clear();
   state.pending.clear();
+  revalidateTag(templateCatalogDataCacheTag, { expire: 0 });
 }
 
 export async function listPublishedTemplates(

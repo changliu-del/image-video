@@ -42,6 +42,20 @@ describe('auth security hardening', () => {
     expect(securityPageSource).not.toContain('defaultValue={passwordState');
     expect(securityPageSource).not.toContain('defaultValue={deleteState.password}');
   });
+
+  it('keeps JWT verification in the Node dashboard layout instead of proxy runtime', () => {
+    const proxySource = readSource('proxy.ts');
+    const dashboardLayoutSource = readSource('app/(dashboard)/layout.tsx');
+
+    expect(proxySource).toContain("request.cookies.get('session')");
+    expect(proxySource).not.toContain("from '@/lib/auth/session'");
+    expect(proxySource).not.toContain('verifyToken');
+    expect(proxySource).not.toContain('signToken');
+    expect(proxySource).not.toContain('Error updating session');
+    expect(proxySource).not.toContain("cookies.delete('session')");
+    expect(dashboardLayoutSource).toContain("export const dynamic = 'force-dynamic'");
+    expect(dashboardLayoutSource).toContain('getSessionUserId()');
+  });
 });
 
 describe('admin proxy hardening', () => {

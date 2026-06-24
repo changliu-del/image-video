@@ -178,6 +178,11 @@ describe('template catalog routing contract', () => {
     expect(detailRoute).not.toContain('no-store');
     expect(publicClient).toContain('PublicTemplateListItem');
     expect(publicClient).toContain('PublicTemplateDetailItem');
+    expect(query).toContain('unstable_cache');
+    expect(query).toContain('templateCatalogDataCacheTag');
+    expect(query).toContain('loadPublishedTemplateRowsForTypeFromNextCache');
+    expect(query).toContain('revalidateTag(templateCatalogDataCacheTag, { expire: 0 })');
+    expect(query).toContain('deserializeTemplateDetailRow');
     expect(query).toContain('previewUrl: row.previewUrl');
     expect(query).toContain('clearPublishedTemplateCatalogCache');
     expect(templatesPage).toContain("media: 'preview'");
@@ -274,13 +279,34 @@ describe('template catalog routing contract', () => {
     expect(mediaRoute).toContain('getTemplateMediaCacheEntry');
     expect(mediaRoute).toContain('createCachedTemplateMediaResponse');
     expect(mediaRoute).toContain('getObjectFromR2');
+    expect(mediaRoute).toContain("asset.storageKey.startsWith('external/')");
+    expect(mediaRoute).toContain('new URL(input.publicUrl, input.baseUrl)');
+    expect(mediaRoute).toContain('proxyExternalTemplateMedia({');
     expect(mediaRoute).toContain("request.headers.get('range')");
     expect(mediaRoute).toContain("'Accept-Ranges'");
     expect(mediaRoute).toContain('Content-Range');
+    expect(mediaRoute).not.toContain('buildPublicUrl');
+    expect(mediaRoute).not.toContain('falling back to public URL');
     expect(mediaRoute).not.toContain('NextResponse.redirect');
     expect(mediaRoute).not.toContain('createSignedGetUrl');
     expect(mediaRoute).not.toContain('refreshTemplateMediaCache');
     expect(mediaRoute).not.toContain('deleteTemplateMediaCacheEntries');
+  });
+
+  it('keeps bundled starter resources outside the R2 template namespace', () => {
+    const seed = readSource('lib/db/seed.ts');
+    const migration = readSource(
+      'lib/db/migrations/0030_normalize_starter_template_assets.sql'
+    );
+
+    expect(seed).toContain('external/starter/${template.seedKey}/thumbnail');
+    expect(seed).toContain('external/starter/${template.seedKey}/preview');
+    expect(seed).not.toContain('templates/starter/${template.seedKey}/thumbnail');
+    expect(seed).not.toContain('templates/starter/${template.seedKey}/preview');
+    expect(migration).toContain("old_asset.\"storage_key\" LIKE 'templates/starter/%'");
+    expect(migration).toContain("old_asset.\"public_url\" LIKE '/resources/%'");
+    expect(migration).toContain("'external/starter/'");
+    expect(migration).toContain("'archived/starter/'");
   });
 
   it('preloads template media memory cache on startup and updates it through admin template writes', () => {

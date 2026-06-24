@@ -86,6 +86,13 @@ media route. Keep list/detail APIs private, but do not send raw
 `assets.public_url` values to workbenches or Admin previews; that column is R2
 storage metadata and can point at a bucket endpoint that is not public.
 
+Template media route failures should be fixed at the asset ownership layer, not
+masked with fallback URLs. Assets whose `storage_key` starts with `templates/`
+are treated as R2 template objects and should exist in R2. Bundled starter
+examples from `public/resources/*` use `external/starter/...` storage keys so
+the explicit external/static branch serves them through `/api/template-media/*`
+without entering the R2 preload/read path.
+
 ## Migration Notes
 
 Historical migration filenames `0009_library_assets.sql`,

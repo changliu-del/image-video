@@ -37,6 +37,14 @@ for template media and `/api/asset-media/{assetId}` for user uploads/generated
 outputs. Do not fix broken workbench previews by adding signed-URL fallback
 logic to the frontend.
 
+Do not hide app media route failures by adding public-URL or signed-URL
+fallbacks. Fix the owning data/config path directly: R2-backed assets must have
+real R2 `storage_key` values under the intended namespace, while bundled static
+or external template assets must use a non-R2 prefix such as `external/` and a
+`public_url` that the explicit external-media route branch supports. Starter
+resources in `public/resources/*` are `external/starter/...` assets, not
+`templates/starter/...` R2 objects.
+
 `BASE_URL` must be the externally reachable app origin for cloud workers and
 provider callbacks. Generation provider payloads can derive absolute media URLs
 from `BASE_URL` plus the app media route.

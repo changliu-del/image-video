@@ -50,6 +50,17 @@ Fixed in this pass:
   localize it through `getTemplateCategoryLabel`.
 - Dashboard demo video loading now triggers closer to viewport entry to reduce first-navigation media contention.
 
+## 2026-06-24 Auth Refresh Fix
+
+- `proxy.ts` only checks whether a `session` cookie is present before allowing
+  protected workspace paths to continue. It must not import
+  `lib/auth/session`, verify JWTs, refresh JWT expiry, or delete invalid
+  session cookies from the proxy runtime.
+- `app/(dashboard)/layout.tsx` is `force-dynamic` and owns the real session
+  token verification through `getSessionUserId()`. This keeps JWT verification
+  in the Node runtime that signs the login cookie and avoids deploy-time
+  proxy/edge env drift causing a fresh login to be cleared on page refresh.
+
 ## 2026-06-03 Frontend Review Results
 
 Fixed in this pass:

@@ -1,6 +1,5 @@
 import { NextResponse } from 'next/server';
 import type { NextRequest } from 'next/server';
-import { signToken, verifyToken } from '@/lib/auth/session';
 
 const protectedRoutes = ['/create', '/dashboard', '/generate', '/jobs'];
 const marketingLocales = ['pt', 'en', 'zh'] as const;
@@ -79,37 +78,7 @@ export async function proxy(request: NextRequest) {
     return NextResponse.redirect(getLoginRedirect(request));
   }
 
-  let res = NextResponse.next();
-
-  const shouldRefreshSession =
-    sessionCookie && request.method === 'GET' && !pathname.startsWith('/create');
-
-  if (shouldRefreshSession) {
-    try {
-      const parsed = await verifyToken(sessionCookie.value);
-      const expiresInOneDay = new Date(Date.now() + 24 * 60 * 60 * 1000);
-
-      res.cookies.set({
-        name: 'session',
-        value: await signToken({
-          ...parsed,
-          expires: expiresInOneDay.toISOString()
-        }),
-        httpOnly: true,
-        secure: true,
-        sameSite: 'lax',
-        expires: expiresInOneDay
-      });
-    } catch (error) {
-      console.error('Error updating session:', error);
-      res.cookies.delete('session');
-      if (isProtectedRoute) {
-        return NextResponse.redirect(getLoginRedirect(request));
-      }
-    }
-  }
-
-  return res;
+  return NextResponse.next();
 }
 
 export const config = {
