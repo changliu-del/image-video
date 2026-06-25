@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import {
   AlertCircle,
   CheckCircle2,
@@ -10,6 +10,9 @@ import {
   Layers3,
   Loader2,
   Play,
+  Sparkles,
+  UserRound,
+  Video,
   X,
 } from 'lucide-react';
 
@@ -34,6 +37,11 @@ import {
 import type { DashboardLocale } from '@/lib/dashboard/content';
 import { useDashboardLocale } from '@/lib/dashboard/use-dashboard-locale';
 import { homepageWorkbenchMaterials } from '@/lib/marketing/homepage-materials';
+import {
+  localizeModelCategoryTag,
+  parseModelCategoryParts,
+  type ModelCategoryParts,
+} from '@/lib/model-assets/localization';
 import { imageToVideoTemplateCategories } from '@/lib/templates/category-config';
 import { getTemplateCategoryLabel } from '@/lib/templates/catalog';
 import {
@@ -69,6 +77,8 @@ type JobStatusResponse = {
   status?: string;
   progressLabel?: string;
   templateId?: string | null;
+  modelTemplateId?: string | null;
+  videoModelMode?: ImageVideoModelMode | string | null;
   finalVideoUrl?: string | null;
   finalImageUrl?: string | null;
   outputUrl?: string | null;
@@ -85,8 +95,54 @@ const MAX_REFERENCE_IMAGE_DIMENSION_PX = 8000;
 const MAX_REFERENCE_IMAGE_FILE_COUNT = 1;
 const ACCEPTED_IMAGE_TYPES = ['image/png', 'image/jpeg', 'image/webp'];
 const ACCEPTED_REFERENCE_IMAGE_TYPES = ACCEPTED_IMAGE_TYPES;
+const MODEL_ASSET_LIMIT = 96;
 const defaultTemplateCategory: string = imageToVideoTemplateCategories[0] ?? '';
 const LAST_IMAGE_VIDEO_TASK_KEY = 'image-video:last-task:v1';
+type ImageVideoModelMode = 'wanxiang_2_7' | 'wanxiang_2_6_first_frame';
+type ModelAgeFilter = 'all' | 'child' | 'youth' | 'middle' | 'senior';
+type ModelGenderFilter = 'all' | 'female' | 'male';
+type ModelStyleFilter = 'all' | string;
+
+type ModelTemplateItem = {
+  id: string;
+  title: string;
+  description?: string | null;
+  thumbnailUrl?: string | null;
+  imageUrl?: string | null;
+  videoUrl?: string | null;
+  categoryParts?: ModelCategoryParts;
+  tags?: string[];
+  displayTags?: string[];
+};
+
+const imageVideoModelModes: Array<{
+  value: ImageVideoModelMode;
+  icon: typeof Sparkles;
+}> = [
+  { value: 'wanxiang_2_7', icon: Sparkles },
+  { value: 'wanxiang_2_6_first_frame', icon: Video },
+];
+const modelAgeFilters: ModelAgeFilter[] = [
+  'all',
+  'child',
+  'youth',
+  'middle',
+  'senior',
+];
+const modelGenderFilters: ModelGenderFilter[] = ['all', 'female', 'male'];
+const modelAgeTags: Record<ModelAgeFilter, string | null> = {
+  all: null,
+  child: '儿童',
+  youth: '青年',
+  middle: '中年',
+  senior: '老年',
+};
+const modelGenderTags: Record<ModelGenderFilter, string | null> = {
+  all: null,
+  female: '女',
+  male: '男',
+};
+
 const materialPickerCopy = {
   pt: {
     templateLibrary: 'Templates',
@@ -169,6 +225,8 @@ type PersistedImageVideoTask = {
   durationSeconds?: number;
   prompt?: string;
   templateId?: string;
+  videoModelMode?: ImageVideoModelMode;
+  modelTemplateId?: string;
   inputAssetId?: string;
   inputImageUrl?: string | null;
   status?: JobStatusResponse | null;
@@ -243,6 +301,59 @@ async function validateReferenceFile(
   }
 
   return null;
+}
+
+function normalizeModelItems(value: unknown): ModelTemplateItem[] {
+  if (!value || typeof value !== 'object') return [];
+  const record = value as Record<string, unknown>;
+  return Array.isArray(record.items) ? (record.items as ModelTemplateItem[]) : [];
+}
+
+function getModelAssetImage(item: ModelTemplateItem | null) {
+  if (!item) return '';
+  return item.thumbnailUrl ?? item.imageUrl ?? item.videoUrl ?? '';
+}
+
+function getModelDescriptionLines(item: ModelTemplateItem | null) {
+  return (item?.description ?? '')
+    .split(/\n+/)
+    .map((line) => line.trim())
+    .filter(Boolean);
+}
+
+function modelHasTag(item: ModelTemplateItem, tag: string | null) {
+  if (!tag) return true;
+  return (item.tags ?? []).some((itemTag) => itemTag.trim() === tag);
+}
+
+function getModelCategoryParts(item: ModelTemplateItem) {
+  return (
+    item.categoryParts ?? parseModelCategoryParts((item.tags ?? []).join('/'))
+  );
+}
+
+function getModelStyleTag(item: ModelTemplateItem) {
+  return getModelCategoryParts(item).style;
+}
+
+function buildPromptWithAppearingModel(
+  prompt: string,
+  model: ModelTemplateItem | null,
+  labels: {
+    appearingModelPromptPrefix: (name: string) => string;
+  }
+) {
+  if (!model) return prompt;
+
+  const modelPromptPrefix = labels.appearingModelPromptPrefix(model.title);
+  if (prompt.includes(modelPromptPrefix)) return prompt;
+
+  const modelLines = [
+    modelPromptPrefix,
+    ...getModelDescriptionLines(model).slice(0, 2),
+  ].filter(Boolean);
+
+  return `${prompt}\n\n${modelLines.join('\n')}`.trim();
 }
 
 type ReferenceMaterialCopy = {
@@ -485,6 +596,234 @@ function TemplateDetailModal({
   );
 }
 
+function ImageVideoModelLibraryDrawer({
+  copy,
+  disabled,
+  filteredModels,
+  isLoading,
+  modelAgeFilter,
+  modelAgeOptions,
+  modelError,
+  modelGenderFilter,
+  modelGenderOptions,
+  modelStyleFilter,
+  modelStyleOptions,
+  onAgeChange,
+  onClose,
+  onGenderChange,
+  onRetry,
+  onSelect,
+  onStyleChange,
+  selectedModelAsset,
+}: {
+  copy: TemplateDetailCopy;
+  disabled?: boolean;
+  filteredModels: ModelTemplateItem[];
+  isLoading: boolean;
+  modelAgeFilter: ModelAgeFilter;
+  modelAgeOptions: Array<{ value: ModelAgeFilter; label: string }>;
+  modelError: boolean;
+  modelGenderFilter: ModelGenderFilter;
+  modelGenderOptions: Array<{ value: ModelGenderFilter; label: string }>;
+  modelStyleFilter: ModelStyleFilter;
+  modelStyleOptions: Array<{ value: ModelStyleFilter; label: string }>;
+  onAgeChange: (value: ModelAgeFilter) => void;
+  onClose: () => void;
+  onGenderChange: (value: ModelGenderFilter) => void;
+  onRetry: () => void;
+  onSelect: (model: ModelTemplateItem) => void;
+  onStyleChange: (value: ModelStyleFilter) => void;
+  selectedModelAsset: ModelTemplateItem | null;
+}) {
+  const filterRows: Array<{
+    label: string;
+    options: Array<{ value: string; label: string }>;
+    value: string;
+    onChange: (value: string) => void;
+  }> = [
+    {
+      label: copy.modelGenderFilter,
+      options: modelGenderOptions,
+      value: modelGenderFilter,
+      onChange: (value) => onGenderChange(value as ModelGenderFilter),
+    },
+    {
+      label: copy.modelStyleFilter,
+      options: modelStyleOptions,
+      value: modelStyleFilter,
+      onChange: onStyleChange,
+    },
+    {
+      label: copy.modelAgeFilter,
+      options: modelAgeOptions,
+      value: modelAgeFilter,
+      onChange: (value) => onAgeChange(value as ModelAgeFilter),
+    },
+  ];
+
+  return (
+    <div
+      className="fixed inset-0 z-50 bg-gray-950/45 backdrop-blur-sm"
+      role="dialog"
+      aria-modal="true"
+      aria-label={copy.modelLibraryTitle}
+    >
+      <div className="ml-auto flex h-full w-full max-w-xl flex-col bg-white shadow-2xl">
+        <div className="flex items-center justify-between gap-4 border-b border-gray-100 px-6 py-4">
+          <div className="min-w-0">
+            <p className="text-xs font-black uppercase text-indigo-500">
+              {copy.appearingModelAction}
+            </p>
+            <h2 className="truncate text-xl font-black text-gray-950">
+              {copy.modelLibraryTitle}
+            </h2>
+          </div>
+          <button
+            type="button"
+            aria-label={copy.close}
+            title={copy.close}
+            onClick={onClose}
+            className="grid size-9 shrink-0 place-items-center rounded-md text-gray-500 transition hover:bg-gray-100 hover:text-gray-950"
+          >
+            <X className="size-5" />
+          </button>
+        </div>
+
+        <div className="min-h-0 flex-1 overflow-y-auto px-6 py-5">
+          <div className="mb-5 space-y-3">
+            {filterRows.map((row) => (
+              <div
+                key={row.label}
+                className="grid grid-cols-[3rem_1fr] items-center gap-2"
+              >
+                <span className="text-sm font-semibold text-gray-600">
+                  {row.label}
+                </span>
+                <div className="flex flex-wrap gap-1.5">
+                  {row.options.map((option) => {
+                    const active = row.value === option.value;
+
+                    return (
+                      <button
+                        key={option.value}
+                        type="button"
+                        aria-pressed={active}
+                        disabled={disabled}
+                        onClick={() => row.onChange(option.value)}
+                        className={cn(
+                          'h-8 rounded-md px-3 text-sm font-semibold transition disabled:cursor-not-allowed disabled:opacity-60',
+                          active
+                            ? 'bg-indigo-100 text-indigo-700'
+                            : 'bg-white text-gray-600 hover:bg-gray-100 hover:text-gray-950'
+                        )}
+                      >
+                        {option.label}
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+            ))}
+          </div>
+
+          {isLoading ? (
+            <div className="flex min-h-80 items-center justify-center gap-2 rounded-lg border border-dashed border-gray-200 text-sm font-semibold text-gray-400">
+              <Loader2 className="size-4 animate-spin" />
+              {copy.loadingModels}
+            </div>
+          ) : modelError ? (
+            <div className="grid min-h-80 place-items-center rounded-lg border border-red-100 bg-red-50 p-6 text-center">
+              <div>
+                <AlertCircle className="mx-auto size-7 text-red-500" />
+                <p className="mt-3 text-sm font-semibold text-red-700">
+                  {copy.modelLibraryError}
+                </p>
+                <button
+                  type="button"
+                  onClick={onRetry}
+                  className="mt-4 h-9 rounded-md bg-white px-4 text-sm font-bold text-red-600 shadow-sm ring-1 ring-red-100"
+                >
+                  {copy.retryModels}
+                </button>
+              </div>
+            </div>
+          ) : filteredModels.length === 0 ? (
+            <div className="grid min-h-80 place-items-center rounded-lg border border-dashed border-gray-200 p-6 text-center text-sm font-semibold text-gray-400">
+              {copy.noFilteredModels}
+            </div>
+          ) : (
+            <div className="grid grid-cols-3 gap-4 pb-6">
+              {filteredModels.map((model) => {
+                const image = getModelAssetImage(model);
+                const active = selectedModelAsset?.id === model.id;
+
+                return (
+                  <button
+                    key={model.id}
+                    type="button"
+                    disabled={disabled}
+                    title={model.description ?? model.title}
+                    onClick={() => onSelect(model)}
+                    className="group min-w-0 text-center disabled:cursor-not-allowed disabled:opacity-60"
+                  >
+                    <span className="relative block">
+                      <span
+                        className={cn(
+                          'block aspect-[4/5] overflow-hidden rounded-lg border bg-gray-100 transition group-hover:border-indigo-300',
+                          active
+                            ? 'border-indigo-500 ring-2 ring-indigo-100'
+                            : 'border-gray-200'
+                        )}
+                      >
+                        {model.videoUrl && image === model.videoUrl ? (
+                          <video
+                            src={image}
+                            muted
+                            playsInline
+                            preload="metadata"
+                            className="size-full object-cover"
+                          />
+                        ) : image ? (
+                          <img
+                            src={image}
+                            alt=""
+                            className="size-full object-cover"
+                            loading="lazy"
+                            decoding="async"
+                          />
+                        ) : (
+                          <span className="grid size-full place-items-center text-gray-300">
+                            <UserRound className="size-6" />
+                          </span>
+                        )}
+                      </span>
+                      {active ? (
+                        <span className="absolute right-2 top-2 grid size-6 place-items-center rounded-full bg-indigo-600 text-white shadow-sm">
+                          <CheckCircle2 className="size-4" />
+                        </span>
+                      ) : null}
+                    </span>
+                    <span
+                      className={cn(
+                        'mt-2 block truncate text-xs font-semibold transition',
+                        active
+                          ? 'text-indigo-600'
+                          : 'text-gray-600 group-hover:text-indigo-600'
+                      )}
+                    >
+                      {model.title}
+                    </span>
+                  </button>
+                );
+              })}
+            </div>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+}
+
 function TaskFlowDrawer({
   copy,
   inputPreview,
@@ -666,6 +1005,12 @@ function normalizeDurationSeconds(value: unknown) {
   );
 }
 
+function normalizeImageVideoModelMode(value: unknown): ImageVideoModelMode {
+  return value === 'wanxiang_2_7'
+    ? 'wanxiang_2_7'
+    : 'wanxiang_2_6_first_frame';
+}
+
 function readPersistedImageVideoTask() {
   if (typeof window === 'undefined') return null;
 
@@ -682,6 +1027,11 @@ function readPersistedImageVideoTask() {
       prompt: typeof task.prompt === 'string' ? task.prompt : undefined,
       templateId:
         typeof task.templateId === 'string' ? task.templateId : undefined,
+      videoModelMode: normalizeImageVideoModelMode(task.videoModelMode),
+      modelTemplateId:
+        typeof task.modelTemplateId === 'string'
+          ? task.modelTemplateId
+          : undefined,
       inputAssetId:
         typeof task.inputAssetId === 'string' ? task.inputAssetId : undefined,
       inputImageUrl:
@@ -852,8 +1202,22 @@ export function ImageVideoWorkbench({
   const [durationSeconds, setDurationSeconds] = useState(
     IMAGE_TO_VIDEO_DURATION_SECONDS
   );
+  const [selectedVideoModelMode, setSelectedVideoModelMode] =
+    useState<ImageVideoModelMode>('wanxiang_2_6_first_frame');
   const [isReferencePanelOpen, setIsReferencePanelOpen] = useState(false);
+  const [isModelLibraryOpen, setIsModelLibraryOpen] = useState(false);
   const [referenceImageFiles, setReferenceImageFiles] = useState<File[]>([]);
+  const [modelAssets, setModelAssets] = useState<ModelTemplateItem[]>([]);
+  const [selectedModelAsset, setSelectedModelAsset] =
+    useState<ModelTemplateItem | null>(null);
+  const [modelAgeFilter, setModelAgeFilter] = useState<ModelAgeFilter>('all');
+  const [modelGenderFilter, setModelGenderFilter] =
+    useState<ModelGenderFilter>('all');
+  const [modelStyleFilter, setModelStyleFilter] =
+    useState<ModelStyleFilter>('all');
+  const [isLoadingModels, setIsLoadingModels] = useState(false);
+  const [modelError, setModelError] = useState(false);
+  const [modelReloadKey, setModelReloadKey] = useState(0);
   const [selectedInputAssetId, setSelectedInputAssetId] = useState<string | null>(
     null
   );
@@ -892,6 +1256,7 @@ export function ImageVideoWorkbench({
   const selectedResultUrl = resultUrl(jobStatus);
   const selectedTemplateId =
     selectedTemplate?.id == null ? '' : String(selectedTemplate.id);
+  const selectedModelImage = getModelAssetImage(selectedModelAsset);
   const hasLocalReferenceImage = referenceImageFiles.length > 0;
   const primarySourcePreview =
     sourcePreviews[0] ??
@@ -902,6 +1267,43 @@ export function ImageVideoWorkbench({
     (referenceImageFiles.length || selectedInputAssetId) &&
       trimmedPrompt &&
       !isSubmitting
+  );
+  const modelAgeOptions = modelAgeFilters.map((value) => ({
+    value,
+    label: copy.modelAgeOptions[value],
+  }));
+  const modelGenderOptions = modelGenderFilters.map((value) => ({
+    value,
+    label: copy.modelGenderOptions[value],
+  }));
+  const modelStyleOptions = useMemo(() => {
+    const styles = Array.from(
+      new Set(modelAssets.map(getModelStyleTag).filter(Boolean))
+    );
+
+    return [
+      {
+        value: 'all',
+        label: copy.modelAgeOptions.all,
+      },
+      ...styles.map((style) => ({
+        value: style,
+        label: localizeModelCategoryTag(style, locale) || style,
+      })),
+    ];
+  }, [copy.modelAgeOptions.all, locale, modelAssets]);
+  const filteredModelAssets = useMemo(
+    () =>
+      modelAssets.filter(
+        (model) =>
+          modelHasTag(model, modelAgeTags[modelAgeFilter]) &&
+          modelHasTag(model, modelGenderTags[modelGenderFilter]) &&
+          modelHasTag(
+            model,
+            modelStyleFilter === 'all' ? null : modelStyleFilter
+          )
+      ),
+    [modelAgeFilter, modelAssets, modelGenderFilter, modelStyleFilter]
   );
 
   useEffect(() => {
@@ -927,6 +1329,7 @@ export function ImageVideoWorkbench({
     setJobId(task.jobId);
     setJobStatus(task.status ?? null);
     if (task.durationSeconds) setDurationSeconds(task.durationSeconds);
+    if (task.videoModelMode) setSelectedVideoModelMode(task.videoModelMode);
     if (task.prompt) setPrompt(task.prompt);
     if (task.templateId) {
       setSelectedTemplate((current) => ({
@@ -952,6 +1355,11 @@ export function ImageVideoWorkbench({
         setJobStatus(nextStatus);
         if (nextStatus.durationSeconds) {
           setDurationSeconds(normalizeDurationSeconds(nextStatus.durationSeconds));
+        }
+        if (nextStatus.videoModelMode) {
+          setSelectedVideoModelMode(
+            normalizeImageVideoModelMode(nextStatus.videoModelMode)
+          );
         }
 
         if (nextStatus.prompt) setPrompt(nextStatus.prompt);
@@ -1000,6 +1408,11 @@ export function ImageVideoWorkbench({
       ),
       prompt: trimmedPrompt,
       templateId: selectedTemplateId || jobStatus?.templateId || undefined,
+      videoModelMode: normalizeImageVideoModelMode(
+        jobStatus?.videoModelMode ?? selectedVideoModelMode
+      ),
+      modelTemplateId:
+        selectedModelAsset?.id ?? jobStatus?.modelTemplateId ?? undefined,
       inputAssetId: selectedInputAssetId ?? jobStatus?.inputAssetId ?? undefined,
       inputImageUrl: selectedInputImageUrl ?? inputImageUrl(jobStatus),
       status: jobStatus,
@@ -1011,7 +1424,9 @@ export function ImageVideoWorkbench({
     jobStatus,
     selectedInputAssetId,
     selectedInputImageUrl,
+    selectedModelAsset,
     selectedTemplateId,
+    selectedVideoModelMode,
     trimmedPrompt,
   ]);
 
@@ -1085,6 +1500,52 @@ export function ImageVideoWorkbench({
       controller.abort();
     };
   }, [locale, requestedTemplateId, templateCategory, templateReloadKey]);
+
+  useEffect(() => {
+    if (!isModelLibraryOpen) return;
+
+    let cancelled = false;
+    const controller = new AbortController();
+
+    async function loadModels() {
+      setIsLoadingModels(true);
+      setModelError(false);
+
+      try {
+        const params = new URLSearchParams({
+          locale,
+          limit: String(MODEL_ASSET_LIMIT),
+        });
+        const response = await fetch(`/api/model-assets?${params.toString()}`, {
+          signal: controller.signal,
+        });
+
+        if (!response.ok) {
+          throw new Error('model-load-failed');
+        }
+
+        const nextModelAssets = normalizeModelItems(await response.json());
+        if (!cancelled) {
+          setModelAssets(nextModelAssets);
+        }
+      } catch {
+        if (!cancelled) {
+          setModelAssets([]);
+          setModelError(true);
+        }
+      } finally {
+        if (!cancelled) {
+          setIsLoadingModels(false);
+        }
+      }
+    }
+
+    void loadModels();
+    return () => {
+      cancelled = true;
+      controller.abort();
+    };
+  }, [isModelLibraryOpen, locale, modelReloadKey]);
 
   useEffect(() => {
     if (!requestedTemplateId || starterPrompt) return;
@@ -1183,6 +1644,11 @@ export function ImageVideoWorkbench({
           if (nextStatus.durationSeconds) {
             setDurationSeconds(
               normalizeDurationSeconds(nextStatus.durationSeconds)
+            );
+          }
+          if (nextStatus.videoModelMode) {
+            setSelectedVideoModelMode(
+              normalizeImageVideoModelMode(nextStatus.videoModelMode)
             );
           }
           if (
@@ -1290,6 +1756,12 @@ export function ImageVideoWorkbench({
     closeTemplateDetail();
   }
 
+  function selectAppearingModel(model: ModelTemplateItem) {
+    setError(null);
+    setSelectedModelAsset(model);
+    setIsModelLibraryOpen(false);
+  }
+
   async function handleSubmit(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
 
@@ -1332,16 +1804,26 @@ export function ImageVideoWorkbench({
         throw new Error(commonCopy.imageSaveError);
       }
 
+      const generationPrompt = buildPromptWithAppearingModel(
+        trimmedPrompt,
+        selectedModelAsset,
+        copy
+      );
+
       setSubmitLabel(copy.startingGeneration);
       const generation = await postJson<GenerationResponse>(
         '/api/generations',
         {
           generationType: 'image_to_video',
           durationSeconds,
+          videoModelMode: selectedVideoModelMode,
           inputAssetId,
           ...(inputAssetIds.length > 1 ? { inputAssetIds } : {}),
+          ...(selectedModelAsset?.id
+            ? { modelTemplateId: selectedModelAsset.id }
+            : {}),
           ...(selectedTemplateId ? { templateId: selectedTemplateId } : {}),
-          prompt: trimmedPrompt,
+          prompt: generationPrompt,
         },
         commonCopy.generationStartError
       );
@@ -1363,10 +1845,12 @@ export function ImageVideoWorkbench({
         inputAssetIds,
         inputImageUrl: nextInputImageUrl,
         inputImageUrls: nextInputImageUrl ? [nextInputImageUrl] : [],
-        prompt: trimmedPrompt,
+        prompt: generationPrompt,
         status: generation.status ?? 'queued',
         progressLabel: commonCopy.queued,
         templateId: selectedTemplateId || null,
+        modelTemplateId: selectedModelAsset?.id ?? null,
+        videoModelMode: selectedVideoModelMode,
       });
     } catch (submitError) {
       setError(
@@ -1423,6 +1907,42 @@ export function ImageVideoWorkbench({
           required
           hint={copy.referenceHint}
         >
+          <div className="mb-3 grid grid-cols-2 gap-2">
+            {imageVideoModelModes.map((option) => {
+              const modelCopy = copy.modelModes[option.value];
+              const Icon = option.icon;
+              const active = selectedVideoModelMode === option.value;
+
+              return (
+                <button
+                  key={option.value}
+                  type="button"
+                  disabled={isSubmitting}
+                  aria-pressed={active}
+                  onClick={() => setSelectedVideoModelMode(option.value)}
+                  className={cn(
+                    'min-h-20 rounded-lg border p-3 text-left transition disabled:cursor-not-allowed disabled:opacity-60',
+                    active
+                      ? 'border-indigo-500 bg-indigo-50 text-indigo-700 ring-2 ring-indigo-100'
+                      : 'border-gray-200 bg-white text-gray-700 hover:border-indigo-200 hover:bg-indigo-50/40'
+                  )}
+                >
+                  <span className="flex items-center gap-2">
+                    <Icon className="size-4 shrink-0" />
+                    <span className="truncate text-[11px] font-black uppercase">
+                      {modelCopy.eyebrow}
+                    </span>
+                  </span>
+                  <span className="mt-2 block truncate text-sm font-black">
+                    {modelCopy.title}
+                  </span>
+                  <span className="mt-1 block text-xs font-semibold leading-4 text-gray-500">
+                    {modelCopy.description}
+                  </span>
+                </button>
+              );
+            })}
+          </div>
           <textarea
             id="image-video-prompt"
             value={prompt}
@@ -1467,12 +1987,12 @@ export function ImageVideoWorkbench({
               </span>
             </div>
           </div>
-          <div className="mt-3">
+          <div className="mt-3 grid grid-cols-2 gap-2">
             <button
               type="button"
               onClick={() => setIsReferencePanelOpen(true)}
               className={cn(
-                'inline-flex h-10 w-full items-center justify-center gap-1.5 rounded-lg px-1.5 text-xs font-bold shadow-sm ring-1 transition sm:text-sm',
+                'inline-flex min-h-12 w-full items-center justify-center gap-1.5 rounded-lg px-2 text-xs font-bold shadow-sm ring-1 transition sm:text-sm',
                 isReferencePanelOpen
                   ? 'bg-indigo-50 text-indigo-700 ring-indigo-100'
                   : 'bg-white text-gray-800 ring-gray-100'
@@ -1480,6 +2000,30 @@ export function ImageVideoWorkbench({
             >
               <FolderOpen className="size-4" />
               <span className="truncate">{copy.materialAction}</span>
+            </button>
+            <button
+              type="button"
+              onClick={() => setIsModelLibraryOpen(true)}
+              disabled={isSubmitting}
+              className={cn(
+                'inline-flex min-h-12 w-full items-center justify-center gap-2 rounded-lg px-2 text-xs font-bold shadow-sm ring-1 transition disabled:cursor-not-allowed disabled:opacity-60 sm:text-sm',
+                selectedModelAsset
+                  ? 'bg-indigo-50 text-indigo-700 ring-indigo-100'
+                  : 'bg-white text-gray-800 ring-gray-100 hover:bg-indigo-50 hover:text-indigo-700'
+              )}
+            >
+              {selectedModelImage ? (
+                <img
+                  src={selectedModelImage}
+                  alt=""
+                  className="size-7 shrink-0 rounded-md object-cover"
+                />
+              ) : (
+                <UserRound className="size-4 shrink-0" />
+              )}
+              <span className="truncate">
+                {selectedModelAsset?.title ?? copy.appearingModelAction}
+              </span>
             </button>
           </div>
           {primarySourcePreview ? (
@@ -1510,6 +2054,38 @@ export function ImageVideoWorkbench({
                 disabled={isSubmitting}
                 className="grid size-8 shrink-0 place-items-center rounded-md text-gray-400 transition hover:bg-gray-100 hover:text-gray-700 disabled:cursor-not-allowed disabled:opacity-50"
                 aria-label={copy.removeReferenceImage}
+              >
+                <X className="size-4" />
+              </button>
+            </div>
+          ) : null}
+          {selectedModelAsset ? (
+            <div className="mt-3 flex items-center gap-3 rounded-lg border border-indigo-100 bg-indigo-50 p-2 shadow-sm">
+              {selectedModelImage ? (
+                <img
+                  src={selectedModelImage}
+                  alt=""
+                  className="size-14 shrink-0 rounded-md bg-white object-cover"
+                />
+              ) : (
+                <span className="grid size-14 shrink-0 place-items-center rounded-md bg-white text-indigo-300">
+                  <UserRound className="size-6" />
+                </span>
+              )}
+              <div className="min-w-0 flex-1">
+                <p className="truncate text-xs font-black text-indigo-900">
+                  {copy.selectedAppearingModel}
+                </p>
+                <p className="mt-1 truncate text-xs font-semibold text-indigo-500">
+                  {selectedModelAsset.title}
+                </p>
+              </div>
+              <button
+                type="button"
+                onClick={() => setSelectedModelAsset(null)}
+                disabled={isSubmitting}
+                className="grid size-8 shrink-0 place-items-center rounded-md text-indigo-400 transition hover:bg-white hover:text-indigo-700 disabled:cursor-not-allowed disabled:opacity-50"
+                aria-label={copy.removeAppearingModel}
               >
                 <X className="size-4" />
               </button>
@@ -1783,6 +2359,29 @@ export function ImageVideoWorkbench({
           onClose={closeTemplateDetail}
           onRetry={() => setTemplateDetailReloadKey((value) => value + 1)}
           template={detailTemplate}
+        />
+      ) : null}
+
+      {isModelLibraryOpen ? (
+        <ImageVideoModelLibraryDrawer
+          copy={copy}
+          disabled={isSubmitting}
+          filteredModels={filteredModelAssets}
+          isLoading={isLoadingModels}
+          modelAgeFilter={modelAgeFilter}
+          modelAgeOptions={modelAgeOptions}
+          modelError={modelError}
+          modelGenderFilter={modelGenderFilter}
+          modelGenderOptions={modelGenderOptions}
+          modelStyleFilter={modelStyleFilter}
+          modelStyleOptions={modelStyleOptions}
+          onAgeChange={setModelAgeFilter}
+          onClose={() => setIsModelLibraryOpen(false)}
+          onGenderChange={setModelGenderFilter}
+          onRetry={() => setModelReloadKey((value) => value + 1)}
+          onSelect={selectAppearingModel}
+          onStyleChange={setModelStyleFilter}
+          selectedModelAsset={selectedModelAsset}
         />
       ) : null}
     </form>

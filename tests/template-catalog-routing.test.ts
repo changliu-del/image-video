@@ -404,6 +404,22 @@ describe('template catalog routing contract', () => {
     expect(source).not.toContain('flex-wrap items-center gap-2 rounded-xl border border-gray-200 bg-gray-100');
   });
 
+  it('exposes image-to-video model modes and appearing model library selection', () => {
+    const source = readSource('components/create/image-video-workbench.tsx');
+    const copy = readSource('components/create/workbench-copy.ts');
+
+    expect(source).toContain('imageVideoModelModes');
+    expect(source).toContain('wanxiang_2_7');
+    expect(source).toContain('wanxiang_2_6_first_frame');
+    expect(source).toContain('/api/model-assets?');
+    expect(source).toContain('ImageVideoModelLibraryDrawer');
+    expect(source).toContain('modelTemplateId: selectedModelAsset.id');
+    expect(source).toContain('videoModelMode: selectedVideoModelMode');
+    expect(copy).toContain('2.7 万相');
+    expect(copy).toContain('2.6 模型-首帧');
+    expect(copy).toContain('出镜模特');
+  });
+
   it('keeps image reference upload single-select in the image-to-video workbench', () => {
     const source = readSource('components/create/image-video-workbench.tsx');
     const copy = readSource('components/create/workbench-copy.ts');

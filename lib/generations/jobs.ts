@@ -132,6 +132,8 @@ type JobStatusRecord = {
   durationSeconds: number | null;
   tryOnMode: TryOnMode | null;
   templateId: string | null;
+  modelTemplateId: string | null;
+  videoModelMode: string | null;
   prompt: string | null;
   inputAssetId: string;
   inputAssetIds: string[];
@@ -1745,6 +1747,8 @@ async function mapJobStatus(job: GenerationJobRecord): Promise<JobStatusRecord> 
     durationSeconds: getDurationSecondsFromInput(job.inputJson),
     tryOnMode: getTryOnModeFromInput(job.inputJson),
     templateId: getStringFromInput(job.inputJson, 'templateId'),
+    modelTemplateId: getStringFromInput(job.inputJson, 'modelTemplateId'),
+    videoModelMode: getStringFromInput(job.inputJson, 'videoModelMode'),
     prompt: getStringFromInput(job.inputJson, 'prompt'),
     inputAssetId: primaryInputAssetId,
     inputAssetIds,

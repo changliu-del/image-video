@@ -129,11 +129,15 @@ describe('imageToVideoGenerationRequestSchema', () => {
   it('accepts template metadata and defaults image-to-video to 5s', () => {
     const parsed = imageToVideoGenerationRequestSchema.parse({
       ...validImageToVideoRequest,
+      modelTemplateId: '789',
       templateId: '456',
+      videoModelMode: 'wanxiang_2_7',
     });
 
     expect(parsed.prompt).toBe(validImageToVideoRequest.prompt);
     expect(parsed.templateId).toBe('456');
+    expect(parsed.modelTemplateId).toBe('789');
+    expect(parsed.videoModelMode).toBe('wanxiang_2_7');
     expect(parsed.durationSeconds).toBe(IMAGE_TO_VIDEO_DURATION_SECONDS);
   });
 

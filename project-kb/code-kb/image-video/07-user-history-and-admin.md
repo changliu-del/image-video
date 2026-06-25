@@ -38,7 +38,11 @@ allows only `user_upload`, `generated_image`, and `generated_video`.
 
 ## Workbench Behavior
 
-- `/create/video` uses templates plus the user's private history.
+- `/create/video` uses image-to-video templates, a single uploaded or selected
+  first-frame image, and an optional appearing model selected from
+  `/api/model-assets` (`templates.type = 'model'`). The model selection is
+  stored as generation metadata and appended to the prompt context; the current
+  Wanxiang image-to-video provider path still consumes one first-frame image.
 - `/create/apparel` uses templates plus the user's private history.
 - `/create/try-on` uses `/api/model-assets`, backed by `templates` rows where
   `type = 'model'`, for model selection plus the user's private garment/history
