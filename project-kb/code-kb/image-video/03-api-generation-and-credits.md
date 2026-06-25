@@ -10,7 +10,7 @@ Updated: 2026-06-11
 - Generation types: `image_to_video`, `apparel_image`, `try_on`.
 - Legacy `image-to-video` alias.
 - Optional workbench field: `templateId`.
-- `image_to_video` is fixed to one image input, a required prompt, and 5 seconds. Frontend requests should not send `durationSeconds`; the backend only accepts a legacy `durationSeconds = 5` value for compatibility and rejects any other duration.
+- `image_to_video` uses one image input, a required prompt, and a selectable integer `durationSeconds` from 5 to 15. Missing duration defaults to 5 seconds for compatibility.
 - Apparel controls: `strength`, `variants`.
 - Try-on modes: `single`, `multi`.
 
@@ -45,7 +45,7 @@ Updated: 2026-06-03
 
 Generation credit cost is currently:
 
-- Image-to-video fixed 5s: 10 credits.
+- Image-to-video 5-15s: 2 credits per second; default 5s costs 10 credits.
 - Apparel image: 5 credits.
 - Try-on single: 5 credits.
 - Try-on multi: 10 credits.

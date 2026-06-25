@@ -86,10 +86,9 @@ The provider URL is an intermediate worker result only; successful jobs copy the
 final image/video bytes into Cloudflare R2 and expose the owned asset through
 the app media route wherever the app displays or records the output.
 Try-on mode, template id, prompt, and similar request context stay in
-`input_json`; image-to-video duration is normalized internally to the fixed 5s
-provider capability rather than exposed as a user setting. The task table itself
-keeps only lifecycle, provider tracking, credits, and input/output asset
-references.
+`input_json`; image-to-video duration is a user-selectable 5-15s integer and is
+stored there as `durationSeconds`. The task table itself keeps only lifecycle,
+provider tracking, credits, and input/output asset references.
 
 ## Media URL Ownership
 

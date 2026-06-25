@@ -3,6 +3,8 @@ import { describe, expect, it } from 'vitest';
 import {
   ALLOWED_UPLOAD_MIME_TYPES,
   IMAGE_TO_VIDEO_DURATION_SECONDS,
+  IMAGE_TO_VIDEO_MAX_DURATION_SECONDS,
+  IMAGE_TO_VIDEO_MIN_DURATION_SECONDS,
   MAX_TEXT_TO_IMAGE_PROMPT_LENGTH,
   MAX_UPLOAD_SIZE_BYTES,
   apparelImageGenerationRequestSchema,
@@ -56,7 +58,7 @@ describe('presignAssetRequestSchema', () => {
 });
 
 describe('imageToVideoGenerationRequestSchema', () => {
-  it('defaults image-to-video to the fixed 5s duration and maps it to fixed credit cost', () => {
+  it('defaults image-to-video to 5s and maps duration to credit cost', () => {
     const parsed = imageToVideoGenerationRequestSchema.parse(
       validImageToVideoRequest
     );
@@ -67,25 +69,45 @@ describe('imageToVideoGenerationRequestSchema', () => {
     expect(getCreditCostForGeneration(parsed)).toBe(10);
   });
 
-  it('rejects non-5s image-to-video durations', () => {
+  it('accepts 5-15s image-to-video durations and scales credit cost', () => {
+    const tenSecondVideo = imageToVideoGenerationRequestSchema.parse({
+      ...validImageToVideoRequest,
+      durationSeconds: 10,
+    });
+    const fifteenSecondVideo = imageToVideoGenerationRequestSchema.parse({
+      ...validImageToVideoRequest,
+      durationSeconds: String(IMAGE_TO_VIDEO_MAX_DURATION_SECONDS),
+    });
+
+    expect(tenSecondVideo.durationSeconds).toBe(10);
+    expect(fifteenSecondVideo.durationSeconds).toBe(
+      IMAGE_TO_VIDEO_MAX_DURATION_SECONDS
+    );
+    expect(getCreditCostForGeneration(tenSecondVideo)).toBe(20);
+    expect(getCreditCostForGeneration(fifteenSecondVideo)).toBe(30);
+  });
+
+  it('rejects image-to-video durations outside the 5-15s range', () => {
     expect(
       imageToVideoGenerationRequestSchema.safeParse({
         ...validImageToVideoRequest,
-        durationSeconds: 4,
+        durationSeconds: IMAGE_TO_VIDEO_MIN_DURATION_SECONDS - 1,
       }).success
     ).toBe(false);
     expect(
       imageToVideoGenerationRequestSchema.safeParse({
         ...validImageToVideoRequest,
-        durationSeconds: 10,
+        durationSeconds: IMAGE_TO_VIDEO_MAX_DURATION_SECONDS + 1,
       }).success
     ).toBe(false);
-    expect(() => getCreditCostForDuration(10)).toThrow(
-      'Unsupported generation duration: 10'
+    expect(() =>
+      getCreditCostForDuration(IMAGE_TO_VIDEO_MAX_DURATION_SECONDS + 1)
+    ).toThrow(
+      `Unsupported generation duration: ${IMAGE_TO_VIDEO_MAX_DURATION_SECONDS + 1}`
     );
   });
 
-  it('accepts only the legacy fixed 5s duration from old payloads', () => {
+  it('accepts legacy 5s duration from old payloads', () => {
     const parsed = imageToVideoGenerationRequestSchema.parse({
       ...validImageToVideoRequest,
       durationSeconds: String(IMAGE_TO_VIDEO_DURATION_SECONDS),

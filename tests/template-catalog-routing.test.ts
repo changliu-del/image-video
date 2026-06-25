@@ -385,12 +385,17 @@ describe('template catalog routing contract', () => {
     expect(source).not.toContain('absolute inset-x-1 bottom-1');
   });
 
-  it('keeps image-to-video fixed to the current provider capability', () => {
+  it('exposes 5-15s image-to-video duration while keeping unsupported media controls hidden', () => {
     const source = readSource('components/create/image-video-workbench.tsx');
+    const copy = readSource('components/create/workbench-copy.ts');
 
-    expect(source).not.toContain('IMAGE_TO_VIDEO_DURATION_SECONDS');
-    expect(source).not.toContain('durationSeconds:');
-    expect(source).not.toContain('getCreditCostForDuration');
+    expect(source).toContain('IMAGE_TO_VIDEO_MIN_DURATION_SECONDS');
+    expect(source).toContain('IMAGE_TO_VIDEO_MAX_DURATION_SECONDS');
+    expect(source).toContain('durationSeconds');
+    expect(source).toContain('type="range"');
+    expect(source).toContain('getCreditCostForDuration(durationSeconds)');
+    expect(copy).toContain('durationLabel');
+    expect(copy).toContain('durationValue');
     expect(source).not.toContain("type SpecsSection = 'aspect' | 'duration' | 'quality'");
     expect(source).not.toContain("onClick={() => openSpecsSection('duration')}");
     expect(source).not.toContain("onClick={() => openSpecsSection('quality')}");

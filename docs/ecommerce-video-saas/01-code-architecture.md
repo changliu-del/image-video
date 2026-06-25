@@ -418,7 +418,7 @@ lib/providers/wanxiang/models.ts
 输入：
 
 ```text
-image_to_video: one imageUrl, prompt; output is fixed 5s with no duration field
+image_to_video: one imageUrl, prompt, durationSeconds from 5 to 15
 apparel_image: imageUrl, prompt, strength, variants
 try_on: modelUrl, garment image URLs, mode, aspectRatio
 ```

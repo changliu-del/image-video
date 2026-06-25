@@ -6,7 +6,6 @@ import {
   submitCloth
 } from '../lib/providers/wanxiang/cloth';
 import {
-  DEFAULT_WANXIANG_IMAGE_TO_VIDEO_DURATION_SECONDS,
   DEFAULT_WANXIANG_IMAGE_TO_VIDEO_MODEL,
   DEFAULT_WANXIANG_IMAGE_TO_VIDEO_RESOLUTION,
   queryImageToVideo,
@@ -224,7 +223,7 @@ describe('Wanxiang capability exports', () => {
       {
         inputImageUrl: 'https://img.test/product.png',
         prompt: '模特转动身体展示衣服',
-        durationSeconds: DEFAULT_WANXIANG_IMAGE_TO_VIDEO_DURATION_SECONDS,
+        durationSeconds: 12,
         metadata: { jobId: 'local-job' }
       },
       { fetch: fetchMock }
@@ -247,7 +246,7 @@ describe('Wanxiang capability exports', () => {
           },
           parameters: {
             resolution: DEFAULT_WANXIANG_IMAGE_TO_VIDEO_RESOLUTION,
-            duration: DEFAULT_WANXIANG_IMAGE_TO_VIDEO_DURATION_SECONDS,
+            duration: 12,
             prompt_extend: true,
             audio: false
           }

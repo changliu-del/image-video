@@ -120,6 +120,8 @@ export const imageVideoWorkbenchCopy = {
     videoTab: 'Video de produto',
     referenceVideo: 'Referencia criativa',
     referenceHint: 'Alta fidelidade do produto, otimo para criativos em escala',
+    durationLabel: 'Duracao',
+    durationValue: (seconds: number) => `${seconds}s`,
     promptPlaceholder:
       'Descreva o movimento, por exemplo: produto em destaque, camera lenta, luz natural, fundo brasileiro.',
     promptPresets: [
@@ -174,6 +176,8 @@ export const imageVideoWorkbenchCopy = {
     videoTab: 'Product video',
     referenceVideo: 'Creative reference',
     referenceHint: 'High product fidelity, efficient creative replication',
+    durationLabel: 'Duration',
+    durationValue: (seconds: number) => `${seconds}s`,
     promptPlaceholder:
       'Describe motion, for example: hero product shot, slow camera, natural light, Brazilian backdrop.',
     promptPresets: [
@@ -228,6 +232,8 @@ export const imageVideoWorkbenchCopy = {
     videoTab: '商品视频',
     referenceVideo: '创意参考',
     referenceHint: '商品高还原，爆款创意高效复刻',
+    durationLabel: '视频时长',
+    durationValue: (seconds: number) => `${seconds}秒`,
     promptPlaceholder:
       '例如：商品缓慢旋转展示细节，镜头稳定，颜色、材质和图案保持一致。',
     promptPresets: [

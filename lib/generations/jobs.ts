@@ -129,6 +129,7 @@ type JobStatusRecord = {
   id: string;
   generationId: string;
   generationType: GenerationType;
+  durationSeconds: number | null;
   tryOnMode: TryOnMode | null;
   templateId: string | null;
   prompt: string | null;
@@ -375,6 +376,11 @@ function buildProviderResultStorageKey(input: {
 function getTryOnModeFromInput(input: Record<string, unknown>) {
   const mode = input.tryOnMode ?? input.mode;
   return mode === 'single' || mode === 'multi' ? mode : null;
+}
+
+function getDurationSecondsFromInput(input: Record<string, unknown>) {
+  const duration = Number(input.durationSeconds);
+  return Number.isInteger(duration) ? duration : null;
 }
 
 function getStringFromInput(
@@ -1736,6 +1742,7 @@ async function mapJobStatus(job: GenerationJobRecord): Promise<JobStatusRecord> 
     id: job.id,
     generationId: job.id,
     generationType: job.generationType,
+    durationSeconds: getDurationSecondsFromInput(job.inputJson),
     tryOnMode: getTryOnModeFromInput(job.inputJson),
     templateId: getStringFromInput(job.inputJson, 'templateId'),
     prompt: getStringFromInput(job.inputJson, 'prompt'),

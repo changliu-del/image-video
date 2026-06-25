@@ -25,6 +25,12 @@ import {
   imageVideoWorkbenchCopy,
 } from '@/components/create/workbench-copy';
 import { refreshDashboardUser } from '@/lib/dashboard/user-cache';
+import {
+  IMAGE_TO_VIDEO_DURATION_SECONDS,
+  IMAGE_TO_VIDEO_MAX_DURATION_SECONDS,
+  IMAGE_TO_VIDEO_MIN_DURATION_SECONDS,
+  getCreditCostForDuration,
+} from '@/lib/generations/credit-costs';
 import type { DashboardLocale } from '@/lib/dashboard/content';
 import { useDashboardLocale } from '@/lib/dashboard/use-dashboard-locale';
 import { homepageWorkbenchMaterials } from '@/lib/marketing/homepage-materials';
@@ -54,6 +60,7 @@ type GenerationResponse = {
 type JobStatusResponse = {
   id?: string;
   generationType?: string;
+  durationSeconds?: number | null;
   inputAssetId?: string | null;
   inputAssetIds?: string[];
   inputImageUrl?: string | null;
@@ -159,6 +166,7 @@ const taskFlowPanelCopy = {
 
 type PersistedImageVideoTask = {
   jobId: string;
+  durationSeconds?: number;
   prompt?: string;
   templateId?: string;
   inputAssetId?: string;
@@ -645,6 +653,19 @@ function inputImageUrl(status: JobStatusResponse | null) {
   return status?.inputImageUrl ?? status?.inputImageUrls?.[0] ?? null;
 }
 
+function normalizeDurationSeconds(value: unknown) {
+  const duration = Number(value);
+
+  if (!Number.isInteger(duration)) {
+    return IMAGE_TO_VIDEO_DURATION_SECONDS;
+  }
+
+  return Math.min(
+    IMAGE_TO_VIDEO_MAX_DURATION_SECONDS,
+    Math.max(IMAGE_TO_VIDEO_MIN_DURATION_SECONDS, duration)
+  );
+}
+
 function readPersistedImageVideoTask() {
   if (typeof window === 'undefined') return null;
 
@@ -657,6 +678,7 @@ function readPersistedImageVideoTask() {
 
     return {
       jobId: task.jobId,
+      durationSeconds: normalizeDurationSeconds(task.durationSeconds),
       prompt: typeof task.prompt === 'string' ? task.prompt : undefined,
       templateId:
         typeof task.templateId === 'string' ? task.templateId : undefined,
@@ -827,6 +849,9 @@ export function ImageVideoWorkbench({
   const [prompt, setPrompt] = useState(
     () => starterPrompt || copy.promptPresets[0]
   );
+  const [durationSeconds, setDurationSeconds] = useState(
+    IMAGE_TO_VIDEO_DURATION_SECONDS
+  );
   const [isReferencePanelOpen, setIsReferencePanelOpen] = useState(false);
   const [referenceImageFiles, setReferenceImageFiles] = useState<File[]>([]);
   const [selectedInputAssetId, setSelectedInputAssetId] = useState<string | null>(
@@ -901,6 +926,7 @@ export function ImageVideoWorkbench({
 
     setJobId(task.jobId);
     setJobStatus(task.status ?? null);
+    if (task.durationSeconds) setDurationSeconds(task.durationSeconds);
     if (task.prompt) setPrompt(task.prompt);
     if (task.templateId) {
       setSelectedTemplate((current) => ({
@@ -924,6 +950,9 @@ export function ImageVideoWorkbench({
         if (cancelled) return;
 
         setJobStatus(nextStatus);
+        if (nextStatus.durationSeconds) {
+          setDurationSeconds(normalizeDurationSeconds(nextStatus.durationSeconds));
+        }
 
         if (nextStatus.prompt) setPrompt(nextStatus.prompt);
         if (nextStatus.templateId) {
@@ -966,6 +995,9 @@ export function ImageVideoWorkbench({
 
     writePersistedImageVideoTask({
       jobId,
+      durationSeconds: normalizeDurationSeconds(
+        jobStatus?.durationSeconds ?? durationSeconds
+      ),
       prompt: trimmedPrompt,
       templateId: selectedTemplateId || jobStatus?.templateId || undefined,
       inputAssetId: selectedInputAssetId ?? jobStatus?.inputAssetId ?? undefined,
@@ -974,6 +1006,7 @@ export function ImageVideoWorkbench({
       updatedAt: Date.now(),
     });
   }, [
+    durationSeconds,
     jobId,
     jobStatus,
     selectedInputAssetId,
@@ -1147,6 +1180,11 @@ export function ImageVideoWorkbench({
         const nextStatus = await fetchJobStatus(jobId, commonCopy);
         if (!cancelled) {
           setJobStatus(nextStatus);
+          if (nextStatus.durationSeconds) {
+            setDurationSeconds(
+              normalizeDurationSeconds(nextStatus.durationSeconds)
+            );
+          }
           if (
             !hasLocalReferenceImage &&
             !selectedInputAssetId &&
@@ -1299,6 +1337,7 @@ export function ImageVideoWorkbench({
         '/api/generations',
         {
           generationType: 'image_to_video',
+          durationSeconds,
           inputAssetId,
           ...(inputAssetIds.length > 1 ? { inputAssetIds } : {}),
           ...(selectedTemplateId ? { templateId: selectedTemplateId } : {}),
@@ -1319,6 +1358,7 @@ export function ImageVideoWorkbench({
       setJobStatus({
         id: nextJobId,
         generationType: 'image_to_video',
+        durationSeconds,
         inputAssetId,
         inputAssetIds,
         inputImageUrl: nextInputImageUrl,
@@ -1338,6 +1378,7 @@ export function ImageVideoWorkbench({
   }
 
   const statusLabel = jobStatus?.progressLabel ?? jobStatus?.status ?? (jobId ? commonCopy.generating : null);
+  const durationCreditCost = getCreditCostForDuration(durationSeconds);
   const selectedReferenceImageDetail =
     referenceImageFiles[0]?.name ?? copy.selectedReferenceImageReady;
   const emptyMaterialLabels = [
@@ -1391,6 +1432,41 @@ export function ImageVideoWorkbench({
             placeholder={copy.promptPlaceholder}
             className="min-h-44 w-full resize-none rounded-lg border border-gray-200 bg-gray-100 px-4 py-3 text-sm leading-6 text-gray-800 outline-none transition placeholder:text-gray-400 focus:border-indigo-300 focus:bg-white focus:ring-3 focus:ring-indigo-100 disabled:cursor-not-allowed disabled:opacity-60"
           />
+          <div className="mt-3 rounded-lg border border-gray-200 bg-white p-3 shadow-sm">
+            <div className="flex items-center justify-between gap-3">
+              <label
+                htmlFor="image-video-duration"
+                className="text-xs font-black uppercase text-gray-500"
+              >
+                {copy.durationLabel}
+              </label>
+              <span className="shrink-0 text-xs font-bold text-gray-500">
+                {copy.durationValue(durationSeconds)} ·{' '}
+                {commonCopy.credits(durationCreditCost)}
+              </span>
+            </div>
+            <input
+              id="image-video-duration"
+              type="range"
+              min={IMAGE_TO_VIDEO_MIN_DURATION_SECONDS}
+              max={IMAGE_TO_VIDEO_MAX_DURATION_SECONDS}
+              step={1}
+              value={durationSeconds}
+              disabled={isSubmitting}
+              onChange={(event) =>
+                setDurationSeconds(normalizeDurationSeconds(event.target.value))
+              }
+              className="mt-3 w-full accent-indigo-600 disabled:cursor-not-allowed disabled:opacity-60"
+            />
+            <div className="mt-2 flex justify-between text-[11px] font-bold text-gray-400">
+              <span>
+                {copy.durationValue(IMAGE_TO_VIDEO_MIN_DURATION_SECONDS)}
+              </span>
+              <span>
+                {copy.durationValue(IMAGE_TO_VIDEO_MAX_DURATION_SECONDS)}
+              </span>
+            </div>
+          </div>
           <div className="mt-3">
             <button
               type="button"

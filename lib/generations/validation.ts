@@ -6,6 +6,8 @@ import {
 import {
   IMAGE_TO_VIDEO_CREDIT_COST,
   IMAGE_TO_VIDEO_DURATION_SECONDS,
+  IMAGE_TO_VIDEO_MAX_DURATION_SECONDS,
+  IMAGE_TO_VIDEO_MIN_DURATION_SECONDS,
   getApparelImageCreditCost,
   getCreditCostForDuration,
   getTryOnCreditCost,
@@ -24,6 +26,8 @@ export {
 export {
   IMAGE_TO_VIDEO_CREDIT_COST,
   IMAGE_TO_VIDEO_DURATION_SECONDS,
+  IMAGE_TO_VIDEO_MAX_DURATION_SECONDS,
+  IMAGE_TO_VIDEO_MIN_DURATION_SECONDS,
   getApparelImageCreditCost,
   getCreditCostForDuration,
   getTryOnCreditCost,
@@ -90,7 +94,7 @@ const optionalCleanPromptField = z.preprocess(
   cleanPromptField.optional()
 );
 
-const legacyImageToVideoDurationSchema = z.preprocess(
+const imageToVideoDurationSchema = z.preprocess(
   (value) => {
     if (typeof value === 'string' && /^\d+$/.test(value)) {
       return Number(value);
@@ -98,7 +102,11 @@ const legacyImageToVideoDurationSchema = z.preprocess(
 
     return value;
   },
-  z.literal(IMAGE_TO_VIDEO_DURATION_SECONDS)
+  z
+    .number()
+    .int()
+    .min(IMAGE_TO_VIDEO_MIN_DURATION_SECONDS)
+    .max(IMAGE_TO_VIDEO_MAX_DURATION_SECONDS)
 );
 
 const assetIdArraySchema = z.array(idStringSchema).min(1).max(8);
@@ -200,7 +208,7 @@ export const imageToVideoGenerationRequestSchema = z
     inputAssetIds: singleAssetIdArraySchema.optional(),
     inputAsset: idStringSchema.optional(),
     prompt: cleanPromptField,
-    durationSeconds: legacyImageToVideoDurationSchema.optional(),
+    durationSeconds: imageToVideoDurationSchema.optional(),
   })
   .strict()
   .superRefine((value, context) => {
@@ -245,7 +253,7 @@ export const imageToVideoGenerationRequestSchema = z
 
       return {
         ...value,
-        durationSeconds: IMAGE_TO_VIDEO_DURATION_SECONDS,
+        durationSeconds: value.durationSeconds ?? IMAGE_TO_VIDEO_DURATION_SECONDS,
         generationType: 'image_to_video' as const,
         inputAssetId: primaryInputAssetId,
         inputAssetIds: normalizedInputAssetIds,
@@ -385,7 +393,7 @@ export type GenerationApiRequest = z.infer<typeof generationApiRequestSchema>;
 export function getCreditCostForGeneration(generation: GenerationRequest) {
   switch (generation.generationType) {
     case 'image_to_video':
-      return IMAGE_TO_VIDEO_CREDIT_COST;
+      return getCreditCostForDuration(generation.durationSeconds);
     case 'apparel_image':
       return getApparelImageCreditCost();
     case 'try_on':

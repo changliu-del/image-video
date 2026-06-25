@@ -109,9 +109,10 @@ Defaults:
 - audio: `false` for `wan2.6-i2v-flash`
 
 The project-level payload is normalized before submit: `inputImageUrl` /
-`prompt` become Bailian fields `input.img_url` / `input.prompt`, and the fixed
-5-second duration is sent through `parameters.duration`. Reference video and
-audio fields are still not accepted by the current `image_to_video` workbench.
+`prompt` become Bailian fields `input.img_url` / `input.prompt`, and the
+selected 5-15s duration is sent through `parameters.duration`. Reference video
+and audio fields are still not accepted by the current `image_to_video`
+workbench.
 
 `WANXIANG_APPCODE` remains relevant for the older Alibaba Cloud Market cloth,
 try-on, and model-catalog endpoints until those providers are migrated too.
