@@ -377,6 +377,10 @@ export function ResultCard({
 }) {
   const isVideo =
     mediaKind === 'video' || Boolean(resultUrl && (resultUrl.endsWith('.mp4') || resultUrl.includes('.mp4?')));
+  const normalizedStatus = status?.toLowerCase();
+  const isComplete =
+    normalizedStatus === 'succeeded' || normalizedStatus === 'ready';
+  const isFailed = normalizedStatus === 'failed';
 
   return (
     <div className={cn('rounded-lg border border-gray-200 bg-white p-4 shadow-sm', minHeight)}>
@@ -388,9 +392,9 @@ export function ResultCard({
               {status ?? waitingLabel}
             </p>
           </div>
-          {status === 'succeeded' ? (
+          {isComplete ? (
             <CheckCircle2 className="size-5 text-emerald-500" />
-          ) : status ? (
+          ) : status && !isFailed ? (
             <Loader2 className="size-5 animate-spin text-indigo-500" />
           ) : (
             <Clock3 className="size-5 text-gray-300" />

@@ -73,6 +73,8 @@ type JobStatusResponse = {
 };
 
 const MAX_IMAGE_BYTES = 10 * 1024 * 1024;
+const MIN_REFERENCE_IMAGE_DIMENSION_PX = 240;
+const MAX_REFERENCE_IMAGE_DIMENSION_PX = 8000;
 const MAX_REFERENCE_IMAGE_FILE_COUNT = 1;
 const ACCEPTED_IMAGE_TYPES = ['image/png', 'image/jpeg', 'image/webp'];
 const ACCEPTED_REFERENCE_IMAGE_TYPES = ACCEPTED_IMAGE_TYPES;
@@ -108,7 +110,7 @@ const taskFlowPanelCopy = {
     close: 'Fechar',
     currentTask: 'Tarefa atual',
     noTask: 'Nenhuma tarefa iniciada ainda.',
-    jobId: 'ID da tarefa',
+    status: 'Status',
     prompt: 'Prompt',
     input: 'Imagem de entrada',
     output: 'Resultado',
@@ -125,7 +127,7 @@ const taskFlowPanelCopy = {
     close: 'Close',
     currentTask: 'Current task',
     noTask: 'No task has been started yet.',
-    jobId: 'Task ID',
+    status: 'Status',
     prompt: 'Prompt',
     input: 'Input image',
     output: 'Result',
@@ -142,7 +144,7 @@ const taskFlowPanelCopy = {
     close: '关闭',
     currentTask: '当前任务',
     noTask: '还没有生成任务。',
-    jobId: '任务 ID',
+    status: '任务状态',
     prompt: '生成描述',
     input: '参考图片',
     output: '生成结果',
@@ -169,9 +171,38 @@ function formatFileSize(sizeBytes: number) {
   return `${(sizeBytes / (1024 * 1024)).toFixed(1)} MB`;
 }
 
-function validateReferenceFile(
+function readImageDimensions(file: File) {
+  return new Promise<{ width: number; height: number }>((resolve, reject) => {
+    const objectUrl = URL.createObjectURL(file);
+    const image = new Image();
+    const cleanup = () => URL.revokeObjectURL(objectUrl);
+
+    image.onload = () => {
+      const width = image.naturalWidth;
+      const height = image.naturalHeight;
+      cleanup();
+      resolve({ width, height });
+    };
+    image.onerror = () => {
+      cleanup();
+      reject(new Error('reference-image-load-failed'));
+    };
+    image.src = objectUrl;
+  });
+}
+
+async function validateReferenceFile(
   file: File,
-  labels: { invalidReference: string; referenceTooLarge: string }
+  labels: {
+    invalidReference: string;
+    referenceTooLarge: string;
+    referenceDimensionInvalid: (
+      width: number,
+      height: number,
+      min: number,
+      max: number
+    ) => string;
+  }
 ) {
   if (!ACCEPTED_REFERENCE_IMAGE_TYPES.includes(file.type)) {
     return labels.invalidReference;
@@ -181,6 +212,28 @@ function validateReferenceFile(
     return labels.referenceTooLarge;
   }
 
+  let dimensions: { width: number; height: number };
+  try {
+    dimensions = await readImageDimensions(file);
+  } catch {
+    return labels.invalidReference;
+  }
+
+  const outsideDimensionRange =
+    dimensions.width < MIN_REFERENCE_IMAGE_DIMENSION_PX ||
+    dimensions.height < MIN_REFERENCE_IMAGE_DIMENSION_PX ||
+    dimensions.width > MAX_REFERENCE_IMAGE_DIMENSION_PX ||
+    dimensions.height > MAX_REFERENCE_IMAGE_DIMENSION_PX;
+
+  if (outsideDimensionRange) {
+    return labels.referenceDimensionInvalid(
+      dimensions.width,
+      dimensions.height,
+      MIN_REFERENCE_IMAGE_DIMENSION_PX,
+      MAX_REFERENCE_IMAGE_DIMENSION_PX
+    );
+  }
+
   return null;
 }
 
@@ -188,6 +241,7 @@ type ReferenceMaterialCopy = {
   referencePanelTitle: string;
   close: string;
   uploadReferenceImage: string;
+  referenceDimensionHint: (min: number, max: number) => string;
   referenceMaterialCount: (count: number) => string;
 };
 
@@ -204,7 +258,7 @@ function ReferenceMaterialPanel({
   referenceFileCount: number;
   referenceImageFiles: File[];
   onClose: () => void;
-  onSelect: (files: FileList | null) => void;
+  onSelect: (files: FileList | null) => void | Promise<void>;
 }) {
   const uploadActions = [
     {
@@ -251,12 +305,21 @@ function ReferenceMaterialPanel({
                 accept={ACCEPTED_REFERENCE_IMAGE_TYPES.join(',')}
                 disabled={disabled}
                 className="sr-only"
-                onChange={(event) => onSelect(event.target.files)}
+                onChange={(event) => {
+                  void onSelect(event.target.files);
+                  event.currentTarget.value = '';
+                }}
               />
             </label>
           );
         })}
       </div>
+      <p className="mt-3 text-center text-xs font-semibold text-gray-500">
+        {copy.referenceDimensionHint(
+          MIN_REFERENCE_IMAGE_DIMENSION_PX,
+          MAX_REFERENCE_IMAGE_DIMENSION_PX
+        )}
+      </p>
 
       {referenceFileCount ? (
         <div className="mt-5 space-y-2">
@@ -483,10 +546,7 @@ function TaskFlowDrawer({
                 <div className="flex items-start justify-between gap-3">
                   <div>
                     <p className="text-xs font-black uppercase text-gray-400">
-                      {copy.jobId}
-                    </p>
-                    <p className="mt-1 break-all text-sm font-bold text-gray-900">
-                      {jobId}
+                      {copy.status}
                     </p>
                   </div>
                   <span className="inline-flex shrink-0 items-center gap-1 rounded-full bg-gray-100 px-3 py-1 text-xs font-black text-gray-600">
@@ -575,6 +635,12 @@ function resultUrl(status: JobStatusResponse | null) {
   );
 }
 
+function shouldPollJobStatus(status: JobStatusResponse | null) {
+  if (status?.status === 'failed') return false;
+  if (status?.status === 'succeeded') return !resultUrl(status);
+  return true;
+}
+
 function inputImageUrl(status: JobStatusResponse | null) {
   return status?.inputImageUrl ?? status?.inputImageUrls?.[0] ?? null;
 }
@@ -619,18 +685,6 @@ function writePersistedImageVideoTask(task: PersistedImageVideoTask) {
   }
 }
 
-function setCurrentJobUrl(jobId: string) {
-  if (typeof window === 'undefined') return;
-
-  const url = new URL(window.location.href);
-  url.searchParams.set('jobId', jobId);
-  window.history.replaceState(
-    window.history.state,
-    '',
-    `${url.pathname}${url.search}${url.hash}`
-  );
-}
-
 function clearCurrentJobUrl() {
   if (typeof window === 'undefined') return;
 
@@ -664,6 +718,37 @@ async function readResponseError(response: Response, fallback: string) {
   } catch {}
 
   return fallback;
+}
+
+class StatusLoadError extends Error {
+  constructor(
+    message: string,
+    readonly status: number
+  ) {
+    super(message);
+  }
+}
+
+function isTerminalStatusLoadError(error: unknown) {
+  return (
+    error instanceof StatusLoadError &&
+    (error.status === 401 || error.status === 404)
+  );
+}
+
+function failedStatusFromLoadError(
+  currentStatus: JobStatusResponse | null,
+  jobId: string,
+  message: string
+): JobStatusResponse {
+  return {
+    ...(currentStatus ?? {}),
+    id: currentStatus?.id ?? jobId,
+    status: 'failed',
+    progressLabel: 'Failed',
+    errorMessage: message,
+    nextPollMs: null,
+  };
 }
 
 async function postJson<T>(url: string, body: Record<string, unknown>, fallback: string) {
@@ -705,9 +790,19 @@ async function fetchJobStatus(jobId: string, labels: typeof commonWorkbenchCopy.
     return (await generationStatus.json()) as JobStatusResponse;
   }
 
+  if (generationStatus.status !== 404) {
+    throw new StatusLoadError(
+      await readResponseError(generationStatus, labels.statusLoadError),
+      generationStatus.status
+    );
+  }
+
   const legacyStatus = await fetch(`/api/jobs/${jobId}`);
   if (!legacyStatus.ok) {
-    throw new Error(await readResponseError(legacyStatus, labels.statusLoadError));
+    throw new StatusLoadError(
+      await readResponseError(legacyStatus, labels.statusLoadError),
+      legacyStatus.status
+    );
   }
 
   return (await legacyStatus.json()) as JobStatusResponse;
@@ -764,6 +859,7 @@ export function ImageVideoWorkbench({
   );
   const [jobStatus, setJobStatus] = useState<JobStatusResponse | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [statusPollRetryKey, setStatusPollRetryKey] = useState(0);
   const requestedTemplateId = initialTemplateId;
 
   const isSubmitting = Boolean(submitLabel);
@@ -799,7 +895,7 @@ export function ImageVideoWorkbench({
 
     if (!currentJobId) return;
 
-    setCurrentJobUrl(currentJobId);
+    clearCurrentJobUrl();
     const task = readPersistedImageVideoTask();
     if (!task || task.jobId !== currentJobId) return;
 
@@ -817,7 +913,7 @@ export function ImageVideoWorkbench({
   }, [initialJobId]);
 
   useEffect(() => {
-    if (!jobId || jobStatus) return;
+    if (!jobId || (jobStatus && !shouldPollJobStatus(jobStatus))) return;
 
     let cancelled = false;
     const currentJobId = jobId;
@@ -845,11 +941,16 @@ export function ImageVideoWorkbench({
         }
       } catch (statusError) {
         if (!cancelled) {
-          setError(
+          const message =
             statusError instanceof Error
               ? statusError.message
-              : commonCopy.statusLoadError
-          );
+              : commonCopy.statusLoadError;
+          setError(message);
+          if (isTerminalStatusLoadError(statusError)) {
+            setJobStatus((current) =>
+              failedStatusFromLoadError(current, currentJobId, message)
+            );
+          }
         }
       }
     }
@@ -1038,7 +1139,7 @@ export function ImageVideoWorkbench({
   }, [copy.promptPresets]);
 
   useEffect(() => {
-    if (!jobId || terminalStatus(jobStatus?.status)) return;
+    if (!jobId || !shouldPollJobStatus(jobStatus)) return;
 
     let cancelled = false;
     const poll = async () => {
@@ -1060,12 +1161,22 @@ export function ImageVideoWorkbench({
           if (terminalStatus(nextStatus.status)) {
             void refreshDashboardUser();
           }
+          if (shouldPollJobStatus(nextStatus)) {
+            setStatusPollRetryKey((value) => value + 1);
+          }
         }
       } catch (statusError) {
         if (!cancelled) {
-          setError(
-            statusError instanceof Error ? statusError.message : commonCopy.statusLoadError
-          );
+          const message =
+            statusError instanceof Error ? statusError.message : commonCopy.statusLoadError;
+          setError(message);
+          if (isTerminalStatusLoadError(statusError)) {
+            setJobStatus((current) =>
+              failedStatusFromLoadError(current, jobId, message)
+            );
+          } else {
+            setStatusPollRetryKey((value) => value + 1);
+          }
         }
       }
     };
@@ -1083,12 +1194,13 @@ export function ImageVideoWorkbench({
     jobId,
     jobStatus?.nextPollMs,
     jobStatus?.status,
+    statusPollRetryKey,
     hasLocalReferenceImage,
     selectedInputAssetId,
     selectedInputImageUrl,
   ]);
 
-  function selectReferenceFiles(files: FileList | null) {
+  async function selectReferenceFiles(files: FileList | null) {
     setError(null);
     const nextFiles = Array.from(files ?? []);
 
@@ -1101,9 +1213,10 @@ export function ImageVideoWorkbench({
       return;
     }
 
-    const validationError = nextFiles
-      .map((file) => validateReferenceFile(file, copy))
-      .find(Boolean);
+    const validationErrors = await Promise.all(
+      nextFiles.map((file) => validateReferenceFile(file, copy))
+    );
+    const validationError = validationErrors.find(Boolean);
 
     if (validationError) {
       setError(validationError);
@@ -1200,7 +1313,6 @@ export function ImageVideoWorkbench({
       }
 
       void refreshDashboardUser();
-      setCurrentJobUrl(nextJobId);
       setSelectedInputAssetId(inputAssetId);
       if (nextInputImageUrl) setSelectedInputImageUrl(nextInputImageUrl);
       setJobId(nextJobId);
@@ -1226,6 +1338,8 @@ export function ImageVideoWorkbench({
   }
 
   const statusLabel = jobStatus?.progressLabel ?? jobStatus?.status ?? (jobId ? commonCopy.generating : null);
+  const selectedReferenceImageDetail =
+    referenceImageFiles[0]?.name ?? copy.selectedReferenceImageReady;
   const emptyMaterialLabels = [
     copy.emptyMaterialStyle,
     copy.emptyMaterialScene,
@@ -1304,7 +1418,7 @@ export function ImageVideoWorkbench({
                   {copy.selectedReferenceImage}
                 </p>
                 <p className="mt-1 truncate text-xs font-semibold text-gray-400">
-                  {referenceImageFiles[0]?.name ?? selectedInputAssetId}
+                  {selectedReferenceImageDetail}
                 </p>
               </div>
               <button

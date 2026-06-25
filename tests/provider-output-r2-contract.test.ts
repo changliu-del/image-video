@@ -72,6 +72,13 @@ describe('provider output storage contract', () => {
     expect(workbench.indexOf('/api/generations/${jobId}/status')).toBeLessThan(
       workbench.indexOf('/api/jobs/${jobId}')
     );
+    expect(workbench).toContain('function shouldPollJobStatus');
+    expect(workbench).toContain("status?.status === 'succeeded'");
+    expect(workbench).toContain('return !resultUrl(status)');
+    expect(workbench).toContain('class StatusLoadError extends Error');
+    expect(workbench).toContain('isTerminalStatusLoadError(statusError)');
+    expect(workbench).toContain('if (shouldPollJobStatus(nextStatus))');
+    expect(workbench).toContain('setStatusPollRetryKey((value) => value + 1)');
   });
 
   it('keeps user media history and admin previews sourced from owned assets', () => {

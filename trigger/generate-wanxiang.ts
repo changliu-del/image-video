@@ -26,6 +26,18 @@ function nextPollSeconds(pollIndex: number) {
   return 20;
 }
 
+function formatFailedRunMessage(result: {
+  jobId: string;
+  errorMessage?: string | null;
+}) {
+  return [
+    `Wanxiang generation failed: ${result.jobId}`,
+    result.errorMessage,
+  ]
+    .filter(Boolean)
+    .join(': ');
+}
+
 export const generateWanxiang = task({
   id: 'generate-wanxiang',
   queue: {
@@ -49,6 +61,12 @@ export const generateWanxiang = task({
         maxAttempts: ctx.run.maxAttempts ?? GENERATE_WANXIANG_MAX_ATTEMPTS,
         triggerRunId: ctx.run.id,
       });
+
+      if (result.status === 'failed') {
+        const message = formatFailedRunMessage(result);
+        console.error(message);
+        throw new Error(message);
+      }
 
       if (result.status !== 'running') {
         return result;

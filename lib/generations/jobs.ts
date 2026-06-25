@@ -37,6 +37,8 @@ import { upsertUserMediaHistory } from '@/lib/user-media/service';
 
 const DEFAULT_PROVIDER = 'wanxiang';
 const PROVIDER_SUBMIT_LEASE_SECONDS = 120;
+const PROVIDER_SUBMIT_LEASE_EXPIRED_MESSAGE =
+  'Provider submit lease expired before a task id was recorded; refusing to resubmit.';
 const PROVIDER_RESULT_FETCH_TIMEOUT_MS = 120_000;
 const MAX_PROVIDER_RESULT_SIZE_BYTES = 200 * 1024 * 1024;
 type QueryableSql = postgres.Sql;
@@ -1207,7 +1209,7 @@ async function markStaleSubmitLeaseFailedAndRefund(input: {
       update generation_jobs
       set
         status = 'failed',
-        error_message = 'Provider submit lease expired before a task id was recorded; refusing to resubmit.',
+        error_message = ${PROVIDER_SUBMIT_LEASE_EXPIRED_MESSAGE},
         updated_at = now()
       where id = ${input.jobId}
         and user_id = ${input.userId}
@@ -1226,8 +1228,7 @@ async function markStaleSubmitLeaseFailedAndRefund(input: {
         userId: input.userId,
         jobId: input.jobId,
         metadata: {
-          reason:
-            'Provider submit lease expired before a task id was recorded; refusing to resubmit.',
+          reason: PROVIDER_SUBMIT_LEASE_EXPIRED_MESSAGE,
           source: 'generation_submit_lease_expired',
         },
       },
@@ -1909,6 +1910,7 @@ export async function runWanxiangGenerationJob(
     return {
       jobId: job.id,
       status: job.status,
+      errorMessage: job.errorMessage,
       skipped: true,
     };
   }
@@ -1930,6 +1932,7 @@ export async function runWanxiangGenerationJob(
           return {
             jobId: job.id,
             status: 'failed' as const,
+            errorMessage: PROVIDER_SUBMIT_LEASE_EXPIRED_MESSAGE,
           };
         }
 
@@ -2017,11 +2020,18 @@ export async function runWanxiangGenerationJob(
     if (queryResult.status === 'succeeded') {
       await markJobSucceeded({ job, queryResult });
     } else {
+      const errorMessage = queryResult.errorMessage ?? 'Generation failed';
       await markJobFailed({
         job,
-        errorMessage: queryResult.errorMessage ?? 'Generation failed',
+        errorMessage,
         rawResponse: queryResult.rawResponse,
       });
+      const updatedJob = await getGenerationJobRecord(job.id);
+      return {
+        jobId: job.id,
+        status: updatedJob?.status ?? queryResult.status,
+        errorMessage: updatedJob?.errorMessage ?? errorMessage,
+      };
     }
 
     const updatedJob = await getGenerationJobRecord(job.id);

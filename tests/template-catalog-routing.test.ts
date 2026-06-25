@@ -404,12 +404,19 @@ describe('template catalog routing contract', () => {
     const copy = readSource('components/create/workbench-copy.ts');
 
     expect(source).toContain('const MAX_REFERENCE_IMAGE_FILE_COUNT = 1');
+    expect(source).toContain('const MIN_REFERENCE_IMAGE_DIMENSION_PX = 240');
+    expect(source).toContain('const MAX_REFERENCE_IMAGE_DIMENSION_PX = 8000');
+    expect(source).toContain('readImageDimensions(file)');
+    expect(source).toContain('labels.referenceDimensionInvalid');
+    expect(source).toContain('copy.referenceDimensionHint');
     expect(source).not.toContain('multiple={');
     expect(source).not.toContain("kind === 'image'");
     expect(source).not.toContain('uploadReferenceVideo');
     expect(source).not.toContain('uploadReferenceMusic');
     expect(source).toContain('setError(copy.referenceImageLimit)');
     expect(copy).toContain('referenceImageLimit');
+    expect(copy).toContain('referenceDimensionHint');
+    expect(copy).toContain('referenceDimensionInvalid');
   });
 
   it('does not auto-bind the first template when a workbench has no requested template', () => {

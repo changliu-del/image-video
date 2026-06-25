@@ -50,4 +50,21 @@ describe('generation provider result persistence', () => {
     expect(failIndex).toBeGreaterThan(catchIndex);
     expect(retryIndex).toBeGreaterThan(failIndex);
   });
+
+  it('surfaces terminal provider failures to the Trigger run', () => {
+    const triggerSource = readSource('trigger/generate-wanxiang.ts');
+    const workerIndex = source.indexOf('export async function runWanxiangGenerationJob');
+    const providerFailureIndex = source.indexOf(
+      "const errorMessage = queryResult.errorMessage ?? 'Generation failed'",
+      workerIndex
+    );
+
+    expect(providerFailureIndex).toBeGreaterThan(workerIndex);
+    expect(source).toContain(
+      'errorMessage: updatedJob?.errorMessage ?? errorMessage'
+    );
+    expect(source).toContain('errorMessage: job.errorMessage');
+    expect(triggerSource).toContain("if (result.status === 'failed')");
+    expect(triggerSource).toContain('throw new Error(message)');
+  });
 });
