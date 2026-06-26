@@ -133,7 +133,7 @@ export const imageVideoWorkbenchCopy = {
       wanxiang_2_7: {
         eyebrow: 'Modelo 1',
         title: 'Imagem para video Pro',
-        description: 'Wanxiang 2.7',
+        description: 'Modelo mais poderoso',
       },
       wanxiang_2_6_first_frame: {
         eyebrow: 'Modelo 2',
@@ -225,7 +225,7 @@ export const imageVideoWorkbenchCopy = {
       wanxiang_2_7: {
         eyebrow: 'Model 1',
         title: 'Image-to-video Pro',
-        description: 'Wanxiang 2.7',
+        description: 'Most powerful model',
       },
       wanxiang_2_6_first_frame: {
         eyebrow: 'Model 2',
@@ -317,7 +317,7 @@ export const imageVideoWorkbenchCopy = {
       wanxiang_2_7: {
         eyebrow: '模型1',
         title: '图生视频 Pro',
-        description: '万相 2.7',
+        description: '最强模型',
       },
       wanxiang_2_6_first_frame: {
         eyebrow: '模型2',
