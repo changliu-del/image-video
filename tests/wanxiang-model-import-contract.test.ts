@@ -105,7 +105,8 @@ describe('wanxiang model import contract', () => {
     expect(tryOn).toContain('modelTemplateId: selectedModelAsset.id');
     expect(modelTemplates).toContain("from templates t");
     expect(modelTemplates).toContain("where t.type = 'model'");
-    expect(modelTemplates).toContain('resolveModelTitle');
+    expect(modelTemplates).toContain('const title = toStringValue(row.title).trim();');
+    expect(modelTemplates).not.toContain('resolveModelTitle');
     expect(modelTemplates).toContain('resolveModelPrompt');
     expect(modelTemplates).toContain('localizeModelCategoryTags');
     expect(modelTemplates).toContain('Math.min(Math.max(input.limit ?? 24, 1), 96)');

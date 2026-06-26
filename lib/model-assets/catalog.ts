@@ -5,7 +5,6 @@ import {
   modelCategoryTags,
   parseModelCategoryParts,
   resolveModelPrompt,
-  resolveModelTitle,
   type ModelCategoryParts,
 } from '@/lib/model-assets/localization';
 
@@ -39,12 +38,7 @@ function mapModelTemplateRow(
 ): ModelTemplateItem {
   const sortOrder = Number(row.sort_order ?? 0);
   const category = toStringValue(row.category);
-  const title = resolveModelTitle({
-    category,
-    locale,
-    title: row.title,
-    translations: row.title_translations_json,
-  });
+  const title = toStringValue(row.title).trim();
 
   return {
     id: toStringValue(row.id),
@@ -54,8 +48,12 @@ function mapModelTemplateRow(
         category,
         locale,
         prompt: row.prompt,
-        title: row.title,
-        titleTranslations: row.title_translations_json,
+        title,
+        titleTranslations: {
+          en: title,
+          pt: title,
+          zh: title,
+        },
         translations: row.prompt_translations_json,
       })
     ),
