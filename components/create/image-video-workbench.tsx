@@ -311,7 +311,7 @@ function normalizeModelItems(value: unknown): ModelTemplateItem[] {
 
 function getModelAssetImage(item: ModelTemplateItem | null) {
   if (!item) return '';
-  return item.thumbnailUrl ?? item.imageUrl ?? item.videoUrl ?? '';
+  return item.imageUrl ?? item.thumbnailUrl ?? item.videoUrl ?? '';
 }
 
 function getModelDescriptionLines(item: ModelTemplateItem | null) {

@@ -123,6 +123,10 @@ template filters/edit forms should parse values such as `男/青年/冷酷` into
 `男`, `青年`, and `冷酷`, then compose the same single category string when
 saving Admin changes.
 
+User-facing model-library grids should render the model detail image
+(`imageUrl` / template `preview_url`) rather than the model thumbnail.
+`thumbnailUrl` is only a fallback when no detail image is available.
+
 `0029_rekey_primary_ids_to_sequences.sql` resets the active DB identity model:
 `users`, `assets`, `templates`, `generation_jobs`, `user_media_history`,
 `credit_ledger`, and email verification rows use integer sequences. `users.id`

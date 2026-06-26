@@ -62,6 +62,7 @@ describe('wanxiang model import contract', () => {
   });
 
   it('loads the expanded official model templates in the try-on workbench', () => {
+    const imageVideo = readSource('components/create/image-video-workbench.tsx');
     const tryOn = readSource('components/create/try-on-workbench.tsx');
     const copy = readSource('components/create/workbench-copy.ts');
     const modelTemplates = readSource('lib/model-assets/catalog.ts');
@@ -88,6 +89,12 @@ describe('wanxiang model import contract', () => {
     expect(tryOn).toContain("modelStyleFilter === 'all' ? null : modelStyleFilter");
     expect(tryOn).toContain('localizeModelCategoryTag(style, locale)');
     expect(tryOn).toContain('filteredModelAssets.some((model) => model.id === current.id)');
+    expect(imageVideo).toContain(
+      "return item.imageUrl ?? item.thumbnailUrl ?? item.videoUrl ?? '';"
+    );
+    expect(tryOn).toContain(
+      "return item.imageUrl ?? item.thumbnailUrl ?? item.videoUrl ?? '';"
+    );
     expect(tryOn).toContain('const MODEL_ASSET_LIMIT = 96');
     expect(tryOn).toContain('limit: String(MODEL_ASSET_LIMIT)');
     expect(tryOn).toContain('modelDetailAsset');
