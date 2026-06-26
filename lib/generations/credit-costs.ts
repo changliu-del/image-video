@@ -1,15 +1,22 @@
+import { getCreditCostForProviderCnyCost } from '../payments/pricing';
+import {
+  DEFAULT_IMAGE_VIDEO_MODEL_MODE,
+  getImageToVideoModelConfig,
+  type ImageVideoModelMode,
+} from './video-models';
+
 export type BillableGenerationDurationSeconds = number;
 export type BillableTryOnMode = 'single' | 'multi';
 
 export const IMAGE_TO_VIDEO_DURATION_SECONDS = 5;
 export const IMAGE_TO_VIDEO_MIN_DURATION_SECONDS = 5;
 export const IMAGE_TO_VIDEO_MAX_DURATION_SECONDS = 15;
-export const IMAGE_TO_VIDEO_CREDITS_PER_SECOND = 2;
 export const IMAGE_TO_VIDEO_CREDIT_COST =
-  IMAGE_TO_VIDEO_DURATION_SECONDS * IMAGE_TO_VIDEO_CREDITS_PER_SECOND;
+  getCreditCostForDuration(IMAGE_TO_VIDEO_DURATION_SECONDS);
 
 export function getCreditCostForDuration(
-  durationSeconds: BillableGenerationDurationSeconds
+  durationSeconds: BillableGenerationDurationSeconds,
+  options: { videoModelMode?: ImageVideoModelMode | string | null } = {}
 ) {
   if (
     !Number.isInteger(durationSeconds) ||
@@ -19,7 +26,12 @@ export function getCreditCostForDuration(
     throw new Error(`Unsupported generation duration: ${durationSeconds}`);
   }
 
-  return durationSeconds * IMAGE_TO_VIDEO_CREDITS_PER_SECOND;
+  const config = getImageToVideoModelConfig(
+    options.videoModelMode ?? DEFAULT_IMAGE_VIDEO_MODEL_MODE
+  );
+  return getCreditCostForProviderCnyCost(
+    config.providerUnitCostCnyPerSecond * durationSeconds
+  );
 }
 
 export function getApparelImageCreditCost() {

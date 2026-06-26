@@ -11,6 +11,12 @@ import {
   getMockStripeProducts,
   isPaymentMockEnabled,
 } from '../lib/payments/mock';
+import {
+  BILLING_CURRENCY,
+  CREDIT_UNIT_AMOUNT,
+  getAmountForCredits,
+  getCreditsForAmount,
+} from '../lib/payments/pricing';
 
 describe('payment mock mode', () => {
   it('defaults to enabled outside production', () => {
@@ -87,6 +93,25 @@ describe('payment mock mode', () => {
 
     for (const plan of MOCK_MONTHLY_PLANS) {
       expect(getMockMonthlyPlanByPriceId(plan.priceId)).toEqual(plan);
+    }
+  });
+
+  it('keeps Brazilian credit packages on the exact R$0.50 credit conversion', () => {
+    expect(CREDIT_UNIT_AMOUNT).toBe(50);
+
+    for (const creditPackage of MOCK_CREDIT_PACKAGES) {
+      expect(creditPackage.currency).toBe(BILLING_CURRENCY);
+      expect(creditPackage.unitAmount).toBe(
+        getAmountForCredits(creditPackage.credits)
+      );
+      expect(getCreditsForAmount(creditPackage.unitAmount)).toBe(
+        creditPackage.credits
+      );
+    }
+
+    for (const plan of MOCK_MONTHLY_PLANS) {
+      expect(plan.currency).toBe(BILLING_CURRENCY);
+      expect(plan.unitAmount).toBe(getAmountForCredits(plan.monthlyCredits));
     }
   });
 });

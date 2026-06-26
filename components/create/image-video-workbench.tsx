@@ -34,6 +34,10 @@ import {
   IMAGE_TO_VIDEO_MIN_DURATION_SECONDS,
   getCreditCostForDuration,
 } from '@/lib/generations/credit-costs';
+import {
+  normalizeImageVideoModelMode,
+  type ImageVideoModelMode,
+} from '@/lib/generations/video-models';
 import type { DashboardLocale } from '@/lib/dashboard/content';
 import { useDashboardLocale } from '@/lib/dashboard/use-dashboard-locale';
 import { homepageWorkbenchMaterials } from '@/lib/marketing/homepage-materials';
@@ -98,7 +102,6 @@ const ACCEPTED_REFERENCE_IMAGE_TYPES = ACCEPTED_IMAGE_TYPES;
 const MODEL_ASSET_LIMIT = 96;
 const defaultTemplateCategory: string = imageToVideoTemplateCategories[0] ?? '';
 const LAST_IMAGE_VIDEO_TASK_KEY = 'image-video:last-task:v1';
-type ImageVideoModelMode = 'wanxiang_2_7' | 'wanxiang_2_6_first_frame';
 type ModelAgeFilter = 'all' | 'child' | 'youth' | 'middle' | 'senior';
 type ModelGenderFilter = 'all' | 'female' | 'male';
 type ModelStyleFilter = 'all' | string;
@@ -1005,12 +1008,6 @@ function normalizeDurationSeconds(value: unknown) {
   );
 }
 
-function normalizeImageVideoModelMode(value: unknown): ImageVideoModelMode {
-  return value === 'wanxiang_2_7'
-    ? 'wanxiang_2_7'
-    : 'wanxiang_2_6_first_frame';
-}
-
 function readPersistedImageVideoTask() {
   if (typeof window === 'undefined') return null;
 
@@ -1862,7 +1859,9 @@ export function ImageVideoWorkbench({
   }
 
   const statusLabel = jobStatus?.progressLabel ?? jobStatus?.status ?? (jobId ? commonCopy.generating : null);
-  const durationCreditCost = getCreditCostForDuration(durationSeconds);
+  const durationCreditCost = getCreditCostForDuration(durationSeconds, {
+    videoModelMode: selectedVideoModelMode,
+  });
   const selectedReferenceImageDetail =
     referenceImageFiles[0]?.name ?? copy.selectedReferenceImageReady;
   const emptyMaterialLabels = [

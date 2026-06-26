@@ -12,6 +12,10 @@ import {
   getCreditCostForDuration,
   getTryOnCreditCost,
 } from './credit-costs';
+import {
+  DEFAULT_IMAGE_VIDEO_MODEL_MODE,
+  IMAGE_VIDEO_MODEL_MODES,
+} from './video-models';
 import { dbIdStringSchema } from '../db/id-schema';
 
 export {
@@ -109,10 +113,7 @@ const imageToVideoDurationSchema = z.preprocess(
     .max(IMAGE_TO_VIDEO_MAX_DURATION_SECONDS)
 );
 
-const imageToVideoModelModeSchema = z.enum([
-  'wanxiang_2_7',
-  'wanxiang_2_6_first_frame',
-]);
+const imageToVideoModelModeSchema = z.enum(IMAGE_VIDEO_MODEL_MODES);
 
 const assetIdArraySchema = z.array(idStringSchema).min(1).max(8);
 const singleAssetIdArraySchema = z.array(idStringSchema).min(1).max(1);
@@ -264,6 +265,7 @@ export const imageToVideoGenerationRequestSchema = z
         generationType: 'image_to_video' as const,
         inputAssetId: primaryInputAssetId,
         inputAssetIds: normalizedInputAssetIds,
+        videoModelMode: value.videoModelMode ?? DEFAULT_IMAGE_VIDEO_MODEL_MODE,
       };
     }
   );
@@ -400,7 +402,9 @@ export type GenerationApiRequest = z.infer<typeof generationApiRequestSchema>;
 export function getCreditCostForGeneration(generation: GenerationRequest) {
   switch (generation.generationType) {
     case 'image_to_video':
-      return getCreditCostForDuration(generation.durationSeconds);
+      return getCreditCostForDuration(generation.durationSeconds, {
+        videoModelMode: generation.videoModelMode,
+      });
     case 'apparel_image':
       return getApparelImageCreditCost();
     case 'try_on':

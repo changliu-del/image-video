@@ -49,8 +49,14 @@ const fetcher = async (url: string) => {
   return response.json() as Promise<CreditsAccount>;
 };
 
-function formatCurrency(amount: number, currency = 'usd') {
-  return new Intl.NumberFormat('en-US', {
+function getCurrencyLocale(locale: string) {
+  if (locale === 'pt') return 'pt-BR';
+  if (locale === 'zh') return 'zh-CN';
+  return 'en-US';
+}
+
+function formatCurrency(amount: number, currency: string, locale: string) {
+  return new Intl.NumberFormat(getCurrencyLocale(locale), {
     style: 'currency',
     currency: currency.toUpperCase(),
   }).format(amount / 100);
@@ -207,7 +213,11 @@ export function CreditsClient() {
                 </p>
                 <div className="mt-5">
                   <p className="text-4xl font-semibold tracking-tight text-gray-950">
-                    {formatCurrency(creditPackage.unitAmount, creditPackage.currency)}
+                    {formatCurrency(
+                      creditPackage.unitAmount,
+                      creditPackage.currency,
+                      locale
+                    )}
                   </p>
                   <p className="mt-3 rounded-lg bg-indigo-50 px-3 py-2 text-sm font-semibold text-indigo-700">
                     {creditPackage.credits} {copy.purchasedCredits}

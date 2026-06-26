@@ -1,4 +1,8 @@
 import {
+  getImageToVideoModelConfig,
+  normalizeImageVideoModelMode,
+} from '../../generations/video-models';
+import {
   getDashScopeTask,
   getDashScopeVideoSynthesisUrl,
   postDashScopeJson,
@@ -60,12 +64,14 @@ function toDashScopeImageToVideoSubmitPayload(
     firstString(payload.posPrompt) ||
     firstString(payload.prompt) ||
     firstString(payload.positivePrompt);
-  const model =
-    process.env.WANXIANG_IMAGE_TO_VIDEO_MODEL?.trim() ||
-    DEFAULT_WANXIANG_IMAGE_TO_VIDEO_MODEL;
+  const modelMode = normalizeImageVideoModelMode(payload.videoModelMode);
+  const modelConfig = getImageToVideoModelConfig(modelMode);
+  const model = firstString(payload.model) || modelConfig.providerModelId;
   const parameters: WanxiangPayload = {
     resolution:
+      firstString(payload.resolution) ||
       process.env.WANXIANG_IMAGE_TO_VIDEO_RESOLUTION?.trim() ||
+      modelConfig.resolution ||
       DEFAULT_WANXIANG_IMAGE_TO_VIDEO_RESOLUTION,
     duration: firstPositiveInteger(payload.durationSeconds) ??
       DEFAULT_WANXIANG_IMAGE_TO_VIDEO_DURATION_SECONDS,
@@ -76,7 +82,9 @@ function toDashScopeImageToVideoSubmitPayload(
   };
 
   if (model === 'wan2.6-i2v-flash') {
-    parameters.audio = readBooleanEnv('WANXIANG_IMAGE_TO_VIDEO_AUDIO', false);
+    parameters.audio =
+      firstBoolean(payload.audio) ??
+      readBooleanEnv('WANXIANG_IMAGE_TO_VIDEO_AUDIO', modelConfig.audio);
   }
 
   return {
@@ -112,6 +120,20 @@ function firstPositiveInteger(value: unknown): number | undefined {
   return Number.isInteger(numericValue) && numericValue > 0
     ? numericValue
     : undefined;
+}
+
+function firstBoolean(value: unknown): boolean | undefined {
+  if (typeof value === 'boolean') {
+    return value;
+  }
+
+  if (typeof value === 'string') {
+    const normalized = value.trim().toLowerCase();
+    if (['1', 'true', 'yes', 'on'].includes(normalized)) return true;
+    if (['0', 'false', 'no', 'off'].includes(normalized)) return false;
+  }
+
+  return undefined;
 }
 
 function readBooleanEnv(name: string, fallback: boolean) {

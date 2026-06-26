@@ -8,7 +8,8 @@ import {
   users,
   type CreditLedgerEntry,
 } from '@/lib/db/schema';
-import { getCreditCostForDuration } from '@/lib/generations/credit-costs';
+import { getCreditCostForDuration } from './generations/credit-costs';
+import type { ImageVideoModelMode } from './generations/video-models';
 import { getSignupFreeCreditsAmount } from '@/lib/generations/free-credits';
 
 export type CreditLedgerMetadata = Record<string, unknown>;
@@ -17,6 +18,7 @@ export type GenerationCreditEstimateInput =
   | number
   | {
       durationSeconds: number;
+      videoModelMode?: ImageVideoModelMode | string | null;
     };
 
 export type ReserveCreditsForJobInput = {
@@ -25,6 +27,7 @@ export type ReserveCreditsForJobInput = {
   amount?: number;
   credits?: number;
   durationSeconds?: number;
+  videoModelMode?: ImageVideoModelMode | string | null;
   reason?: 'reserve';
   metadata?: CreditLedgerMetadata;
 };
@@ -92,8 +95,13 @@ function assertNonZeroInteger(value: number, label: string) {
   }
 }
 
-function estimateFromDuration(durationSeconds: number) {
-  return getCreditCostForDuration(durationSeconds);
+function estimateFromDuration(input: {
+  durationSeconds: number;
+  videoModelMode?: ImageVideoModelMode | string | null;
+}) {
+  return getCreditCostForDuration(input.durationSeconds, {
+    videoModelMode: input.videoModelMode,
+  });
 }
 
 function getReserveAmount(input: ReserveCreditsForJobInput) {
@@ -102,7 +110,10 @@ function getReserveAmount(input: ReserveCreditsForJobInput) {
     input.credits ??
     (input.durationSeconds == null
       ? undefined
-      : estimateFromDuration(input.durationSeconds));
+      : estimateFromDuration({
+          durationSeconds: input.durationSeconds,
+          videoModelMode: input.videoModelMode,
+        }));
 
   if (amount == null) {
     throw new Error('reserve credits amount is required');
@@ -121,8 +132,10 @@ export function estimateCreditsForGeneration(
 ) {
   const durationSeconds =
     typeof input === 'number' ? input : input.durationSeconds;
+  const videoModelMode =
+    typeof input === 'number' ? undefined : input.videoModelMode;
 
-  return estimateFromDuration(durationSeconds);
+  return estimateFromDuration({ durationSeconds, videoModelMode });
 }
 
 export async function getCreditBalance(userId: number) {

@@ -5,11 +5,13 @@ import {
   SIGNUP_FREE_CREDITS_ENV,
   getSignupFreeCreditsAmount,
 } from '../lib/generations/free-credits';
+import { IMAGE_TO_VIDEO_CREDIT_COST } from '../lib/generations/validation';
 
 describe('getSignupFreeCreditsAmount', () => {
   it('defaults to enough credits for three 5s generations', () => {
     expect(getSignupFreeCreditsAmount({})).toBe(DEFAULT_SIGNUP_FREE_CREDITS);
-    expect(DEFAULT_SIGNUP_FREE_CREDITS).toBe(30);
+    expect(DEFAULT_SIGNUP_FREE_CREDITS).toBe(IMAGE_TO_VIDEO_CREDIT_COST * 3);
+    expect(DEFAULT_SIGNUP_FREE_CREDITS).toBe(15);
   });
 
   it('uses a positive integer env override', () => {

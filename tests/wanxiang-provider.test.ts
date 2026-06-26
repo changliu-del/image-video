@@ -255,6 +255,42 @@ describe('Wanxiang capability exports', () => {
     );
   });
 
+  it('uses the selected Pro image-to-video model in DashScope payloads', async () => {
+    vi.stubEnv('DASHSCOPE_API_KEY', 'dashscope-key');
+    vi.stubEnv('DASHSCOPE_VIDEO_SYNTHESIS_URL', 'https://override.test/i2v');
+    const fetchMock = mockJsonFetch({
+      output: { task_id: 'i2v-pro-task', task_status: 'PENDING' }
+    });
+
+    await submitImageToVideo(
+      {
+        inputImageUrl: 'https://img.test/product.png',
+        prompt: '高质量广告片',
+        durationSeconds: 5,
+        videoModelMode: 'wanxiang_2_7'
+      },
+      { fetch: fetchMock }
+    );
+
+    expect(fetchMock).toHaveBeenCalledWith(
+      'https://override.test/i2v',
+      expect.objectContaining({
+        body: JSON.stringify({
+          model: 'wan2.7-i2v-2026-04-25',
+          input: {
+            img_url: 'https://img.test/product.png',
+            prompt: '高质量广告片'
+          },
+          parameters: {
+            resolution: '720P',
+            duration: 5,
+            prompt_extend: true
+          }
+        })
+      })
+    );
+  });
+
   it('queries image-to-video jobs through Bailian DashScope task API', async () => {
     vi.stubEnv('DASHSCOPE_API_KEY', 'dashscope-key');
     vi.stubEnv('DASHSCOPE_BASE_URL', 'https://dashscope.example/api/v1');

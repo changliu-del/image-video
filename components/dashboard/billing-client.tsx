@@ -55,8 +55,14 @@ const fetcher = async (url: string) => {
   return response.json() as Promise<BillingAccount>;
 };
 
-function formatCurrency(amount: number, currency = 'usd') {
-  return new Intl.NumberFormat('en-US', {
+function getCurrencyLocale(locale: string) {
+  if (locale === 'pt') return 'pt-BR';
+  if (locale === 'zh') return 'zh-CN';
+  return 'en-US';
+}
+
+function formatCurrency(amount: number, currency: string, locale: string) {
+  return new Intl.NumberFormat(getCurrencyLocale(locale), {
     style: 'currency',
     currency: currency.toUpperCase(),
   }).format(amount / 100);
@@ -304,7 +310,7 @@ export function BillingClient({
                 <div className="mt-6">
                   <div className="flex items-end gap-2">
                     <span className="text-4xl font-semibold tracking-tight text-gray-950">
-                      {formatCurrency(plan.unitAmount, plan.currency)}
+                      {formatCurrency(plan.unitAmount, plan.currency, locale)}
                     </span>
                     <span className="pb-1 text-sm font-medium text-gray-500">
                       / {copy.pricePeriod[plan.interval]}
@@ -312,7 +318,7 @@ export function BillingClient({
                   </div>
                   {plan.interval === 'year' ? (
                     <p className="mt-2 text-sm text-gray-500">
-                      {formatCurrency(effectiveMonthly, plan.currency)} {copy.effectiveMonthly}
+                      {formatCurrency(effectiveMonthly, plan.currency, locale)} {copy.effectiveMonthly}
                       {plan.savePercent ? `, ${copy.save} ${plan.savePercent}%` : ''}
                     </p>
                   ) : (

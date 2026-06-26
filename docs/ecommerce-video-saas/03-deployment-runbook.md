@@ -365,9 +365,9 @@ npx trigger.dev@latest deploy
 第一版产品：
 
 ```text
-Starter Credits: 50 credits
-Pro Credits: 300 credits
-Business Credits: 1000 credits
+Starter Credits: 20 credits / R$10
+Creator Credits: 80 credits / R$40
+Scale Credits: 240 credits / R$120
 ```
 
 建议价格需要覆盖模型成本：

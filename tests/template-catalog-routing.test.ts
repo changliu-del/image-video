@@ -393,7 +393,7 @@ describe('template catalog routing contract', () => {
     expect(source).toContain('IMAGE_TO_VIDEO_MAX_DURATION_SECONDS');
     expect(source).toContain('durationSeconds');
     expect(source).toContain('type="range"');
-    expect(source).toContain('getCreditCostForDuration(durationSeconds)');
+    expect(source).toContain('getCreditCostForDuration(durationSeconds,');
     expect(copy).toContain('durationLabel');
     expect(copy).toContain('durationValue');
     expect(source).not.toContain("type SpecsSection = 'aspect' | 'duration' | 'quality'");
@@ -452,6 +452,21 @@ describe('template catalog routing contract', () => {
     );
     expect(tryOn).not.toContain(
       'current ?? requestedTemplate ?? nextTemplates[0] ?? nextAssets[0] ?? null'
+    );
+  });
+
+  it('keeps product image input upload-only without loading user history', () => {
+    const apparel = readSource('components/create/apparel-workbench.tsx');
+
+    expect(apparel).not.toContain('/api/user-media');
+    expect(apparel).not.toContain('generationType=apparel_image');
+    expect(apparel).not.toContain('chooseFromLibrary');
+    expect(apparel).not.toContain('selectedLibraryAsset');
+    expect(apparel).toContain(
+      'const canSubmit = !isSubmitting && Boolean(primaryFile);'
+    );
+    expect(apparel).toContain(
+      'const inputAssetId = await uploadAsset(sourceFile, commonCopy);'
     );
   });
 });

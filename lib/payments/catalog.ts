@@ -1,3 +1,10 @@
+import {
+  BILLING_CURRENCY,
+  type BillingCurrency,
+  getAmountForCredits,
+  getDiscountedAnnualAmount,
+} from './pricing';
+
 export const SUBSCRIPTION_INTERVALS = ['month', 'year'] as const;
 export type SubscriptionInterval = (typeof SUBSCRIPTION_INTERVALS)[number];
 
@@ -11,7 +18,7 @@ export type CreditPackage = {
   description: string;
   credits: number;
   unitAmount: number;
-  currency: 'usd';
+  currency: BillingCurrency;
   productId: string;
   priceId: string;
   features: string[];
@@ -27,7 +34,7 @@ export type SubscriptionPlan = {
   credits: number;
   monthlyCredits: number;
   unitAmount: number;
-  currency: 'usd';
+  currency: BillingCurrency;
   productId: string;
   priceId: string;
   features: string[];
@@ -49,39 +56,39 @@ const subscriptionTierDefinitions: SubscriptionTierDefinition[] = [
     tier: 'basic',
     displayName: 'Basic',
     description: 'For testing product videos, campaign images, and try-on flows.',
-    monthlyCredits: 150,
-    monthlyUnitAmount: 1200,
-    annualUnitAmount: 11500,
+    monthlyCredits: 60,
+    monthlyUnitAmount: getAmountForCredits(60),
+    annualUnitAmount: getDiscountedAnnualAmount(getAmountForCredits(60)),
     features: [
-      '150 credits refresh every billing month',
+      '60 credits refresh every billing month',
       'All ecommerce image and video tools',
-      'Good for 15 standard 5s videos',
+      'Good for 12 basic 5s videos',
     ],
   },
   {
     tier: 'plus',
     displayName: 'Plus',
     description: 'For weekly launches and repeat ad creative production.',
-    monthlyCredits: 600,
-    monthlyUnitAmount: 3900,
-    annualUnitAmount: 37400,
+    monthlyCredits: 180,
+    monthlyUnitAmount: getAmountForCredits(180),
+    annualUnitAmount: getDiscountedAnnualAmount(getAmountForCredits(180)),
     features: [
-      '600 credits refresh every billing month',
+      '180 credits refresh every billing month',
       'Priority queue in future production mode',
-      'Good for 60 standard 5s videos',
+      'Good for 36 basic 5s videos',
     ],
   },
   {
     tier: 'pro',
     displayName: 'Pro',
     description: 'For brands producing SKU batches and frequent video tests.',
-    monthlyCredits: 1500,
-    monthlyUnitAmount: 9900,
-    annualUnitAmount: 95000,
+    monthlyCredits: 480,
+    monthlyUnitAmount: getAmountForCredits(480),
+    annualUnitAmount: getDiscountedAnnualAmount(getAmountForCredits(480)),
     features: [
-      '1500 credits refresh every billing month',
+      '480 credits refresh every billing month',
       'Highest mock subscription allowance',
-      'Good for 150 standard 5s videos',
+      'Good for 96 basic 5s videos',
     ],
   },
 ];
@@ -94,7 +101,7 @@ export const SUBSCRIPTION_PLANS: SubscriptionPlan[] =
       description: definition.description,
       credits: definition.monthlyCredits,
       monthlyCredits: definition.monthlyCredits,
-      currency: 'usd' as const,
+      currency: BILLING_CURRENCY as BillingCurrency,
       features: definition.features,
     };
 
@@ -137,15 +144,15 @@ export const CREDIT_PACKAGES: CreditPackage[] = [
     name: 'Starter Credits',
     shortName: 'Starter',
     description: 'A small top-up for prompt tests and product experiments.',
-    credits: 100,
-    unitAmount: 900,
-    currency: 'usd',
+    credits: 20,
+    unitAmount: getAmountForCredits(20),
+    currency: BILLING_CURRENCY,
     productId: 'mock_prod_credits_starter',
     priceId: 'mock_price_credits_starter',
     features: [
-      '100 purchased credits',
+      '20 purchased credits',
       'Never expire in mock mode',
-      'Good for 10 standard 5s videos',
+      'Good for 4 basic 5s videos',
     ],
   },
   {
@@ -153,15 +160,15 @@ export const CREDIT_PACKAGES: CreditPackage[] = [
     name: 'Creator Credits',
     shortName: 'Creator',
     description: 'Extra room for a weekly batch of product images and clips.',
-    credits: 500,
-    unitAmount: 3900,
-    currency: 'usd',
+    credits: 80,
+    unitAmount: getAmountForCredits(80),
+    currency: BILLING_CURRENCY,
     productId: 'mock_prod_credits_creator',
     priceId: 'mock_price_credits_creator',
     features: [
-      '500 purchased credits',
+      '80 purchased credits',
       'Never expire in mock mode',
-      'Good for 50 standard 5s videos',
+      'Good for 16 basic 5s videos',
     ],
   },
   {
@@ -169,15 +176,15 @@ export const CREDIT_PACKAGES: CreditPackage[] = [
     name: 'Scale Credits',
     shortName: 'Scale',
     description: 'A larger reserve for catalog batches and campaign tests.',
-    credits: 1500,
-    unitAmount: 9900,
-    currency: 'usd',
+    credits: 240,
+    unitAmount: getAmountForCredits(240),
+    currency: BILLING_CURRENCY,
     productId: 'mock_prod_credits_scale',
     priceId: 'mock_price_credits_scale',
     features: [
-      '1500 purchased credits',
+      '240 purchased credits',
       'Never expire in mock mode',
-      'Good for 150 standard 5s videos',
+      'Good for 48 basic 5s videos',
     ],
   },
 ];

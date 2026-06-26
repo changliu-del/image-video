@@ -1,20 +1,12 @@
 'use client';
 
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useState } from 'react';
 import {
   AlertCircle,
-  CheckCircle2,
-  ImageIcon,
   Loader2,
   Palette,
   PanelsTopLeft,
-  Plus,
-  Shirt,
-  SlidersHorizontal,
-  Sparkles,
   UploadCloud,
-  UserRound,
-  WandSparkles,
 } from 'lucide-react';
 
 import { Button } from '@/components/ui/button';
@@ -32,14 +24,6 @@ import {
   commonWorkbenchCopy,
 } from '@/components/create/workbench-copy';
 import { TemplatePromptPicker } from '@/components/create/template-prompt-picker';
-import {
-  getLibraryItemAssetId as getItemAssetId,
-  getLibraryItemImage as getItemImage,
-  getLibraryItemLabel as getItemLabel,
-  libraryItemKey as itemKey,
-  normalizeLibraryItems as normalizeItems,
-  type WorkbenchLibraryItem as LibraryItem,
-} from '@/components/create/library-item-utils';
 import { refreshDashboardUser } from '@/lib/dashboard/user-cache';
 import { useDashboardLocale } from '@/lib/dashboard/use-dashboard-locale';
 import { getApparelImageCreditCost } from '@/lib/generations/credit-costs';
@@ -79,29 +63,6 @@ type JobStatusResponse = {
 const MAX_IMAGE_BYTES = 10 * 1024 * 1024;
 const ACCEPTED_IMAGE_TYPES = ['image/png', 'image/jpeg', 'image/webp'];
 const aspectRatios: AspectRatio[] = ['9:16', '1:1', '16:9'];
-const materialPickerCopy = {
-  pt: {
-    history: 'Meu historico',
-    loadingHistory: 'Carregando historico',
-    historyError: 'Nao foi possivel carregar seu historico.',
-    emptyHistory: 'Seu historico ainda nao tem imagens para este fluxo.',
-    retry: 'Tentar novamente',
-  },
-  en: {
-    history: 'My history',
-    loadingHistory: 'Loading history',
-    historyError: 'History could not be loaded.',
-    emptyHistory: 'Your history does not have images for this flow yet.',
-    retry: 'Retry',
-  },
-  zh: {
-    history: '我的历史',
-    loadingHistory: '加载历史素材中',
-    historyError: '历史素材加载失败。',
-    emptyHistory: '当前流程还没有可用的历史图片。',
-    retry: '重试',
-  },
-};
 
 async function readResponseError(response: Response, fallback: string) {
   try {
@@ -218,77 +179,6 @@ async function fetchJobStatus(jobId: string, labels: typeof commonWorkbenchCopy.
   return (await legacyStatus.json()) as JobStatusResponse;
 }
 
-function SectionTitle({
-  icon: Icon,
-  title,
-  note,
-}: {
-  icon: typeof Shirt;
-  title: string;
-  note?: string;
-}) {
-  return (
-    <div className="flex items-start justify-between gap-4">
-      <div className="flex items-center gap-2">
-        <span className="flex size-8 items-center justify-center rounded-lg border border-indigo-100 bg-indigo-50 text-indigo-500">
-          <Icon className="size-4" />
-        </span>
-        <div>
-          <h2 className="text-sm font-semibold text-gray-800">{title}</h2>
-          {note ? <p className="text-xs text-gray-400">{note}</p> : null}
-        </div>
-      </div>
-    </div>
-  );
-}
-
-function LibraryTile({
-  item,
-  active,
-  onClick,
-}: {
-  item: LibraryItem;
-  active: boolean;
-  onClick: () => void;
-}) {
-  const image = getItemImage(item);
-
-  return (
-    <button
-      type="button"
-      onClick={onClick}
-      className={cn(
-        'group min-w-0 rounded-lg border bg-white p-2 text-left transition',
-        active
-          ? 'border-emerald-300 shadow-sm'
-          : 'border-gray-200 hover:border-indigo-200 hover:bg-indigo-50/40'
-      )}
-    >
-      <div className="relative aspect-square overflow-hidden rounded-md bg-gray-100">
-        {image ? (
-          <img
-            src={image}
-            alt=""
-            className="size-full object-cover transition duration-500 group-hover:scale-105"
-          />
-        ) : (
-          <div className="flex size-full items-center justify-center text-gray-300">
-            <ImageIcon className="size-5" />
-          </div>
-        )}
-        {active ? (
-          <span className="absolute right-2 top-2 flex size-6 items-center justify-center rounded-full bg-emerald-300 text-gray-950">
-            <CheckCircle2 className="size-4" />
-          </span>
-        ) : null}
-      </div>
-      <p className="mt-2 truncate text-xs font-medium text-gray-600">
-        {getItemLabel(item)}
-      </p>
-    </button>
-  );
-}
-
 export function ApparelWorkbench({
   initialPrompt = '',
   initialTemplateId = '',
@@ -299,17 +189,10 @@ export function ApparelWorkbench({
   const locale = useDashboardLocale();
   const copy = apparelWorkbenchCopy[locale];
   const commonCopy = commonWorkbenchCopy[locale];
-  const materialCopy = materialPickerCopy[locale];
   const starterPrompt = initialPrompt.trim();
   const starterTemplateId = initialTemplateId.trim();
   const [primaryFile, setPrimaryFile] = useState<File | null>(null);
   const [primaryPreview, setPrimaryPreview] = useState<string | null>(null);
-  const [historyItems, setHistoryItems] = useState<LibraryItem[]>([]);
-  const [hasLoadedHistory, setHasLoadedHistory] = useState(false);
-  const [isLoadingHistory, setIsLoadingHistory] = useState(false);
-  const [historyError, setHistoryError] = useState(false);
-  const [selectedLibraryAsset, setSelectedLibraryAsset] =
-    useState<LibraryItem | null>(null);
   const [prompt, setPrompt] = useState(
     () => starterPrompt || copy.defaultPrompt
   );
@@ -324,24 +207,9 @@ export function ApparelWorkbench({
 
   const isSubmitting = Boolean(submitLabel);
   const selectedResultUrl = resultUrl(jobStatus);
-  const selectedLibraryAssetId = selectedLibraryAsset
-    ? getItemAssetId(selectedLibraryAsset)
-    : '';
-  const sourcePreview =
-    primaryPreview ?? (selectedLibraryAsset ? getItemImage(selectedLibraryAsset) : '');
-  const sourceName = primaryFile?.name ?? (
-    selectedLibraryAsset ? getItemLabel(selectedLibraryAsset) : null
-  );
-  const selectableHistoryItems = useMemo(
-    () =>
-      historyItems.filter((item) => getItemAssetId(item) && getItemImage(item)),
-    [historyItems]
-  );
-  const pickerSelectableAssets = selectableHistoryItems;
-
-  const canSubmit = useMemo(() => {
-    return !isSubmitting && Boolean(primaryFile || selectedLibraryAssetId);
-  }, [isSubmitting, primaryFile, selectedLibraryAssetId]);
+  const sourcePreview = primaryPreview;
+  const sourceName = primaryFile?.name ?? null;
+  const canSubmit = !isSubmitting && Boolean(primaryFile);
 
   useEffect(() => {
     if (!primaryFile) {
@@ -353,49 +221,6 @@ export function ApparelWorkbench({
     setPrimaryPreview(objectUrl);
     return () => URL.revokeObjectURL(objectUrl);
   }, [primaryFile]);
-
-  useEffect(() => {
-    if (hasLoadedHistory) return;
-
-    let cancelled = false;
-
-    async function loadHistory() {
-      setIsLoadingHistory(true);
-      setHistoryError(false);
-
-      try {
-        const params = new URLSearchParams({
-          generationType: 'apparel_image',
-          pageSize: '12',
-        });
-        const response = await fetch(`/api/user-media?${params.toString()}`);
-
-        if (!response.ok) {
-          throw new Error('history-load-failed');
-        }
-
-        const body = await response.json();
-        if (!cancelled) {
-          setHistoryItems(normalizeItems(body));
-        }
-      } catch {
-        if (!cancelled) {
-          setHistoryItems([]);
-          setHistoryError(true);
-        }
-      } finally {
-        if (!cancelled) {
-          setIsLoadingHistory(false);
-          setHasLoadedHistory(true);
-        }
-      }
-    }
-
-    void loadHistory();
-    return () => {
-      cancelled = true;
-    };
-  }, [hasLoadedHistory]);
 
   useEffect(() => {
     if (!starterTemplateId) return;
@@ -487,13 +312,13 @@ export function ApparelWorkbench({
     }
 
     setPrimaryFile(file);
-    setSelectedLibraryAsset(null);
   }
 
   async function handleSubmit(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
 
-    if (!primaryFile && !selectedLibraryAssetId) {
+    const sourceFile = primaryFile;
+    if (!sourceFile) {
       setError(copy.uploadRequired);
       return;
     }
@@ -503,11 +328,8 @@ export function ApparelWorkbench({
     setJobStatus(null);
 
     try {
-      let inputAssetId = selectedLibraryAssetId;
-      if (primaryFile) {
-        setSubmitLabel(copy.uploadingImage);
-        inputAssetId = await uploadAsset(primaryFile, commonCopy);
-      }
+      setSubmitLabel(copy.uploadingImage);
+      const inputAssetId = await uploadAsset(sourceFile, commonCopy);
 
       setSubmitLabel(copy.startingGeneration);
       const generation = await postJson<GenerationResponse>(
@@ -549,19 +371,6 @@ export function ApparelWorkbench({
     setError(null);
     setSelectedTemplateId(template.id);
     setPrompt(template.prompt);
-  }
-
-  function applyLibraryAsset(asset: LibraryItem | null | undefined) {
-    if (!asset || !getItemAssetId(asset)) return;
-
-    setError(null);
-    setPrimaryFile(null);
-    setSelectedLibraryAsset(asset);
-    setPrompt((current) => {
-      const label = getItemLabel(asset);
-      const trimmed = current.trim();
-      return trimmed.includes(label) ? trimmed : `${trimmed} ${label}`.trim();
-    });
   }
 
   const statusLabel = jobStatus?.progressLabel ?? jobStatus?.status ?? (jobId ? commonCopy.generating : null);
@@ -658,78 +467,6 @@ export function ApparelWorkbench({
           </div>
         </PanelSection>
 
-        <PanelSection
-          title={materialCopy.history}
-          hint={
-            isLoadingHistory
-              ? materialCopy.loadingHistory
-              : commonCopy.materialCount(selectableHistoryItems.length)
-          }
-        >
-          <div className="space-y-4">
-            {isLoadingHistory ? (
-                <div className="flex items-center justify-center gap-2 rounded-lg border border-dashed border-gray-200 px-3 py-4 text-sm font-semibold text-gray-400">
-                  <Loader2 className="size-4 animate-spin" />
-                  {materialCopy.loadingHistory}
-                </div>
-            ) : historyError ? (
-                <div className="rounded-lg border border-red-100 bg-red-50 px-3 py-4 text-sm text-red-700">
-                  <div className="flex items-start gap-2">
-                    <AlertCircle className="mt-0.5 size-4 shrink-0" />
-                    <span>{materialCopy.historyError}</span>
-                  </div>
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setHistoryError(false);
-                      setHasLoadedHistory(false);
-                    }}
-                    className="mt-2 text-xs font-bold text-red-700 underline underline-offset-2"
-                  >
-                    {materialCopy.retry}
-                  </button>
-                </div>
-            ) : selectableHistoryItems.length ? (
-                <div className="grid grid-cols-2 gap-2">
-                  {selectableHistoryItems.slice(0, 12).map((asset) => {
-                    const image = getItemImage(asset);
-                    const active =
-                      selectedLibraryAssetId === getItemAssetId(asset);
-
-                    return (
-                      <button
-                        key={itemKey(asset)}
-                        type="button"
-                        onClick={() => applyLibraryAsset(asset)}
-                        className={cn(
-                          'rounded-lg border bg-white p-2 text-left text-gray-600 transition hover:border-indigo-200 hover:text-indigo-600',
-                          active
-                            ? 'border-indigo-500 ring-2 ring-indigo-100'
-                            : 'border-gray-200'
-                        )}
-                      >
-                        <div className="aspect-square overflow-hidden rounded-md bg-gray-100">
-                          <img
-                            src={image}
-                            alt=""
-                            className="size-full object-cover"
-                          />
-                        </div>
-                        <p className="mt-2 truncate text-xs font-bold">
-                          {getItemLabel(asset)}
-                        </p>
-                      </button>
-                    );
-                  })}
-                </div>
-            ) : (
-                <div className="rounded-lg border border-dashed border-gray-200 px-3 py-4 text-sm text-gray-400">
-                  {materialCopy.emptyHistory}
-                </div>
-            )}
-          </div>
-        </PanelSection>
-
         {error ? (
           <div
             className="mb-5 flex items-start gap-2 rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700"
@@ -785,15 +522,7 @@ export function ApparelWorkbench({
                 onChange={(event) => selectPrimaryFile(event.target.files?.[0] ?? null)}
                 disabled={isSubmitting}
               />
-              <div className="mt-6 grid gap-4 md:grid-cols-2">
-                <IconButtonCard
-                  icon={ImageIcon}
-                  label={commonCopy.chooseFromLibrary}
-                  onClick={() =>
-                    applyLibraryAsset(selectedLibraryAsset ?? pickerSelectableAssets[0])
-                  }
-                  disabled={pickerSelectableAssets.length === 0}
-                />
+              <div className="mt-6">
                 <IconButtonCard
                   icon={UploadCloud}
                   label={commonCopy.uploadImage}

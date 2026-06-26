@@ -43,12 +43,12 @@ allows only `user_upload`, `generated_image`, and `generated_video`.
   `/api/model-assets` (`templates.type = 'model'`). The model selection is
   stored as generation metadata and appended to the prompt context; the current
   Wanxiang image-to-video provider path still consumes one first-frame image.
-- `/create/apparel` uses templates plus the user's private history.
+- `/create/apparel` uses image-to-image templates plus the user's current uploaded product image; it does not load user history.
 - `/create/try-on` uses `/api/model-assets`, backed by `templates` rows where
   `type = 'model'`, for model selection plus the user's private garment/history
   items.
 
-Workbench copy should refer to history when selecting user-owned previous media.
+Workbench copy should refer to history only on surfaces that still select user-owned previous media.
 Do not restore "official material" and "my history" source tabs until the team
 has a staffed content ingestion and quality workflow.
 

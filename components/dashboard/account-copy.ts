@@ -138,25 +138,25 @@ export const billingCopy: Record<DashboardLocale, BillingCopy> = {
       basic: {
         description: 'Para testar vídeos de produto, imagens de campanha e try-on.',
         features: [
-          '150 créditos renovam a cada mês de billing',
+          '60 créditos renovam a cada mês de billing',
           'Todas as ferramentas de imagem e vídeo ecommerce',
-          'Bom para 15 vídeos padrão de 5s',
+          'Bom para 12 vídeos básicos de 5s',
         ],
       },
       plus: {
         description: 'Para lançamentos semanais e produção recorrente de criativos.',
         features: [
-          '600 créditos renovam a cada mês de billing',
+          '180 créditos renovam a cada mês de billing',
           'Fila prioritária no modo de produção futuro',
-          'Bom para 60 vídeos padrão de 5s',
+          'Bom para 36 vídeos básicos de 5s',
         ],
       },
       pro: {
         description: 'Para marcas com lotes de SKU e testes frequentes de vídeo.',
         features: [
-          '1500 créditos renovam a cada mês de billing',
+          '480 créditos renovam a cada mês de billing',
           'Maior cota de assinatura mock',
-          'Bom para 150 vídeos padrão de 5s',
+          'Bom para 96 vídeos básicos de 5s',
         ],
       },
     },
@@ -202,25 +202,25 @@ export const billingCopy: Record<DashboardLocale, BillingCopy> = {
       basic: {
         description: 'For testing product videos, campaign images, and try-on flows.',
         features: [
-          '150 credits refresh every billing month',
+          '60 credits refresh every billing month',
           'All ecommerce image and video tools',
-          'Good for 15 standard 5s videos',
+          'Good for 12 basic 5s videos',
         ],
       },
       plus: {
         description: 'For weekly launches and repeat ad creative production.',
         features: [
-          '600 credits refresh every billing month',
+          '180 credits refresh every billing month',
           'Priority queue in future production mode',
-          'Good for 60 standard 5s videos',
+          'Good for 36 basic 5s videos',
         ],
       },
       pro: {
         description: 'For brands producing SKU batches and frequent video tests.',
         features: [
-          '1500 credits refresh every billing month',
+          '480 credits refresh every billing month',
           'Highest mock subscription allowance',
-          'Good for 150 standard 5s videos',
+          'Good for 96 basic 5s videos',
         ],
       },
     },
@@ -265,25 +265,25 @@ export const billingCopy: Record<DashboardLocale, BillingCopy> = {
       basic: {
         description: '适合测试商品视频、活动图和试衣流程。',
         features: [
-          '每个账单月发放 150 算力值',
+          '每个账单月发放 60 算力值',
           '可使用全部电商图片和视频工具',
-          '约可生成 15 条标准 5 秒视频',
+          '约可生成 12 条基础 5 秒视频',
         ],
       },
       plus: {
         description: '适合每周上新和持续产出广告素材。',
         features: [
-          '每个账单月发放 600 算力值',
+          '每个账单月发放 180 算力值',
           '正式上线后优先排队',
-          '约可生成 60 条标准 5 秒视频',
+          '约可生成 36 条基础 5 秒视频',
         ],
       },
       pro: {
         description: '适合批量 SKU 和高频视频测试的品牌团队。',
         features: [
-          '每个账单月发放 1500 算力值',
+          '每个账单月发放 480 算力值',
           '测试模式下最高订阅额度',
-          '约可生成 150 条标准 5 秒视频',
+          '约可生成 96 条基础 5 秒视频',
         ],
       },
     },
@@ -327,15 +327,15 @@ export const creditsCopy: Record<DashboardLocale, CreditsCopy> = {
     packages: {
       starter: {
         description: 'Um top-up pequeno para testes de prompt e experimentos de produto.',
-        features: ['100 créditos comprados', 'Não expiram no modo mock', 'Bom para 10 vídeos padrão de 5s'],
+        features: ['20 créditos comprados', 'Não expiram no modo mock', 'Bom para 4 vídeos básicos de 5s'],
       },
       creator: {
         description: 'Mais margem para um lote semanal de imagens e clipes de produto.',
-        features: ['500 créditos comprados', 'Não expiram no modo mock', 'Bom para 50 vídeos padrão de 5s'],
+        features: ['80 créditos comprados', 'Não expiram no modo mock', 'Bom para 16 vídeos básicos de 5s'],
       },
       scale: {
         description: 'Reserva maior para lotes de catálogo e testes de campanha.',
-        features: ['1500 créditos comprados', 'Não expiram no modo mock', 'Bom para 150 vídeos padrão de 5s'],
+        features: ['240 créditos comprados', 'Não expiram no modo mock', 'Bom para 48 vídeos básicos de 5s'],
       },
     },
   },
@@ -375,15 +375,15 @@ export const creditsCopy: Record<DashboardLocale, CreditsCopy> = {
     packages: {
       starter: {
         description: 'A small top-up for prompt tests and product experiments.',
-        features: ['100 purchased credits', 'Never expire in mock mode', 'Good for 10 standard 5s videos'],
+        features: ['20 purchased credits', 'Never expire in mock mode', 'Good for 4 basic 5s videos'],
       },
       creator: {
         description: 'Extra room for a weekly batch of product images and clips.',
-        features: ['500 purchased credits', 'Never expire in mock mode', 'Good for 50 standard 5s videos'],
+        features: ['80 purchased credits', 'Never expire in mock mode', 'Good for 16 basic 5s videos'],
       },
       scale: {
         description: 'A larger reserve for catalog batches and campaign tests.',
-        features: ['1500 purchased credits', 'Never expire in mock mode', 'Good for 150 standard 5s videos'],
+        features: ['240 purchased credits', 'Never expire in mock mode', 'Good for 48 basic 5s videos'],
       },
     },
   },
@@ -423,15 +423,15 @@ export const creditsCopy: Record<DashboardLocale, CreditsCopy> = {
     packages: {
       starter: {
         description: '适合提示词测试和小规模商品实验的轻量补充。',
-        features: ['100 算力值', '测试模式下不会过期', '约可生成 10 条标准 5 秒视频'],
+        features: ['20 算力值', '测试模式下不会过期', '约可生成 4 条基础 5 秒视频'],
       },
       creator: {
         description: '适合每周一批商品图和视频素材的额外额度。',
-        features: ['500 算力值', '测试模式下不会过期', '约可生成 50 条标准 5 秒视频'],
+        features: ['80 算力值', '测试模式下不会过期', '约可生成 16 条基础 5 秒视频'],
       },
       scale: {
         description: '适合目录批量生产和活动测试的更大储备。',
-        features: ['1500 算力值', '测试模式下不会过期', '约可生成 150 条标准 5 秒视频'],
+        features: ['240 算力值', '测试模式下不会过期', '约可生成 48 条基础 5 秒视频'],
       },
     },
   },

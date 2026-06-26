@@ -4,6 +4,7 @@ import { redirect } from 'next/navigation';
 import { POSTHOG_EVENTS, captureServerEvent } from '@/lib/analytics/posthog';
 import { grantPurchasedCredits } from '@/lib/credits';
 import { CREDIT_PACKAGES, SUBSCRIPTION_PLANS } from '@/lib/payments/catalog';
+import { BILLING_CURRENCY } from './pricing';
 import {
   getMockCreditPackageByPriceId,
   getMockSubscriptionPlanByPriceId,
@@ -158,7 +159,10 @@ function getCreditsFromFallbackMapping(
   }
 
   const amountTotal = session.amount_total;
-  if (amountTotal != null && session.currency?.toLowerCase() === 'usd') {
+  if (
+    amountTotal != null &&
+    session.currency?.toLowerCase() === BILLING_CURRENCY
+  ) {
     const creditsByAmount = CREDIT_PACKAGES_BY_AMOUNT_CENTS.get(amountTotal);
     if (creditsByAmount != null) {
       return {
