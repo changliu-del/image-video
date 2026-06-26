@@ -132,13 +132,13 @@ export const imageVideoWorkbenchCopy = {
     modelModes: {
       wanxiang_2_7: {
         eyebrow: 'Modelo 1',
-        title: 'Wanxiang 2.7',
-        description: 'Referencia criativa geral',
+        title: 'Imagem para video Pro',
+        description: 'Wanxiang 2.7',
       },
       wanxiang_2_6_first_frame: {
         eyebrow: 'Modelo 2',
-        title: '2.6 primeiro frame',
-        description: 'Imagem vira video',
+        title: 'Imagem para video',
+        description: 'Baseado no primeiro frame',
       },
     },
     materialAction: 'Material de referencia',
@@ -224,13 +224,13 @@ export const imageVideoWorkbenchCopy = {
     modelModes: {
       wanxiang_2_7: {
         eyebrow: 'Model 1',
-        title: 'Wanxiang 2.7',
-        description: 'All-purpose reference video',
+        title: 'Image-to-video Pro',
+        description: 'Wanxiang 2.7',
       },
       wanxiang_2_6_first_frame: {
         eyebrow: 'Model 2',
-        title: '2.6 first-frame',
-        description: 'Image-to-video',
+        title: 'Image-to-video',
+        description: 'Based on first frame',
       },
     },
     materialAction: 'Reference materials',
@@ -316,13 +316,13 @@ export const imageVideoWorkbenchCopy = {
     modelModes: {
       wanxiang_2_7: {
         eyebrow: '模型1',
-        title: '2.7 万相',
-        description: '全能参考视频',
+        title: '图生视频 Pro',
+        description: '万相 2.7',
       },
       wanxiang_2_6_first_frame: {
         eyebrow: '模型2',
-        title: '2.6 模型-首帧',
-        description: '图生视频',
+        title: '图生视频',
+        description: '基于首帧',
       },
     },
     materialAction: '参考素材',

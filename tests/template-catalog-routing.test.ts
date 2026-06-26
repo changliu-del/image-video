@@ -415,8 +415,8 @@ describe('template catalog routing contract', () => {
     expect(source).toContain('ImageVideoModelLibraryDrawer');
     expect(source).toContain('modelTemplateId: selectedModelAsset.id');
     expect(source).toContain('videoModelMode: selectedVideoModelMode');
-    expect(copy).toContain('2.7 万相');
-    expect(copy).toContain('2.6 模型-首帧');
+    expect(copy).toContain('图生视频 Pro');
+    expect(copy).toContain('基于首帧');
     expect(copy).toContain('出镜模特');
   });
 
