@@ -104,88 +104,88 @@ const policyContent: Record<'en' | 'pt', PolicyContent> = {
   },
   pt: {
     eyebrow: 'Legal',
-    title: 'Politica de Privacidade',
+    title: 'Política de Privacidade',
     updated: 'Atualizado em: 27 de junho de 2026',
     intro:
-      'Esta Politica de Privacidade explica como o Vendeo coleta, usa, armazena e protege informacoes quando voce usa nosso estudio de IA para comercio, incluindo recursos de imagem de produto, video, try-on, templates, conta, billing e suporte.',
+      'Esta Política de Privacidade explica como o Vendeo coleta, usa, armazena e protege informações quando você usa nosso estúdio de IA para e-commerce, incluindo recursos de imagem de produto, vídeo, provador virtual, templates, conta, pagamento e suporte.',
     sections: [
       {
-        title: 'Informacoes que coletamos',
+        title: 'Informações que coletamos',
         body: [
-          'Informacoes de conta, como endereco de email, detalhes de autenticacao, configuracoes do workspace e metadados de assinatura ou saldo de creditos.',
-          'Conteudo que voce fornece, incluindo prompts, imagens de produto enviadas, referencias de roupa ou modelo, midias geradas, templates selecionados e configuracoes de geracao relacionadas.',
-          'Informacoes tecnicas e de uso, como paginas acessadas, interacoes com recursos, dados de dispositivo e navegador, endereco IP, logs, cookies e diagnosticos semelhantes.',
-          'Metadados de pagamento e billing, como identificadores de checkout, nomes de planos, detalhes de pacotes de credito, status de transacao e referencias do provedor de pagamento. Nao armazenamos numeros completos de cartao.',
+          'Informações da conta, como endereço de e-mail, dados de autenticação, configurações da área de trabalho e metadados de assinatura ou saldo de créditos.',
+          'Conteúdo que você fornece, incluindo prompts, imagens de produto enviadas, referências de roupa ou modelo, mídias geradas, templates selecionados e configurações de geração relacionadas.',
+          'Informações técnicas e de uso, como páginas acessadas, interações com recursos, dados de dispositivo e navegador, endereço IP, logs, cookies e diagnósticos semelhantes.',
+          'Metadados de pagamento e cobrança, como identificadores de checkout, nomes de planos, detalhes de pacotes de crédito, status de transação e referências do provedor de pagamento. Não armazenamos números completos de cartão.',
         ],
       },
       {
-        title: 'Como usamos informacoes',
+        title: 'Como usamos as informações',
         body: [
-          'Para fornecer o servico, processar uploads, executar geracoes com IA, armazenar resultados, gerenciar templates e manter seu historico no workspace.',
-          'Para gerenciar contas, creditos, assinaturas, checkout, seguranca, prevencao de fraude, suporte e comunicacoes sobre o servico.',
-          'Para melhorar confiabilidade, desempenho, qualidade do produto, analytics, depuracao e prevencao de abuso.',
-          'Para cumprir obrigacoes legais, aplicar nossos termos e proteger direitos, seguranca e integridade dos usuarios e do servico.',
+          'Para fornecer o serviço, processar uploads, executar gerações com IA, armazenar resultados, gerenciar templates e manter seu histórico na área de trabalho.',
+          'Para gerenciar contas, créditos, assinaturas, checkout, segurança, prevenção de fraude, suporte e comunicações sobre o serviço.',
+          'Para melhorar confiabilidade, desempenho, qualidade do produto, análises, depuração e prevenção de abuso.',
+          'Para cumprir obrigações legais, aplicar nossos termos e proteger direitos, segurança e integridade dos usuários e do serviço.',
         ],
       },
       {
-        title: 'Conteudo gerado e uploads',
+        title: 'Conteúdo gerado e uploads',
         body: [
-          'Voce e responsavel pelas imagens, prompts, referencias e outros conteudos que envia. Nao envie conteudo que voce nao tenha direito de usar.',
-          'Podemos processar conteudo enviado e gerado por meio de provedores de infraestrutura e provedores de modelos de IA somente para operar, proteger e melhorar o servico.',
-          'Midias privadas do usuario sao destinadas ao seu workspace e nao devem ser tratadas como conteudo publico, a menos que voce escolha compartilhar ou publicar fora do servico.',
+          'Você é responsável pelas imagens, prompts, referências e outros conteúdos que envia. Não envie conteúdo que você não tenha direito de usar.',
+          'Podemos processar conteúdo enviado e gerado por meio de provedores de infraestrutura e provedores de modelos de IA somente para operar, proteger e melhorar o serviço.',
+          'Mídias privadas do usuário são destinadas à sua área de trabalho e não devem ser tratadas como conteúdo público, a menos que você escolha compartilhar ou publicar fora do serviço.',
         ],
       },
       {
         title: 'Compartilhamento e provedores',
         body: [
-          'Podemos compartilhar informacoes com provedores de hospedagem, banco de dados, armazenamento, analytics, email, pagamento, seguranca, suporte ao cliente e infraestrutura de IA que ajudam a operar o servico.',
-          'Podemos divulgar informacoes se exigido por lei, processo legal ou por crenca de boa-fe de que a divulgacao e necessaria para proteger usuarios, o publico ou o servico.',
-          'Nao vendemos suas informacoes pessoais.',
+          'Podemos compartilhar informações com provedores de hospedagem, banco de dados, armazenamento, análises, e-mail, pagamento, segurança, suporte ao cliente e infraestrutura de IA que ajudam a operar o serviço.',
+          'Podemos divulgar informações se exigido por lei, processo legal ou por crença de boa-fé de que a divulgação é necessária para proteger usuários, o público ou o serviço.',
+          'Não vendemos suas informações pessoais.',
         ],
       },
       {
-        title: 'Cookies e analytics',
+        title: 'Cookies e análises',
         body: [
-          'Usamos cookies, armazenamento local e tecnologias semelhantes para manter voce conectado, lembrar preferencias, proteger sessoes, medir uso e melhorar o produto.',
-          'Voce pode controlar cookies nas configuracoes do navegador, mas alguns recursos podem nao funcionar corretamente se cookies essenciais forem desativados.',
+          'Usamos cookies, armazenamento local e tecnologias semelhantes para manter você conectado, lembrar preferências, proteger sessões, medir uso e melhorar o produto.',
+          'Você pode controlar cookies nas configurações do navegador, mas alguns recursos podem não funcionar corretamente se cookies essenciais forem desativados.',
         ],
       },
       {
-        title: 'Retencao e seguranca',
+        title: 'Retenção e segurança',
         body: [
-          'Mantemos informacoes pelo tempo necessario para fornecer o servico, manter registros, cumprir obrigacoes legais, resolver disputas e aplicar acordos.',
-          'Usamos salvaguardas administrativas, tecnicas e organizacionais razoaveis para proteger informacoes. Nenhum servico online pode garantir seguranca absoluta.',
+          'Mantemos informações pelo tempo necessário para fornecer o serviço, manter registros, cumprir obrigações legais, resolver disputas e aplicar acordos.',
+          'Usamos salvaguardas administrativas, técnicas e organizacionais razoáveis para proteger informações. Nenhum serviço online pode garantir segurança absoluta.',
         ],
       },
       {
         title: 'Suas escolhas',
         body: [
-          'Voce pode solicitar acesso, correcao, exportacao, exclusao ou restricao das suas informacoes pessoais quando a lei aplicavel conceder esses direitos.',
-          'Voce pode cancelar comunicacoes nao essenciais, gerenciar configuracoes da conta no workspace ou entrar em contato para solicitacoes de privacidade.',
+          'Você pode solicitar acesso, correção, exportação, exclusão ou restrição das suas informações pessoais quando a lei aplicável conceder esses direitos.',
+          'Você pode cancelar comunicações não essenciais, gerenciar configurações da conta na área de trabalho ou entrar em contato para solicitações de privacidade.',
         ],
       },
       {
-        title: 'Transferencias internacionais',
+        title: 'Transferências internacionais',
         body: [
-          'Podemos processar e armazenar informacoes em paises diferentes daquele onde voce mora. Quando exigido, usamos salvaguardas apropriadas para transferencias internacionais.',
+          'Podemos processar e armazenar informações em países diferentes daquele onde você mora. Quando exigido, usamos salvaguardas apropriadas para transferências internacionais.',
         ],
       },
       {
-        title: 'Criancas',
+        title: 'Crianças',
         body: [
-          'O servico nao e direcionado a criancas menores de 13 anos, e nao coletamos intencionalmente informacoes pessoais de criancas menores de 13 anos.',
+          'O serviço não é direcionado a crianças menores de 13 anos, e não coletamos intencionalmente informações pessoais de crianças menores de 13 anos.',
         ],
       },
       {
         title: 'Contato',
         body: [
-          'Para duvidas ou solicitacoes sobre privacidade, entre em contato pelo email support@8ilx.com.',
+          'Para dúvidas ou solicitações sobre privacidade, entre em contato pelo e-mail support@8ilx.com.',
         ],
       },
       {
-        title: 'Alteracoes nesta politica',
+        title: 'Alterações nesta política',
         body: [
-          'Podemos atualizar esta Politica de Privacidade periodicamente. Quando fizermos alteracoes materiais, atualizaremos a data acima e forneceremos aviso adicional quando apropriado.',
+          'Podemos atualizar esta Política de Privacidade periodicamente. Quando fizermos alterações materiais, atualizaremos a data acima e forneceremos aviso adicional quando apropriado.',
         ],
       },
     ],

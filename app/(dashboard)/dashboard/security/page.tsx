@@ -4,45 +4,81 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Label } from '@/components/ui/label';
-import { Lock, Trash2, Loader2 } from 'lucide-react';
+import { Lock, Loader2 } from 'lucide-react';
 import { useActionState } from 'react';
-import { updatePassword, deleteAccount } from '@/app/(login)/actions';
+import { updatePassword } from '@/app/(login)/actions';
+import type { DashboardLocale } from '@/lib/dashboard/content';
+import { useDashboardLocale } from '@/lib/dashboard/use-dashboard-locale';
 
 type PasswordState = {
   error?: string;
   success?: string;
 };
 
-type DeleteState = {
-  error?: string;
-  success?: string;
+const securityCopy: Record<
+  DashboardLocale,
+  {
+    title: string;
+    passwordTitle: string;
+    currentPassword: string;
+    newPassword: string;
+    confirmNewPassword: string;
+    updating: string;
+    updatePassword: string;
+  }
+> = {
+  pt: {
+    title: 'Configurações de segurança',
+    passwordTitle: 'Senha',
+    currentPassword: 'Senha atual',
+    newPassword: 'Nova senha',
+    confirmNewPassword: 'Confirmar nova senha',
+    updating: 'Atualizando...',
+    updatePassword: 'Atualizar senha',
+  },
+  en: {
+    title: 'Security settings',
+    passwordTitle: 'Password',
+    currentPassword: 'Current password',
+    newPassword: 'New password',
+    confirmNewPassword: 'Confirm new password',
+    updating: 'Updating...',
+    updatePassword: 'Update password',
+  },
+  zh: {
+    title: '安全设置',
+    passwordTitle: '密码',
+    currentPassword: '当前密码',
+    newPassword: '新密码',
+    confirmNewPassword: '确认新密码',
+    updating: '更新中...',
+    updatePassword: '更新密码',
+  },
 };
 
 export default function SecurityPage() {
+  const locale = useDashboardLocale();
+  const copy = securityCopy[locale];
   const [passwordState, passwordAction, isPasswordPending] = useActionState<
     PasswordState,
     FormData
   >(updatePassword, {});
 
-  const [deleteState, deleteAction, isDeletePending] = useActionState<
-    DeleteState,
-    FormData
-  >(deleteAccount, {});
-
   return (
     <section className="flex-1 p-4 lg:p-8">
       <h1 className="text-lg lg:text-2xl font-medium bold text-gray-900 mb-6">
-        Security Settings
+        {copy.title}
       </h1>
       <Card className="mb-8">
         <CardHeader>
-          <CardTitle>Password</CardTitle>
+          <CardTitle>{copy.passwordTitle}</CardTitle>
         </CardHeader>
         <CardContent>
           <form className="space-y-4" action={passwordAction}>
+            <input type="hidden" name="locale" value={locale} />
             <div>
               <Label htmlFor="current-password" className="mb-2">
-                Current Password
+                {copy.currentPassword}
               </Label>
               <Input
                 id="current-password"
@@ -56,7 +92,7 @@ export default function SecurityPage() {
             </div>
             <div>
               <Label htmlFor="new-password" className="mb-2">
-                New Password
+                {copy.newPassword}
               </Label>
               <Input
                 id="new-password"
@@ -70,7 +106,7 @@ export default function SecurityPage() {
             </div>
             <div>
               <Label htmlFor="confirm-password" className="mb-2">
-                Confirm New Password
+                {copy.confirmNewPassword}
               </Label>
               <Input
                 id="confirm-password"
@@ -95,59 +131,12 @@ export default function SecurityPage() {
               {isPasswordPending ? (
                 <>
                   <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                  Updating...
+                  {copy.updating}
                 </>
               ) : (
                 <>
                   <Lock className="mr-2 h-4 w-4" />
-                  Update Password
-                </>
-              )}
-            </Button>
-          </form>
-        </CardContent>
-      </Card>
-
-      <Card>
-        <CardHeader>
-          <CardTitle>Delete Account</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <p className="text-sm text-gray-500 mb-4">
-            Account deletion is non-reversable. Please proceed with caution.
-          </p>
-          <form action={deleteAction} className="space-y-4">
-            <div>
-              <Label htmlFor="delete-password" className="mb-2">
-                Confirm Password
-              </Label>
-              <Input
-                id="delete-password"
-                name="password"
-                type="password"
-                required
-                minLength={8}
-                maxLength={100}
-              />
-            </div>
-            {deleteState.error && (
-              <p className="text-red-500 text-sm">{deleteState.error}</p>
-            )}
-            <Button
-              type="submit"
-              variant="destructive"
-              className="bg-red-600 hover:bg-red-700"
-              disabled={isDeletePending}
-            >
-              {isDeletePending ? (
-                <>
-                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                  Deleting...
-                </>
-              ) : (
-                <>
-                  <Trash2 className="mr-2 h-4 w-4" />
-                  Delete Account
+                  {copy.updatePassword}
                 </>
               )}
             </Button>

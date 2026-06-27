@@ -30,10 +30,10 @@ export async function generateMetadata({
 
   return {
     title: isPortuguese
-      ? 'Politica de Privacidade | Vendeo'
+      ? 'Política de Privacidade | Vendeo'
       : 'Privacy Policy | Vendeo',
     description: isPortuguese
-      ? 'Politica de Privacidade do Vendeo AI Commerce Studio.'
+      ? 'Política de Privacidade do Vendeo AI Commerce Studio.'
       : 'Privacy Policy for Vendeo AI Commerce Studio.',
     alternates: {
       canonical: `/${locale}/legal/privacy-policy`,

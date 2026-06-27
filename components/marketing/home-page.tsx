@@ -54,7 +54,7 @@ const templateGalleryStatusCopy: Record<
   pt: {
     loading: 'Carregando templates...',
     empty: 'Nenhum template publicado ainda.',
-    error: 'Nao foi possivel carregar os templates.',
+    error: 'Não foi possível carregar os templates.',
     retry: 'Tentar novamente',
     viewAll: 'Ver todos os templates',
   },

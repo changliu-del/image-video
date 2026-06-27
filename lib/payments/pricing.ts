@@ -3,6 +3,9 @@ export type BillingCurrency = typeof BILLING_CURRENCY;
 
 export const CREDIT_UNIT_AMOUNT = 10;
 export const CREDIT_UNIT_LABEL = 'R$0.10';
+export const DIRECT_TOP_UP_UNIT_AMOUNT = 100;
+export const DIRECT_TOP_UP_CREDITS_PER_UNIT =
+  DIRECT_TOP_UP_UNIT_AMOUNT / CREDIT_UNIT_AMOUNT;
 export const PROVIDER_COST_MARKUP_MULTIPLIER = 3;
 export const CNY_TO_BRL_EXCHANGE_RATE = 0.7609;
 

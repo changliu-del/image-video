@@ -3,7 +3,7 @@ import type { Metadata, Viewport } from 'next';
 
 export const metadata: Metadata = {
   title: 'Image Video',
-  description: 'Crie videos de produto com IA a partir de uma imagem.'
+  description: 'Crie vídeos de produto com IA a partir de uma imagem.'
 };
 
 export const viewport: Viewport = {

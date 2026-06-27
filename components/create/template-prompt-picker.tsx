@@ -36,7 +36,7 @@ type TemplatePickerCopy = {
 const templatePickerCopy: Record<string, TemplatePickerCopy> = {
   pt: {
     empty: 'Nenhum template nesta categoria.',
-    error: 'Nao foi possivel carregar os templates.',
+    error: 'Não foi possível carregar os templates.',
     loading: 'Carregando templates',
     retry: 'Tentar novamente',
   },

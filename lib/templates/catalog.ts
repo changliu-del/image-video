@@ -96,7 +96,7 @@ export const templateCategoryLabels: Record<string, LocalizedText> = {
   goods_architecture: { pt: 'Arquitetura', en: 'Architecture', zh: '人文建筑' },
   goods_abstract: { pt: 'Conceito abstrato', en: 'Abstract concept', zh: '抽象概念' },
   goods_interior: { pt: 'Interior', en: 'Indoor space', zh: '室内空间' },
-  tryon_solid_background: { pt: 'Fundo solido', en: 'Solid background', zh: '纯色背景' },
+  tryon_solid_background: { pt: 'Fundo sólido', en: 'Solid background', zh: '纯色背景' },
   tryon_outdoor_commercial: { pt: 'Comercial externo', en: 'Outdoor commercial', zh: '户外商拍' },
   tryon_indoor_commercial: { pt: 'Comercial interno', en: 'Indoor commercial', zh: '室内商拍' },
   tryon_outdoor_casual: { pt: 'Externo casual', en: 'Outdoor casual', zh: '户外随拍' },
@@ -134,14 +134,14 @@ export const templatesPageContent: Record<
 > = {
   pt: {
     metadata: {
-      title: 'Templates de video para e-commerce com IA',
+      title: 'Templates de vídeo para e-commerce com IA',
       description:
-        'Explore templates de imagem para video com prompts prontos para produtos, moda, alimentos e campanhas.',
+        'Explore templates de imagem para vídeo com prompts prontos para produtos, moda, alimentos e campanhas.',
     },
     eyebrow: 'Biblioteca de templates',
-    title: 'Escolha um ponto de partida para transformar produto em video.',
+    title: 'Escolha um ponto de partida para transformar produto em vídeo.',
     description:
-      'A biblioteca usa os mesmos templates do fluxo de imagem para video. Escolha uma categoria, abra o workbench e edite o prompt livremente.',
+      'A biblioteca usa os mesmos templates do fluxo de imagem para vídeo. Escolha uma categoria, abra o editor e edite o prompt livremente.',
     searchPlaceholder: 'Buscar por produto, moda, alimento...',
     clearFilters: 'Limpar filtros',
     all: 'Todos',
@@ -161,7 +161,7 @@ export const templatesPageContent: Record<
     eyebrow: 'Template library',
     title: 'Choose a starting point for turning product images into video.',
     description:
-      'The library reuses the same templates as the image-to-video workflow. Pick a category, open the workbench, and freely edit the prompt.',
+      'The library reuses the same templates as the image-to-video workflow. Pick a category, open the editor, and freely edit the prompt.',
     searchPlaceholder: 'Search product, fashion, food...',
     clearFilters: 'Clear filters',
     all: 'All',

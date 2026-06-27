@@ -40,22 +40,22 @@ type DashboardCopy = {
 const dashboardCopy: Record<DashboardLocale, DashboardCopy> = {
   pt: {
     hubEyebrow: 'Hub criativo',
-    heroTitle: 'O que voce quer criar hoje?',
+    heroTitle: 'O que você quer criar hoje?',
     heroDescription:
-      'Escolha um fluxo, use os templates e materiais do estudio, e comece a gerar conteudo de produto rapidamente.',
+      'Escolha um fluxo, use os templates e materiais do estúdio, e comece a gerar conteúdo de produto rapidamente.',
     cards: [
       {
         key: 'video',
-        title: 'Imagem para video',
-        description: 'Transforme imagens de produto em videos curtos.',
-        action: 'Comecar',
+        title: 'Imagem para vídeo',
+        description: 'Transforme imagens de produto em vídeos curtos.',
+        action: 'Começar',
         href: '/create/video',
         media: dashboardHomeMedia.imageToVideo.asset,
       },
       {
         key: 'product',
         title: 'Imagem de produto',
-        description: 'Gere imagens para campanhas, PDPs e catalogos.',
+        description: 'Gere imagens para campanhas, PDPs e catálogos.',
         action: 'Criar imagem',
         href: '/create/apparel',
         media: dashboardHomeMedia.productImage.asset,
@@ -63,7 +63,7 @@ const dashboardCopy: Record<DashboardLocale, DashboardCopy> = {
       {
         key: 'tryOn',
         title: 'Provador virtual',
-        description: 'Mostre modelos e roupas com composicao natural.',
+        description: 'Mostre modelos e roupas com composição natural.',
         action: 'Experimentar',
         href: '/create/try-on',
         media: dashboardHomeMedia.tryOn.asset,

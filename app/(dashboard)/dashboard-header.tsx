@@ -293,7 +293,7 @@ export function DashboardHeader({
           {!isAdminPage ? (
             <>
             <Link
-              href={withDashboardLocale('/dashboard/credits', locale)}
+              href={withDashboardLocale('/dashboard/profile', locale)}
               className="hidden h-9 items-center gap-2 rounded-full border border-indigo-100 bg-indigo-50 px-3 text-sm font-semibold text-indigo-600 shadow-sm transition hover:border-indigo-200 hover:bg-indigo-100 md:flex"
             >
               <Gem className="size-4 fill-indigo-300 text-indigo-500" />

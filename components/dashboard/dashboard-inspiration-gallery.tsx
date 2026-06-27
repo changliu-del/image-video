@@ -50,15 +50,15 @@ const galleryPageSize = 12;
 
 const copyByLocale: Record<DashboardLocale, GalleryCopy> = {
   pt: {
-    title: 'Praca de inspiracao',
+    title: 'Praça de inspiração',
     subtitle:
-      'Veja o total e filtre por tipo para partir de templates reais do catalogo.',
+      'Veja o total e filtre por tipo para partir de templates reais do catálogo.',
     all: 'Todos',
     total: 'Total',
     loading: 'Carregando',
-    error: 'Nao foi possivel carregar as inspiracoes.',
+    error: 'Não foi possível carregar as inspirações.',
     retry: 'Tentar novamente',
-    empty: 'Nenhum template disponivel ainda.',
+    empty: 'Nenhum template disponível ainda.',
     useTemplate: 'Usar',
   },
   en: {

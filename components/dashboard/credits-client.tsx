@@ -6,22 +6,22 @@ import {
   ArrowUpRight,
   Check,
   Coins,
-  CreditCard,
   Gem,
   ReceiptText,
   Wallet,
 } from 'lucide-react';
 import { checkoutAction } from '@/lib/payments/actions';
-import { CREDIT_PACKAGES, type SubscriptionPlan } from '@/lib/payments/catalog';
+import { CREDIT_PACKAGES } from '@/lib/payments/catalog';
+import {
+  BILLING_CURRENCY,
+  DIRECT_TOP_UP_CREDITS_PER_UNIT,
+  DIRECT_TOP_UP_UNIT_AMOUNT,
+} from '@/lib/payments/pricing';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
 import { SubmitButton } from '@/app/(dashboard)/pricing/submit-button';
 import { useDashboardLocale, withDashboardLocale } from '@/lib/dashboard/use-dashboard-locale';
-import {
-  billingCopy,
-  creditsCopy,
-  subscriptionStatusLabels,
-} from '@/components/dashboard/account-copy';
+import { creditsCopy } from '@/components/dashboard/account-copy';
 
 type CreditLedgerEntry = {
   id: string;
@@ -34,11 +34,12 @@ type CreditLedgerEntry = {
 type CreditsAccount = {
   user: {
     creditBalance: number;
-    planName: string | null;
-    subscriptionStatus: string | null;
   };
-  activePlan: SubscriptionPlan | null;
   ledger: CreditLedgerEntry[];
+};
+
+type CreditsClientProps = {
+  embedded?: boolean;
 };
 
 const fetcher = async (url: string) => {
@@ -90,24 +91,17 @@ function BalanceValue({
   return <>{value}</>;
 }
 
-export function CreditsClient() {
+export function CreditsClient({ embedded = false }: CreditsClientProps = {}) {
   const locale = useDashboardLocale();
   const copy = creditsCopy[locale];
   const { data, error, isLoading, mutate } = useSWR('/api/account/credits', fetcher, {
     revalidateOnFocus: false,
   });
   const ledger = data?.ledger ?? [];
-  const subscriptionStatus = data?.user.subscriptionStatus;
-  const subscriptionStatusLabel = subscriptionStatus
-    ? subscriptionStatusLabels[locale][subscriptionStatus] ?? subscriptionStatus
-    : copy.inactive;
-  const subscriptionLabel = data?.activePlan
-    ? `${data.activePlan.displayName} · ${billingCopy[locale].intervalTabs[data.activePlan.interval]}`
-    : data?.user.planName ?? copy.inactive;
+  const Title = embedded ? 'h2' : 'h1';
 
-  return (
-    <main className="flex-1 px-4 py-6 lg:px-8">
-      <div className="mx-auto max-w-7xl space-y-6">
+  const content = (
+    <>
         <section className="rounded-lg border border-gray-200 bg-white p-5 shadow-sm">
           <div className="flex flex-col gap-5 lg:flex-row lg:items-start lg:justify-between">
             <div>
@@ -115,9 +109,9 @@ export function CreditsClient() {
                 <Wallet className="size-3.5" />
                 {copy.badge}
               </div>
-              <h1 className="mt-4 text-2xl font-semibold text-gray-950">
+              <Title className="mt-4 text-2xl font-semibold text-gray-950">
                 {copy.title}
-              </h1>
+              </Title>
               <p className="mt-2 max-w-2xl text-sm leading-6 text-gray-600">
                 {copy.intro}
               </p>
@@ -135,17 +129,19 @@ export function CreditsClient() {
               </div>
               <div className="rounded-lg border border-gray-200 bg-gray-50 p-4">
                 <div className="flex items-center gap-2 text-xs font-semibold uppercase text-gray-500">
-                  <CreditCard className="size-3.5 text-cyan-600" />
-                  {copy.subscription}
+                  <Coins className="size-3.5 text-cyan-600" />
+                  {copy.topUpRate}
                 </div>
-                <p className="mt-3 truncate text-lg font-semibold text-gray-950">
-                  <BalanceValue
-                    loading={isLoading}
-                    value={subscriptionLabel}
-                  />
+                <p className="mt-3 text-lg font-semibold text-gray-950">
+                  {formatCurrency(
+                    DIRECT_TOP_UP_UNIT_AMOUNT,
+                    BILLING_CURRENCY,
+                    locale
+                  )}{' '}
+                  = {DIRECT_TOP_UP_CREDITS_PER_UNIT} {copy.purchasedCredits}
                 </p>
                 <p className="mt-1 text-xs text-gray-500">
-                  {subscriptionStatusLabel}
+                  {copy.rateHint}
                 </p>
               </div>
             </div>
@@ -163,12 +159,6 @@ export function CreditsClient() {
             </div>
           ) : null}
           <div className="mt-5 flex flex-col gap-2 sm:flex-row">
-            <Button asChild variant="outline">
-              <Link href={withDashboardLocale('/dashboard/billing', locale)}>
-                <CreditCard className="size-4" />
-                {copy.viewPlans}
-              </Link>
-            </Button>
             <Button asChild variant="ghost">
               <Link href={withDashboardLocale('/create/video', locale)}>
                 {copy.createVideo}
@@ -308,7 +298,20 @@ export function CreditsClient() {
             </table>
           </div>
         </section>
+    </>
+  );
+
+  if (embedded) {
+    return (
+      <div id="credits" className="space-y-6">
+        {content}
       </div>
+    );
+  }
+
+  return (
+    <main className="flex-1 px-4 py-6 lg:px-8">
+      <div className="mx-auto max-w-7xl space-y-6">{content}</div>
     </main>
   );
 }

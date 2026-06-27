@@ -38,6 +38,55 @@ function normalizeEmail(email: string) {
   return email.trim().toLowerCase();
 }
 
+type ActionLocale = 'en' | 'pt' | 'zh';
+
+function getActionLocale(formData: FormData): ActionLocale {
+  const locale = formData.get('locale');
+  if (locale === 'pt' || locale === 'zh') return locale;
+  return 'en';
+}
+
+const accountActionCopy: Record<
+  ActionLocale,
+  {
+    currentPasswordIncorrect: string;
+    passwordUnchanged: string;
+    passwordMismatch: string;
+    passwordUpdated: string;
+    accountDeletionFailed: string;
+    emailInUse: string;
+    accountUpdated: string;
+  }
+> = {
+  pt: {
+    currentPasswordIncorrect: 'A senha atual está incorreta.',
+    passwordUnchanged: 'A nova senha deve ser diferente da senha atual.',
+    passwordMismatch: 'A nova senha e a confirmação não correspondem.',
+    passwordUpdated: 'Senha atualizada com sucesso.',
+    accountDeletionFailed: 'Senha incorreta. Não foi possível excluir a conta.',
+    emailInUse: 'Este e-mail já está em uso.',
+    accountUpdated: 'Conta atualizada com sucesso.',
+  },
+  en: {
+    currentPasswordIncorrect: 'Current password is incorrect.',
+    passwordUnchanged: 'New password must be different from the current password.',
+    passwordMismatch: 'New password and confirmation password do not match.',
+    passwordUpdated: 'Password updated successfully.',
+    accountDeletionFailed: 'Incorrect password. Account deletion failed.',
+    emailInUse: 'Email is already in use.',
+    accountUpdated: 'Account updated successfully.',
+  },
+  zh: {
+    currentPasswordIncorrect: '当前密码不正确。',
+    passwordUnchanged: '新密码必须与当前密码不同。',
+    passwordMismatch: '新密码和确认密码不一致。',
+    passwordUpdated: '密码更新成功。',
+    accountDeletionFailed: '密码不正确，账户删除失败。',
+    emailInUse: '该邮箱已被使用。',
+    accountUpdated: '账户更新成功。',
+  },
+};
+
 async function consumeSignInLimit(email: string) {
   const identity = await getRequestRateLimitIdentity();
   return consumeRateLimits([
@@ -610,7 +659,8 @@ const updatePasswordSchema = z.object({
 
 export const updatePassword = validatedActionWithUser(
   updatePasswordSchema,
-  async (data, _, user) => {
+  async (data, formData, user) => {
+    const copy = accountActionCopy[getActionLocale(formData)];
     const { currentPassword, newPassword, confirmPassword } = data;
 
     const isPasswordValid = await comparePasswords(
@@ -620,19 +670,19 @@ export const updatePassword = validatedActionWithUser(
 
     if (!isPasswordValid) {
       return {
-        error: 'Current password is incorrect.'
+        error: copy.currentPasswordIncorrect
       };
     }
 
     if (currentPassword === newPassword) {
       return {
-        error: 'New password must be different from the current password.'
+        error: copy.passwordUnchanged
       };
     }
 
     if (confirmPassword !== newPassword) {
       return {
-        error: 'New password and confirmation password do not match.'
+        error: copy.passwordMismatch
       };
     }
 
@@ -644,7 +694,7 @@ export const updatePassword = validatedActionWithUser(
       .where(eq(users.id, user.id));
 
     return {
-      success: 'Password updated successfully.'
+      success: copy.passwordUpdated
     };
   }
 );
@@ -655,13 +705,15 @@ const deleteAccountSchema = z.object({
 
 export const deleteAccount = validatedActionWithUser(
   deleteAccountSchema,
-  async (data, _, user) => {
+  async (data, formData, user) => {
+    const locale = getActionLocale(formData);
+    const copy = accountActionCopy[locale];
     const { password } = data;
 
     const isPasswordValid = await comparePasswords(password, user.passwordHash);
     if (!isPasswordValid) {
       return {
-        error: 'Incorrect password. Account deletion failed.'
+        error: copy.accountDeletionFailed
       };
     }
 
@@ -675,7 +727,7 @@ export const deleteAccount = validatedActionWithUser(
       .where(eq(users.id, user.id));
 
     (await cookies()).delete('session');
-    redirect('/sign-in');
+    redirect(withDashboardLocale('/sign-in', locale));
   }
 );
 
@@ -691,7 +743,8 @@ const updateAccountSchema = z.object({
 
 export const updateAccount = validatedActionWithUser(
   updateAccountSchema,
-  async (data, _, user) => {
+  async (data, formData, user) => {
+    const copy = accountActionCopy[getActionLocale(formData)];
     const { name, email } = data;
     const existingUser = await db
       .select({ id: users.id })
@@ -702,7 +755,7 @@ export const updateAccount = validatedActionWithUser(
     if (existingUser[0]) {
       return {
         name,
-        error: 'Email is already in use.'
+        error: copy.emailInUse
       };
     }
 
@@ -711,6 +764,6 @@ export const updateAccount = validatedActionWithUser(
       .set({ name, email, updatedAt: new Date() })
       .where(eq(users.id, user.id));
 
-    return { name, success: 'Account updated successfully.' };
+    return { name, success: copy.accountUpdated };
   }
 );

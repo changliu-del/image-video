@@ -155,7 +155,7 @@ const modelCategoryFieldLabels: Record<
   AdminLocale,
   Record<'age' | 'gender' | 'style', string>
 > = {
-  pt: { age: 'Idade', gender: 'Genero', style: 'Estilo' },
+  pt: { age: 'Idade', gender: 'Gênero', style: 'Estilo' },
   en: { age: 'Age', gender: 'Gender', style: 'Style' },
   zh: { age: '年龄', gender: '性别', style: '风格' },
 };

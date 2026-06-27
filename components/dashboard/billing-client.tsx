@@ -126,7 +126,7 @@ export function BillingClient({
                 </p>
               </div>
               <Button asChild variant="outline" className="w-full md:w-auto">
-                <Link href={withDashboardLocale('/dashboard/credits', locale)}>
+                <Link href={withDashboardLocale('/dashboard/profile', locale)}>
                   <Wallet className="size-4" />
                   {copy.buyExtra}
                 </Link>

@@ -7,7 +7,6 @@ import { useState } from 'react';
 import {
   ChevronDown,
   CreditCard,
-  Coins,
   Home,
   ImageIcon,
   ShieldCheck,
@@ -129,8 +128,13 @@ export function AppShell({
     { href: '/create/try-on', icon: Shirt, label: content.nav.tryOn },
   ];
   const personalItems: ShellItem[] = [
+    {
+      href: '/dashboard/profile',
+      icon: UserRound,
+      label: content.nav.profileCenter,
+      match: 'exact',
+    },
     { href: '/dashboard/billing', icon: CreditCard, label: content.nav.billing },
-    { href: '/dashboard/credits', icon: Coins, label: content.nav.credits },
     { href: '/dashboard/security', icon: ShieldCheck, label: content.nav.security },
   ];
 
@@ -146,12 +150,6 @@ export function AppShell({
           <SidebarSection title={content.nav.tools} items={toolItems} collapsible />
           <SidebarSection title={content.nav.personal} items={personalItems} />
           <div className="mt-auto border-t border-gray-200 pt-3">
-            <SidebarLink
-              href="/dashboard/profile"
-              icon={UserRound}
-              label={content.nav.profileCenter}
-              match="exact"
-            />
             {user ? (
               <p className="truncate px-3 text-[11px] font-medium text-gray-400">
                 {user.name || user.email}

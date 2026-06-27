@@ -545,9 +545,9 @@ const pt: MarketingContent = {
     description:
       'Vendeo é um estúdio de IA para e-commerce: crie imagens, vídeos e assets de campanha com rapidez e consistência.',
     legal: 'Legal',
-    privacy: 'Privacy Policy',
+    privacy: 'Política de Privacidade',
     contact: 'Contato',
-    copyright: '© 2026 Vendeo. All rights reserved.',
+    copyright: '© 2026 Vendeo. Todos os direitos reservados.',
   },
   auth: {
     metadata: {
@@ -556,12 +556,12 @@ const pt: MarketingContent = {
         'Entre ou crie sua conta no Vendeo para gerar imagens, vídeos e assets de e-commerce com IA.',
     },
     title: 'Entre no Vendeo',
-    subtitle: 'Use seu e-mail e senha para acessar seu workspace',
+    subtitle: 'Use seu e-mail e senha para acessar sua área de trabalho',
     loginTab: 'Entrar',
     registerTab: 'Registrar',
     emailLabel: 'E-mail',
     passwordLabel: 'Senha',
-    emailPlaceholder: 'voce@exemplo.com',
+    emailPlaceholder: 'seunome@exemplo.com',
     passwordPlaceholder: 'Pelo menos 8 caracteres',
     verificationCodeLabel: 'Código de verificação',
     verificationCodePlaceholder: '6 dígitos',
@@ -602,10 +602,10 @@ const pt: MarketingContent = {
         'Gere vídeos de produto, imagens comerciais e materiais de marketing para e-commerce com IA.',
     },
     hero: {
-      eyebrow: 'Templates de commerce para o Brasil',
+      eyebrow: 'Templates de e-commerce para o Brasil',
       title: 'Escolha um modelo. Troque pelo seu produto. Gere criativos que vendem.',
       description:
-        'Comece com modelos em PT-BR para Pix, WhatsApp, marketplace e anúncios. Gere imagens baratas primeiro e transforme em vídeo quando fizer sentido para o seu produto.',
+        'Comece com modelos em PT-BR para Pix, WhatsApp, marketplace e anúncios. Gere imagens de baixo custo primeiro e transforme em vídeo quando fizer sentido para o seu produto.',
       primaryAction: 'Explorar templates',
       secondaryAction: 'Ver templates de imagem',
       previewTitle: 'Prompt editável',
@@ -617,13 +617,13 @@ const pt: MarketingContent = {
         'Templates livres para editar antes de gastar créditos em vídeo.',
       ],
       stats: [
-        { stat: '74', label: 'templates no catalogo' },
+        { stat: '74', label: 'templates no catálogo' },
         { stat: '632', label: 'templates de imagem' },
         { stat: 'PT-BR', label: 'prompts locais' },
       ],
     },
     examples: {
-      eyebrow: 'Biblioteca Criativa de Commerce AI',
+      eyebrow: 'Biblioteca criativa de Commerce AI',
       title: 'Exemplos de commerce com alta conversão',
       description:
         'Combine vídeos de produto, cenas lifestyle, motion para social e exibição 360 para cada SKU.',
@@ -655,12 +655,12 @@ const pt: MarketingContent = {
         },
         {
           title: 'Transforme em vídeo',
-          text: 'Quando a imagem aprovar a ideia, use image-to-video para movimento e variações.',
+          text: 'Quando a imagem aprovar a ideia, use imagem para vídeo para movimento e variações.',
         },
       ],
     },
     system: {
-      eyebrow: 'Sistema Criativo de Commerce',
+      eyebrow: 'Sistema criativo de commerce',
       title: 'De uma foto de produto a assets para todo o funil',
       description:
         'O fluxo organiza entendimento do produto, expansão de cena, motion e preparo de campanhas em um só lugar.',
@@ -854,7 +854,7 @@ const pt: MarketingContent = {
         'Conheça os planos do Vendeo para gerar imagens, vídeos e campanhas com IA.',
     },
     hero: {
-      eyebrow: 'Capacidade de Commerce AI',
+      eyebrow: 'Capacidade criativa para e-commerce',
       title: 'Planos pensados para a produção de e-commerce',
       description:
         'Planeje capacidade para lançamentos, criativos de anúncios, imagens de produto e vídeos premium com créditos previsíveis.',
@@ -874,7 +874,7 @@ const pt: MarketingContent = {
       monthly: 'Mensal',
       onetime: 'Avulso',
       save: '',
-      secure: 'Veja planos e créditos no workspace',
+      secure: 'Veja planos e créditos na área de criação',
       buy: 'Abrir planos',
       popular: 'Mais popular',
       perMonth: 'por mês',
@@ -963,7 +963,7 @@ const pt: MarketingContent = {
         'Acesso completo às ferramentas de imagem e vídeo',
         'Créditos funcionam entre modelos disponíveis',
         'Feito para imagens hero, PDPs e vídeos sociais',
-        'Histórico no workspace para revisar e reutilizar',
+        'Histórico na área de criação para revisar e reutilizar',
       ],
     },
     faq: {
@@ -1021,6 +1021,7 @@ const en: MarketingContent = {
     legal: 'Legal',
     privacy: 'Privacy Policy',
     contact: 'Contact',
+    copyright: '© 2026 Vendeo. All rights reserved.',
   },
   auth: {
     ...pt.auth,
@@ -1079,7 +1080,7 @@ const en: MarketingContent = {
     hero: {
       ...pt.home.hero,
       eyebrow: 'Commerce templates for Brazil',
-      title: 'Choose a template. Replace it with your product. Generate creatives that sell.',
+      title: 'Choose a template. Swap in your product. Generate creatives that sell.',
       description:
         'Start with PT-BR templates for Pix, WhatsApp, marketplaces, and ads. Create low-cost images first, then turn them into video when it makes sense for the product.',
       primaryAction: 'Explore templates',
@@ -1089,7 +1090,7 @@ const en: MarketingContent = {
         'Every template starts with an editable prompt and creative direction for the Brazilian market.',
       previewItems: [
         'Brazilian Portuguese prompts for offers, social proof, and launches.',
-        'Buying-direction ideas for Pix, WhatsApp, marketplaces, and DTC stores.',
+        'Purchase-path ideas for Pix, WhatsApp, marketplaces, and DTC stores.',
         'Templates stay editable before you spend credits on video.',
       ],
       stats: [
@@ -1234,7 +1235,7 @@ const en: MarketingContent = {
       monthly: 'Monthly',
       onetime: 'One-time',
       save: '',
-      secure: 'Open plans and credits in the workspace',
+      secure: 'Open plans and credits',
       buy: 'Open plans',
       popular: 'Most popular',
       perMonth: 'per month',
@@ -1316,14 +1317,14 @@ const en: MarketingContent = {
       points: [
         'Subscriptions provide predictable monthly creative capacity.',
         'Top-up credits are available when a campaign needs more output.',
-        'The workspace keeps plan, balance, and usage history in one place.',
+        'Your account keeps plan, balance, and usage history in one place.',
       ],
-      includedTitle: 'Included in the workspace',
+      includedTitle: 'Included in every plan',
       included: [
         'Full access to image, video, and try-on tools',
         'Monthly and annual Basic, Plus, and Pro plans',
         'One-time credit purchases for extra capacity',
-        'Credit ledger for reviewing account activity',
+        'Credit history for reviewing account activity',
       ],
     },
     faq: {
@@ -1335,15 +1336,15 @@ const en: MarketingContent = {
         },
         {
           question: 'Can I buy credits without changing plans?',
-          answer: 'Yes. Use the workspace credits page to buy one-time top-ups.',
+          answer: 'Yes. Use the Credits page to buy one-time top-ups.',
         },
         {
-          question: 'Will checkout charge real money now?',
-          answer: 'No. Checkout is mocked for this development phase.',
+          question: 'How do I manage checkout and billing?',
+          answer: 'Open the Plans page to manage subscriptions and credit purchases.',
         },
         {
           question: 'Where do I manage my plan?',
-          answer: 'The public pricing page leads to the workspace Plans page.',
+          answer: 'The public pricing page leads to the Plans page.',
         },
         {
           question: 'Do credits work across tools?',

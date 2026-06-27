@@ -25,14 +25,14 @@ export const publicTemplatesPageContent: Record<
 > = {
   pt: {
     metadata: {
-      title: 'Templates de imagem para video com IA para vender no Brasil',
+      title: 'Templates de imagem para vídeo com IA para vender no Brasil',
       description:
-        'Explore templates de imagem para video para campanhas, produtos e conteudo de e-commerce no Brasil.',
+        'Explore templates de imagem para vídeo para campanhas, produtos e conteúdo de e-commerce no Brasil.',
     },
     eyebrow: 'Biblioteca de templates',
-    title: 'Templates de imagem para video prontos para campanhas de produto.',
+    title: 'Templates de imagem para vídeo prontos para campanhas de produto.',
     description:
-      'Escolha uma categoria de negocio, entre no workbench de video e ajuste o prompt com a imagem do seu produto.',
+      'Escolha uma categoria de negócio, abra o editor de vídeo e ajuste o prompt com a imagem do seu produto.',
     clearFilters: 'Limpar filtros',
     categoryFallback: 'Template',
     categoryFilterLabel: 'Categoria',
@@ -43,7 +43,7 @@ export const publicTemplatesPageContent: Record<
     emptyTitle: 'Nenhum template encontrado',
     emptyText: 'Escolha outra categoria ou tente novamente.',
     loading: 'Carregando templates...',
-    error: 'Nao foi possivel carregar os templates.',
+    error: 'Não foi possível carregar os templates.',
     retry: 'Tentar novamente',
     loadMore: 'Carregar mais',
     loadingMore: 'Carregando...',
@@ -57,7 +57,7 @@ export const publicTemplatesPageContent: Record<
     eyebrow: 'Template library',
     title: 'Image-to-video templates ready for product campaigns.',
     description:
-      'Pick a business category, open the video workbench, and adapt the prompt with your product image.',
+      'Pick a business category, open the video editor, and adapt the prompt with your product image.',
     clearFilters: 'Clear filters',
     categoryFallback: 'Template',
     categoryFilterLabel: 'Category',

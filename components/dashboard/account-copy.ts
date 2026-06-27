@@ -54,9 +54,8 @@ type CreditsCopy = {
   intro: string;
   balance: string;
   balanceHint: string;
-  subscription: string;
-  inactive: string;
-  viewPlans: string;
+  topUpRate: string;
+  rateHint: string;
   createVideo: string;
   loadError: string;
   retry: string;
@@ -84,13 +83,6 @@ type ProfileCopy = {
   namePlaceholder: string;
   email: string;
   emailPlaceholder: string;
-  subscriptionPlan: string;
-  noActivePlan: string;
-  inactive: string;
-  managePlans: string;
-  creditBalance: string;
-  creditHint: string;
-  buyCredits: string;
   accountProfile: string;
   saving: string;
   save: string;
@@ -101,7 +93,7 @@ export const billingCopy: Record<DashboardLocale, BillingCopy> = {
     badge: 'Planos e saldo',
     title: 'Escolha o plano para seu ritmo de criação',
     intro:
-      'Os pagamentos estão em modo mock nesta fase. A assinatura libera a cota mensal imediatamente, e os mesmos price ids podem ser ligados ao billing real depois.',
+      'A assinatura libera a cota mensal imediatamente. Os planos e créditos ficam concentrados na área de criação.',
     buyExtra: 'Comprar créditos extras',
     balance: 'Saldo',
     balanceHint: 'créditos disponíveis',
@@ -111,15 +103,15 @@ export const billingCopy: Record<DashboardLocale, BillingCopy> = {
     cadence: 'Cadência',
     selectPlan: 'Escolha um plano',
     cadenceHint: 'os créditos aparecem como cota mensal',
-    mockTitle: 'Modo de pagamento mock',
+    mockTitle: 'Pagamento e créditos',
     mockBody:
-      'O checkout ainda não cobra dinheiro. Ele atualiza o plano, adiciona créditos e grava o ledger para validar o fluxo completo do workspace.',
-    mockSuccess: 'Assinatura mock ativada e créditos adicionados.',
-    mockCanceled: 'Assinatura mock cancelada. O saldo restante continua disponível.',
+      'Ao confirmar um plano, a conta é atualizada, os créditos são adicionados e o histórico registra a movimentação para consulta.',
+    mockSuccess: 'Assinatura ativada e créditos adicionados.',
+    mockCanceled: 'Assinatura cancelada. O saldo restante continua disponível.',
     loadError: 'O status da conta não carregou. Os planos continuam disponíveis.',
     retry: 'Tentar novamente',
-    manageBilling: 'Gerenciar billing',
-    cancelPlan: 'Cancelar plano mock',
+    manageBilling: 'Gerenciar pagamento',
+    cancelPlan: 'Cancelar plano',
     intervalTabs: { month: 'Mensal', year: 'Anual' },
     intervalLabels: { month: 'Cobrança mensal', year: 'Cobrança anual' },
     intervalHint:
@@ -129,8 +121,8 @@ export const billingCopy: Record<DashboardLocale, BillingCopy> = {
     pricePeriod: { month: 'mês', year: 'ano' },
     effectiveMonthly: 'efetivo por mês',
     save: 'economize',
-    switchLater: 'cancele ou troque depois no billing',
-    creditsPerMonth: 'créditos por mês de billing',
+    switchLater: 'cancele ou troque depois em Planos',
+    creditsPerMonth: 'créditos por mês',
     choose: 'Escolher',
     currentButton: 'Plano atual',
     activating: 'Ativando...',
@@ -153,7 +145,7 @@ export const billingCopy: Record<DashboardLocale, BillingCopy> = {
     badge: 'Plans and balance',
     title: 'Choose the plan for your creative workload',
     intro:
-      'Payments are mocked in this phase. Subscriptions grant the monthly credit allowance immediately, and real billing can be wired later through the same price ids.',
+      'Subscriptions grant the monthly credit allowance immediately, and plans can be managed from the Plans page.',
     buyExtra: 'Buy extra credits',
     balance: 'Balance',
     balanceHint: 'available credits',
@@ -163,15 +155,15 @@ export const billingCopy: Record<DashboardLocale, BillingCopy> = {
     cadence: 'Cadence',
     selectPlan: 'Select a plan',
     cadenceHint: 'credits are shown as monthly allowance',
-    mockTitle: 'Mock payment mode',
+    mockTitle: 'Payment and credits',
     mockBody:
-      'Checkout does not charge money yet. It updates the account plan, adds credits, and writes a ledger entry so the workspace flow is testable end to end.',
-    mockSuccess: 'Mock subscription activated and credits were added.',
-    mockCanceled: 'Mock subscription was canceled. Your remaining credit balance stays available.',
+      'When a plan is confirmed, the account is updated, credits are added, and the history records the balance change for review.',
+    mockSuccess: 'Subscription activated and credits were added.',
+    mockCanceled: 'Subscription was canceled. Your remaining credit balance stays available.',
     loadError: 'Account status did not load. Plans remain available.',
     retry: 'Retry',
     manageBilling: 'Manage billing',
-    cancelPlan: 'Cancel mock plan',
+    cancelPlan: 'Cancel plan',
     intervalTabs: { month: 'Monthly', year: 'Annual' },
     intervalLabels: { month: 'Monthly billing', year: 'Yearly billing' },
     intervalHint:
@@ -181,8 +173,8 @@ export const billingCopy: Record<DashboardLocale, BillingCopy> = {
     pricePeriod: { month: 'month', year: 'year' },
     effectiveMonthly: 'effective monthly',
     save: 'save',
-    switchLater: 'cancel or switch later in billing',
-    creditsPerMonth: 'credits per billing month',
+    switchLater: 'cancel or switch later in Plans',
+    creditsPerMonth: 'credits per month',
     choose: 'Choose',
     currentButton: 'Current plan',
     activating: 'Activating...',
@@ -269,26 +261,25 @@ export const billingCopy: Record<DashboardLocale, BillingCopy> = {
 export const creditsCopy: Record<DashboardLocale, CreditsCopy> = {
   pt: {
     badge: 'Carteira de créditos',
-    title: 'Compre créditos extras quando uma campanha precisar de mais margem',
+    title: 'Recarregue créditos direto na conta',
     intro:
-      'Créditos avulsos ficam separados da cota da assinatura. No modo mock eles entram imediatamente no mesmo saldo usado pelas gerações.',
+      'Créditos avulsos entram direto no saldo usado pelas gerações. A recarga segue uma proporção fixa de compra direta.',
     balance: 'Saldo disponível',
     balanceHint: 'créditos prontos para usar',
-    subscription: 'Assinatura',
-    inactive: 'assinatura inativa',
-    viewPlans: 'Ver planos',
+    topUpRate: 'Taxa de recarga',
+    rateHint: 'proporção fixa de compra direta',
     createVideo: 'Criar vídeo',
     loadError: 'O saldo da conta não carregou. Os pacotes continuam disponíveis.',
     retry: 'Tentar novamente',
     flexible: 'Flexível',
-    purchasedCredits: 'créditos comprados',
+    purchasedCredits: 'créditos',
     buy: 'Comprar',
     adding: 'Adicionando créditos...',
-    ledgerTitle: 'Ledger de créditos',
+    ledgerTitle: 'Histórico de créditos',
     ledgerSubtitle: 'Últimas mudanças de saldo desta conta.',
     ledgerColumns: {
       reason: 'Motivo',
-      delta: 'Delta',
+      delta: 'Variação',
       balance: 'Saldo',
       created: 'Criado em',
     },
@@ -303,40 +294,39 @@ export const creditsCopy: Record<DashboardLocale, CreditsCopy> = {
     packages: {
       starter: {
         description: 'Um top-up pequeno para testes de prompt e experimentos de produto.',
-        features: ['20 créditos comprados', 'Não expiram no modo mock', 'Bom para 4 vídeos básicos de 5s'],
+        features: ['Não expiram', 'Bom para 4 vídeos básicos de 5s'],
       },
       creator: {
         description: 'Mais margem para um lote semanal de imagens e clipes de produto.',
-        features: ['80 créditos comprados', 'Não expiram no modo mock', 'Bom para 16 vídeos básicos de 5s'],
+        features: ['Não expiram', 'Bom para 16 vídeos básicos de 5s'],
       },
       scale: {
         description: 'Reserva maior para lotes de catálogo e testes de campanha.',
-        features: ['240 créditos comprados', 'Não expiram no modo mock', 'Bom para 48 vídeos básicos de 5s'],
+        features: ['Não expiram', 'Bom para 48 vídeos básicos de 5s'],
       },
     },
   },
   en: {
     badge: 'Credit wallet',
-    title: 'Buy extra credits when a campaign needs more room',
+    title: 'Top up credits directly',
     intro:
-      'Top-up credits are separate from the subscription plan allowance. In this mock phase they are added immediately and remain in the same available balance used by generation jobs.',
+      'One-time credits go straight into the same balance used by generation jobs. Top-ups use a fixed direct-purchase ratio.',
     balance: 'Available balance',
     balanceHint: 'credits ready to spend',
-    subscription: 'Subscription',
-    inactive: 'subscription inactive',
-    viewPlans: 'View subscription plans',
+    topUpRate: 'Top-up rate',
+    rateHint: 'fixed direct-purchase ratio',
     createVideo: 'Create a video',
     loadError: 'Account balance did not load. Credit packages remain available.',
     retry: 'Retry',
     flexible: 'Flexible',
-    purchasedCredits: 'purchased credits',
+    purchasedCredits: 'credits',
     buy: 'Buy',
     adding: 'Adding credits...',
-    ledgerTitle: 'Credit ledger',
+    ledgerTitle: 'Credit history',
     ledgerSubtitle: 'Latest balance changes for this account.',
     ledgerColumns: {
       reason: 'Reason',
-      delta: 'Delta',
+      delta: 'Change',
       balance: 'Balance',
       created: 'Created',
     },
@@ -351,33 +341,32 @@ export const creditsCopy: Record<DashboardLocale, CreditsCopy> = {
     packages: {
       starter: {
         description: 'A small top-up for prompt tests and product experiments.',
-        features: ['100 purchased credits', 'Never expire in mock mode', 'Good for 4 basic 5s videos'],
+        features: ['Do not expire', 'Good for 4 basic 5s videos'],
       },
       creator: {
         description: 'Extra room for a weekly batch of product images and clips.',
-        features: ['400 purchased credits', 'Never expire in mock mode', 'Good for 16 basic 5s videos'],
+        features: ['Do not expire', 'Good for 16 basic 5s videos'],
       },
       scale: {
         description: 'A larger reserve for catalog batches and campaign tests.',
-        features: ['1200 purchased credits', 'Never expire in mock mode', 'Good for 48 basic 5s videos'],
+        features: ['Do not expire', 'Good for 48 basic 5s videos'],
       },
     },
   },
   zh: {
     badge: '算力余额',
-    title: '当活动需要更多额度时，直接购买额外算力值',
+    title: '直接充值算力值',
     intro:
-      '单次购买的算力值独立于订阅月额度。测试支付模式下会立即到账，并进入生成任务共用的可用余额。',
+      '单次购买的算力值会直接进入生成任务共用余额。充值按固定比例直接到账。',
     balance: '可用余额',
     balanceHint: '可立即使用的算力值',
-    subscription: '订阅',
-    inactive: '订阅未激活',
-    viewPlans: '查看订阅计划',
+    topUpRate: '充值比例',
+    rateHint: '固定直充比例',
     createVideo: '创建视频',
     loadError: '账户余额加载失败，算力包仍可继续购买。',
     retry: '重试',
     flexible: '灵活',
-    purchasedCredits: '购买算力值',
+    purchasedCredits: '算力值',
     buy: '购买',
     adding: '购买中...',
     ledgerTitle: '算力流水',
@@ -399,15 +388,15 @@ export const creditsCopy: Record<DashboardLocale, CreditsCopy> = {
     packages: {
       starter: {
         description: '适合提示词测试和小规模商品实验的轻量补充。',
-        features: ['20 算力值', '测试模式下不会过期', '约可生成 4 条基础 5 秒视频'],
+        features: ['测试模式下不会过期', '约可生成 4 条基础 5 秒视频'],
       },
       creator: {
         description: '适合每周一批商品图和视频素材的额外额度。',
-        features: ['80 算力值', '测试模式下不会过期', '约可生成 16 条基础 5 秒视频'],
+        features: ['测试模式下不会过期', '约可生成 16 条基础 5 秒视频'],
       },
       scale: {
         description: '适合目录批量生产和活动测试的更大储备。',
-        features: ['240 算力值', '测试模式下不会过期', '约可生成 48 条基础 5 秒视频'],
+        features: ['测试模式下不会过期', '约可生成 48 条基础 5 秒视频'],
       },
     },
   },
@@ -416,54 +405,33 @@ export const creditsCopy: Record<DashboardLocale, CreditsCopy> = {
 export const profileCopy: Record<DashboardLocale, ProfileCopy> = {
   pt: {
     eyebrow: 'Centro pessoal',
-    title: 'Informações pessoais',
+    title: 'Perfil e créditos',
     name: 'Nome',
     namePlaceholder: 'Digite seu nome',
-    email: 'Email',
-    emailPlaceholder: 'Digite seu email',
-    subscriptionPlan: 'Plano de assinatura',
-    noActivePlan: 'Sem plano ativo',
-    inactive: 'Escolha um plano para liberar créditos recorrentes',
-    managePlans: 'Gerenciar planos',
-    creditBalance: 'Saldo de créditos',
-    creditHint: 'Disponível para gerações de imagem, vídeo e try-on.',
-    buyCredits: 'Comprar créditos',
+    email: 'E-mail',
+    emailPlaceholder: 'Digite seu e-mail',
     accountProfile: 'Perfil da conta',
     saving: 'Salvando...',
     save: 'Salvar alterações',
   },
   en: {
     eyebrow: 'Personal center',
-    title: 'Personal information',
+    title: 'Profile and credits',
     name: 'Name',
     namePlaceholder: 'Enter your name',
     email: 'Email',
     emailPlaceholder: 'Enter your email',
-    subscriptionPlan: 'Subscription plan',
-    noActivePlan: 'No active plan',
-    inactive: 'Choose a plan to unlock recurring credits',
-    managePlans: 'Manage plans',
-    creditBalance: 'Credit balance',
-    creditHint: 'Available for image, video, and try-on generations.',
-    buyCredits: 'Buy credits',
     accountProfile: 'Account profile',
     saving: 'Saving...',
     save: 'Save changes',
   },
   zh: {
     eyebrow: '个人中心',
-    title: '个人信息',
+    title: '个人信息与算力值',
     name: '姓名',
     namePlaceholder: '请输入姓名',
     email: '邮箱',
     emailPlaceholder: '请输入邮箱',
-    subscriptionPlan: '订阅计划',
-    noActivePlan: '暂无有效计划',
-    inactive: '选择订阅计划后会获得每月算力值',
-    managePlans: '管理订阅计划',
-    creditBalance: '算力值余额',
-    creditHint: '可用于图片、视频和试衣生成。',
-    buyCredits: '购买算力值',
     accountProfile: '账号资料',
     saving: '保存中...',
     save: '保存修改',

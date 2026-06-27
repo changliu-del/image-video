@@ -27,7 +27,7 @@ const planIcons = [Layers, Zap, Sparkles];
 
 function workspacePricingHref(billing: Billing, locale: Locale) {
   if (billing === 'onetime') {
-    return `/dashboard/credits?locale=${locale}`;
+    return `/dashboard/profile?locale=${locale}`;
   }
 
   const interval = billing === 'yearly' ? 'year' : 'month';

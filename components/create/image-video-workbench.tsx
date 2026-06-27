@@ -150,7 +150,7 @@ const materialPickerCopy = {
   pt: {
     templateLibrary: 'Templates',
     loadingTemplates: 'Carregando templates',
-    templateError: 'Nao foi possivel carregar o template.',
+    templateError: 'Não foi possível carregar o template.',
     emptyTemplates: 'Nenhum template nesta categoria.',
     retry: 'Tentar novamente',
   },
@@ -181,8 +181,8 @@ const taskFlowPanelCopy = {
     input: 'Imagem de entrada',
     output: 'Resultado',
     generatingHint:
-      'A tarefa esta em andamento. Acompanhe o progresso aqui; o video aparece a direita quando terminar.',
-    readyHint: 'Tarefa concluida. O resultado esta disponivel a direita.',
+      'A tarefa está em andamento. Acompanhe o progresso aqui; o vídeo aparece à direita quando terminar.',
+    readyHint: 'Tarefa concluída. O resultado está disponível à direita.',
     failedHint: 'A tarefa falhou. Veja a mensagem de erro e tente novamente.',
     progressHint:
       'Gerando agora. Abra o fluxo para acompanhar o progresso.',

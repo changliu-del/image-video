@@ -266,7 +266,7 @@ export async function createCheckoutSession({
   const price = await stripe.prices.retrieve(priceId);
   const isSubscription = Boolean(price.recurring);
   const cancelPath = withDashboardLocale(
-    isSubscription ? '/dashboard/billing' : '/dashboard/credits',
+    isSubscription ? '/dashboard/billing' : '/dashboard/profile',
     locale
   );
   const session = await stripe.checkout.sessions.create({
@@ -425,7 +425,7 @@ async function createMockCheckoutSession({
     }
   });
 
-  redirect(withDashboardLocale('/dashboard/credits?checkout=mock_success', locale));
+  redirect(withDashboardLocale('/dashboard/profile?checkout=mock_success', locale));
 }
 
 export async function cancelMockSubscription(user: User) {

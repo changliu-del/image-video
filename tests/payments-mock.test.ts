@@ -14,6 +14,8 @@ import {
 import {
   BILLING_CURRENCY,
   CREDIT_UNIT_AMOUNT,
+  DIRECT_TOP_UP_CREDITS_PER_UNIT,
+  DIRECT_TOP_UP_UNIT_AMOUNT,
   getAmountForCredits,
   getCreditsForAmount,
 } from '../lib/payments/pricing';
@@ -98,6 +100,11 @@ describe('payment mock mode', () => {
 
   it('keeps Brazilian credit packages on the exact R$0.10 credit conversion', () => {
     expect(CREDIT_UNIT_AMOUNT).toBe(10);
+    expect(DIRECT_TOP_UP_UNIT_AMOUNT).toBe(100);
+    expect(DIRECT_TOP_UP_CREDITS_PER_UNIT).toBe(10);
+    expect(getCreditsForAmount(DIRECT_TOP_UP_UNIT_AMOUNT)).toBe(
+      DIRECT_TOP_UP_CREDITS_PER_UNIT
+    );
 
     for (const creditPackage of MOCK_CREDIT_PACKAGES) {
       expect(creditPackage.currency).toBe(BILLING_CURRENCY);
