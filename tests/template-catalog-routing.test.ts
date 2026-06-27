@@ -402,7 +402,9 @@ describe('template catalog routing contract', () => {
     expect(source).toContain('TemplateDetailModal');
     expect(source).toContain('openTemplateDetail(template)');
     expect(source).toContain('applyTemplateDetail');
-    expect(source).toContain('setPrompt(templateDetail.prompt)');
+    expect(source).toContain(
+      'buildPromptWithAppearingModel(\n        templateDetail.prompt'
+    );
     expect(source).toContain('copy.previewTemplate');
     expect(source).toContain('pointer-events-none absolute');
     expect(source).toContain('opacity-0 shadow-sm');
@@ -439,6 +441,7 @@ describe('template catalog routing contract', () => {
     expect(source).toContain('/api/model-assets?');
     expect(source).toContain('ImageVideoModelLibraryDrawer');
     expect(source).toContain('modelTemplateId: selectedModelAsset.id');
+    expect(source).toContain("setSelectedVideoModelMode('wanxiang_2_7')");
     expect(source).toContain('videoModelMode: selectedVideoModelMode');
     expect(copy).toContain('Most powerful model');
     expect(copy).toContain('Modelo mais poderoso');

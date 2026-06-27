@@ -251,6 +251,14 @@ export const imageToVideoGenerationRequestSchema = z
         path: ['inputAssetIds'],
       });
     }
+
+    if (value.modelTemplateId && value.videoModelMode !== 'wanxiang_2_7') {
+      context.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: 'Appearing model images require Wanxiang 2.7 video mode',
+        path: ['videoModelMode'],
+      });
+    }
   })
   .transform(
     ({ generationType, inputAsset, inputAssetId, inputAssetIds, mode, ...value }) => {

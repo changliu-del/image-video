@@ -592,6 +592,16 @@ function buildProviderAssetUrl(asset: AssetRecord) {
   });
 }
 
+function getGenerationModelTemplateId(generation: GenerationRequest) {
+  switch (generation.generationType) {
+    case 'image_to_video':
+    case 'try_on':
+      return generation.modelTemplateId ?? null;
+    default:
+      return null;
+  }
+}
+
 async function buildProviderInputAssets(
   generation: GenerationRequest,
   assetsById: Map<string, AssetRecord>,
@@ -604,10 +614,12 @@ async function buildProviderInputAssets(
           buildProviderAssetUrl(assetsById.get(assetId)!)
         )
       );
+      const modelImageUrl = await resolveModelTemplateMediaUrl(modelTemplate);
 
       return {
         inputImageUrl: inputImageUrls[0],
         ...(inputImageUrls.length > 1 ? { inputImageUrls } : {}),
+        ...(modelImageUrl ? { modelImageUrl } : {}),
       };
     }
     case 'apparel_image':
@@ -1033,16 +1045,12 @@ export async function createGenerationForUser(
   const creditReserved = getCreditCostForGeneration(generation);
   await assertInputAssetsForUser(generation, userId);
   const templateId = await assertTemplateForGeneration(generation);
-  const modelTemplate =
-    generation.generationType === 'try_on' && generation.modelTemplateId
-      ? await getModelTemplate({ id: generation.modelTemplateId })
-      : null;
+  const modelTemplateId = getGenerationModelTemplateId(generation);
+  const modelTemplate = modelTemplateId
+    ? await getModelTemplate({ id: modelTemplateId })
+    : null;
 
-  if (
-    generation.generationType === 'try_on' &&
-    generation.modelTemplateId &&
-    !modelTemplate
-  ) {
+  if (modelTemplateId && !modelTemplate) {
     throw new GenerationApiError(
       404,
       'model_template_not_found',
@@ -1955,16 +1963,12 @@ export async function runWanxiangGenerationJob(
 
       const generation = generationRequestSchema.parse(job.inputJson);
       const assetsById = await assertInputAssetsForUser(generation, job.userId);
-      const modelTemplate =
-        generation.generationType === 'try_on' && generation.modelTemplateId
-          ? await getModelTemplate({ id: generation.modelTemplateId })
-          : null;
+      const modelTemplateId = getGenerationModelTemplateId(generation);
+      const modelTemplate = modelTemplateId
+        ? await getModelTemplate({ id: modelTemplateId })
+        : null;
 
-      if (
-        generation.generationType === 'try_on' &&
-        generation.modelTemplateId &&
-        !modelTemplate
-      ) {
+      if (modelTemplateId && !modelTemplate) {
         throw new GenerationApiError(
           404,
           'model_template_not_found',

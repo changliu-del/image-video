@@ -346,24 +346,57 @@ function getModelStyleTag(item: ModelTemplateItem) {
   return getModelCategoryParts(item).style;
 }
 
-function buildPromptWithAppearingModel(
-  prompt: string,
-  model: ModelTemplateItem | null,
-  labels: {
-    appearingModelPromptPrefix: (name: string) => string;
-  }
+type AppearingModelPromptLabels = {
+  appearingModelPromptPrefix: (name: string) => string;
+};
+
+function buildAppearingModelPromptBlock(
+  model: ModelTemplateItem,
+  labels: AppearingModelPromptLabels
 ) {
-  if (!model) return prompt;
-
   const modelPromptPrefix = labels.appearingModelPromptPrefix(model.title);
-  if (prompt.includes(modelPromptPrefix)) return prompt;
-
   const modelLines = [
     modelPromptPrefix,
     ...getModelDescriptionLines(model).slice(0, 2),
   ].filter(Boolean);
 
-  return `${prompt}\n\n${modelLines.join('\n')}`.trim();
+  return modelLines.join('\n');
+}
+
+function removeAppearingModelPrompt(
+  prompt: string,
+  model: ModelTemplateItem | null,
+  labels: AppearingModelPromptLabels
+) {
+  if (!model) return prompt.trim();
+
+  return prompt
+    .replace(buildAppearingModelPromptBlock(model, labels), '')
+    .replace(/\n{3,}/g, '\n\n')
+    .trim();
+}
+
+function buildPromptWithAppearingModel(
+  prompt: string,
+  model: ModelTemplateItem | null,
+  labels: AppearingModelPromptLabels,
+  previousModel: ModelTemplateItem | null = null
+) {
+  if (!model) return removeAppearingModelPrompt(prompt, previousModel, labels);
+
+  const promptWithoutPreviousModel = removeAppearingModelPrompt(
+    prompt,
+    previousModel,
+    labels
+  );
+  const promptWithoutDuplicateModel = removeAppearingModelPrompt(
+    promptWithoutPreviousModel,
+    model,
+    labels
+  );
+  const modelPromptBlock = buildAppearingModelPromptBlock(model, labels);
+
+  return `${promptWithoutDuplicateModel}\n\n${modelPromptBlock}`.trim();
 }
 
 type ReferenceMaterialCopy = {
@@ -1893,13 +1926,28 @@ export function ImageVideoWorkbench({
     if (!templateDetail) return;
 
     setSelectedTemplate(templateDetail);
-    setPrompt(templateDetail.prompt);
+    setPrompt(
+      buildPromptWithAppearingModel(
+        templateDetail.prompt,
+        selectedModelAsset,
+        copy
+      )
+    );
     closeTemplateDetail();
   }
 
   function selectAppearingModel(model: ModelTemplateItem) {
     setError(null);
+    setPrompt((currentPrompt) =>
+      buildPromptWithAppearingModel(
+        currentPrompt || copy.promptPresets[0],
+        model,
+        copy,
+        selectedModelAsset
+      )
+    );
     setSelectedModelAsset(model);
+    setSelectedVideoModelMode('wanxiang_2_7');
     setIsModelLibraryOpen(false);
   }
 
@@ -2230,7 +2278,16 @@ export function ImageVideoWorkbench({
               </div>
               <button
                 type="button"
-                onClick={() => setSelectedModelAsset(null)}
+                onClick={() => {
+                  setPrompt((currentPrompt) =>
+                    removeAppearingModelPrompt(
+                      currentPrompt,
+                      selectedModelAsset,
+                      copy
+                    )
+                  );
+                  setSelectedModelAsset(null);
+                }}
                 disabled={isSubmitting}
                 className="grid size-8 shrink-0 place-items-center rounded-md text-indigo-400 transition hover:bg-white hover:text-indigo-700 disabled:cursor-not-allowed disabled:opacity-50"
                 aria-label={copy.removeAppearingModel}

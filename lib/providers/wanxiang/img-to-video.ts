@@ -14,6 +14,7 @@ import {
 } from './types';
 
 export const DEFAULT_WANXIANG_IMAGE_TO_VIDEO_MODEL = 'wan2.6-i2v-flash';
+export const WANXIANG_REFERENCE_TO_VIDEO_MODEL = 'wan2.7-r2v';
 export const DEFAULT_WANXIANG_IMAGE_TO_VIDEO_RESOLUTION = '720P';
 export const DEFAULT_WANXIANG_IMAGE_TO_VIDEO_DURATION_SECONDS = 5;
 
@@ -55,18 +56,24 @@ function toTaskId(task: string | WanxiangPayload) {
 function toDashScopeImageToVideoSubmitPayload(
   payload: WanxiangPayload
 ): WanxiangPayload {
-  const imgUrl =
+  const primaryImageUrl =
     firstString(payload.imgUrl) ||
     firstString(payload.imageUrl) ||
     firstString(payload.inputImageUrl) ||
     firstString(payload.inputImageUrls);
+  const modelImageUrl = firstString(payload.modelImageUrl);
   const posPrompt =
     firstString(payload.posPrompt) ||
     firstString(payload.prompt) ||
     firstString(payload.positivePrompt);
   const modelMode = normalizeImageVideoModelMode(payload.videoModelMode);
   const modelConfig = getImageToVideoModelConfig(modelMode);
-  const model = firstString(payload.model) || modelConfig.providerModelId;
+  const model =
+    firstString(payload.model) ||
+    (modelMode === 'wanxiang_2_7' && modelImageUrl
+      ? WANXIANG_REFERENCE_TO_VIDEO_MODEL
+      : modelConfig.providerModelId);
+  const isReferenceToVideo = model === WANXIANG_REFERENCE_TO_VIDEO_MODEL;
   const parameters: WanxiangPayload = {
     resolution:
       firstString(payload.resolution) ||
@@ -81,6 +88,42 @@ function toDashScopeImageToVideoSubmitPayload(
     ),
   };
 
+  if (isReferenceToVideo) {
+    const ratio = firstString(payload.ratio);
+    if (ratio) parameters.ratio = ratio;
+
+    return {
+      model,
+      input: {
+        ...(posPrompt
+          ? { prompt: promptWithModelImageInstruction(posPrompt) }
+          : {}),
+        media: [
+          ...(primaryImageUrl
+            ? [{ type: 'reference_image', url: primaryImageUrl }]
+            : []),
+          ...(modelImageUrl
+            ? [{ type: 'reference_image', url: modelImageUrl }]
+            : []),
+        ],
+      },
+      parameters,
+    };
+  }
+
+  if (modelMode === 'wanxiang_2_7') {
+    return {
+      model,
+      input: {
+        ...(posPrompt ? { prompt: posPrompt } : {}),
+        ...(primaryImageUrl
+          ? { media: [{ type: 'first_frame', url: primaryImageUrl }] }
+          : {}),
+      },
+      parameters,
+    };
+  }
+
   if (model === 'wan2.6-i2v-flash') {
     parameters.audio =
       firstBoolean(payload.audio) ??
@@ -90,11 +133,18 @@ function toDashScopeImageToVideoSubmitPayload(
   return {
     model,
     input: {
-      ...(imgUrl ? { img_url: imgUrl } : {}),
+      ...(primaryImageUrl ? { img_url: primaryImageUrl } : {}),
       ...(posPrompt ? { prompt: posPrompt } : {}),
     },
     parameters,
   };
+}
+
+function promptWithModelImageInstruction(prompt: string) {
+  return [
+    prompt,
+    'Use Image 1 as the primary product or source reference and Image 2 as the appearing model reference. Keep both references visually consistent in the generated video.',
+  ].join('\n\n');
 }
 
 function firstString(value: unknown): string | undefined {

@@ -158,6 +158,15 @@ describe('imageToVideoGenerationRequestSchema', () => {
     expect(parsed.durationSeconds).toBe(IMAGE_TO_VIDEO_DURATION_SECONDS);
   });
 
+  it('requires Wanxiang 2.7 when image-to-video uses an appearing model', () => {
+    const result = imageToVideoGenerationRequestSchema.safeParse({
+      ...validImageToVideoRequest,
+      modelTemplateId: '789',
+    });
+
+    expect(result.success).toBe(false);
+  });
+
   it('requires a prompt for image-to-video generation', () => {
     const result = imageToVideoGenerationRequestSchema.safeParse({
       ...validImageToVideoRequest,

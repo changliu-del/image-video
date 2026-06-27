@@ -39,10 +39,14 @@ allows only `user_upload`, `generated_image`, and `generated_video`.
 ## Workbench Behavior
 
 - `/create/video` uses image-to-video templates, a single uploaded or selected
-  first-frame image, and an optional appearing model selected from
+  first-frame/source image, and an optional appearing model selected from
   `/api/model-assets` (`templates.type = 'model'`). The model selection is
-  stored as generation metadata and appended to the prompt context; the current
-  Wanxiang image-to-video provider path still consumes one first-frame image.
+  appended to the prompt context and forces Wanxiang 2.7 video mode so the
+  provider can consume the model image. With an appearing model, the worker
+  resolves the model template preview image and sends both images through the
+  Wanxiang 2.7 reference-to-video media array: source/product image as Image 1
+  and model image as Image 2. Legacy Wanxiang 2.6 remains a single-first-frame
+  path and must not silently ignore a selected model image.
 - `/create/apparel` uses image-to-image templates plus the user's current uploaded product image; it does not load user history.
 - `/create/try-on` uses `/api/model-assets`, backed by `templates` rows where
   `type = 'model'`, for model selection plus the user's private garment/history

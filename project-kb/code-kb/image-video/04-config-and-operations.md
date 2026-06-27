@@ -105,10 +105,19 @@ Defaults:
 - prompt extend: `true`
 - audio: `false` for `wan2.6-i2v-flash`
 
-The project-level payload is normalized before submit: `inputImageUrl` /
-`prompt` become Bailian fields `input.img_url` / `input.prompt`, and the
-selected 5-15s duration is sent through `parameters.duration`. Reference video
-and audio fields are still not accepted by the current `image_to_video`
+The project-level payload is normalized before submit:
+
+- `wanxiang_2_6_first_frame` remains the legacy first-frame path and sends
+  `input.img_url` plus `input.prompt`.
+- `wanxiang_2_7` without an appearing model uses the newer Wanxiang media
+  protocol and sends `input.media[{ type: 'first_frame', url }]`.
+- `wanxiang_2_7` with an appearing model uses Wanxiang 2.7 reference-to-video
+  (`wan2.7-r2v`) so the user/source image and model image are both sent as
+  `reference_image` media entries. The prompt must explicitly reference Image 1
+  as the primary product/source and Image 2 as the appearing model.
+
+The selected 5-15s duration is sent through `parameters.duration`. Reference
+video and audio fields are still not accepted by the current `image_to_video`
 workbench.
 
 ## Wanxiang Image Editing

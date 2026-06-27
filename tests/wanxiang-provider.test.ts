@@ -8,6 +8,7 @@ import { DEFAULT_WANXIANG_IMAGE_EDIT_MODEL } from '../lib/providers/wanxiang/ima
 import {
   DEFAULT_WANXIANG_IMAGE_TO_VIDEO_MODEL,
   DEFAULT_WANXIANG_IMAGE_TO_VIDEO_RESOLUTION,
+  WANXIANG_REFERENCE_TO_VIDEO_MODEL,
   queryImageToVideo,
   submitImageToVideo
 } from '../lib/providers/wanxiang/img-to-video';
@@ -309,8 +310,60 @@ describe('Wanxiang capability exports', () => {
         body: JSON.stringify({
           model: 'wan2.7-i2v-2026-04-25',
           input: {
-            img_url: 'https://img.test/product.png',
-            prompt: '高质量广告片'
+            prompt: '高质量广告片',
+            media: [
+              {
+                type: 'first_frame',
+                url: 'https://img.test/product.png'
+              }
+            ]
+          },
+          parameters: {
+            resolution: '720P',
+            duration: 5,
+            prompt_extend: true
+          }
+        })
+      })
+    );
+  });
+
+  it('uses Wanxiang 2.7 reference-to-video when an appearing model image is provided', async () => {
+    vi.stubEnv('DASHSCOPE_API_KEY', 'dashscope-key');
+    vi.stubEnv('DASHSCOPE_VIDEO_SYNTHESIS_URL', 'https://override.test/i2v');
+    const fetchMock = mockJsonFetch({
+      output: { task_id: 'r2v-task', task_status: 'PENDING' }
+    });
+
+    await submitImageToVideo(
+      {
+        inputImageUrl: 'https://img.test/product.png',
+        modelImageUrl: 'https://img.test/model.png',
+        prompt: 'Create a product video with the selected model.',
+        durationSeconds: 5,
+        videoModelMode: 'wanxiang_2_7'
+      },
+      { fetch: fetchMock }
+    );
+
+    expect(fetchMock).toHaveBeenCalledWith(
+      'https://override.test/i2v',
+      expect.objectContaining({
+        body: JSON.stringify({
+          model: WANXIANG_REFERENCE_TO_VIDEO_MODEL,
+          input: {
+            prompt:
+              'Create a product video with the selected model.\n\nUse Image 1 as the primary product or source reference and Image 2 as the appearing model reference. Keep both references visually consistent in the generated video.',
+            media: [
+              {
+                type: 'reference_image',
+                url: 'https://img.test/product.png'
+              },
+              {
+                type: 'reference_image',
+                url: 'https://img.test/model.png'
+              }
+            ]
           },
           parameters: {
             resolution: '720P',
