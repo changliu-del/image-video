@@ -4,7 +4,17 @@ import { MediaOutlet, MediaPlayer } from '@vidstack/react';
 
 import { cn } from '@/lib/utils';
 
-type VideoFit = 'contain' | 'cover';
+export type VideoFit = 'contain' | 'cover';
+
+export type VideoPlayerProps = {
+  className?: string;
+  fit?: VideoFit;
+  mediaClassName?: string;
+  muted?: boolean;
+  preload?: 'none' | 'metadata' | 'auto';
+  src: string;
+  title?: string;
+};
 
 export function VideoPlayer({
   className,
@@ -14,15 +24,7 @@ export function VideoPlayer({
   preload = 'metadata',
   src,
   title,
-}: {
-  className?: string;
-  fit?: VideoFit;
-  mediaClassName?: string;
-  muted?: boolean;
-  preload?: 'none' | 'metadata' | 'auto';
-  src: string;
-  title?: string;
-}) {
+}: VideoPlayerProps) {
   return (
     <MediaPlayer
       className={cn('iv-video-player', className)}

@@ -2,6 +2,7 @@
 
 import { useEffect, useId, useMemo, useRef, useState } from 'react';
 import type { CSSProperties, DragEvent, ReactNode } from 'react';
+import dynamic from 'next/dynamic';
 import Uppy from '@uppy/core';
 import {
   DndContext,
@@ -38,7 +39,7 @@ import {
 import { useForm } from 'react-hook-form';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { VideoPlayer } from '@/components/media/video-player';
+import type { VideoPlayerProps } from '@/components/media/video-player';
 import {
   AdminManagementTable,
   AdminModal,
@@ -150,6 +151,22 @@ const emptyTemplateFilters: TemplateFilterState = {
   gender: '',
   style: '',
 };
+
+const LazyVideoPlayer = dynamic<VideoPlayerProps>(
+  () => import('@/components/media/video-player').then((m) => m.VideoPlayer),
+  {
+    ssr: false,
+    loading: () => <TemplateVideoPlayerFallback />,
+  }
+);
+
+function TemplateVideoPlayerFallback() {
+  return (
+    <div className="grid aspect-[4/3] w-full place-items-center bg-gray-950 text-white/65">
+      <Loader2 className="size-5 animate-spin" aria-hidden="true" />
+    </div>
+  );
+}
 
 const modelCategoryFieldLabels: Record<
   AdminLocale,
@@ -328,7 +345,7 @@ function TemplateMediaPreview({
   }
 
   return isVideoMimeType(mimeType) ? (
-    <VideoPlayer
+    <LazyVideoPlayer
       src={url}
       className="aspect-[4/3] w-full"
       fit="cover"

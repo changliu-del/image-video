@@ -2,6 +2,7 @@
 
 import type { ReactNode } from 'react';
 import type { LucideIcon } from 'lucide-react';
+import dynamic from 'next/dynamic';
 import {
   CheckCircle2,
   Clock3,
@@ -13,11 +14,27 @@ import {
 } from 'lucide-react';
 
 import { LazyVideo } from '@/components/media/lazy-video';
-import { VideoPlayer } from '@/components/media/video-player';
+import type { VideoPlayerProps } from '@/components/media/video-player';
 import { Input } from '@/components/ui/input';
 import { cn } from '@/lib/utils';
 
 type SelectOption<T extends string | number> = T | { value: T; label: ReactNode };
+
+const LazyVideoPlayer = dynamic<VideoPlayerProps>(
+  () => import('@/components/media/video-player').then((m) => m.VideoPlayer),
+  {
+    ssr: false,
+    loading: () => <ResultVideoPlayerFallback />,
+  }
+);
+
+function ResultVideoPlayerFallback() {
+  return (
+    <div className="flex aspect-video min-h-56 w-full max-h-[620px] items-center justify-center bg-gray-950 text-white/65">
+      <Loader2 className="size-6 animate-spin" aria-hidden="true" />
+    </div>
+  );
+}
 
 function getOptionValue<T extends string | number>(option: SelectOption<T>) {
   return typeof option === 'object' ? option.value : option;
@@ -402,7 +419,7 @@ export function ResultCard({
         <div className="mt-4 flex flex-1 items-center justify-center overflow-hidden rounded-lg bg-gray-950/70">
           {resultUrl ? (
             isVideo ? (
-              <VideoPlayer
+              <LazyVideoPlayer
                 src={resultUrl}
                 className="max-h-[620px] w-full"
                 mediaClassName="max-h-[620px] w-full"
