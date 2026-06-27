@@ -1,7 +1,6 @@
 'use client';
 
 import { useCallback, useEffect, useRef, useState } from 'react';
-import type { PointerEvent } from 'react';
 
 type EmptyMaterialVideoCardProps = {
   src: string;
@@ -17,11 +16,8 @@ export function EmptyMaterialVideoCard({
   src,
 }: EmptyMaterialVideoCardProps) {
   const cardRef = useRef<HTMLButtonElement>(null);
-  const hasMeasuredInitialViewport = useRef(false);
-  const shouldLoadWhenEnteringViewport = useRef(false);
   const [activationMode, setActivationMode] =
     useState<PreviewActivationMode>('idle');
-  const [isFinePointer, setIsFinePointer] = useState(false);
   const [canAutoplayVideo, setCanAutoplayVideo] = useState(false);
   const isPreviewArmed = activationMode !== 'idle';
 
@@ -33,15 +29,6 @@ export function EmptyMaterialVideoCard({
     setActivationMode('manual');
   }, []);
 
-  const armFromFinePointer = useCallback(
-    (event: PointerEvent<HTMLButtonElement>) => {
-      if (event.pointerType === 'mouse' || event.pointerType === 'pen') {
-        armAutoplayPreview();
-      }
-    },
-    [armAutoplayPreview]
-  );
-
   useEffect(() => {
     if (typeof window.matchMedia !== 'function') {
       setCanAutoplayVideo(true);
@@ -51,52 +38,41 @@ export function EmptyMaterialVideoCard({
     const reducedMotionQuery = window.matchMedia(
       '(prefers-reduced-motion: reduce)'
     );
-    const finePointerQuery = window.matchMedia(
-      '(hover: hover) and (pointer: fine)'
-    );
     const syncMediaPreferences = () => {
       setCanAutoplayVideo(!reducedMotionQuery.matches);
-      setIsFinePointer(finePointerQuery.matches);
     };
 
     syncMediaPreferences();
     if (typeof reducedMotionQuery.addEventListener === 'function') {
       reducedMotionQuery.addEventListener('change', syncMediaPreferences);
-      finePointerQuery.addEventListener('change', syncMediaPreferences);
       return () => {
         reducedMotionQuery.removeEventListener('change', syncMediaPreferences);
-        finePointerQuery.removeEventListener('change', syncMediaPreferences);
       };
     }
 
     reducedMotionQuery.addListener(syncMediaPreferences);
-    finePointerQuery.addListener(syncMediaPreferences);
     return () => {
       reducedMotionQuery.removeListener(syncMediaPreferences);
-      finePointerQuery.removeListener(syncMediaPreferences);
     };
   }, []);
 
   useEffect(() => {
-    if (isPreviewArmed || !canAutoplayVideo || !isFinePointer) return;
+    if (isPreviewArmed || !canAutoplayVideo) return;
 
     const cardElement = cardRef.current;
-    if (!cardElement || !('IntersectionObserver' in window)) return;
+    if (!cardElement) return;
+
+    if (!('IntersectionObserver' in window)) {
+      armAutoplayPreview();
+      return;
+    }
 
     const observer = new IntersectionObserver(
       ([entry]) => {
         if (!entry) return;
 
-        if (!hasMeasuredInitialViewport.current) {
-          hasMeasuredInitialViewport.current = true;
-          shouldLoadWhenEnteringViewport.current = !entry.isIntersecting;
-          return;
-        }
-
-        if (entry.isIntersecting && shouldLoadWhenEnteringViewport.current) {
-          setActivationMode((current) =>
-            current === 'idle' ? 'auto' : current
-          );
+        if (entry.isIntersecting) {
+          armAutoplayPreview();
           observer.disconnect();
         }
       },
@@ -108,7 +84,7 @@ export function EmptyMaterialVideoCard({
 
     observer.observe(cardElement);
     return () => observer.disconnect();
-  }, [canAutoplayVideo, isFinePointer, isPreviewArmed]);
+  }, [armAutoplayPreview, canAutoplayVideo, isPreviewArmed]);
 
   const shouldRenderVideo =
     isPreviewArmed && (canAutoplayVideo || activationMode === 'manual');
@@ -123,7 +99,7 @@ export function EmptyMaterialVideoCard({
         className="block w-full rounded-lg focus:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500 focus-visible:ring-offset-2"
         onClick={armManualPreview}
         onFocus={armAutoplayPreview}
-        onPointerEnter={armFromFinePointer}
+        onPointerEnter={armAutoplayPreview}
       >
         <div className="aspect-[3/4] overflow-hidden rounded-lg bg-white shadow-sm">
           {shouldRenderVideo ? (
@@ -136,7 +112,7 @@ export function EmptyMaterialVideoCard({
               muted
               loop={shouldAutoplayVideo}
               playsInline
-              preload="none"
+              preload="metadata"
             />
           ) : (
             <img

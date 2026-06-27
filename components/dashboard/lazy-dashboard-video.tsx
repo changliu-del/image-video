@@ -72,7 +72,7 @@ export function LazyDashboardVideo({
       muted
       loop
       playsInline
-      preload="none"
+      preload="metadata"
     />
   );
 }

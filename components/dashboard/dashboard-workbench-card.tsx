@@ -39,8 +39,6 @@ export function DashboardWorkbenchCard({
   poster,
 }: DashboardWorkbenchCardProps) {
   const cardRef = useRef<HTMLAnchorElement>(null);
-  const hasMeasuredInitialViewport = useRef(false);
-  const shouldLoadWhenEnteringViewport = useRef(false);
   const [isPreviewArmed, setIsPreviewArmed] = useState(false);
   const Icon = cardIcons[card.key];
 
@@ -52,19 +50,18 @@ export function DashboardWorkbenchCard({
     if (isPreviewArmed) return;
 
     const cardElement = cardRef.current;
-    if (!cardElement || !('IntersectionObserver' in window)) return;
+    if (!cardElement) return;
+
+    if (!('IntersectionObserver' in window)) {
+      setIsPreviewArmed(true);
+      return;
+    }
 
     const observer = new IntersectionObserver(
       ([entry]) => {
         if (!entry) return;
 
-        if (!hasMeasuredInitialViewport.current) {
-          hasMeasuredInitialViewport.current = true;
-          shouldLoadWhenEnteringViewport.current = !entry.isIntersecting;
-          return;
-        }
-
-        if (entry.isIntersecting && shouldLoadWhenEnteringViewport.current) {
+        if (entry.isIntersecting) {
           setIsPreviewArmed(true);
           observer.disconnect();
         }
