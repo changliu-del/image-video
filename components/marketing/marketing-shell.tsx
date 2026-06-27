@@ -238,14 +238,12 @@ function Footer({ content, locale }: { content: MarketingContent; locale: Locale
               {content.footer.legal}
             </h2>
             <div className="mt-4 grid gap-3">
-              <a
-                href="https://lumalabs-app.com/legal/privacy-policy"
-                target="_blank"
-                rel="noreferrer"
+              <Link
+                href={getLocalizedHref(locale, '/legal/privacy-policy')}
                 className="text-sm text-white/45 transition hover:text-white"
               >
                 {content.footer.privacy}
-              </a>
+              </Link>
             </div>
           </div>
           <div>
