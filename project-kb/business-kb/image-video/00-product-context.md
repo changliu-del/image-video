@@ -33,13 +33,14 @@ The product helps ecommerce sellers produce short videos, product campaign image
 
 ## Current Pricing Model
 
-Updated: 2026-06-26
+Updated: 2026-06-27
 
 - Subscriptions are offered as Basic, Plus, and Pro.
 - Each subscription tier supports monthly and annual billing.
-- Annual plans keep monthly credit allowance semantics and show the lower effective monthly price.
+- Annual plans keep monthly credit allowance semantics and bill the same monthly price for 12 months.
 - The Brazil/Pix credit wallet uses BRL catalog prices and exact top-up conversion: 100 credits = R$10, 400 credits = R$40, 1200 credits = R$120.
-- Monthly subscription allowances are Basic 300 credits / R$30, Plus 900 credits / R$90, and Pro 2400 credits / R$240 before annual discount.
+- Monthly subscription allowances are Basic 480 credits / R$48, Plus 2000 credits / R$160, and Pro 6200 credits / R$372.
+- Subscription tiers are credit top-ups only. All creation tools remain available independently of the selected subscription tier, so pricing cards should not describe plans as feature unlocks.
 - Mock checkout is the only payment path for the current phase; it does not charge real money.
 - Mock subscription checkout updates the user's plan and grants the plan's monthly credit allowance immediately.
 - Users can also buy one-time top-up credit packages from the workspace credit wallet.

@@ -108,10 +108,31 @@ describe('payment mock mode', () => {
         creditPackage.credits
       );
     }
+  });
 
-    for (const plan of MOCK_MONTHLY_PLANS) {
+  it('uses tiered monthly subscription credit pricing', () => {
+    expect(
+      MOCK_MONTHLY_PLANS.map((plan) => ({
+        tier: plan.tier,
+        credits: plan.monthlyCredits,
+        unitAmount: plan.unitAmount,
+      }))
+    ).toEqual([
+      { tier: 'basic', credits: 480, unitAmount: getAmountForCredits(480) },
+      { tier: 'plus', credits: 2000, unitAmount: 16000 },
+      { tier: 'pro', credits: 6200, unitAmount: 37200 },
+    ]);
+
+    for (const plan of MOCK_SUBSCRIPTION_PLANS) {
       expect(plan.currency).toBe(BILLING_CURRENCY);
-      expect(plan.unitAmount).toBe(getAmountForCredits(plan.monthlyCredits));
+      if (plan.interval === 'year') {
+        const monthlyPlan = MOCK_MONTHLY_PLANS.find(
+          (monthly) => monthly.tier === plan.tier
+        );
+
+        expect(monthlyPlan).toBeDefined();
+        expect(plan.unitAmount).toBe(monthlyPlan!.unitAmount * 12);
+      }
     }
   });
 });

@@ -873,7 +873,7 @@ const pt: MarketingContent = {
       yearly: 'Anual',
       monthly: 'Mensal',
       onetime: 'Avulso',
-      save: '节省 20%',
+      save: '',
       secure: 'Veja planos e créditos no workspace',
       buy: 'Abrir planos',
       popular: 'Mais popular',

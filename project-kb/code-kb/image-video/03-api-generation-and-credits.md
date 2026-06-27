@@ -33,7 +33,7 @@ values such as `template_uuid` or `asset_123` in new tests and fixtures.
 
 ## Pricing and Mock Payments
 
-Updated: 2026-06-03
+Updated: 2026-06-27
 
 - `lib/payments/catalog.ts` is the shared source of truth for subscription plans and one-time credit packages.
 - Subscription plans are Basic, Plus, and Pro across `month` and `year` intervals.
@@ -42,6 +42,7 @@ Updated: 2026-06-03
 - `/dashboard/billing` is the primary workspace Plans page; `/dashboard/credits` is the credit wallet and ledger page.
 - The unlocalized `/pricing` dashboard route redirects to `/dashboard/billing`; localized marketing pricing pages remain public ads and link into workspace Plans/Credits.
 - `app/(dashboard)/layout.tsx` verifies the session token only. `app/(dashboard)/dashboard-header.tsx` fetches `/api/user` on the client to hydrate the real credit balance, plan/admin state, and user menu after the workspace shell renders.
+- Subscription tier pricing is credit-top-up pricing, not feature gating: Basic grants 480 credits for R$48 per month, Plus grants 2000 credits for R$160 per month, and Pro grants 6200 credits for R$372 per month. Annual billing charges 12 times the monthly amount while preserving the monthly credit allowance copy.
 
 Generation credit cost is currently:
 
