@@ -276,7 +276,7 @@ export function DashboardHeader({
           >
             <Home className="size-4" />
             <span>
-              {isAdminPage ? content.nav.home : content.header.marketingHome}
+              {isAdminPage ? '工作站' : content.header.marketingHome}
             </span>
           </Link>
           {!isAdminPage && user && canAccessAdmin(user) ? (

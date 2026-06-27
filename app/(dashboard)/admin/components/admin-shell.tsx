@@ -1,6 +1,5 @@
 'use client';
 
-import Link from 'next/link';
 import { useSearchParams } from 'next/navigation';
 import { useEffect, useMemo, useState } from 'react';
 import {
@@ -8,7 +7,6 @@ import {
   ChevronDown,
   Film,
   Gauge,
-  Home,
   Images,
   LayoutTemplate,
   Loader2,
@@ -33,7 +31,6 @@ import {
   getAdminTemplateTypeLabel,
   normalizeAdminTemplateType,
 } from '@/lib/admin/template-types';
-import { getDashboardContent } from '@/lib/dashboard/content';
 import type { TemplateType } from '@/lib/templates/catalog';
 import { cn } from '@/lib/utils';
 
@@ -620,7 +617,6 @@ function AdminHelpDropdown({
 export function AdminShell() {
   const locale: AdminLocale = 'en';
   const content = getAdminContent(locale);
-  const dashboardContent = getDashboardContent(locale);
   const [user, setUser] = useState<AdminShellUser | null>(null);
   const [isUserLoading, setIsUserLoading] = useState(true);
   const [userError, setUserError] = useState<string | null>(null);
@@ -800,13 +796,6 @@ export function AdminShell() {
     <div className="flex h-[calc(100vh-64px)] bg-gray-50">
       <aside className="flex w-56 flex-col border-r border-gray-200 bg-white">
         <div className="border-b border-gray-200 px-3 py-3">
-          <Link
-            href="/dashboard?locale=en"
-            className="mb-3 flex h-9 w-full items-center gap-2 rounded-lg border border-gray-200 bg-white px-3 text-sm font-semibold text-gray-700 shadow-sm transition hover:border-orange-200 hover:bg-orange-50 hover:text-orange-700"
-          >
-            <Home className="size-4 flex-shrink-0" />
-            <span className="truncate">{dashboardContent.nav.tools}</span>
-          </Link>
           <span className="text-sm font-semibold uppercase text-gray-500">
             {content.shell.title}
           </span>
