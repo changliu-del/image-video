@@ -56,6 +56,10 @@ Fixed in this pass:
   refresh scripts should keep English base fields plus Brazilian Portuguese
   translations, not Chinese translation keys.
 - Dashboard demo video loading now triggers closer to viewport entry to reduce first-navigation media contention.
+- Dashboard and workbench demo videos keep poster images paired with the video
+  asset in `lib/marketing/homepage-materials.ts`. Do not source paused-state
+  posters from a separate fallback image array, or the lazy/static state can
+  show unrelated content before autoplay starts.
 
 ## 2026-06-24 Auth Refresh Fix
 

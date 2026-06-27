@@ -2,10 +2,7 @@ import {
   normalizeDashboardLocale,
   type DashboardLocale,
 } from '@/lib/dashboard/content';
-import {
-  dashboardHomeFallbackImages,
-  dashboardHomeMedia,
-} from '@/lib/marketing/homepage-materials';
+import { dashboardHomeMedia } from '@/lib/marketing/homepage-materials';
 import { DashboardInspirationGallery } from '@/components/dashboard/dashboard-inspiration-gallery';
 import { DashboardWorkbenchCard } from '@/components/dashboard/dashboard-workbench-card';
 
@@ -133,9 +130,9 @@ const dashboardCopy: Record<DashboardLocale, DashboardCopy> = {
 };
 
 const cardPosters = {
-  video: dashboardHomeFallbackImages[0],
-  product: dashboardHomeFallbackImages[3],
-  tryOn: dashboardHomeFallbackImages[4],
+  video: dashboardHomeMedia.imageToVideo.poster,
+  product: dashboardHomeMedia.productImage.poster,
+  tryOn: dashboardHomeMedia.tryOn.poster,
 } satisfies Record<WorkbenchCardKey, string>;
 
 function firstParam(value: string | string[] | null | undefined) {

@@ -104,11 +104,6 @@ const MODEL_ASSET_LIMIT = 96;
 const TEMPLATE_PAGE_SIZE = 12;
 const defaultTemplateCategory: string = imageToVideoTemplateCategories[0] ?? '';
 const LAST_IMAGE_VIDEO_TASK_KEY = 'image-video:last-task:v1';
-const emptyMaterialPosters = [
-  '/resources/showcase.png',
-  '/resources/example2.png',
-  '/resources/example5.png',
-] as const;
 type ModelAgeFilter = 'all' | 'child' | 'youth' | 'middle' | 'senior';
 type ModelGenderFilter = 'all' | 'female' | 'male';
 type ModelStyleFilter = 'all' | string;
@@ -2007,7 +2002,6 @@ export function ImageVideoWorkbench({
   const emptyMaterialCards = homepageWorkbenchMaterials.map((material, index) => ({
     ...material,
     label: emptyMaterialLabels[index] ?? copy.detailLabel,
-    poster: emptyMaterialPosters[index] ?? '/resources/showcase.png',
   }));
 
   return (
