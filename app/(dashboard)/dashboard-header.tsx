@@ -50,6 +50,10 @@ function canAccessAdmin(user: DashboardHeaderUser) {
 
 async function fetchHeaderUser(url: string) {
   const response = await fetch(url, { cache: 'no-store' });
+  if (response.status === 401) {
+    return null;
+  }
+
   if (!response.ok) {
     throw new Error('Failed to load dashboard user');
   }
@@ -213,9 +217,11 @@ function DashboardLanguageMenu({
 }
 
 export function DashboardHeader({
+  shouldLoadUser = false,
   user: initialUser,
   templateAdminUrl,
 }: {
+  shouldLoadUser?: boolean;
   user: DashboardHeaderUser | null;
   templateAdminUrl?: string | null;
 }) {
@@ -226,8 +232,9 @@ export function DashboardHeader({
   const locale = isAdminPage ? 'en' : dashboardLocale;
   const content = getDashboardContent(locale);
   const homeHref = isAdminPage ? withDashboardLocale('/dashboard', locale) : `/${locale}`;
+  const shouldFetchUser = Boolean(initialUser?.id || shouldLoadUser);
   const { data: loadedUser, mutate: refreshUser } = useSWR<DashboardHeaderUser | null>(
-    initialUser?.id ? DASHBOARD_USER_CACHE_KEY : null,
+    shouldFetchUser ? DASHBOARD_USER_CACHE_KEY : null,
     fetchHeaderUser,
     {
       fallbackData: initialUser,

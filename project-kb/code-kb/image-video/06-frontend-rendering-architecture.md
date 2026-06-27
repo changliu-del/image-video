@@ -7,6 +7,10 @@ This note captures the default frontend architecture for the image-video SaaS af
 ## Default Contract
 
 - Keep the dashboard shell persistent. `app/(dashboard)/layout.tsx` owns session-token access control, not full account hydration. Header/sidebar account details should load through focused client fetches such as `/api/user`.
+- Let anonymous users enter the creative hub and workbench shell. `/dashboard`
+  and `/create/*` should render static workspace UI without a route-level JWT
+  gate; require login only for account/billing/security/job routes and for
+  protected mutation/media APIs such as asset upload and generation start.
 - Render the primary UI immediately. Plans, credit packages, workbench controls, marketing cards, and static copy should come from local catalogs/copy modules and should not wait on account/API calls.
 - Load dynamic account data through focused API routes or client fetches. Use small surfaces such as `/api/account/billing`, `/api/account/credits`, and `/api/user`; add skeleton, error, empty, and retry states where the data appears. Account balance, plan, and admin-link visibility should not block workspace first paint.
 - Preserve supported locale everywhere. The active product locales are English

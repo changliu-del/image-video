@@ -42,6 +42,11 @@ import {
   type WorkbenchLibraryItem as LibraryItem,
 } from '@/components/create/library-item-utils';
 import { refreshDashboardUser } from '@/lib/dashboard/user-cache';
+import {
+  AuthenticationRequiredError,
+  isAuthenticationRequiredError,
+  redirectToSignIn,
+} from '@/lib/auth/client-login';
 import { useDashboardLocale } from '@/lib/dashboard/use-dashboard-locale';
 import { getTryOnCreditCost } from '@/lib/generations/credit-costs';
 import {
@@ -232,6 +237,10 @@ async function postJson<T>(url: string, body: Record<string, unknown>, fallback:
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(body),
   });
+
+  if (response.status === 401) {
+    throw new AuthenticationRequiredError();
+  }
 
   if (!response.ok) {
     throw new Error(await readResponseError(response, fallback));
@@ -882,20 +891,25 @@ export function TryOnWorkbench({
 
       void refreshDashboardUser();
       setJobId(nextJobId);
-      setJobStatus({
-        id: nextJobId,
-        status: generation.status ?? 'queued',
-        progressLabel: commonCopy.queued,
-      });
-    } catch (submitError) {
-      setError(
-        submitError instanceof Error
-          ? submitError.message
-          : commonCopy.generationStartError
-      );
-    } finally {
-      setSubmitLabel(null);
-    }
+        setJobStatus({
+          id: nextJobId,
+          status: generation.status ?? 'queued',
+          progressLabel: commonCopy.queued,
+        });
+      } catch (submitError) {
+        if (isAuthenticationRequiredError(submitError)) {
+          redirectToSignIn(locale);
+          return;
+        }
+
+        setError(
+          submitError instanceof Error
+            ? submitError.message
+            : commonCopy.generationStartError
+        );
+      } finally {
+        setSubmitLabel(null);
+      }
   }
 
   function selectLibraryModel(model: ModelTemplateItem) {

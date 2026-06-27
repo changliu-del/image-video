@@ -43,18 +43,23 @@ describe('auth security hardening', () => {
     expect(securityPageSource).not.toContain('defaultValue={deleteState.password}');
   });
 
-  it('keeps JWT verification in the Node dashboard layout instead of proxy runtime', () => {
+  it('keeps JWT verification in Node protected dashboard routes instead of proxy runtime', () => {
     const proxySource = readSource('proxy.ts');
     const dashboardLayoutSource = readSource('app/(dashboard)/layout.tsx');
+    const protectedDashboardSource = readSource(
+      'app/(dashboard)/dashboard/require-dashboard-auth.ts'
+    );
 
     expect(proxySource).toContain("request.cookies.get('session')");
     expect(proxySource).not.toContain("from '@/lib/auth/session'");
     expect(proxySource).not.toContain('verifyToken');
     expect(proxySource).not.toContain('signToken');
-    expect(proxySource).not.toContain('Error updating session');
+      expect(proxySource).not.toContain('Error updating session');
     expect(proxySource).not.toContain("cookies.delete('session')");
+    expect(proxySource).toContain('workspaceRouteRequiresAuth(pathname)');
     expect(dashboardLayoutSource).toContain("export const dynamic = 'force-dynamic'");
-    expect(dashboardLayoutSource).toContain('getSessionUserId()');
+    expect(dashboardLayoutSource).not.toContain('getSessionUserId()');
+    expect(protectedDashboardSource).toContain('getSessionUserId()');
   });
 });
 

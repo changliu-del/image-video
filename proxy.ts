@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server';
 import type { NextRequest } from 'next/server';
+import { workspaceRouteRequiresAuth } from '@/lib/auth/workspace-routes';
 
-const protectedRoutes = ['/create', '/dashboard', '/generate', '/jobs'];
 const marketingLocales = ['pt', 'en', 'zh'] as const;
 type MarketingLocale = (typeof marketingLocales)[number];
 
@@ -70,9 +70,7 @@ export async function proxy(request: NextRequest) {
   }
 
   const sessionCookie = request.cookies.get('session');
-  const isProtectedRoute = protectedRoutes.some((route) =>
-    pathname.startsWith(route)
-  );
+  const isProtectedRoute = workspaceRouteRequiresAuth(pathname);
 
   if (isProtectedRoute && !sessionCookie) {
     return NextResponse.redirect(getLoginRedirect(request));

@@ -30,6 +30,11 @@ import {
 } from '@/components/create/workbench-copy';
 import { refreshDashboardUser } from '@/lib/dashboard/user-cache';
 import {
+  AuthenticationRequiredError,
+  isAuthenticationRequiredError,
+  redirectToSignIn,
+} from '@/lib/auth/client-login';
+import {
   IMAGE_TO_VIDEO_DURATION_SECONDS,
   IMAGE_TO_VIDEO_MAX_DURATION_SECONDS,
   IMAGE_TO_VIDEO_MIN_DURATION_SECONDS,
@@ -1129,6 +1134,10 @@ async function postJson<T>(url: string, body: Record<string, unknown>, fallback:
     body: JSON.stringify(body),
   });
 
+  if (response.status === 401) {
+    throw new AuthenticationRequiredError();
+  }
+
   if (!response.ok) {
     throw new Error(await readResponseError(response, fallback));
   }
@@ -1144,6 +1153,10 @@ async function uploadAsset(file: File, labels: typeof commonWorkbenchCopy.en) {
     method: 'POST',
     body,
   });
+
+  if (uploadResponse.status === 401) {
+    throw new AuthenticationRequiredError();
+  }
 
   if (!uploadResponse.ok) {
     throw new Error(
@@ -1964,9 +1977,9 @@ export function ImageVideoWorkbench({
       setSelectedInputAssetId(inputAssetId);
       if (nextInputImageUrl) setSelectedInputImageUrl(nextInputImageUrl);
       setJobId(nextJobId);
-      setJobStatus({
-        id: nextJobId,
-        generationType: 'image_to_video',
+        setJobStatus({
+          id: nextJobId,
+          generationType: 'image_to_video',
         durationSeconds,
         inputAssetId,
         inputAssetIds,
@@ -1975,17 +1988,22 @@ export function ImageVideoWorkbench({
         prompt: generationPrompt,
         status: generation.status ?? 'queued',
         progressLabel: commonCopy.queued,
-        templateId: selectedTemplateId || null,
-        modelTemplateId: selectedModelAsset?.id ?? null,
-        videoModelMode: selectedVideoModelMode,
-      });
-    } catch (submitError) {
-      setError(
-        submitError instanceof Error ? submitError.message : commonCopy.generationStartError
-      );
-    } finally {
-      setSubmitLabel(null);
-    }
+          templateId: selectedTemplateId || null,
+          modelTemplateId: selectedModelAsset?.id ?? null,
+          videoModelMode: selectedVideoModelMode,
+        });
+      } catch (submitError) {
+        if (isAuthenticationRequiredError(submitError)) {
+          redirectToSignIn(locale);
+          return;
+        }
+
+        setError(
+          submitError instanceof Error ? submitError.message : commonCopy.generationStartError
+        );
+      } finally {
+        setSubmitLabel(null);
+      }
   }
 
   const statusLabel = jobStatus?.progressLabel ?? jobStatus?.status ?? (jobId ? commonCopy.generating : null);
