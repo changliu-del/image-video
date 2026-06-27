@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
   AlertCircle,
   CheckCircle2,
@@ -101,6 +101,7 @@ const MAX_REFERENCE_IMAGE_FILE_COUNT = 1;
 const ACCEPTED_IMAGE_TYPES = ['image/png', 'image/jpeg', 'image/webp'];
 const ACCEPTED_REFERENCE_IMAGE_TYPES = ACCEPTED_IMAGE_TYPES;
 const MODEL_ASSET_LIMIT = 96;
+const TEMPLATE_PAGE_SIZE = 12;
 const defaultTemplateCategory: string = imageToVideoTemplateCategories[0] ?? '';
 const LAST_IMAGE_VIDEO_TASK_KEY = 'image-video:last-task:v1';
 const emptyMaterialPosters = [
@@ -1232,6 +1233,9 @@ export function ImageVideoWorkbench({
   const [templateCategory, setTemplateCategory] =
     useState<string>(defaultTemplateCategory);
   const [templateTotal, setTemplateTotal] = useState(0);
+  const [templatePage, setTemplatePage] = useState(1);
+  const [templateHasMore, setTemplateHasMore] = useState(false);
+  const [isLoadingMoreTemplates, setIsLoadingMoreTemplates] = useState(false);
   const [templateReloadKey, setTemplateReloadKey] = useState(0);
   const [selectedTemplate, setSelectedTemplate] =
     useState<Partial<PublicTemplateItem> | null>(null);
@@ -1252,6 +1256,9 @@ export function ImageVideoWorkbench({
   const [jobStatus, setJobStatus] = useState<JobStatusResponse | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [statusPollRetryKey, setStatusPollRetryKey] = useState(0);
+  const templateListScopeRef = useRef('');
+  const templateLoadingMoreRef = useRef(false);
+  const templateSentinelRef = useRef<HTMLDivElement>(null);
   const requestedTemplateId = initialTemplateId;
 
   const isSubmitting = Boolean(submitLabel);
@@ -1436,14 +1443,19 @@ export function ImageVideoWorkbench({
   useEffect(() => {
     let cancelled = false;
     const controller = new AbortController();
+    const templateListScope = `${locale}:${templateCategory}:${templateReloadKey}`;
+    templateListScopeRef.current = templateListScope;
 
     async function loadTemplates() {
       setIsLoadingTemplates(true);
+      setIsLoadingMoreTemplates(false);
       setTemplateError(false);
+      templateLoadingMoreRef.current = false;
 
       try {
         const params = new URLSearchParams({
-          pageSize: templateCategory ? '48' : '12',
+          page: '1',
+          pageSize: String(TEMPLATE_PAGE_SIZE),
           type: 'image_to_video',
           locale,
         });
@@ -1459,14 +1471,26 @@ export function ImageVideoWorkbench({
 
         const templateBody = await response.json();
 
-        if (!cancelled) {
+        if (!cancelled && templateListScopeRef.current === templateListScope) {
           const nextTemplates = normalizePublicTemplateItems(templateBody);
+          const total =
+            typeof templateBody.total === 'number'
+              ? templateBody.total
+              : nextTemplates.length;
+          const page =
+            typeof templateBody.page === 'number' ? templateBody.page : 1;
+          const hasMore =
+            typeof templateBody.hasMore === 'boolean'
+              ? templateBody.hasMore
+              : page * TEMPLATE_PAGE_SIZE < total;
           const requestedTemplate = nextTemplates.find(
             (template) => String(template.id) === requestedTemplateId
           );
 
           setTemplates(nextTemplates);
-          setTemplateTotal(Number(templateBody.total ?? nextTemplates.length));
+          setTemplateTotal(total);
+          setTemplatePage(page);
+          setTemplateHasMore(hasMore);
           setSelectedTemplate((current) => {
             if (requestedTemplate) {
               return requestedTemplate;
@@ -1490,6 +1514,8 @@ export function ImageVideoWorkbench({
         if (!cancelled) {
           setTemplates([]);
           setTemplateTotal(0);
+          setTemplatePage(1);
+          setTemplateHasMore(false);
           setTemplateError(true);
         }
       } finally {
@@ -1503,6 +1529,109 @@ export function ImageVideoWorkbench({
       controller.abort();
     };
   }, [locale, requestedTemplateId, templateCategory, templateReloadKey]);
+
+  const loadMoreTemplates = useCallback(async () => {
+    if (
+      !templateHasMore ||
+      isLoadingTemplates ||
+      templateLoadingMoreRef.current
+    ) {
+      return;
+    }
+
+    templateLoadingMoreRef.current = true;
+    setIsLoadingMoreTemplates(true);
+
+    try {
+      const templateListScope = templateListScopeRef.current;
+      const nextPage = templatePage + 1;
+      const params = new URLSearchParams({
+        page: String(nextPage),
+        pageSize: String(TEMPLATE_PAGE_SIZE),
+        type: 'image_to_video',
+        locale,
+      });
+      if (templateCategory) params.set('category', templateCategory);
+
+      const response = await fetch(`/api/templates?${params.toString()}`);
+
+      if (!response.ok) {
+        throw new Error('template-load-more-failed');
+      }
+
+      const templateBody = await response.json();
+      const nextTemplates = normalizePublicTemplateItems(templateBody);
+      if (templateListScopeRef.current !== templateListScope) return;
+      const total =
+        typeof templateBody.total === 'number'
+          ? templateBody.total
+          : templateTotal;
+      const page =
+        typeof templateBody.page === 'number' ? templateBody.page : nextPage;
+      const hasMore =
+        typeof templateBody.hasMore === 'boolean'
+          ? templateBody.hasMore
+          : page * TEMPLATE_PAGE_SIZE < total;
+      const requestedTemplate = nextTemplates.find(
+        (template) => String(template.id) === requestedTemplateId
+      );
+
+      setTemplates((current) => {
+        const seen = new Set(current.map((template) => template.id));
+        return [
+          ...current,
+          ...nextTemplates.filter((template) => {
+            if (seen.has(template.id)) return false;
+            seen.add(template.id);
+            return true;
+          }),
+        ];
+      });
+      setTemplateTotal(total);
+      setTemplatePage(page);
+      setTemplateHasMore(hasMore);
+      if (requestedTemplate) {
+        setSelectedTemplate((current) =>
+          String(current?.id ?? '') === requestedTemplateId
+            ? requestedTemplate
+            : current
+        );
+      }
+    } catch {
+      // Keep the existing list visible; the sentinel can retry when it re-enters view.
+    } finally {
+      templateLoadingMoreRef.current = false;
+      setIsLoadingMoreTemplates(false);
+    }
+  }, [
+    isLoadingTemplates,
+    locale,
+    requestedTemplateId,
+    templateCategory,
+    templateHasMore,
+    templatePage,
+    templateTotal,
+  ]);
+
+  useEffect(() => {
+    if (isLoadingTemplates || templateError || !templateHasMore) return;
+    const sentinel = templateSentinelRef.current;
+    if (!sentinel || !('IntersectionObserver' in window)) return;
+
+    const observer = new IntersectionObserver(
+      ([entry]) => {
+        if (entry?.isIntersecting) {
+          void loadMoreTemplates();
+        }
+      },
+      {
+        rootMargin: '720px 0px',
+      }
+    );
+
+    observer.observe(sentinel);
+    return () => observer.disconnect();
+  }, [isLoadingTemplates, loadMoreTemplates, templateError, templateHasMore]);
 
   useEffect(() => {
     if (!isModelLibraryOpen) return;
@@ -2191,6 +2320,8 @@ export function ImageVideoWorkbench({
                             src={template.thumbnailUrl}
                             alt=""
                             className="size-full object-cover transition duration-500 group-hover:scale-105"
+                            loading="lazy"
+                            decoding="async"
                           />
                           <span className="pointer-events-none absolute left-1/2 top-1/2 inline-flex max-w-[calc(100%-16px)] -translate-x-1/2 -translate-y-1/2 items-center gap-1 rounded-full bg-white/95 px-3 py-1.5 text-xs font-black text-gray-800 opacity-0 shadow-sm ring-1 ring-gray-200 transition group-hover:opacity-100 group-focus-visible:opacity-100">
                             <Eye className="size-3.5 shrink-0 text-indigo-600" />
@@ -2225,6 +2356,20 @@ export function ImageVideoWorkbench({
                 </div>
               )}
             </div>
+            {templates.length > 0 && templateHasMore ? (
+              <div
+                ref={templateSentinelRef}
+                className="flex h-10 items-center justify-center gap-2 text-xs font-bold text-gray-400"
+                aria-hidden={!isLoadingMoreTemplates}
+              >
+                {isLoadingMoreTemplates ? (
+                  <>
+                    <Loader2 className="size-3.5 animate-spin" />
+                    {materialCopy.loadingTemplates}
+                  </>
+                ) : null}
+              </div>
+            ) : null}
           </div>
         </PanelSection>
 
