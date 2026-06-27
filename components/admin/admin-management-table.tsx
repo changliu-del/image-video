@@ -1,5 +1,6 @@
 'use client';
 
+import { createElement } from 'react';
 import type { ComponentType, FormEvent, ReactNode } from 'react';
 import {
   FileText,
@@ -37,12 +38,33 @@ type CellKind =
   | 'number'
   | 'media';
 
+export type AdminTableHeaderContext<T extends AdminTableRow = AdminTableRow> = {
+  column: AdminTableColumn<T>;
+  columnIndex: number;
+  columns: AdminTableColumn<T>[];
+};
+
+export type AdminTableCellContext<T extends AdminTableRow = AdminTableRow> = {
+  row: T;
+  rowIndex: number;
+  column: AdminTableColumn<T>;
+  value: unknown;
+  getValue: () => unknown;
+  renderValue: () => ReactNode;
+};
+
+export type AdminRenderable<TContext extends object> =
+  | ReactNode
+  | ComponentType<TContext>;
+
 export type AdminTableColumn<T extends AdminTableRow = AdminTableRow> = {
   key: string;
   label?: string;
   kind?: CellKind;
   width?: number;
   className?: string;
+  header?: AdminRenderable<AdminTableHeaderContext<T>>;
+  cell?: AdminRenderable<AdminTableCellContext<T>>;
   render?: (row: T) => ReactNode;
 };
 
@@ -98,6 +120,17 @@ export function formatAdminLabel(value: string) {
     .replace(/\burl\b/gi, 'URL')
     .replace(/\bpdp\b/gi, 'PDP')
     .replace(/\b\w/g, (char) => char.toUpperCase());
+}
+
+function renderAdminSlot<TContext extends object>(
+  slot: AdminRenderable<TContext> | undefined,
+  context: TContext
+) {
+  if (typeof slot === 'function') {
+    return createElement(slot, context);
+  }
+
+  return slot ?? null;
 }
 
 export function formatAdminDate(value: unknown) {
@@ -681,18 +714,30 @@ export function AdminManagementTable<T extends AdminTableRow>({
           >
             <thead>
               <tr className="bg-gray-50 text-xs text-gray-500">
-                {columns.map((column) => (
-                  <th
-                    key={column.key}
-                    className={cn(
-                      'whitespace-nowrap border-b border-gray-200 px-4 py-3 font-semibold',
-                      column.className
-                    )}
-                    style={column.width ? { width: column.width } : undefined}
-                  >
-                    {column.label ?? formatAdminLabel(column.key)}
-                  </th>
-                ))}
+                {columns.map((column, columnIndex) => {
+                  const headerContext: AdminTableHeaderContext<T> = {
+                    column,
+                    columnIndex,
+                    columns,
+                  };
+
+                  return (
+                    <th
+                      key={column.key}
+                      className={cn(
+                        'whitespace-nowrap border-b border-gray-200 px-4 py-3 font-semibold',
+                        column.className
+                      )}
+                      style={
+                        column.width ? { width: column.width } : undefined
+                      }
+                    >
+                      {column.header !== undefined
+                        ? renderAdminSlot(column.header, headerContext)
+                        : column.label ?? formatAdminLabel(column.key)}
+                    </th>
+                  );
+                })}
                 {showActions ? (
                   <th className="sticky right-0 z-10 w-[132px] whitespace-nowrap border-b border-l border-gray-200 bg-gray-50 px-4 py-3 font-semibold">
                     {copy.actions}
@@ -727,16 +772,33 @@ export function AdminManagementTable<T extends AdminTableRow>({
                         selected && 'bg-orange-50/60'
                       )}
                     >
-                      {columns.map((column) => (
-                        <td
-                          key={column.key}
-                          className="border-b border-gray-100 px-4 py-3"
-                        >
-                          {column.render
-                            ? column.render(row)
-                            : defaultCell(column, row, statusLabels)}
-                        </td>
-                      ))}
+                      {columns.map((column) => {
+                        const value = row[column.key];
+                        const cellContext: AdminTableCellContext<T> = {
+                          row,
+                          rowIndex: index,
+                          column,
+                          value,
+                          getValue: () => value,
+                          renderValue: () =>
+                            column.render
+                              ? column.render(row)
+                              : defaultCell(column, row, statusLabels),
+                        };
+
+                        return (
+                          <td
+                            key={column.key}
+                            className="border-b border-gray-100 px-4 py-3"
+                          >
+                            {column.cell !== undefined
+                              ? renderAdminSlot(column.cell, cellContext)
+                              : column.render
+                                ? column.render(row)
+                                : defaultCell(column, row, statusLabels)}
+                          </td>
+                        );
+                      })}
                       {showActions ? (
                         <td
                           className={cn(
