@@ -53,12 +53,11 @@ Fixed in this pass:
   user opens or applies a template so `prompt` does not bloat the first list
   response.
 - Template text is locale-aware for the supported product locales. The API
-  accepts `locale` and resolves
-  `title_translations_json` and `prompt_translations_json` before returning
-  `title` and detail `prompt`; `category` stays a stable code and UI surfaces
-  localize it through `getTemplateCategoryLabel`. Active template imports and
-  refresh scripts should keep English base fields plus Brazilian Portuguese
-  translations, not Chinese translation keys.
+  accepts `locale` and resolves `title`/`pt_title` plus `prompt`/`pt_prompt`
+  before returning `title` and detail `prompt`; `category` stays a stable code
+  and UI surfaces localize it through `getTemplateCategoryLabel`. Active
+  template imports and refresh scripts should keep English base fields plus
+  Brazilian Portuguese columns, not JSON translation keys.
 - Dashboard demo video loading now triggers closer to viewport entry to reduce first-navigation media contention.
 - Dashboard and workbench demo videos keep poster images paired with the video
   asset in `lib/marketing/homepage-materials.ts`. Do not source paused-state

@@ -37,12 +37,8 @@ describe('wanxiang model import contract', () => {
     expect(importer).toContain('buildModelTemplateLocalization');
     expect(importer).toContain('stripModelAgePrefix(name)');
     expect(importer).toContain('sourceTitle: name');
-    expect(importer).toContain(
-      'title_translations_json = ${JSON.stringify(item.titleTranslations)}::jsonb'
-    );
-    expect(importer).toContain(
-      'prompt_translations_json = ${JSON.stringify(item.promptTranslations)}::jsonb'
-    );
+    expect(importer).toContain('pt_title = ${item.ptTitle}');
+    expect(importer).toContain('pt_prompt = ${item.ptPrompt}');
     expect(importer).toContain('function buildModelCategory');
     expect(importer).toContain('and title in ${tx(titles)}');
     expect(importer).toContain('or title = ${item.sourceTitle}');
@@ -113,9 +109,9 @@ describe('wanxiang model import contract', () => {
     expect(tryOn).toContain('modelTemplateId: selectedModelAsset.id');
     expect(modelTemplates).toContain("from templates t");
     expect(modelTemplates).toContain("where t.type = 'model'");
-    expect(modelTemplates).toContain('const title = toStringValue(row.title).trim();');
+    expect(modelTemplates).toContain("localizedTemplateText(row, 'title', locale)");
     expect(modelTemplates).not.toContain('resolveModelTitle');
-    expect(modelTemplates).toContain('resolveModelPrompt');
+    expect(modelTemplates).not.toContain('resolveModelPrompt');
     expect(modelTemplates).toContain('localizeModelCategoryTags');
     expect(modelTemplates).toContain('Math.min(Math.max(input.limit ?? 24, 1), 96)');
     expect(modelAssetsRoute).toContain('modelAssetsReadHeaders');

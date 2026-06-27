@@ -24,20 +24,20 @@ describe('Wanxiang model localization', () => {
     expect(stripModelAgePrefix('中童 | 贝拉')).toBe('贝拉');
   });
 
-  it('builds multilingual model title and prompt translations', () => {
+  it('builds English and Brazilian Portuguese model title and prompt text', () => {
     const localization = buildModelTemplateLocalization({
       category: '女/儿童/冷酷',
       prompt: '风格：清纯\n特征：冷酷/双麻花辫/欧美',
       title: '大童 | 海伦',
     });
 
-    expect(localization.titleTranslations.zh).toBe('海伦');
-    expect(localization.titleTranslations.en).toBe('Helen');
-    expect(localization.titleTranslations.pt).toBe('Helen');
-    expectNonChinese(localization.promptTranslations.en);
-    expectNonChinese(localization.promptTranslations.pt);
-    expect(localization.promptTranslations.en).toContain('Virtual try-on model');
-    expect(localization.promptTranslations.pt).toContain(
+    expect(localization.title.en).toBe('Helen');
+    expect(localization.title.pt).toBe('Helen');
+    expect(Object.keys(localization.title).sort()).toEqual(['en', 'pt']);
+    expectNonChinese(localization.prompt.en);
+    expectNonChinese(localization.prompt.pt);
+    expect(localization.prompt.en).toContain('Virtual try-on model');
+    expect(localization.prompt.pt).toContain(
       'Modelo para prova virtual'
     );
   });
@@ -49,10 +49,9 @@ describe('Wanxiang model localization', () => {
       title: '中童 | 贝拉',
     });
 
-    expect(localization.titleTranslations).toEqual({
+    expect(localization.title).toEqual({
       en: 'Bella',
       pt: 'Bella',
-      zh: '贝拉',
     });
   });
 

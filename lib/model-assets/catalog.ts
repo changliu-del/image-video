@@ -4,7 +4,6 @@ import {
   modelCategoryMatchesFilters,
   modelCategoryTags,
   parseModelCategoryParts,
-  resolveModelPrompt,
   type ModelCategoryParts,
 } from '@/lib/model-assets/localization';
 
@@ -32,31 +31,31 @@ function toNullableString(value: unknown) {
   return text || null;
 }
 
+function localizedTemplateText(
+  row: Record<string, unknown>,
+  key: 'prompt' | 'title',
+  locale: string
+) {
+  const english = toStringValue(row[key]).trim();
+  const portuguese = toStringValue(
+    row[key === 'title' ? 'pt_title' : 'pt_prompt']
+  ).trim();
+
+  return locale === 'pt' ? portuguese || english : english;
+}
+
 function mapModelTemplateRow(
   row: Record<string, unknown>,
   locale: string
 ): ModelTemplateItem {
   const sortOrder = Number(row.sort_order ?? 0);
   const category = toStringValue(row.category);
-  const title = toStringValue(row.title).trim();
+  const title = localizedTemplateText(row, 'title', locale);
 
   return {
     id: toStringValue(row.id),
     title,
-    description: toNullableString(
-      resolveModelPrompt({
-        category,
-        locale,
-        prompt: row.prompt,
-        title,
-        titleTranslations: {
-          en: title,
-          pt: title,
-          zh: title,
-        },
-        translations: row.prompt_translations_json,
-      })
-    ),
+    description: toNullableString(localizedTemplateText(row, 'prompt', locale)),
     thumbnailUrl: toNullableString(row.thumbnail_url),
     imageUrl: toNullableString(row.preview_url),
     videoUrl: null,
@@ -82,12 +81,12 @@ export async function listModelTemplates(input: {
     select
       t.id,
       t.title,
-      t.title_translations_json,
+      t.pt_title,
       t.category,
       t.thumbnail_url,
       t.preview_url,
       t.prompt,
-      t.prompt_translations_json,
+      t.pt_prompt,
       t.sort_order,
       thumbnail_asset.storage_key as thumbnail_storage_key,
       preview_asset.storage_key as preview_storage_key
@@ -123,12 +122,12 @@ export async function getModelTemplate(input: { id: string; locale?: string }) {
     select
       t.id,
       t.title,
-      t.title_translations_json,
+      t.pt_title,
       t.category,
       t.thumbnail_url,
       t.preview_url,
       t.prompt,
-      t.prompt_translations_json,
+      t.pt_prompt,
       t.sort_order,
       thumbnail_asset.storage_key as thumbnail_storage_key,
       preview_asset.storage_key as preview_storage_key

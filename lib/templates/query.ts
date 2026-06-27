@@ -24,7 +24,7 @@ const templateCatalogDataCacheRevalidateSeconds = 5 * 60;
 type TemplateListRow = {
   id: number;
   title: string;
-  titleTranslations: Record<string, string>;
+  ptTitle: string;
   type: TemplateType;
   category: string;
   thumbnailAssetId: number;
@@ -38,7 +38,7 @@ type TemplateListRow = {
 
 type TemplateDetailRow = TemplateListRow & {
   prompt: string;
-  promptTranslations: Record<string, string>;
+  ptPrompt: string;
 };
 
 type SerializedTemplateDetailRow = Omit<
@@ -104,12 +104,11 @@ function normalizeTemplateLocale(value: string | null | undefined): Locale {
 }
 
 function resolveLocalizedText(
-  fallback: string,
-  translations: Record<string, string>,
+  english: string,
+  portuguese: string,
   locale: Locale
 ) {
-  const translated = translations?.[locale]?.trim();
-  return translated || fallback;
+  return locale === 'pt' ? portuguese || english : english;
 }
 
 function mapTemplateListRow(
@@ -118,7 +117,7 @@ function mapTemplateListRow(
 ): TemplateCatalogListItem {
   return {
     id: String(row.id),
-    title: resolveLocalizedText(row.title, row.titleTranslations, locale),
+    title: resolveLocalizedText(row.title, row.ptTitle, locale),
     type: row.type,
     category:
       normalizeTemplateCategoryForType(row.type, row.category) ?? row.category,
@@ -135,7 +134,7 @@ function mapTemplateDetailRow(
 ): TemplateCatalogDetailItem {
   return {
     ...mapTemplateListRow(row, locale),
-    prompt: resolveLocalizedText(row.prompt, row.promptTranslations, locale),
+    prompt: resolveLocalizedText(row.prompt, row.ptPrompt, locale),
   };
 }
 
@@ -160,7 +159,7 @@ function baseTemplateDetailQuery() {
     .select({
       id: templates.id,
       title: templates.title,
-      titleTranslations: templates.titleTranslations,
+      ptTitle: templates.ptTitle,
       type: templates.type,
       category: templates.category,
       thumbnailAssetId: templates.thumbnailAssetId,
@@ -168,7 +167,7 @@ function baseTemplateDetailQuery() {
       thumbnailUrl: templates.thumbnailUrl,
       previewUrl: templates.previewUrl,
       prompt: templates.prompt,
-      promptTranslations: templates.promptTranslations,
+      ptPrompt: templates.ptPrompt,
       sortOrder: templates.sortOrder,
       createdAt: templates.createdAt,
       updatedAt: templates.updatedAt,
@@ -243,9 +242,9 @@ function templateMatchesSearch(row: TemplateDetailRow, search: string) {
     row.category,
     String(row.id),
     row.prompt,
+    row.ptPrompt,
     row.title,
-    ...Object.values(row.promptTranslations ?? {}),
-    ...Object.values(row.titleTranslations ?? {}),
+    row.ptTitle,
   ];
 
   return values.some((value) => value.toLowerCase().includes(normalized));

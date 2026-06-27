@@ -15,7 +15,6 @@ export type TemplateCatalogListItem = {
 
 export type TemplateCatalogDetailItem = TemplateCatalogListItem & {
   prompt: string;
-  promptTranslations?: Partial<LocalizedText>;
 };
 
 export type TemplateCatalogItem = TemplateCatalogDetailItem;
@@ -27,7 +26,7 @@ type LocalizedText = Record<Locale, string>;
 export type StarterTemplateSeed = {
   seedKey: string;
   title: string;
-  titleTranslations?: Partial<LocalizedText>;
+  ptTitle: string;
   type: TemplateType;
   category: string;
   thumbnailAssetSeedKey: string;
@@ -35,7 +34,7 @@ export type StarterTemplateSeed = {
   thumbnailUrl: string;
   previewUrl: string;
   prompt: string;
-  promptTranslations?: Partial<LocalizedText>;
+  ptPrompt: string;
 };
 
 export const retiredStarterTemplateSeedKeys = [

@@ -67,8 +67,8 @@ import {
 import { cn } from '@/lib/utils';
 
 type AdminTemplate = TemplateCatalogDetailItem & {
-  titleTranslations: Record<string, string>;
-  promptTranslations: Record<string, string>;
+  ptTitle: string;
+  ptPrompt: string;
   thumbnailAssetId: string;
   previewAssetId: string;
   thumbnailMimeType: string;
@@ -83,13 +83,13 @@ type TemplateMediaTarget = 'thumbnail' | 'preview';
 type TemplateFormState = {
   id?: string;
   title: string;
-  titleTranslations: string;
+  ptTitle: string;
   type: TemplateType;
   category: string;
   thumbnailAssetId: string;
   previewAssetId: string;
   prompt: string;
-  promptTranslations: string;
+  ptPrompt: string;
 };
 
 type ModalMode = 'create' | 'view' | 'edit';
@@ -129,13 +129,13 @@ type TemplateOrderFormState = {
 
 const emptyForm: TemplateFormState = {
   title: '',
-  titleTranslations: '{}',
+  ptTitle: '',
   type: 'image_to_video',
   category: 'common',
   thumbnailAssetId: '',
   previewAssetId: '',
   prompt: '',
-  promptTranslations: '{}',
+  ptPrompt: '',
 };
 
 const defaultTemplateType: TemplateType = 'image_to_video';
@@ -233,18 +233,14 @@ function templateToForm(template: AdminTemplate): TemplateFormState {
   return {
     id: template.id,
     title: template.title,
-    titleTranslations: formatTranslations(template.titleTranslations),
+    ptTitle: template.ptTitle,
     type: template.type,
     category: template.category,
     thumbnailAssetId: template.thumbnailAssetId,
     previewAssetId: template.previewAssetId,
     prompt: template.prompt,
-    promptTranslations: formatTranslations(template.promptTranslations),
+    ptPrompt: template.ptPrompt,
   };
-}
-
-function formatTranslations(value: Record<string, string> | null | undefined) {
-  return JSON.stringify(value ?? {}, null, 2);
 }
 
 async function readError(response: Response, fallback: string) {
@@ -254,37 +250,6 @@ async function readError(response: Response, fallback: string) {
   } catch {
     return fallback;
   }
-}
-
-function parseTranslationsJson(value: string, label: string) {
-  const trimmed = value.trim();
-  if (!trimmed) return {};
-
-  let parsed: unknown;
-  try {
-    parsed = JSON.parse(trimmed);
-  } catch {
-    throw new Error(`${label} must be valid JSON.`);
-  }
-
-  if (!parsed || typeof parsed !== 'object' || Array.isArray(parsed)) {
-    throw new Error(`${label} must be a JSON object.`);
-  }
-
-  const normalized: Record<string, string> = {};
-  for (const [key, rawValue] of Object.entries(parsed)) {
-    if (key !== 'pt') {
-      throw new Error(`${label} only supports the pt key.`);
-    }
-
-    if (typeof rawValue !== 'string' || !rawValue.trim()) {
-      throw new Error(`${label}.${key} must be a non-empty string.`);
-    }
-
-    normalized[key] = rawValue.trim();
-  }
-
-  return normalized;
 }
 
 async function requestJson<T>(
@@ -988,18 +953,13 @@ export function TemplatesPanel({
         ...submittedForm,
         type: activeType,
         title: submittedForm.title.trim(),
-        titleTranslations: parseTranslationsJson(
-          submittedForm.titleTranslations,
-          copy.fields.titleTranslations ?? 'Title translations'
-        ),
+        ptTitle: submittedForm.ptTitle.trim(),
         category: normalizeFormCategoryForSubmit(
           activeType,
           submittedForm.category
         ),
-        promptTranslations: parseTranslationsJson(
-          submittedForm.promptTranslations,
-          copy.fields.promptTranslations ?? 'Prompt translations'
-        ),
+        prompt: submittedForm.prompt.trim(),
+        ptPrompt: submittedForm.ptPrompt.trim(),
       };
       const url = submittedForm.id
         ? `/api/admin/templates/${submittedForm.id}`
@@ -1716,7 +1676,7 @@ export function TemplatesPanel({
               columns={[
                 'id',
                 'title',
-                'titleTranslations',
+                'ptTitle',
                 'type',
                 'category',
                 'sortOrder',
@@ -1727,7 +1687,7 @@ export function TemplatesPanel({
                 'thumbnailMimeType',
                 'previewMimeType',
                 'prompt',
-                'promptTranslations',
+                'ptPrompt',
                 'createdAt',
                 'updatedAt',
               ]}
@@ -1739,7 +1699,16 @@ export function TemplatesPanel({
               <Field label={copy.fields.title ?? 'Title'}>
                 <Input {...register('title')} placeholder="Product launch" />
               </Field>
-              {activeType !== 'model' ? (
+              <Field label={copy.fields.ptTitle ?? 'Brazilian Portuguese title'}>
+                <Input
+                  {...register('ptTitle')}
+                  placeholder="Lancamento de produto"
+                />
+              </Field>
+            </div>
+
+            {activeType !== 'model' ? (
+              <div className="grid gap-4 md:grid-cols-2">
                 <Field label={copy.fields.category}>
                   {canSelectFormCategory ? (
                     <select
@@ -1765,8 +1734,8 @@ export function TemplatesPanel({
                     />
                   )}
                 </Field>
-              ) : null}
-            </div>
+              </div>
+            ) : null}
 
             {activeType === 'model' ? (
               <div className="grid gap-4 md:grid-cols-3">
@@ -1848,14 +1817,6 @@ export function TemplatesPanel({
               </div>
             ) : null}
 
-            <Field label={copy.fields.titleTranslations ?? 'Title translations'}>
-              <textarea
-                {...register('titleTranslations')}
-                rows={4}
-                className="rounded-md border border-gray-200 bg-white px-3 py-2 font-mono text-xs leading-5 outline-none focus:border-gray-400"
-              />
-            </Field>
-
             <div className="grid gap-4 md:grid-cols-2">
               <TemplateMediaField
                 accept="image/png,image/jpeg,image/webp"
@@ -1901,11 +1862,11 @@ export function TemplatesPanel({
               />
             </Field>
 
-            <Field label={copy.fields.promptTranslations ?? 'Prompt translations'}>
+            <Field label={copy.fields.ptPrompt ?? 'Brazilian Portuguese prompt'}>
               <textarea
-                {...register('promptTranslations')}
-                rows={6}
-                className="rounded-md border border-gray-200 bg-white px-3 py-2 font-mono text-xs leading-5 outline-none focus:border-gray-400"
+                {...register('ptPrompt')}
+                rows={8}
+                className="min-h-48 rounded-md border border-gray-200 bg-white px-3 py-2 text-sm leading-6 outline-none focus:border-gray-400"
               />
             </Field>
 

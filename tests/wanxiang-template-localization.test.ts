@@ -17,14 +17,14 @@ describe('Wanxiang template localization', () => {
       type: 'image_to_image',
     });
 
-    expectLocalizedText(localization.titleTranslations.en);
-    expectLocalizedText(localization.titleTranslations.pt);
-    expectLocalizedText(localization.promptTranslations.en);
-    expectLocalizedText(localization.promptTranslations.pt);
-    expect(localization.promptTranslations.en).toContain(
+    expectLocalizedText(localization.title.en);
+    expectLocalizedText(localization.title.pt);
+    expectLocalizedText(localization.prompt.en);
+    expectLocalizedText(localization.prompt.pt);
+    expect(localization.prompt.en).toContain(
       'Commercial product image template'
     );
-    expect(localization.promptTranslations.pt).toContain(
+    expect(localization.prompt.pt).toContain(
       'Template de imagem comercial'
     );
   });
@@ -38,10 +38,10 @@ describe('Wanxiang template localization', () => {
       type: 'image_to_image',
     });
 
-    expect(localization.titleTranslations.en).not.toBe('undefined');
-    expect(localization.titleTranslations.pt).not.toBe('undefined');
-    expect(localization.titleTranslations.en).toContain('Natural Landscape');
-    expect(localization.titleTranslations.pt).toContain('Paisagem Natural');
+    expect(localization.title.en).not.toBe('undefined');
+    expect(localization.title.pt).not.toBe('undefined');
+    expect(localization.title.en).toContain('Natural Landscape');
+    expect(localization.title.pt).toContain('Paisagem Natural');
   });
 
   it('creates English and Brazilian Portuguese text for try-on templates', () => {
@@ -54,14 +54,14 @@ describe('Wanxiang template localization', () => {
       type: 'try_on',
     });
 
-    expectLocalizedText(localization.titleTranslations.en);
-    expectLocalizedText(localization.titleTranslations.pt);
-    expectLocalizedText(localization.promptTranslations.en);
-    expectLocalizedText(localization.promptTranslations.pt);
-    expect(localization.promptTranslations.en).toContain(
+    expectLocalizedText(localization.title.en);
+    expectLocalizedText(localization.title.pt);
+    expectLocalizedText(localization.prompt.en);
+    expectLocalizedText(localization.prompt.pt);
+    expect(localization.prompt.en).toContain(
       'Virtual try-on template'
     );
-    expect(localization.promptTranslations.pt).toContain(
+    expect(localization.prompt.pt).toContain(
       'Template de prova virtual'
     );
   });

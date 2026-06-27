@@ -1,7 +1,8 @@
 export type ModelLocale = 'pt' | 'en' | 'zh';
-export type ModelLocalizedText = Record<ModelLocale, string>;
+export type ModelContentLocale = Exclude<ModelLocale, 'zh'>;
+export type ModelLocalizedText = Record<ModelContentLocale, string>;
 
-type PhraseTranslations = Record<Exclude<ModelLocale, 'zh'>, string>;
+type PhraseTranslations = Record<ModelContentLocale, string>;
 
 const supportedLocales = new Set<ModelLocale>(['pt', 'en', 'zh']);
 const childAgePrefixPattern = /^(?:大童|中童|小童)\s*[|｜/／\-:：]\s*/;
@@ -234,7 +235,7 @@ export function modelCategoryMatchesFilters(
   );
 }
 
-function localizePhrase(value: string, locale: Exclude<ModelLocale, 'zh'>) {
+function localizePhrase(value: string, locale: ModelContentLocale) {
   return phraseTranslations[value]?.[locale] ?? '';
 }
 
@@ -248,7 +249,7 @@ export function localizeModelCategoryTag(tag: unknown, localeInput: string) {
   return localizePhrase(value, locale) || (!hasCjk(value) ? value : '');
 }
 
-function translateModelText(value: unknown, locale: Exclude<ModelLocale, 'zh'>) {
+function translateModelText(value: unknown, locale: ModelContentLocale) {
   let output = toStringValue(value).trim();
   if (!output) return '';
 
@@ -275,7 +276,7 @@ function translateModelText(value: unknown, locale: Exclude<ModelLocale, 'zh'>) 
     .join('\n');
 }
 
-function localizedTraitTitle(category: unknown, locale: Exclude<ModelLocale, 'zh'>) {
+function localizedTraitTitle(category: unknown, locale: ModelContentLocale) {
   const { age, gender } = parseModelCategoryParts(category);
   const ageLabel = age ? localizePhrase(age, locale) : '';
   const genderLabel = gender ? localizePhrase(gender, locale) : '';
@@ -336,7 +337,7 @@ export function resolveModelTitle(input: {
 
 function localizedDescription(input: {
   category?: unknown;
-  locale: Exclude<ModelLocale, 'zh'>;
+  locale: ModelContentLocale;
   prompt?: unknown;
   title: string;
 }) {
@@ -363,7 +364,7 @@ export function resolveModelPrompt(input: {
   locale: string;
   prompt: unknown;
   title: unknown;
-  titleTranslations?: unknown;
+  titleText?: unknown;
   translations?: unknown;
 }) {
   const locale = normalizeModelLocale(input.locale);
@@ -382,7 +383,7 @@ export function resolveModelPrompt(input: {
       category: input.category,
       locale,
       title: input.title,
-      translations: input.titleTranslations,
+      translations: input.titleText,
     }),
   });
 }
@@ -392,10 +393,9 @@ export function buildModelTemplateLocalization(input: {
   prompt: unknown;
   title: unknown;
 }): {
-  promptTranslations: ModelLocalizedText;
-  titleTranslations: ModelLocalizedText;
+  prompt: ModelLocalizedText;
+  title: ModelLocalizedText;
 } {
-  const zhTitle = stripModelAgePrefix(input.title);
   const enTitle = resolveModelTitle({
     category: input.category,
     locale: 'en',
@@ -406,15 +406,12 @@ export function buildModelTemplateLocalization(input: {
     locale: 'pt',
     title: input.title,
   });
-  const zhPrompt = toStringValue(input.prompt).trim();
-
   return {
-    titleTranslations: {
+    title: {
       pt: ptTitle,
       en: enTitle,
-      zh: zhTitle,
     },
-    promptTranslations: {
+    prompt: {
       pt: localizedDescription({
         category: input.category,
         locale: 'pt',
@@ -427,7 +424,6 @@ export function buildModelTemplateLocalization(input: {
         prompt: input.prompt,
         title: enTitle,
       }),
-      zh: zhPrompt,
     },
   };
 }

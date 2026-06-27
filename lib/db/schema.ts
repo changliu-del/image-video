@@ -232,10 +232,7 @@ export const templates = pgTable(
       .notNull()
       .default('image_to_video'),
     title: varchar('title', { length: 140 }).notNull(),
-    titleTranslations: jsonb('title_translations_json')
-      .$type<Record<string, string>>()
-      .notNull()
-      .default(sql`'{}'::jsonb`),
+    ptTitle: varchar('pt_title', { length: 140 }).notNull(),
     category: text('category').notNull(),
     thumbnailAssetId: integer('thumbnail_asset_id')
       .notNull()
@@ -248,10 +245,7 @@ export const templates = pgTable(
     thumbnailMimeType: varchar('thumbnail_mime_type', { length: 120 }).notNull(),
     previewMimeType: varchar('preview_mime_type', { length: 120 }).notNull(),
     prompt: text('prompt').notNull(),
-    promptTranslations: jsonb('prompt_translations_json')
-      .$type<Record<string, string>>()
-      .notNull()
-      .default(sql`'{}'::jsonb`),
+    ptPrompt: text('pt_prompt').notNull(),
     sortOrder: integer('sort_order').notNull().default(0),
     createdAt: timestamp('created_at').notNull().defaultNow(),
     updatedAt: timestamp('updated_at').notNull().defaultNow(),
@@ -273,11 +267,14 @@ export const templates = pgTable(
       sql`${table.type} in ('image_to_video', 'image_to_image', 'model', 'try_on')`
     ),
     check('templates_title_not_empty_check', sql`length(trim(${table.title})) > 0`),
+    check('templates_pt_title_not_empty_check', sql`length(trim(${table.ptTitle})) > 0`),
     check('templates_category_not_empty_check', sql`length(trim(${table.category})) > 0`),
     check('templates_thumbnail_url_not_empty_check', sql`length(trim(${table.thumbnailUrl})) > 0`),
     check('templates_preview_url_not_empty_check', sql`length(trim(${table.previewUrl})) > 0`),
     check('templates_thumbnail_mime_type_not_empty_check', sql`length(trim(${table.thumbnailMimeType})) > 0`),
     check('templates_preview_mime_type_not_empty_check', sql`length(trim(${table.previewMimeType})) > 0`),
+    check('templates_prompt_not_empty_check', sql`length(trim(${table.prompt})) > 0`),
+    check('templates_pt_prompt_not_empty_check', sql`length(trim(${table.ptPrompt})) > 0`),
     check('templates_sort_order_check', sql`${table.sortOrder} >= 0`),
   ]
 );

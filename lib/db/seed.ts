@@ -136,7 +136,7 @@ async function seedStarterTemplateCatalog() {
 
     const templateValues = {
       title: template.title,
-      titleTranslations: template.titleTranslations ?? {},
+      ptTitle: template.ptTitle,
       type: template.type,
       category: template.category,
       thumbnailAssetId,
@@ -146,7 +146,7 @@ async function seedStarterTemplateCatalog() {
       thumbnailMimeType: 'image/png',
       previewMimeType: 'video/mp4',
       prompt: template.prompt,
-      promptTranslations: template.promptTranslations ?? {},
+      ptPrompt: template.ptPrompt,
       sortOrder,
     };
 
@@ -198,33 +198,6 @@ async function deleteRetiredStarterTemplateCatalogEntries() {
   }
 }
 
-async function refreshTemplateLanguageDefaults() {
-  await db.execute(sql`
-    update ${templates}
-    set
-      title = coalesce(nullif(${templates.titleTranslations} ->> 'en', ''), ${templates.title}),
-      prompt = coalesce(nullif(${templates.promptTranslations} ->> 'en', ''), ${templates.prompt}),
-      title_translations_json = case
-        when ${templates.titleTranslations} ? 'pt'
-          then jsonb_build_object('pt', ${templates.titleTranslations} ->> 'pt')
-        else '{}'::jsonb
-      end,
-      prompt_translations_json = case
-        when ${templates.promptTranslations} ? 'pt'
-          then jsonb_build_object('pt', ${templates.promptTranslations} ->> 'pt')
-        else '{}'::jsonb
-      end,
-      updated_at = now()
-    where
-      ${templates.titleTranslations} ? 'en'
-      or ${templates.titleTranslations} ? 'zh'
-      or ${templates.promptTranslations} ? 'en'
-      or ${templates.promptTranslations} ? 'zh'
-  `);
-
-  console.log('Template language defaults refreshed to English with pt translations.');
-}
-
 function hasCjk(value: unknown) {
   return typeof value === 'string' && /[\u3400-\u9fff]/.test(value);
 }
@@ -236,8 +209,8 @@ async function refreshModelTemplateLanguageDefaults() {
       category: templates.category,
       title: templates.title,
       prompt: templates.prompt,
-      titleTranslations: templates.titleTranslations,
-      promptTranslations: templates.promptTranslations,
+      ptTitle: templates.ptTitle,
+      ptPrompt: templates.ptPrompt,
     })
     .from(templates)
     .where(eq(templates.type, 'model'));
@@ -247,8 +220,8 @@ async function refreshModelTemplateLanguageDefaults() {
     const needsRefresh =
       hasCjk(row.title) ||
       hasCjk(row.prompt) ||
-      hasCjk(row.titleTranslations?.pt) ||
-      hasCjk(row.promptTranslations?.pt);
+      hasCjk(row.ptTitle) ||
+      hasCjk(row.ptPrompt);
     if (!needsRefresh) continue;
 
     const localization = buildModelTemplateLocalization({
@@ -260,14 +233,10 @@ async function refreshModelTemplateLanguageDefaults() {
     await db
       .update(templates)
       .set({
-        title: localization.titleTranslations.en,
-        prompt: localization.promptTranslations.en,
-        titleTranslations: {
-          pt: localization.titleTranslations.pt,
-        },
-        promptTranslations: {
-          pt: localization.promptTranslations.pt,
-        },
+        title: localization.title.en,
+        prompt: localization.prompt.en,
+        ptTitle: localization.title.pt,
+        ptPrompt: localization.prompt.pt,
         updatedAt: new Date(),
       })
       .where(eq(templates.id, row.id));
@@ -279,7 +248,6 @@ async function refreshModelTemplateLanguageDefaults() {
 
 async function seed() {
   await seedStarterTemplateCatalog();
-  await refreshTemplateLanguageDefaults();
   await refreshModelTemplateLanguageDefaults();
 }
 

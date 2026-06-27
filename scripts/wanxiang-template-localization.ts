@@ -477,15 +477,15 @@ function localizedPrompt(input: WanxiangLocalizationInput, locale: WanxiangLocal
 export function buildWanxiangTemplateLocalization(
   input: WanxiangLocalizationInput
 ): {
-  promptTranslations: LocalizedText;
-  titleTranslations: LocalizedText;
+  prompt: LocalizedText;
+  title: LocalizedText;
 } {
   return {
-    titleTranslations: {
+    title: {
       pt: localizedTitle(input, 'pt'),
       en: localizedTitle(input, 'en'),
     },
-    promptTranslations: {
+    prompt: {
       pt: localizedPrompt(input, 'pt'),
       en: localizedPrompt(input, 'en'),
     },

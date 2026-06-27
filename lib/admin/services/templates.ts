@@ -49,7 +49,6 @@ import {
 
 const MAX_TEMPLATE_PREVIEW_BYTES = 80 * 1024 * 1024;
 const templateIdSchema = dbIdSchema;
-const localeSchema = z.enum(['pt']);
 const templateTypeSchema = z.enum([
   'image_to_image',
   'image_to_video',
@@ -62,18 +61,10 @@ const templateCategorySchema = z
   .trim()
   .min(1)
   .max(120);
-const titleTranslationsSchema = z
-  .record(localeSchema, z.string().trim().min(1).max(140))
-  .optional()
-  .default({});
-const promptTranslationsSchema = z
-  .record(localeSchema, z.string().trim().min(1).max(5000))
-  .optional()
-  .default({});
 
 export type AdminTemplateListItem = TemplateCatalogDetailItem & {
-  titleTranslations: Record<string, string>;
-  promptTranslations: Record<string, string>;
+  ptTitle: string;
+  ptPrompt: string;
   thumbnailAssetId: string;
   previewAssetId: string;
   thumbnailMimeType: string;
@@ -95,11 +86,11 @@ const templatePayloadSchema = z
     type: templateTypeSchema,
     category: templateCategorySchema,
     title: z.string().trim().min(1).max(140),
-    titleTranslations: titleTranslationsSchema,
+    ptTitle: z.string().trim().min(1).max(140),
     thumbnailAssetId: dbIdSchema,
     previewAssetId: dbIdSchema,
     prompt: z.string().trim().min(4).max(5000),
-    promptTranslations: promptTranslationsSchema,
+    ptPrompt: z.string().trim().min(4).max(5000),
   })
   .strict();
 
@@ -347,7 +338,7 @@ function adminTemplateRecordToListItem(
   return {
     id: toDbIdString(row.id),
     title: row.title,
-    titleTranslations: row.titleTranslations,
+    ptTitle: row.ptTitle,
     type: row.type,
     category: row.category,
     thumbnailUrl: row.thumbnailUrl,
@@ -357,7 +348,7 @@ function adminTemplateRecordToListItem(
     previewAssetId: toDbIdString(row.previewAssetId),
     previewMimeType: row.previewMimeType,
     prompt: row.prompt,
-    promptTranslations: row.promptTranslations,
+    ptPrompt: row.ptPrompt,
     sortOrder: row.sortOrder,
     createdAt: row.createdAt.toISOString(),
     updatedAt: row.updatedAt.toISOString(),
@@ -406,10 +397,10 @@ export async function listAdminTemplates(params: {
         exactCol(templates.previewAssetId, query),
         ilikeCol(templates.type, query),
         ilikeCol(templates.title, query),
+        ilikeCol(templates.ptTitle, query),
         ilikeCol(templates.category, query),
         ilikeCol(templates.prompt, query),
-        sql`${templates.titleTranslations}::text ilike ${`%${query}%`}`,
-        sql`${templates.promptTranslations}::text ilike ${`%${query}%`}`
+        ilikeCol(templates.ptPrompt, query)
       )
     : undefined;
   const conditions = [
@@ -418,7 +409,7 @@ export async function listAdminTemplates(params: {
     titleQuery
       ? or(
           ilikeCol(templates.title, titleQuery),
-          sql`${templates.titleTranslations}::text ilike ${`%${titleQuery}%`}`
+          ilikeCol(templates.ptTitle, titleQuery)
         )
       : undefined,
     category ? eq(templates.category, category) : undefined,
@@ -550,7 +541,7 @@ export async function createTemplate(input: unknown) {
     .values({
       type: payload.type,
       title: payload.title,
-      titleTranslations: payload.titleTranslations,
+      ptTitle: payload.ptTitle,
       category: payload.category,
       thumbnailAssetId: payload.thumbnailAssetId,
       previewAssetId: payload.previewAssetId,
@@ -559,7 +550,7 @@ export async function createTemplate(input: unknown) {
       thumbnailMimeType,
       previewMimeType,
       prompt: payload.prompt,
-      promptTranslations: payload.promptTranslations,
+      ptPrompt: payload.ptPrompt,
       sortOrder,
     })
     .returning();
@@ -611,7 +602,7 @@ export async function updateTemplate(id: string, input: unknown) {
     .set({
       type: payload.type,
       title: payload.title,
-      titleTranslations: payload.titleTranslations,
+      ptTitle: payload.ptTitle,
       category: payload.category,
       thumbnailAssetId: payload.thumbnailAssetId,
       previewAssetId: payload.previewAssetId,
@@ -620,7 +611,7 @@ export async function updateTemplate(id: string, input: unknown) {
       thumbnailMimeType,
       previewMimeType,
       prompt: payload.prompt,
-      promptTranslations: payload.promptTranslations,
+      ptPrompt: payload.ptPrompt,
       sortOrder,
       updatedAt: new Date(),
     })

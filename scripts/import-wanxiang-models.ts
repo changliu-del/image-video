@@ -81,12 +81,12 @@ type NormalizedModelImportItem = {
   model: CrawledWanxiangModel;
   modelId: string;
   prompt: string;
-  promptTranslations: Record<'pt', string>;
+  ptPrompt: string;
   sourceTitle: string;
   sortOrder: number;
   thumbnailAsset: ImportAsset;
   title: string;
-  titleTranslations: Record<'pt', string>;
+  ptTitle: string;
 };
 
 type ScanIssue = {
@@ -401,8 +401,8 @@ async function normalizeModel(input: {
     prompt,
     title,
   });
-  const englishTitle = localization.titleTranslations.en;
-  const englishPrompt = localization.promptTranslations.en;
+  const englishTitle = localization.title.en;
+  const englishPrompt = localization.prompt.en;
 
   return {
     category,
@@ -410,16 +410,12 @@ async function normalizeModel(input: {
     model: input.model,
     modelId,
     prompt: englishPrompt,
-    promptTranslations: {
-      pt: localization.promptTranslations.pt,
-    },
+    ptPrompt: localization.prompt.pt,
     sourceTitle: name,
     sortOrder,
     thumbnailAsset,
     title: englishTitle,
-    titleTranslations: {
-      pt: localization.titleTranslations.pt,
-    },
+    ptTitle: localization.title.pt,
   } satisfies NormalizedModelImportItem;
 }
 
@@ -607,7 +603,7 @@ async function ensureImportSchema(sql: postgres.Sql) {
     'id',
     'type',
     'title',
-    'title_translations_json',
+    'pt_title',
     'category',
     'thumbnail_asset_id',
     'preview_asset_id',
@@ -616,7 +612,7 @@ async function ensureImportSchema(sql: postgres.Sql) {
     'thumbnail_mime_type',
     'preview_mime_type',
     'prompt',
-    'prompt_translations_json',
+    'pt_prompt',
     'sort_order',
     'created_at',
     'updated_at',
@@ -788,7 +784,7 @@ async function applyImport(result: ScanResult, args: CliArgs) {
             update templates
             set
               title = ${item.title},
-              title_translations_json = ${JSON.stringify(item.titleTranslations)}::jsonb,
+              pt_title = ${item.ptTitle},
               category = ${item.category},
               thumbnail_asset_id = ${thumbnailAssetId},
               preview_asset_id = ${detailAssetId},
@@ -797,7 +793,7 @@ async function applyImport(result: ScanResult, args: CliArgs) {
               thumbnail_mime_type = ${item.thumbnailAsset.mimeType},
               preview_mime_type = ${item.detailAsset.mimeType},
               prompt = ${item.prompt},
-              prompt_translations_json = ${JSON.stringify(item.promptTranslations)}::jsonb,
+              pt_prompt = ${item.ptPrompt},
               sort_order = ${item.sortOrder},
               updated_at = current_timestamp
             where id = ${existingTemplate.id}
@@ -807,7 +803,7 @@ async function applyImport(result: ScanResult, args: CliArgs) {
             insert into templates (
               type,
               title,
-              title_translations_json,
+              pt_title,
               category,
               thumbnail_asset_id,
               preview_asset_id,
@@ -816,7 +812,7 @@ async function applyImport(result: ScanResult, args: CliArgs) {
               thumbnail_mime_type,
               preview_mime_type,
               prompt,
-              prompt_translations_json,
+              pt_prompt,
               sort_order,
               created_at,
               updated_at
@@ -824,7 +820,7 @@ async function applyImport(result: ScanResult, args: CliArgs) {
             values (
               ${TEMPLATE_TYPE},
               ${item.title},
-              ${JSON.stringify(item.titleTranslations)}::jsonb,
+              ${item.ptTitle},
               ${item.category},
               ${thumbnailAssetId},
               ${detailAssetId},
@@ -833,7 +829,7 @@ async function applyImport(result: ScanResult, args: CliArgs) {
               ${item.thumbnailAsset.mimeType},
               ${item.detailAsset.mimeType},
               ${item.prompt},
-              ${JSON.stringify(item.promptTranslations)}::jsonb,
+              ${item.ptPrompt},
               ${item.sortOrder},
               ${now},
               ${now}

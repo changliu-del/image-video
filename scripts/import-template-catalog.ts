@@ -45,14 +45,14 @@ type SourceFileSet = {
 
 type TemplateImportItem = {
   title: string;
-  titleTranslations: Record<string, string>;
+  ptTitle: string;
   category: TemplateCategory;
   sourceCategoryName: SourceCategoryName;
   baseName: string;
   thumbnailAsset: ImportAsset;
   previewAsset: ImportAsset;
   prompt: string;
-  promptTranslations: Record<string, string>;
+  ptPrompt: string;
   sortOrder: number;
 };
 
@@ -224,11 +224,9 @@ function hasCjk(value: string) {
   return /[\u3400-\u9fff]/.test(value);
 }
 
-function ptTranslation(
-  value: Record<string, string> | undefined
-): Record<string, string> {
+function ptText(value: Record<string, string> | undefined, fallback: string) {
   const pt = value?.pt?.trim();
-  return pt ? { pt } : {};
+  return pt || fallback;
 }
 
 async function loadTemplateTranslations(): Promise<TemplateTranslationMap> {
@@ -457,12 +455,12 @@ async function scanTemplateCatalog(sourceRoot: string): Promise<ScanResult> {
 
     items.push({
       title,
-      titleTranslations: ptTranslation(translation.title),
+      ptTitle: ptText(translation.title, title),
       category: group.category,
       sourceCategoryName: group.sourceCategoryName,
       baseName: group.baseName,
       prompt: promptEn,
-      promptTranslations: ptTranslation(translation.prompt),
+      ptPrompt: ptText(translation.prompt, promptEn),
       sortOrder,
       thumbnailAsset: {
         storageKey: thumbnailStorageKey,
@@ -503,10 +501,10 @@ function printScanSummary(result: ScanResult, args: CliArgs) {
   const thumbnailCount = result.items.length;
   const previewCount = result.items.length;
   const titleTranslationCount = result.items.filter(
-    (item) => Object.keys(item.titleTranslations).length > 0
+    (item) => item.ptTitle
   ).length;
   const promptTranslationCount = result.items.filter(
-    (item) => Object.keys(item.promptTranslations).length > 0
+    (item) => item.ptPrompt
   ).length;
 
   console.log('Template catalog import check');
@@ -622,7 +620,7 @@ async function ensureFinalTemplateSchema(sql: postgres.Sql) {
     'id',
     'type',
     'title',
-    'title_translations_json',
+    'pt_title',
     'category',
     'thumbnail_asset_id',
     'preview_asset_id',
@@ -631,7 +629,7 @@ async function ensureFinalTemplateSchema(sql: postgres.Sql) {
     'thumbnail_mime_type',
     'preview_mime_type',
     'prompt',
-    'prompt_translations_json',
+    'pt_prompt',
     'sort_order',
     'created_at',
     'updated_at',
@@ -810,7 +808,8 @@ async function applyImport(result: ScanResult, args: CliArgs) {
           await tx`
             update templates
             set
-              title_translations_json = ${JSON.stringify(item.titleTranslations)}::jsonb,
+              title = ${item.title},
+              pt_title = ${item.ptTitle},
               thumbnail_asset_id = ${thumbnailAssetId},
               preview_asset_id = ${previewAssetId},
               thumbnail_url = ${buildTemplateMediaUrl(thumbnailAssetId)},
@@ -818,7 +817,7 @@ async function applyImport(result: ScanResult, args: CliArgs) {
               thumbnail_mime_type = ${item.thumbnailAsset.mimeType},
               preview_mime_type = ${item.previewAsset.mimeType},
               prompt = ${item.prompt},
-              prompt_translations_json = ${JSON.stringify(item.promptTranslations)}::jsonb,
+              pt_prompt = ${item.ptPrompt},
               sort_order = ${item.sortOrder},
               updated_at = current_timestamp
             where id = ${existingTemplate.id}
@@ -828,7 +827,7 @@ async function applyImport(result: ScanResult, args: CliArgs) {
             insert into templates (
               type,
               title,
-              title_translations_json,
+              pt_title,
               category,
               thumbnail_asset_id,
               preview_asset_id,
@@ -837,7 +836,7 @@ async function applyImport(result: ScanResult, args: CliArgs) {
               thumbnail_mime_type,
               preview_mime_type,
               prompt,
-              prompt_translations_json,
+              pt_prompt,
               sort_order,
               created_at,
               updated_at
@@ -845,7 +844,7 @@ async function applyImport(result: ScanResult, args: CliArgs) {
             values (
               ${TEMPLATE_TYPE},
               ${item.title},
-              ${JSON.stringify(item.titleTranslations)}::jsonb,
+              ${item.ptTitle},
               ${item.category},
               ${thumbnailAssetId},
               ${previewAssetId},
@@ -854,7 +853,7 @@ async function applyImport(result: ScanResult, args: CliArgs) {
               ${item.thumbnailAsset.mimeType},
               ${item.previewAsset.mimeType},
               ${item.prompt},
-              ${JSON.stringify(item.promptTranslations)}::jsonb,
+              ${item.ptPrompt},
               ${item.sortOrder},
               ${now},
               ${now}

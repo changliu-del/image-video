@@ -146,9 +146,9 @@ trigger.config.ts
 ```
 
 模板表是轻量 prompt 配方表，不再承担标签体系、排序体系或发布状态。
-语义字段只保留 `id`、`type`、`title`、`title_translations_json`、
-`category`、`thumbnail_asset_id`、`preview_asset_id`、`prompt`、
-`prompt_translations_json`、`created_at`、`updated_at`。缩略图和预览
+语义字段只保留 `id`、`type`、`title`、`pt_title`、`category`、
+`thumbnail_asset_id`、`preview_asset_id`、`prompt`、`pt_prompt`、
+`created_at`、`updated_at`。缩略图和预览
 视频/主图都作为 `assets` 行管理，模板表只保存稳定 asset 外键。
 首页模板库、公开模板库和图生视频工作台都复用
 `type=image_to_video` 的模板；`category` 只表示该 type 内部的业务分类。

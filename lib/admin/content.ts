@@ -675,7 +675,7 @@ export const adminContent: Record<AdminLocale, AdminContent> = {
       columns: {
         id: 'ID',
         title: 'Titulo',
-        titleTranslations: 'Traducoes do titulo',
+        ptTitle: 'Titulo em portugues brasileiro',
         type: 'Tipo',
         category: 'Categoria',
         sortOrder: 'Ordem',
@@ -685,6 +685,7 @@ export const adminContent: Record<AdminLocale, AdminContent> = {
       fields: {
         id: 'ID',
         title: 'Titulo',
+        ptTitle: 'Titulo em portugues brasileiro',
         type: 'Tipo',
         category: 'Categoria',
         thumbnailAssetId: 'ID do asset da miniatura',
@@ -694,7 +695,7 @@ export const adminContent: Record<AdminLocale, AdminContent> = {
         thumbnailMimeType: 'MIME da miniatura',
         previewMimeType: 'MIME do preview',
         prompt: 'Prompt',
-        promptTranslations: 'Traducoes do prompt',
+        ptPrompt: 'Prompt em portugues brasileiro',
         sortOrder: 'Ordem',
       },
       categoryOptions: {
@@ -1312,7 +1313,7 @@ Templates agora sao registros pequenos por tipo de pagina. A tabela de templates
       columns: {
         id: 'ID',
         title: 'Title',
-        titleTranslations: 'Brazilian Portuguese title',
+        ptTitle: 'Brazilian Portuguese title',
         type: 'Type',
         category: 'Category',
         sortOrder: 'Order',
@@ -1322,7 +1323,7 @@ Templates agora sao registros pequenos por tipo de pagina. A tabela de templates
       fields: {
         id: 'ID',
         title: 'Title',
-        titleTranslations: 'Brazilian Portuguese title',
+        ptTitle: 'Brazilian Portuguese title',
         type: 'Type',
         category: 'Category',
         thumbnailAssetId: 'Thumbnail asset ID',
@@ -1332,7 +1333,7 @@ Templates agora sao registros pequenos por tipo de pagina. A tabela de templates
         thumbnailMimeType: 'Thumbnail MIME type',
         previewMimeType: 'Preview MIME type',
         prompt: 'Prompt',
-        promptTranslations: 'Brazilian Portuguese prompt',
+        ptPrompt: 'Brazilian Portuguese prompt',
         sortOrder: 'Order',
       },
       categoryOptions: {
@@ -1948,7 +1949,7 @@ Templates are now small records grouped by type page. The templates table stores
       columns: {
         id: 'ID',
         title: '标题',
-        titleTranslations: '标题翻译',
+        ptTitle: '巴西葡语标题',
         type: '类型',
         category: '类目',
         sortOrder: '顺序',
@@ -1958,6 +1959,7 @@ Templates are now small records grouped by type page. The templates table stores
       fields: {
         id: 'ID',
         title: '标题',
+        ptTitle: '巴西葡语标题',
         type: '类型',
         category: '类目',
         thumbnailAssetId: '缩略图素材 ID',
@@ -1967,7 +1969,7 @@ Templates are now small records grouped by type page. The templates table stores
         thumbnailMimeType: '缩略图 MIME 类型',
         previewMimeType: '预览 MIME 类型',
         prompt: '提示词',
-        promptTranslations: '提示词翻译',
+        ptPrompt: '巴西葡语提示词',
         sortOrder: '顺序',
       },
       categoryOptions: {
