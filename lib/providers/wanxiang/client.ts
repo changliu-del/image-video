@@ -79,7 +79,8 @@ const IMAGE_URL_PATHS = [
   ['result', 'images', '0', 'url'],
   ['output', 'image_url'],
   ['output', 'imageUrl'],
-  ['output', 'images', '0', 'url']
+  ['output', 'images', '0', 'url'],
+  ['output', 'choices', '0', 'message', 'content', '0', 'image']
 ];
 
 const VIDEO_URL_PATHS = [

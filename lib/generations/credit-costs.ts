@@ -13,6 +13,11 @@ export const IMAGE_TO_VIDEO_MIN_DURATION_SECONDS = 5;
 export const IMAGE_TO_VIDEO_MAX_DURATION_SECONDS = 15;
 export const IMAGE_TO_VIDEO_CREDIT_COST =
   getCreditCostForDuration(IMAGE_TO_VIDEO_DURATION_SECONDS);
+export const WANXIANG_IMAGE_EDIT_PROVIDER_COST_CNY_PER_IMAGE = 0.5;
+export const WANXIANG_IMAGE_EDIT_CREDIT_COST =
+  getCreditCostForProviderCnyCost(
+    WANXIANG_IMAGE_EDIT_PROVIDER_COST_CNY_PER_IMAGE
+  );
 
 export function getCreditCostForDuration(
   durationSeconds: BillableGenerationDurationSeconds,
@@ -35,9 +40,10 @@ export function getCreditCostForDuration(
 }
 
 export function getApparelImageCreditCost() {
-  return 25;
+  return WANXIANG_IMAGE_EDIT_CREDIT_COST;
 }
 
 export function getTryOnCreditCost(mode: BillableTryOnMode) {
-  return mode === 'multi' ? 50 : 25;
+  void mode;
+  return WANXIANG_IMAGE_EDIT_CREDIT_COST;
 }

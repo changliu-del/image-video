@@ -229,7 +229,7 @@ describe('apparelImageGenerationRequestSchema', () => {
     });
 
     expect(parsed.generationType).toBe('apparel_image');
-    expect(getCreditCostForGeneration(parsed)).toBe(25);
+    expect(getCreditCostForGeneration(parsed)).toBe(15);
   });
 
   it('accepts workbench controls for apparel image requests', () => {
@@ -271,7 +271,7 @@ describe('tryOnGenerationRequestSchema', () => {
     expect(parsed.tryOnMode).toBe('single');
     expect(parsed.inputAssetId).toBe('201');
     expect(parsed.garmentAssetIds).toEqual(['301']);
-    expect(getCreditCostForGeneration(parsed)).toBe(25);
+    expect(getCreditCostForGeneration(parsed)).toBe(15);
   });
 
   it('accepts mode as the try-on mode alias', () => {
@@ -284,7 +284,7 @@ describe('tryOnGenerationRequestSchema', () => {
 
     expect(parsed.tryOnMode).toBe('multi');
     expect(parsed.modelAssetId).toBe('201');
-    expect(getCreditCostForGeneration(parsed)).toBe(50);
+    expect(getCreditCostForGeneration(parsed)).toBe(15);
   });
 
   it('accepts model templates for try-on requests', () => {

@@ -1,6 +1,6 @@
 # Config and Operations
 
-Updated: 2026-06-24
+Updated: 2026-06-27
 
 ## Common Environment Variables
 
@@ -15,17 +15,13 @@ Updated: 2026-06-24
 - `DASHSCOPE_API_KEY`
 - `DASHSCOPE_BASE_URL` (optional, defaults to `https://dashscope.aliyuncs.com/api/v1`)
 - `DASHSCOPE_VIDEO_SYNTHESIS_URL` (optional)
+- `DASHSCOPE_IMAGE_GENERATION_URL` (optional)
 - `DASHSCOPE_TASKS_URL` (optional)
 - `WANXIANG_IMAGE_TO_VIDEO_MODEL` (optional, defaults to `wan2.6-i2v-flash`)
 - `WANXIANG_IMAGE_TO_VIDEO_RESOLUTION` (optional, defaults to `720P`)
 - `WANXIANG_IMAGE_TO_VIDEO_PROMPT_EXTEND` (optional, defaults to `true`)
 - `WANXIANG_IMAGE_TO_VIDEO_AUDIO` (optional, defaults to `false` for `wan2.6-i2v-flash`)
-- `WANXIANG_APPCODE`
-- `WANXIANG_CLOTH_SUBMIT_URL`
-- `WANXIANG_CLOTH_QUERY_URL`
-- `WANXIANG_TRY_ON_SINGLE_SUBMIT_URL`
-- `WANXIANG_TRY_ON_MULTI_SUBMIT_URL`
-- `WANXIANG_TRY_ON_QUERY_URL`
+- `WANXIANG_IMAGE_EDIT_MODEL` (optional, defaults to `wan2.7-image-pro`)
 - `WANXIANG_MODEL_CATALOG_URL`
 - `TRIGGER_GENERATION_CONCURRENCY_LIMIT`
 - `STRIPE_SECRET_KEY`
@@ -115,8 +111,26 @@ selected 5-15s duration is sent through `parameters.duration`. Reference video
 and audio fields are still not accepted by the current `image_to_video`
 workbench.
 
-`WANXIANG_APPCODE` remains relevant for the older Alibaba Cloud Market cloth,
-try-on, and model-catalog endpoints until those providers are migrated too.
+## Wanxiang Image Editing
+
+Apparel image and try-on both use Alibaba Model Studio / Bailian DashScope image
+editing through `wan2.7-image-pro`, not the older Alibaba Cloud Market APPCODE
+cloth or fitting endpoints. Configure the same `DASHSCOPE_API_KEY` in Vercel
+server env and Trigger.dev Production env.
+
+Defaults:
+
+- base URL: `https://dashscope.aliyuncs.com/api/v1`
+- submit: `/services/aigc/image-generation/generation`
+- query: `/tasks/{task_id}`
+- model: `wan2.7-image-pro`
+- size: explicit 2K-class pixel sizes derived from the requested aspect ratio
+- output count: `n = 1`
+- watermark: `false`
+
+The project-level payload is normalized before submit: apparel uses one
+`inputImageUrl`, while try-on sends garment image URLs followed by the model
+image URL so the model image remains the target person reference.
 
 The Trigger.dev `generate-wanxiang` worker also needs the R2 env vars. On a
 successful provider terminal status it downloads the provider result, uploads it

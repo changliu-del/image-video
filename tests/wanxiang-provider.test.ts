@@ -1,10 +1,10 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
 
 import {
-  DEFAULT_WANXIANG_CLOTH_SUBMIT_URL,
   queryCloth,
   submitCloth
 } from '../lib/providers/wanxiang/cloth';
+import { DEFAULT_WANXIANG_IMAGE_EDIT_MODEL } from '../lib/providers/wanxiang/image-edit';
 import {
   DEFAULT_WANXIANG_IMAGE_TO_VIDEO_MODEL,
   DEFAULT_WANXIANG_IMAGE_TO_VIDEO_RESOLUTION,
@@ -12,7 +12,6 @@ import {
   submitImageToVideo
 } from '../lib/providers/wanxiang/img-to-video';
 import {
-  DEFAULT_WANXIANG_TRY_ON_MULTI_SUBMIT_URL,
   queryTryOn,
   submitTryOnMulti,
   submitTryOnSingle
@@ -192,6 +191,38 @@ describe('normalizeWanxiangResponse', () => {
     );
   });
 
+  it('normalizes DashScope image generation choice content', () => {
+    expect(
+      normalizeWanxiangResponse(
+        {
+          output: {
+            task_id: 'image-edit-task',
+            task_status: 'SUCCEEDED',
+            choices: [
+              {
+                message: {
+                  content: [
+                    {
+                      image: 'https://dashscope-result.test/final.png'
+                    }
+                  ]
+                }
+              }
+            ]
+          },
+          request_id: 'request-123'
+        },
+        'image'
+      )
+    ).toEqual(
+      expect.objectContaining({
+        providerTaskId: 'image-edit-task',
+        status: 'succeeded',
+        finalImageUrl: 'https://dashscope-result.test/final.png'
+      })
+    );
+  });
+
   it('preserves failed status and error message', () => {
     expect(
       normalizeWanxiangResponse({
@@ -321,45 +352,155 @@ describe('Wanxiang capability exports', () => {
     );
   });
 
-  it('uses default cloth endpoint and accepts query task id shorthand', async () => {
-    vi.stubEnv('WANXIANG_APPCODE', 'env-code');
-    const fetchMock = mockJsonFetch({ code: 0, data: { task_id: 'cloth-task' } });
+  it('submits apparel image jobs through Bailian Wanxiang image edit', async () => {
+    vi.stubEnv('DASHSCOPE_API_KEY', 'dashscope-key');
+    vi.stubEnv('DASHSCOPE_IMAGE_GENERATION_URL', 'https://override.test/image');
+    vi.stubEnv('DASHSCOPE_BASE_URL', 'https://dashscope.example/api/v1');
+    const fetchMock = mockJsonFetch({
+      output: { task_id: 'cloth-task', task_status: 'PENDING' }
+    });
 
-    await submitCloth({ imageUrl: 'https://img.test/a.jpg' }, { fetch: fetchMock });
+    await submitCloth(
+      {
+        inputImageUrl: 'https://img.test/a.jpg',
+        prompt: 'Create a clean product campaign image.',
+        aspectRatio: '16:9'
+      },
+      { fetch: fetchMock }
+    );
     await queryCloth('cloth-task', { fetch: fetchMock });
 
     expect(fetchMock).toHaveBeenNthCalledWith(
       1,
-      DEFAULT_WANXIANG_CLOTH_SUBMIT_URL,
-      expect.any(Object)
+      'https://override.test/image',
+      expect.objectContaining({
+        method: 'POST',
+        headers: expect.objectContaining({
+          Authorization: 'Bearer dashscope-key',
+          'X-DashScope-Async': 'enable',
+          'Content-Type': 'application/json'
+        }),
+        body: JSON.stringify({
+          model: DEFAULT_WANXIANG_IMAGE_EDIT_MODEL,
+          input: {
+            messages: [
+              {
+                role: 'user',
+                content: [
+                  { image: 'https://img.test/a.jpg' },
+                  { text: 'Create a clean product campaign image.' }
+                ]
+              }
+            ]
+          },
+          parameters: {
+            size: '2048*1152',
+            n: 1,
+            watermark: false
+          }
+        })
+      })
     );
     expect(fetchMock).toHaveBeenNthCalledWith(
       2,
-      expect.stringContaining('/maigc/api/cloth/query'),
+      'https://dashscope.example/api/v1/tasks/cloth-task',
       expect.objectContaining({
-        body: JSON.stringify({ task_id: 'cloth-task' })
+        method: 'GET',
+        headers: expect.objectContaining({
+          Authorization: 'Bearer dashscope-key'
+        })
       })
     );
   });
 
-  it('exports try-on single, multi, and query helpers', async () => {
-    vi.stubEnv('WANXIANG_APPCODE', 'env-code');
-    const fetchMock = mockJsonFetch({ code: 0, data: { task_id: 'try-task' } });
+  it('submits try-on single, multi, and query helpers through Bailian image edit', async () => {
+    vi.stubEnv('DASHSCOPE_API_KEY', 'dashscope-key');
+    vi.stubEnv('DASHSCOPE_IMAGE_GENERATION_URL', 'https://override.test/image');
+    vi.stubEnv('DASHSCOPE_BASE_URL', 'https://dashscope.example/api/v1');
+    const fetchMock = mockJsonFetch({
+      output: { task_id: 'try-task', task_status: 'PENDING' }
+    });
 
-    await submitTryOnSingle({ modelUrl: 'https://img.test/model.jpg' }, { fetch: fetchMock });
-    await submitTryOnMulti({ modelUrl: 'https://img.test/model.jpg' }, { fetch: fetchMock });
+    await submitTryOnSingle(
+      {
+        modelImageUrl: 'https://img.test/model.jpg',
+        garmentImageUrls: ['https://img.test/top.jpg'],
+        aspectRatio: '9:16',
+        prompt: 'Dress the model with the garment.'
+      },
+      { fetch: fetchMock }
+    );
+    await submitTryOnMulti(
+      {
+        modelImageUrl: 'https://img.test/model.jpg',
+        garmentImageUrls: ['https://img.test/top.jpg', 'https://img.test/bottom.jpg'],
+        aspectRatio: '3:4'
+      },
+      { fetch: fetchMock }
+    );
     await queryTryOn({ taskId: 'try-task' }, { fetch: fetchMock });
 
     expect(fetchMock).toHaveBeenNthCalledWith(
+      1,
+      'https://override.test/image',
+      expect.objectContaining({
+        body: JSON.stringify({
+          model: DEFAULT_WANXIANG_IMAGE_EDIT_MODEL,
+          input: {
+            messages: [
+              {
+                role: 'user',
+                content: [
+                  { image: 'https://img.test/top.jpg' },
+                  { image: 'https://img.test/model.jpg' },
+                  { text: 'Dress the model with the garment.' }
+                ]
+              }
+            ]
+          },
+          parameters: {
+            size: '1152*2048',
+            n: 1,
+            watermark: false
+          }
+        })
+      })
+    );
+    expect(fetchMock).toHaveBeenNthCalledWith(
       2,
-      DEFAULT_WANXIANG_TRY_ON_MULTI_SUBMIT_URL,
-      expect.any(Object)
+      'https://override.test/image',
+      expect.objectContaining({
+        body: JSON.stringify({
+          model: DEFAULT_WANXIANG_IMAGE_EDIT_MODEL,
+          input: {
+            messages: [
+              {
+                role: 'user',
+                content: [
+                  { image: 'https://img.test/top.jpg' },
+                  { image: 'https://img.test/bottom.jpg' },
+                  { image: 'https://img.test/model.jpg' },
+                  {
+                    text:
+                      'Create a natural virtual try-on image. Dress the person in the model image with the provided garment reference images, preserve the person identity and pose, keep fabric details accurate, and make lighting and fit realistic.'
+                  }
+                ]
+              }
+            ]
+          },
+          parameters: {
+            size: '1536*2048',
+            n: 1,
+            watermark: false
+          }
+        })
+      })
     );
     expect(fetchMock).toHaveBeenNthCalledWith(
       3,
-      expect.stringContaining('/maigc/api/starlink/query'),
+      'https://dashscope.example/api/v1/tasks/try-task',
       expect.objectContaining({
-        body: JSON.stringify({ taskId: 'try-task' })
+        method: 'GET'
       })
     );
   });

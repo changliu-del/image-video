@@ -29,6 +29,13 @@ export function getDashScopeVideoSynthesisUrl() {
   );
 }
 
+export function getDashScopeImageGenerationUrl() {
+  return (
+    process.env.DASHSCOPE_IMAGE_GENERATION_URL?.trim() ||
+    `${getDashScopeBaseUrl()}/services/aigc/image-generation/generation`
+  );
+}
+
 export function getDashScopeTaskUrl(taskId: string) {
   const baseUrl =
     process.env.DASHSCOPE_TASKS_URL?.trim().replace(/\/+$/, '') ||

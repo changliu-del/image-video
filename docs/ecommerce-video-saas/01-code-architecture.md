@@ -411,6 +411,7 @@ KlingOfficialProvider
 ```text
 lib/providers/wanxiang/img-to-video.ts
 lib/providers/wanxiang/cloth.ts
+lib/providers/wanxiang/image-edit.ts
 lib/providers/wanxiang/starlink.ts
 lib/providers/wanxiang/models.ts
 ```
@@ -419,27 +420,25 @@ lib/providers/wanxiang/models.ts
 
 ```text
 image_to_video: one imageUrl, prompt, durationSeconds from 5 to 15
-apparel_image: imageUrl, prompt, strength, variants
-try_on: modelUrl, garment image URLs, mode, aspectRatio
+apparel_image: one product imageUrl, prompt, aspectRatio
+try_on: model imageUrl, garment image URLs, mode, aspectRatio
 ```
 
 环境变量：
 
 ```text
 DASHSCOPE_API_KEY
-DASHSCOPE_BASE_URL / DASHSCOPE_VIDEO_SYNTHESIS_URL / DASHSCOPE_TASKS_URL
+DASHSCOPE_BASE_URL / DASHSCOPE_VIDEO_SYNTHESIS_URL / DASHSCOPE_IMAGE_GENERATION_URL / DASHSCOPE_TASKS_URL
 WANXIANG_IMAGE_TO_VIDEO_MODEL / WANXIANG_IMAGE_TO_VIDEO_RESOLUTION
 WANXIANG_IMAGE_TO_VIDEO_PROMPT_EXTEND / WANXIANG_IMAGE_TO_VIDEO_AUDIO
-WANXIANG_APPCODE
-WANXIANG_CLOTH_SUBMIT_URL / WANXIANG_CLOTH_QUERY_URL
-WANXIANG_TRY_ON_SINGLE_SUBMIT_URL / WANXIANG_TRY_ON_MULTI_SUBMIT_URL / WANXIANG_TRY_ON_QUERY_URL
+WANXIANG_IMAGE_EDIT_MODEL
 WANXIANG_MODEL_CATALOG_URL
 ```
 
 实现要求：
 
 ```text
-不要在前端暴露 DASHSCOPE_API_KEY 或 WANXIANG_APPCODE
+不要在前端暴露 DASHSCOPE_API_KEY
 在 generation_jobs 记录 provider 和 provider_task_id
 请求失败时抛出标准错误
 Worker 轮询到终态或超时失败并 refund credits
@@ -512,6 +511,8 @@ MVP 计费规则建议：
 1 credit = R$0.10
 图生视频 Basic / 2.6 flash 5s: 25 credits
 图生视频 Pro / 2.7 5s: 85 credits
+商品图 / wan2.7-image-pro: 15 credits
+智能试衣 / wan2.7-image-pro: 15 credits
 失败任务: 全额返还
 ```
 
