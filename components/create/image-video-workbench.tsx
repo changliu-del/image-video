@@ -1307,6 +1307,7 @@ export function ImageVideoWorkbench({
   const selectedResultUrl = resultUrl(jobStatus);
   const selectedTemplateId =
     selectedTemplate?.id == null ? '' : String(selectedTemplate.id);
+  const supportsAppearingModel = selectedVideoModelMode === 'wanxiang_2_7';
   const selectedModelImage = getModelAssetImage(selectedModelAsset);
   const hasLocalReferenceImage = referenceImageFiles.length > 0;
   const primarySourcePreview =
@@ -1463,7 +1464,9 @@ export function ImageVideoWorkbench({
         jobStatus?.videoModelMode ?? selectedVideoModelMode
       ),
       modelTemplateId:
-        selectedModelAsset?.id ?? jobStatus?.modelTemplateId ?? undefined,
+        supportsAppearingModel
+          ? selectedModelAsset?.id ?? jobStatus?.modelTemplateId ?? undefined
+          : undefined,
       inputAssetId: selectedInputAssetId ?? jobStatus?.inputAssetId ?? undefined,
       inputImageUrl: selectedInputImageUrl ?? inputImageUrl(jobStatus),
       status: jobStatus,
@@ -1478,6 +1481,7 @@ export function ImageVideoWorkbench({
     selectedModelAsset,
     selectedTemplateId,
     selectedVideoModelMode,
+    supportsAppearingModel,
     trimmedPrompt,
   ]);
 
@@ -1929,14 +1933,29 @@ export function ImageVideoWorkbench({
     setPrompt(
       buildPromptWithAppearingModel(
         templateDetail.prompt,
-        selectedModelAsset,
+        supportsAppearingModel ? selectedModelAsset : null,
         copy
       )
     );
     closeTemplateDetail();
   }
 
+  function handleVideoModelModeChange(nextMode: ImageVideoModelMode) {
+    const isSwitchingToBasicVideoMode =
+      selectedVideoModelMode !== nextMode &&
+      nextMode === 'wanxiang_2_6_first_frame';
+
+    setSelectedVideoModelMode(nextMode);
+
+    if (isSwitchingToBasicVideoMode) {
+      setPrompt('');
+      setIsModelLibraryOpen(false);
+    }
+  }
+
   function selectAppearingModel(model: ModelTemplateItem) {
+    if (!supportsAppearingModel) return;
+
     setError(null);
     setPrompt((currentPrompt) =>
       buildPromptWithAppearingModel(
@@ -1947,7 +1966,6 @@ export function ImageVideoWorkbench({
       )
     );
     setSelectedModelAsset(model);
-    setSelectedVideoModelMode('wanxiang_2_7');
     setIsModelLibraryOpen(false);
   }
 
@@ -1993,9 +2011,10 @@ export function ImageVideoWorkbench({
         throw new Error(commonCopy.imageSaveError);
       }
 
+      const appearingModel = supportsAppearingModel ? selectedModelAsset : null;
       const generationPrompt = buildPromptWithAppearingModel(
         trimmedPrompt,
-        selectedModelAsset,
+        appearingModel,
         copy
       );
 
@@ -2008,8 +2027,8 @@ export function ImageVideoWorkbench({
           videoModelMode: selectedVideoModelMode,
           inputAssetId,
           ...(inputAssetIds.length > 1 ? { inputAssetIds } : {}),
-          ...(selectedModelAsset?.id
-            ? { modelTemplateId: selectedModelAsset.id }
+          ...(appearingModel?.id
+            ? { modelTemplateId: appearingModel.id }
             : {}),
           ...(selectedTemplateId ? { templateId: selectedTemplateId } : {}),
           prompt: generationPrompt,
@@ -2026,9 +2045,9 @@ export function ImageVideoWorkbench({
       setSelectedInputAssetId(inputAssetId);
       if (nextInputImageUrl) setSelectedInputImageUrl(nextInputImageUrl);
       setJobId(nextJobId);
-        setJobStatus({
-          id: nextJobId,
-          generationType: 'image_to_video',
+      setJobStatus({
+        id: nextJobId,
+        generationType: 'image_to_video',
         durationSeconds,
         inputAssetId,
         inputAssetIds,
@@ -2037,10 +2056,10 @@ export function ImageVideoWorkbench({
         prompt: generationPrompt,
         status: generation.status ?? 'queued',
         progressLabel: commonCopy.queued,
-          templateId: selectedTemplateId || null,
-          modelTemplateId: selectedModelAsset?.id ?? null,
-          videoModelMode: selectedVideoModelMode,
-        });
+        templateId: selectedTemplateId || null,
+        modelTemplateId: appearingModel?.id ?? null,
+        videoModelMode: selectedVideoModelMode,
+      });
       } catch (submitError) {
         if (isAuthenticationRequiredError(submitError)) {
           redirectToSignIn(locale);
@@ -2115,7 +2134,7 @@ export function ImageVideoWorkbench({
                   type="button"
                   disabled={isSubmitting}
                   aria-pressed={active}
-                  onClick={() => setSelectedVideoModelMode(option.value)}
+                  onClick={() => handleVideoModelModeChange(option.value)}
                   className={cn(
                     'min-h-20 rounded-lg border p-3 text-left transition disabled:cursor-not-allowed disabled:opacity-60',
                     active
@@ -2183,7 +2202,12 @@ export function ImageVideoWorkbench({
               </span>
             </div>
           </div>
-          <div className="mt-3 grid grid-cols-2 gap-2">
+          <div
+            className={cn(
+              'mt-3 grid gap-2',
+              supportsAppearingModel ? 'grid-cols-2' : 'grid-cols-1'
+            )}
+          >
             <button
               type="button"
               onClick={() => setIsReferencePanelOpen(true)}
@@ -2197,30 +2221,32 @@ export function ImageVideoWorkbench({
               <FolderOpen className="size-4" />
               <span className="truncate">{copy.materialAction}</span>
             </button>
-            <button
-              type="button"
-              onClick={() => setIsModelLibraryOpen(true)}
-              disabled={isSubmitting}
-              className={cn(
-                'inline-flex min-h-12 w-full items-center justify-center gap-2 rounded-lg px-2 text-xs font-bold shadow-sm ring-1 transition disabled:cursor-not-allowed disabled:opacity-60 sm:text-sm',
-                selectedModelAsset
-                  ? 'bg-indigo-50 text-indigo-700 ring-indigo-100'
-                  : 'bg-white text-gray-800 ring-gray-100 hover:bg-indigo-50 hover:text-indigo-700'
-              )}
-            >
-              {selectedModelImage ? (
-                <img
-                  src={selectedModelImage}
-                  alt=""
-                  className="size-7 shrink-0 rounded-md object-cover"
-                />
-              ) : (
-                <UserRound className="size-4 shrink-0" />
-              )}
-              <span className="truncate">
-                {selectedModelAsset?.title ?? copy.appearingModelAction}
-              </span>
-            </button>
+            {supportsAppearingModel ? (
+              <button
+                type="button"
+                onClick={() => setIsModelLibraryOpen(true)}
+                disabled={isSubmitting}
+                className={cn(
+                  'inline-flex min-h-12 w-full items-center justify-center gap-2 rounded-lg px-2 text-xs font-bold shadow-sm ring-1 transition disabled:cursor-not-allowed disabled:opacity-60 sm:text-sm',
+                  selectedModelAsset
+                    ? 'bg-indigo-50 text-indigo-700 ring-indigo-100'
+                    : 'bg-white text-gray-800 ring-gray-100 hover:bg-indigo-50 hover:text-indigo-700'
+                )}
+              >
+                {selectedModelImage ? (
+                  <img
+                    src={selectedModelImage}
+                    alt=""
+                    className="size-7 shrink-0 rounded-md object-cover"
+                  />
+                ) : (
+                  <UserRound className="size-4 shrink-0" />
+                )}
+                <span className="truncate">
+                  {selectedModelAsset?.title ?? copy.appearingModelAction}
+                </span>
+              </button>
+            ) : null}
           </div>
           {primarySourcePreview ? (
             <div className="mt-3 flex items-center gap-3 rounded-lg border border-gray-200 bg-white p-2 shadow-sm">
@@ -2255,7 +2281,7 @@ export function ImageVideoWorkbench({
               </button>
             </div>
           ) : null}
-          {selectedModelAsset ? (
+          {supportsAppearingModel && selectedModelAsset ? (
             <div className="mt-3 flex items-center gap-3 rounded-lg border border-indigo-100 bg-indigo-50 p-2 shadow-sm">
               {selectedModelImage ? (
                 <img
@@ -2573,7 +2599,7 @@ export function ImageVideoWorkbench({
         />
       ) : null}
 
-      {isModelLibraryOpen ? (
+      {isModelLibraryOpen && supportsAppearingModel ? (
         <ImageVideoModelLibraryDrawer
           copy={copy}
           disabled={isSubmitting}
