@@ -38,7 +38,14 @@ export type StarterTemplateSeed = {
   promptTranslations?: Partial<LocalizedText>;
 };
 
-export const retiredStarterTemplateSeedKeys = ['beauty-premium-detail'] as const;
+export const retiredStarterTemplateSeedKeys = [
+  'product-soft-motion',
+  'fashion-model-motion',
+  'food-fresh-closeup',
+  'beauty-premium-detail',
+  'electronics-launch',
+  'home-lifestyle-scene',
+] as const;
 
 export const templateTypes: TemplateType[] = [
   'image_to_video',
@@ -187,97 +194,4 @@ export const templatesPageContent: Record<
   },
 };
 
-const resource = (name: string) => `/resources/${name}`;
-
-export const starterTemplateSeeds: StarterTemplateSeed[] = [
-  {
-    seedKey: 'product-soft-motion',
-    title: 'Soft product motion',
-    titleTranslations: {
-      pt: 'Produto com movimento suave',
-    },
-    type: 'image_to_video',
-    category: 'product',
-    thumbnailAssetSeedKey: 'product-soft-motion-thumbnail',
-    previewAssetSeedKey: 'product-soft-motion-preview',
-    thumbnailUrl: resource('example1.png'),
-    previewUrl: resource('example1.mp4'),
-    prompt:
-      'Turn the product photo into a short ecommerce video with smooth camera motion, clean lighting, centered product framing, and a premium finish.',
-    promptTranslations: {
-      pt: 'Transforme a foto do produto em um video curto de ecommerce com movimento suave de camera, luz limpa, produto centralizado e acabamento premium.',
-    },
-  },
-  {
-    seedKey: 'fashion-model-motion',
-    title: 'Fashion lookbook in motion',
-    titleTranslations: {
-      pt: 'Lookbook de moda em movimento',
-    },
-    type: 'image_to_video',
-    category: 'fashion',
-    thumbnailAssetSeedKey: 'fashion-model-motion-thumbnail',
-    previewAssetSeedKey: 'fashion-model-motion-preview',
-    thumbnailUrl: resource('example2.png'),
-    previewUrl: resource('example2.mp4'),
-    prompt:
-      'Create a vertical fashion video from the image with natural movement, highlighted fabric texture, a modern studio background, and social rhythm.',
-    promptTranslations: {
-      pt: 'Crie um video vertical de moda a partir da imagem, com movimento natural, tecido em destaque, fundo de estudio moderno e ritmo social.',
-    },
-  },
-  {
-    seedKey: 'food-fresh-closeup',
-    title: 'Fresh food close-up',
-    titleTranslations: {
-      pt: 'Close-up fresco de alimento',
-    },
-    type: 'image_to_video',
-    category: 'food',
-    thumbnailAssetSeedKey: 'food-fresh-closeup-thumbnail',
-    previewAssetSeedKey: 'food-fresh-closeup-preview',
-    thumbnailUrl: resource('example3.png'),
-    previewUrl: resource('example3.mp4'),
-    prompt:
-      'Turn the food photo into an appetizing video with natural gloss, slow motion, highlighted texture, and a fresh feeling.',
-    promptTranslations: {
-      pt: 'Transforme a foto do alimento em um video apetitoso com brilho natural, movimento lento, textura em destaque e sensacao fresca.',
-    },
-  },
-  {
-    seedKey: 'electronics-launch',
-    title: 'Electronics launch',
-    titleTranslations: {
-      pt: 'Lancamento de eletronico',
-    },
-    type: 'image_to_video',
-    category: 'electronics',
-    thumbnailAssetSeedKey: 'electronics-launch-thumbnail',
-    previewAssetSeedKey: 'electronics-launch-preview',
-    thumbnailUrl: resource('example5.png'),
-    previewUrl: resource('example5.mp4'),
-    prompt:
-      'Generate a launch video for an electronics product with technical lighting, precise motion, material detail, and a modern atmosphere.',
-    promptTranslations: {
-      pt: 'Gere um video de lancamento para produto eletronico com luz tecnica, movimento preciso, detalhes de material e atmosfera moderna.',
-    },
-  },
-  {
-    seedKey: 'home-lifestyle-scene',
-    title: 'Home lifestyle scene',
-    titleTranslations: {
-      pt: 'Cena de casa e decoracao',
-    },
-    type: 'image_to_video',
-    category: 'home',
-    thumbnailAssetSeedKey: 'home-lifestyle-scene-thumbnail',
-    previewAssetSeedKey: 'home-lifestyle-scene-preview',
-    thumbnailUrl: resource('example6.png'),
-    previewUrl: resource('example6.mp4'),
-    prompt:
-      'Turn the image into a home and decor video with a realistic scene, natural light, calm movement, and everyday product usage.',
-    promptTranslations: {
-      pt: 'Transforme a imagem em um video de casa e decoracao com cena realista, luz natural, movimento calmo e uso cotidiano do produto.',
-    },
-  },
-];
+export const starterTemplateSeeds: StarterTemplateSeed[] = [];

@@ -96,10 +96,10 @@ template media routes.
 
 Template media route failures should be fixed at the asset ownership layer, not
 masked with fallback URLs. Assets whose `storage_key` starts with `templates/`
-are treated as R2 template objects and should exist in R2. Bundled starter
-examples from `public/resources/*` use `external/starter/...` storage keys so
-the explicit external/static branch serves them through `/api/template-media/*`
-without entering the normal R2 public-base preload/read path.
+are treated as R2 template objects and should exist in R2. Historical bundled
+starter examples from `public/resources/*` are homepage promo examples, not
+public template catalog rows; seed cleanup should retire old
+`external/starter/...` template rows instead of republishing them.
 
 ## Migration Notes
 

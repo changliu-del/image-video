@@ -312,10 +312,21 @@ describe('template catalog routing contract', () => {
   it('keeps homepage-only starter promos out of the public starter catalog', () => {
     const catalog = readSource('lib/templates/catalog.ts');
     const seed = readSource('lib/db/seed.ts');
+    const homepageOnlyStarterKeys = [
+      'product-soft-motion',
+      'fashion-model-motion',
+      'food-fresh-closeup',
+      'beauty-premium-detail',
+      'electronics-launch',
+      'home-lifestyle-scene',
+    ];
 
     expect(catalog).toContain('retiredStarterTemplateSeedKeys');
-    expect(catalog).toContain("'beauty-premium-detail'");
-    expect(catalog).not.toContain("seedKey: 'beauty-premium-detail'");
+    expect(catalog).toContain('starterTemplateSeeds: StarterTemplateSeed[] = []');
+    for (const seedKey of homepageOnlyStarterKeys) {
+      expect(catalog).toContain(`'${seedKey}'`);
+      expect(catalog).not.toContain(`seedKey: '${seedKey}'`);
+    }
     expect(catalog).not.toContain("title: 'Premium beauty detail'");
     expect(seed).toContain('deleteRetiredStarterTemplateCatalogEntries');
     expect(seed).toContain('retiredStarterTemplateSeedKeys');

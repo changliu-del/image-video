@@ -47,9 +47,10 @@ Do not hide app media route failures by adding public-URL or signed-URL
 fallbacks. Fix the owning data/config path directly: R2-backed assets must have
 real R2 `storage_key` values under the intended namespace, while bundled static
 or external template assets must use a non-R2 prefix such as `external/` and a
-`public_url` that the explicit external-media route branch supports. Starter
-resources in `public/resources/*` are `external/starter/...` assets, not
-`templates/starter/...` R2 objects.
+`public_url` that the explicit external-media route branch supports. Historical
+starter resources in `public/resources/*` are homepage promo examples; if old
+`external/starter/...` rows exist in `templates`, seed cleanup should retire
+them instead of treating them as public template catalog data.
 
 `BASE_URL` must be the externally reachable app origin for app redirects,
 payments, and any cloud-worker app callbacks. Wanxiang provider input media
