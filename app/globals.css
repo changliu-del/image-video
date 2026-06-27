@@ -273,3 +273,31 @@
     @apply bg-background text-foreground;
   }
 }
+
+@layer components {
+  .iv-video-player {
+    --iv-video-object-fit: contain;
+    display: block;
+    width: 100%;
+    background: rgb(3 7 18);
+    contain: layout style;
+  }
+
+  .iv-video-player[data-video-fit='cover'] {
+    --iv-video-object-fit: cover;
+  }
+
+  .iv-video-player__outlet {
+    display: block;
+    width: 100%;
+    height: 100%;
+    background: transparent;
+  }
+
+  .iv-video-player__outlet video {
+    width: 100%;
+    height: 100%;
+    max-height: inherit;
+    object-fit: var(--iv-video-object-fit);
+  }
+}

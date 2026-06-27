@@ -1,7 +1,8 @@
 'use client';
 
-import { useEffect, useMemo, useState } from 'react';
-import type { CSSProperties, ReactNode } from 'react';
+import { useEffect, useId, useMemo, useRef, useState } from 'react';
+import type { CSSProperties, DragEvent, ReactNode } from 'react';
+import Uppy from '@uppy/core';
 import {
   DndContext,
   KeyboardSensor,
@@ -37,6 +38,7 @@ import {
 import { useForm } from 'react-hook-form';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import { VideoPlayer } from '@/components/media/video-player';
 import {
   AdminManagementTable,
   AdminModal,
@@ -61,6 +63,7 @@ import {
   modelGenderTagOptions,
   parseModelCategoryParts,
 } from '@/lib/model-assets/localization';
+import { cn } from '@/lib/utils';
 
 type AdminTemplate = TemplateCatalogDetailItem & {
   titleTranslations: Record<string, string>;
@@ -302,6 +305,13 @@ function isVideoMimeType(mimeType: string) {
   return mimeType.startsWith('video/');
 }
 
+function allowedFileTypesFromAccept(accept: string) {
+  return accept
+    .split(',')
+    .map((fileType) => fileType.trim())
+    .filter(Boolean);
+}
+
 function TemplateMediaPreview({
   mimeType,
   url,
@@ -318,12 +328,12 @@ function TemplateMediaPreview({
   }
 
   return isVideoMimeType(mimeType) ? (
-    <video
+    <VideoPlayer
       src={url}
-      className="aspect-[4/3] w-full object-cover"
-      controls
+      className="aspect-[4/3] w-full"
+      fit="cover"
+      mediaClassName="aspect-[4/3] w-full"
       muted
-      playsInline
     />
   ) : (
     <img src={url} alt="" className="aspect-[4/3] w-full object-cover" />
@@ -481,6 +491,106 @@ function TemplateMediaField({
   uploadLabel: string;
   uploading: boolean;
 }) {
+  const inputId = useId();
+  const uppyRef = useRef<Uppy | null>(null);
+  const onFileChangeRef = useRef(onFileChange);
+  const [dragging, setDragging] = useState(false);
+  const [restrictionMessage, setRestrictionMessage] = useState<string | null>(
+    null
+  );
+  const allowedFileTypes = useMemo(
+    () => allowedFileTypesFromAccept(accept),
+    [accept]
+  );
+
+  useEffect(() => {
+    onFileChangeRef.current = onFileChange;
+  }, [onFileChange]);
+
+  useEffect(() => {
+    const uppy = new Uppy({
+      id: `template-media-${inputId}`,
+      autoProceed: false,
+      allowMultipleUploadBatches: false,
+      restrictions: {
+        allowedFileTypes,
+        maxNumberOfFiles: 1,
+      },
+    });
+
+    uppyRef.current = uppy;
+    uppy.on('file-added', (uppyFile) => {
+      setRestrictionMessage(null);
+      onFileChangeRef.current(
+        uppyFile.data instanceof File ? uppyFile.data : null
+      );
+    });
+    uppy.on('restriction-failed', (_uppyFile, error) => {
+      setRestrictionMessage(error.message);
+    });
+
+    return () => {
+      uppy.destroy();
+      if (uppyRef.current === uppy) {
+        uppyRef.current = null;
+      }
+    };
+  }, [allowedFileTypes, inputId]);
+
+  useEffect(() => {
+    if (!file) {
+      uppyRef.current?.clear();
+    }
+  }, [file]);
+
+  function selectFile(nextFile: File | null) {
+    if (disabled) return;
+
+    setRestrictionMessage(null);
+    if (!nextFile) {
+      uppyRef.current?.clear();
+      onFileChangeRef.current(null);
+      return;
+    }
+
+    const uppy = uppyRef.current;
+    if (!uppy) {
+      onFileChangeRef.current(nextFile);
+      return;
+    }
+
+    try {
+      uppy.clear();
+      uppy.addFile(nextFile);
+    } catch (selectError) {
+      setRestrictionMessage(
+        selectError instanceof Error ? selectError.message : 'Invalid file.'
+      );
+      onFileChangeRef.current(null);
+    }
+  }
+
+  function handleDragOver(event: DragEvent<HTMLDivElement>) {
+    event.preventDefault();
+    if (!disabled) {
+      setDragging(true);
+    }
+  }
+
+  function handleDragLeave(event: DragEvent<HTMLDivElement>) {
+    if (!event.currentTarget.contains(event.relatedTarget as Node | null)) {
+      setDragging(false);
+    }
+  }
+
+  function handleDrop(event: DragEvent<HTMLDivElement>) {
+    event.preventDefault();
+    setDragging(false);
+    if (disabled) return;
+
+    selectFile(event.dataTransfer.files?.[0] ?? null);
+  }
+
   return (
     <div className="grid gap-3 rounded-lg border border-gray-200 p-3">
       <div className="flex items-center justify-between gap-3">
@@ -505,13 +615,38 @@ function TemplateMediaField({
         value={assetId}
         onChange={(event) => onAssetIdChange(event.target.value)}
       />
-      <div className="grid gap-2 sm:grid-cols-[1fr_auto]">
-        <Input
-          type="file"
-          accept={accept}
-          onChange={(event) => onFileChange(event.target.files?.[0] ?? null)}
-          disabled={disabled}
-        />
+      <div
+        className={cn(
+          'grid gap-2 rounded-md border border-dashed border-gray-200 p-2 transition sm:grid-cols-[1fr_auto]',
+          dragging && 'border-orange-400 bg-orange-50',
+          disabled && 'opacity-60'
+        )}
+        onDragLeave={handleDragLeave}
+        onDragOver={handleDragOver}
+        onDrop={handleDrop}
+      >
+        <div className="grid gap-1">
+          <Input
+            id={inputId}
+            type="file"
+            accept={accept}
+            onChange={(event) => {
+              selectFile(event.target.files?.[0] ?? null);
+              event.currentTarget.value = '';
+            }}
+            disabled={disabled}
+          />
+          {file ? (
+            <p className="truncate text-xs font-semibold text-gray-500">
+              {file.name}
+            </p>
+          ) : null}
+          {restrictionMessage ? (
+            <p className="text-xs font-semibold text-red-600">
+              {restrictionMessage}
+            </p>
+          ) : null}
+        </div>
         <Button
           type="button"
           onClick={onUpload}

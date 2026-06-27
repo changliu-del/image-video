@@ -12,6 +12,7 @@ import {
   UploadCloud,
 } from 'lucide-react';
 
+import { VideoPlayer } from '@/components/media/video-player';
 import { Input } from '@/components/ui/input';
 import { cn } from '@/lib/utils';
 
@@ -403,7 +404,11 @@ export function ResultCard({
         <div className="mt-4 flex flex-1 items-center justify-center overflow-hidden rounded-lg bg-gray-950/70">
           {resultUrl ? (
             isVideo ? (
-              <video src={resultUrl} controls playsInline className="max-h-[620px] w-full object-contain" />
+              <VideoPlayer
+                src={resultUrl}
+                className="max-h-[620px] w-full"
+                mediaClassName="max-h-[620px] w-full"
+              />
             ) : (
               <img src={resultUrl} alt="" className="max-h-[620px] w-full object-contain" />
             )
