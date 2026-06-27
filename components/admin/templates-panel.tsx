@@ -34,6 +34,7 @@ import {
   Trash2,
   Upload,
 } from 'lucide-react';
+import { useForm } from 'react-hook-form';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import {
@@ -552,9 +553,12 @@ export function TemplatesPanel({
     useState<TemplateFilterState>(emptyTemplateFilters);
   const [appliedFilters, setAppliedFilters] =
     useState<TemplateFilterState>(emptyTemplateFilters);
-  const [form, setForm] = useState<TemplateFormState>(() =>
-    freshEmptyForm(activeType)
-  );
+  const { handleSubmit, register, reset, setValue, watch } =
+    useForm<TemplateFormState>({
+      defaultValues: freshEmptyForm(activeType),
+      mode: 'onSubmit',
+    });
+  const form = watch();
   const [selectedTemplate, setSelectedTemplate] =
     useState<AdminTemplate | null>(null);
   const [modalMode, setModalMode] = useState<ModalMode | null>(null);
@@ -764,7 +768,7 @@ export function TemplatesPanel({
         );
         if (refreshed) {
           setSelectedTemplate(refreshed);
-          setForm(templateToForm(refreshed));
+          reset(templateToForm(refreshed));
         }
       }
     } catch (loadError) {
@@ -784,7 +788,7 @@ export function TemplatesPanel({
   useEffect(() => {
     setSelectedTemplate(null);
     setModalMode(null);
-    setForm(freshEmptyForm(activeType));
+    reset(freshEmptyForm(activeType));
     setOrderForm({
       type: activeType,
       category: defaultCategoryForType(activeType),
@@ -793,11 +797,11 @@ export function TemplatesPanel({
     setOrderError(null);
     setFilters(emptyTemplateFilters);
     setAppliedFilters(emptyTemplateFilters);
-  }, [activeType]);
+  }, [activeType, reset]);
 
   function openCreate() {
     setSelectedTemplate(null);
-    setForm(freshEmptyForm(activeType));
+    reset(freshEmptyForm(activeType));
     setUploadFiles(emptyUploadFiles);
     setModalMode('create');
     setError(null);
@@ -805,7 +809,7 @@ export function TemplatesPanel({
 
   function openView(template: AdminTemplate) {
     setSelectedTemplate(template);
-    setForm(templateToForm(template));
+    reset(templateToForm(template));
     setUploadFiles(emptyUploadFiles);
     setModalMode('view');
     setError(null);
@@ -813,45 +817,42 @@ export function TemplatesPanel({
 
   function openEdit(template: AdminTemplate) {
     setSelectedTemplate(template);
-    setForm(templateToForm(template));
+    reset(templateToForm(template));
     setUploadFiles(emptyUploadFiles);
     setModalMode('edit');
     setError(null);
-  }
-
-  function updateForm<K extends keyof TemplateFormState>(
-    key: K,
-    value: TemplateFormState[K]
-  ) {
-    setForm((current) => ({ ...current, [key]: value }));
   }
 
   function updateUploadFile(target: TemplateMediaTarget, file: File | null) {
     setUploadFiles((current) => ({ ...current, [target]: file }));
   }
 
-  async function saveTemplate() {
+  async function saveTemplate(values: TemplateFormState) {
     setSaving(true);
     setError(null);
     try {
+      const submittedForm = { ...form, ...values, type: activeType };
       const payload = {
-        ...form,
+        ...submittedForm,
         type: activeType,
-        title: form.title.trim(),
+        title: submittedForm.title.trim(),
         titleTranslations: parseTranslationsJson(
-          form.titleTranslations,
+          submittedForm.titleTranslations,
           copy.fields.titleTranslations ?? 'Title translations'
         ),
-        category: normalizeFormCategoryForSubmit(activeType, form.category),
+        category: normalizeFormCategoryForSubmit(
+          activeType,
+          submittedForm.category
+        ),
         promptTranslations: parseTranslationsJson(
-          form.promptTranslations,
+          submittedForm.promptTranslations,
           copy.fields.promptTranslations ?? 'Prompt translations'
         ),
       };
-      const url = form.id
-        ? `/api/admin/templates/${form.id}`
+      const url = submittedForm.id
+        ? `/api/admin/templates/${submittedForm.id}`
         : '/api/admin/templates';
-      const method = form.id ? 'PUT' : 'POST';
+      const method = submittedForm.id ? 'PUT' : 'POST';
       await requestJson(
         url,
         {
@@ -860,10 +861,10 @@ export function TemplatesPanel({
         },
         copy.errors.save
       );
-      await loadTemplates(form.id ? data.page : 1);
-      if (!form.id) {
+      await loadTemplates(submittedForm.id ? data.page : 1);
+      if (!submittedForm.id) {
         setModalMode(null);
-        setForm(freshEmptyForm(activeType));
+        reset(freshEmptyForm(activeType));
       } else {
         setModalMode('view');
       }
@@ -892,7 +893,7 @@ export function TemplatesPanel({
       );
       setSelectedTemplate(null);
       setModalMode(null);
-      setForm(freshEmptyForm(activeType));
+      reset(freshEmptyForm(activeType));
       await loadTemplates(data.page);
     } catch (deleteError) {
       setError(
@@ -905,7 +906,8 @@ export function TemplatesPanel({
 
   async function uploadTemplateMedia(target: TemplateMediaTarget) {
     const uploadFile = uploadFiles[target];
-    if (!form.id || !uploadFile) {
+    const templateId = form.id;
+    if (!templateId || !uploadFile) {
       setError(copy.selectSavedTemplate);
       return;
     }
@@ -922,7 +924,7 @@ export function TemplatesPanel({
         {
           method: 'POST',
           body: JSON.stringify({
-            templateId: form.id,
+            templateId,
             target,
             fileName: uploadFile.name,
             mimeType: uploadFile.type,
@@ -952,7 +954,7 @@ export function TemplatesPanel({
         {
           method: 'POST',
           body: JSON.stringify({
-            templateId: form.id,
+            templateId,
             target,
             assetId: presign.assetId,
             storageKey: presign.storageKey,
@@ -961,12 +963,11 @@ export function TemplatesPanel({
         copy.errors.completeUpload
       );
 
-      setForm((current) => ({
-        ...current,
-        ...(completed.target === 'thumbnail'
-          ? { thumbnailAssetId: completed.assetId }
-          : { previewAssetId: completed.assetId }),
-      }));
+      setValue(
+        completed.target === 'thumbnail' ? 'thumbnailAssetId' : 'previewAssetId',
+        completed.assetId,
+        { shouldDirty: true }
+      );
       setUploadFiles((current) => ({ ...current, [target]: null }));
       await loadTemplates(data.page);
     } catch (uploadError) {
@@ -1537,7 +1538,11 @@ export function TemplatesPanel({
               >
                 {common.cancel}
               </Button>
-              <Button type="button" onClick={saveTemplate} disabled={saving}>
+              <Button
+                type="button"
+                onClick={handleSubmit(saveTemplate)}
+                disabled={saving}
+              >
                 {saving ? (
                   <Loader2 className="size-4 animate-spin" />
                 ) : (
@@ -1580,22 +1585,13 @@ export function TemplatesPanel({
           <div className="grid gap-5">
             <div className="grid gap-4 md:grid-cols-2">
               <Field label={copy.fields.title ?? 'Title'}>
-                <Input
-                  value={form.title}
-                  placeholder="Product launch"
-                  onChange={(event) =>
-                    updateForm('title', event.target.value)
-                  }
-                />
+                <Input {...register('title')} placeholder="Product launch" />
               </Field>
               {activeType !== 'model' ? (
                 <Field label={copy.fields.category}>
                   {canSelectFormCategory ? (
                     <select
-                      value={form.category}
-                      onChange={(event) =>
-                        updateForm('category', event.target.value)
-                      }
+                      {...register('category')}
                       className="h-9 rounded-md border border-gray-200 bg-white px-3 text-sm"
                     >
                       {!formCategoryOptions.includes(form.category) &&
@@ -1612,11 +1608,8 @@ export function TemplatesPanel({
                     </select>
                   ) : (
                     <Input
-                      value={form.category}
+                      {...register('category')}
                       placeholder="product"
-                      onChange={(event) =>
-                        updateForm('category', event.target.value)
-                      }
                     />
                   )}
                 </Field>
@@ -1629,13 +1622,14 @@ export function TemplatesPanel({
                   <select
                     value={modelFormParts.gender}
                     onChange={(event) =>
-                      updateForm(
+                      setValue(
                         'category',
                         updateModelCategoryPart(
                           form.category,
                           'gender',
                           event.target.value
-                        )
+                        ),
+                        { shouldDirty: true }
                       )
                     }
                     className="h-9 rounded-md border border-gray-200 bg-white px-3 text-sm"
@@ -1652,13 +1646,14 @@ export function TemplatesPanel({
                   <select
                     value={modelFormParts.age}
                     onChange={(event) =>
-                      updateForm(
+                      setValue(
                         'category',
                         updateModelCategoryPart(
                           form.category,
                           'age',
                           event.target.value
-                        )
+                        ),
+                        { shouldDirty: true }
                       )
                     }
                     className="h-9 rounded-md border border-gray-200 bg-white px-3 text-sm"
@@ -1677,13 +1672,14 @@ export function TemplatesPanel({
                     value={modelFormParts.style}
                     placeholder={modelFieldLabels.style}
                     onChange={(event) =>
-                      updateForm(
+                      setValue(
                         'category',
                         updateModelCategoryPart(
                           form.category,
                           'style',
                           event.target.value
-                        )
+                        ),
+                        { shouldDirty: true }
                       )
                     }
                   />
@@ -1702,10 +1698,7 @@ export function TemplatesPanel({
 
             <Field label={copy.fields.titleTranslations ?? 'Title translations'}>
               <textarea
-                value={form.titleTranslations}
-                onChange={(event) =>
-                  updateForm('titleTranslations', event.target.value)
-                }
+                {...register('titleTranslations')}
                 rows={4}
                 className="rounded-md border border-gray-200 bg-white px-3 py-2 font-mono text-xs leading-5 outline-none focus:border-gray-400"
               />
@@ -1722,7 +1715,7 @@ export function TemplatesPanel({
                 mediaUrl={thumbnailMediaUrl}
                 mimeType={thumbnailMimeType}
                 onAssetIdChange={(value) =>
-                  updateForm('thumbnailAssetId', value)
+                  setValue('thumbnailAssetId', value, { shouldDirty: true })
                 }
                 onFileChange={(file) => updateUploadFile('thumbnail', file)}
                 onUpload={() => uploadTemplateMedia('thumbnail')}
@@ -1738,7 +1731,9 @@ export function TemplatesPanel({
                 label={copy.fields.previewAssetId ?? 'Preview asset ID'}
                 mediaUrl={previewMediaUrl}
                 mimeType={previewMimeType}
-                onAssetIdChange={(value) => updateForm('previewAssetId', value)}
+                onAssetIdChange={(value) =>
+                  setValue('previewAssetId', value, { shouldDirty: true })
+                }
                 onFileChange={(file) => updateUploadFile('preview', file)}
                 onUpload={() => uploadTemplateMedia('preview')}
                 uploadLabel={common.upload}
@@ -1748,8 +1743,7 @@ export function TemplatesPanel({
 
             <Field label={copy.fields.prompt}>
               <textarea
-                value={form.prompt}
-                onChange={(event) => updateForm('prompt', event.target.value)}
+                {...register('prompt')}
                 rows={8}
                 className="min-h-48 rounded-md border border-gray-200 bg-white px-3 py-2 text-sm leading-6 outline-none focus:border-gray-400"
               />
@@ -1757,10 +1751,7 @@ export function TemplatesPanel({
 
             <Field label={copy.fields.promptTranslations ?? 'Prompt translations'}>
               <textarea
-                value={form.promptTranslations}
-                onChange={(event) =>
-                  updateForm('promptTranslations', event.target.value)
-                }
+                {...register('promptTranslations')}
                 rows={6}
                 className="rounded-md border border-gray-200 bg-white px-3 py-2 font-mono text-xs leading-5 outline-none focus:border-gray-400"
               />
