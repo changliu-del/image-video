@@ -38,6 +38,8 @@ export type StarterTemplateSeed = {
   promptTranslations?: Partial<LocalizedText>;
 };
 
+export const retiredStarterTemplateSeedKeys = ['beauty-premium-detail'] as const;
+
 export const templateTypes: TemplateType[] = [
   'image_to_video',
   'image_to_image',
@@ -240,24 +242,6 @@ export const starterTemplateSeeds: StarterTemplateSeed[] = [
       'Turn the food photo into an appetizing video with natural gloss, slow motion, highlighted texture, and a fresh feeling.',
     promptTranslations: {
       pt: 'Transforme a foto do alimento em um video apetitoso com brilho natural, movimento lento, textura em destaque e sensacao fresca.',
-    },
-  },
-  {
-    seedKey: 'beauty-premium-detail',
-    title: 'Premium beauty detail',
-    titleTranslations: {
-      pt: 'Detalhe premium de beleza',
-    },
-    type: 'image_to_video',
-    category: 'beauty',
-    thumbnailAssetSeedKey: 'beauty-premium-detail-thumbnail',
-    previewAssetSeedKey: 'beauty-premium-detail-preview',
-    thumbnailUrl: resource('example4.png'),
-    previewUrl: resource('example4.mp4'),
-    prompt:
-      'Create a premium beauty video with an elegant close-up, soft reflections, focused packaging, and delicate camera movement.',
-    promptTranslations: {
-      pt: 'Crie um video premium de beleza com close-up elegante, reflexos suaves, embalagem em foco e movimento de camera delicado.',
     },
   },
   {

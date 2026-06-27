@@ -309,6 +309,20 @@ describe('template catalog routing contract', () => {
     expect(migration).toContain("'archived/starter/'");
   });
 
+  it('keeps homepage-only starter promos out of the public starter catalog', () => {
+    const catalog = readSource('lib/templates/catalog.ts');
+    const seed = readSource('lib/db/seed.ts');
+
+    expect(catalog).toContain('retiredStarterTemplateSeedKeys');
+    expect(catalog).toContain("'beauty-premium-detail'");
+    expect(catalog).not.toContain("seedKey: 'beauty-premium-detail'");
+    expect(catalog).not.toContain("title: 'Premium beauty detail'");
+    expect(seed).toContain('deleteRetiredStarterTemplateCatalogEntries');
+    expect(seed).toContain('retiredStarterTemplateSeedKeys');
+    expect(seed).toContain('external/starter/${seedKey}/thumbnail');
+    expect(seed).toContain('external/starter/${seedKey}/preview');
+  });
+
   it('preloads template media memory cache on startup and updates it through admin template writes', () => {
     const instrumentation = readSource('instrumentation.ts');
     const mediaCache = readSource('lib/templates/media-cache.ts');

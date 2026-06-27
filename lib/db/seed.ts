@@ -1,4 +1,4 @@
-import { and, eq, or, sql } from 'drizzle-orm';
+import { and, eq, inArray, or, sql } from 'drizzle-orm';
 import { db } from './drizzle';
 import {
   assets,
@@ -7,8 +7,18 @@ import {
 } from './schema';
 import { hashPassword } from '@/lib/auth/password';
 import { buildModelTemplateLocalization } from '@/lib/model-assets/localization';
-import { starterTemplateSeeds } from '@/lib/templates/catalog';
+import {
+  retiredStarterTemplateSeedKeys,
+  starterTemplateSeeds,
+} from '@/lib/templates/catalog';
 import { buildTemplateMediaUrl } from '@/lib/templates/media-url';
+
+function starterAssetStorageKeys(seedKey: string) {
+  return [
+    `external/starter/${seedKey}/thumbnail`,
+    `external/starter/${seedKey}/preview`,
+  ];
+}
 
 async function seedCodexAdminUser() {
   const email = 'codex-admin@local.test';
@@ -87,6 +97,8 @@ async function seedStarterTemplateCatalog() {
   const admin = await seedCodexAdminUser();
   const sortOrderByGroup = new Map<string, number>();
 
+  await deleteRetiredStarterTemplateCatalogEntries();
+
   for (const template of starterTemplateSeeds) {
     const sortOrderKey = `${template.type}:${template.category}`;
     const sortOrder = (sortOrderByGroup.get(sortOrderKey) ?? 0) + 1;
@@ -123,20 +135,20 @@ async function seedStarterTemplateCatalog() {
       .limit(1);
 
     const templateValues = {
-        title: template.title,
-        titleTranslations: template.titleTranslations ?? {},
-        type: template.type,
-        category: template.category,
-        thumbnailAssetId,
-        previewAssetId,
-        thumbnailUrl: buildTemplateMediaUrl(thumbnailAssetId),
-        previewUrl: buildTemplateMediaUrl(previewAssetId),
-        thumbnailMimeType: 'image/png',
-        previewMimeType: 'video/mp4',
-        prompt: template.prompt,
-        promptTranslations: template.promptTranslations ?? {},
-        sortOrder,
-      };
+      title: template.title,
+      titleTranslations: template.titleTranslations ?? {},
+      type: template.type,
+      category: template.category,
+      thumbnailAssetId,
+      previewAssetId,
+      thumbnailUrl: buildTemplateMediaUrl(thumbnailAssetId),
+      previewUrl: buildTemplateMediaUrl(previewAssetId),
+      thumbnailMimeType: 'image/png',
+      previewMimeType: 'video/mp4',
+      prompt: template.prompt,
+      promptTranslations: template.promptTranslations ?? {},
+      sortOrder,
+    };
 
     if (existingTemplate) {
       await db
@@ -154,6 +166,36 @@ async function seedStarterTemplateCatalog() {
   console.log(
     `Starter template catalog seeded: ${starterTemplateSeeds.length} templates.`
   );
+}
+
+async function deleteRetiredStarterTemplateCatalogEntries() {
+  const retiredStorageKeys = retiredStarterTemplateSeedKeys.flatMap((seedKey) =>
+    starterAssetStorageKeys(seedKey)
+  );
+  if (retiredStorageKeys.length === 0) return;
+
+  const retiredAssets = await db
+    .select({ id: assets.id })
+    .from(assets)
+    .where(inArray(assets.storageKey, retiredStorageKeys));
+  const retiredAssetIds = retiredAssets.map((asset) => asset.id);
+  if (retiredAssetIds.length === 0) return;
+
+  const deletedTemplates = await db
+    .delete(templates)
+    .where(
+      or(
+        inArray(templates.thumbnailAssetId, retiredAssetIds),
+        inArray(templates.previewAssetId, retiredAssetIds)
+      )
+    )
+    .returning({ id: templates.id });
+
+  if (deletedTemplates.length > 0) {
+    console.log(
+      `Retired starter template catalog entries removed: ${deletedTemplates.length}.`
+    );
+  }
 }
 
 async function refreshTemplateLanguageDefaults() {
