@@ -23,7 +23,7 @@ import {
   ResultCard,
   StudioPanel,
 } from '@/components/create/workbench-ui';
-import { LazyVideo } from '@/components/media/lazy-video';
+import { EmptyMaterialVideoCard } from '@/components/create/empty-material-video-card';
 import {
   commonWorkbenchCopy,
   imageVideoWorkbenchCopy,
@@ -2318,18 +2318,12 @@ export function ImageVideoWorkbench({
               </h1>
               <div className="mt-8 grid w-full max-w-[880px] gap-8 md:grid-cols-3">
                 {emptyMaterialCards.map((card) => (
-                  <figure key={card.asset} className="text-center">
-                    <div className="aspect-[3/4] overflow-hidden rounded-lg bg-white shadow-sm">
-                      <LazyVideo
-                        src={card.asset}
-                        poster={card.poster}
-                        className="size-full object-cover"
-                      />
-                    </div>
-                    <figcaption className="mt-4 text-sm font-bold text-gray-500">
-                      {card.label}
-                    </figcaption>
-                  </figure>
+                  <EmptyMaterialVideoCard
+                    key={card.asset}
+                    src={card.asset}
+                    poster={card.poster}
+                    label={card.label}
+                  />
                 ))}
               </div>
             </div>
