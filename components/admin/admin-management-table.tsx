@@ -1,6 +1,5 @@
 'use client';
 
-import { useEffect } from 'react';
 import type { ComponentType, FormEvent, ReactNode } from 'react';
 import {
   FileText,
@@ -12,8 +11,17 @@ import {
   Video,
   X,
 } from 'lucide-react';
+import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import {
+  Dialog,
+  DialogClose,
+  DialogContent,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import type { AdminCommonCopy } from '@/lib/admin/content';
 import { cn } from '@/lib/utils';
@@ -242,9 +250,10 @@ export function AdminStatusBadge({
     ].includes(normalized) || !normalized;
 
   return (
-    <span
+    <Badge
+      variant="outline"
       className={cn(
-        'inline-flex h-6 items-center rounded-md px-2 text-xs font-semibold',
+        'h-6 rounded-md border-transparent px-2 py-0 text-xs font-semibold',
         ['published', 'uploaded', 'succeeded', 'admin', 'active'].includes(
           normalized
         ) && 'bg-emerald-50 text-emerald-700',
@@ -260,7 +269,7 @@ export function AdminStatusBadge({
       )}
     >
       {text}
-    </span>
+    </Badge>
   );
 }
 
@@ -281,59 +290,44 @@ export function AdminModal({
   open: boolean;
   title: string;
 }) {
-  useEffect(() => {
-    if (!open) return;
-
-    function onKeyDown(event: KeyboardEvent) {
-      if (event.key === 'Escape') {
-        onClose();
-      }
-    }
-
-    document.addEventListener('keydown', onKeyDown);
-    return () => document.removeEventListener('keydown', onKeyDown);
-  }, [onClose, open]);
-
-  if (!open) return null;
-
   return (
-    <div
-      className="fixed inset-0 z-50 grid place-items-center bg-black/35 px-4 py-6"
-      role="presentation"
-      onMouseDown={onClose}
+    <Dialog
+      open={open}
+      onOpenChange={(nextOpen) => {
+        if (!nextOpen) onClose();
+      }}
     >
-      <div
-        role="dialog"
-        aria-modal="true"
-        aria-label={title}
+      <DialogContent
+        aria-describedby={undefined}
+        showCloseButton={false}
         className={cn(
-          'flex max-h-[calc(100vh-48px)] w-full flex-col overflow-hidden rounded-lg bg-white shadow-2xl',
+          'flex max-h-[calc(100vh-48px)] flex-col gap-0 overflow-hidden p-0 shadow-2xl',
           maxWidth
         )}
-        onMouseDown={(event) => event.stopPropagation()}
       >
-        <div className="flex items-center justify-between gap-4 border-b border-gray-200 px-5 py-4">
-          <h2 className="text-base font-semibold text-gray-950">{title}</h2>
-          <Button
-            type="button"
-            variant="ghost"
-            size="icon"
-            className="size-8"
-            aria-label={closeLabel}
-            title={closeLabel}
-            onClick={onClose}
-          >
-            <X className="size-4" />
-          </Button>
-        </div>
+        <DialogHeader className="flex-row items-center justify-between gap-4 border-b border-gray-200 px-5 py-4 text-left">
+          <DialogTitle className="text-base text-gray-950">{title}</DialogTitle>
+          <DialogClose asChild>
+            <Button
+              type="button"
+              variant="ghost"
+              size="icon"
+              className="size-8"
+              aria-label={closeLabel}
+              title={closeLabel}
+            >
+              <X className="size-4" />
+            </Button>
+          </DialogClose>
+        </DialogHeader>
         <div className="min-h-0 flex-1 overflow-y-auto px-5 py-4">{children}</div>
         {footer ? (
-          <div className="flex flex-wrap items-center justify-end gap-2 border-t border-gray-200 px-5 py-3">
+          <DialogFooter className="flex-row flex-wrap items-center justify-end gap-2 border-t border-gray-200 px-5 py-3">
             {footer}
-          </div>
+          </DialogFooter>
         ) : null}
-      </div>
-    </div>
+      </DialogContent>
+    </Dialog>
   );
 }
 
