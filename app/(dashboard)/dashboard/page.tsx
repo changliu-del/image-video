@@ -10,8 +10,12 @@ import {
   normalizeDashboardLocale,
   type DashboardLocale,
 } from '@/lib/dashboard/content';
-import { dashboardHomeMedia } from '@/lib/marketing/homepage-materials';
+import {
+  dashboardHomeFallbackImages,
+  dashboardHomeMedia,
+} from '@/lib/marketing/homepage-materials';
 import { DashboardInspirationGallery } from '@/components/dashboard/dashboard-inspiration-gallery';
+import { LazyDashboardVideo } from '@/components/dashboard/lazy-dashboard-video';
 
 type DashboardPageProps = {
   searchParams?: Promise<{
@@ -142,6 +146,12 @@ const cardIcons = {
   tryOn: Shirt,
 } satisfies Record<WorkbenchCardKey, typeof Video>;
 
+const cardPosters = {
+  video: dashboardHomeFallbackImages[0],
+  product: dashboardHomeFallbackImages[3],
+  tryOn: dashboardHomeFallbackImages[4],
+} satisfies Record<WorkbenchCardKey, string>;
+
 function firstParam(value: string | string[] | null | undefined) {
   return Array.isArray(value) ? value[0] : value;
 }
@@ -155,11 +165,9 @@ function withDashboardLocale(href: string, locale: DashboardLocale) {
 
 function WorkbenchCardLink({
   card,
-  index,
   locale,
 }: {
   card: WorkbenchCard;
-  index: number;
   locale: DashboardLocale;
 }) {
   const Icon = cardIcons[card.key];
@@ -170,14 +178,10 @@ function WorkbenchCardLink({
       className="group flex min-h-[360px] flex-col overflow-hidden rounded-lg border border-gray-200 bg-white shadow-sm transition hover:-translate-y-0.5 hover:shadow-[0_18px_42px_rgba(79,70,229,0.13)]"
     >
       <div className="relative h-44 overflow-hidden bg-gray-100">
-        <video
+        <LazyDashboardVideo
           src={card.media}
+          poster={cardPosters[card.key]}
           className="size-full object-cover transition duration-500 group-hover:scale-105"
-          autoPlay
-          loop
-          muted
-          playsInline
-          preload={index === 0 ? 'auto' : 'metadata'}
         />
       </div>
 
@@ -214,11 +218,10 @@ function DashboardHero({ copy, locale }: { copy: DashboardCopy; locale: Dashboar
           </p>
 
           <div className="mt-8 grid gap-5 md:grid-cols-3">
-            {copy.cards.map((card, index) => (
+            {copy.cards.map((card) => (
               <WorkbenchCardLink
                 key={card.key}
                 card={card}
-                index={index}
                 locale={locale}
               />
             ))}

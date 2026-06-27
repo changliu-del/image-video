@@ -12,6 +12,7 @@ import {
   UploadCloud,
 } from 'lucide-react';
 
+import { LazyVideo } from '@/components/media/lazy-video';
 import { VideoPlayer } from '@/components/media/video-player';
 import { Input } from '@/components/ui/input';
 import { cn } from '@/lib/utils';
@@ -78,13 +79,10 @@ export function CanvasStage({
   return (
     <section className="relative min-w-0 flex-1 overflow-y-auto bg-[#f5f7fb] px-5 py-5 text-gray-950 sm:px-8">
       <div className="pointer-events-none absolute inset-0 overflow-hidden">
-        <video
+        <LazyVideo
           src="/bg.mp4"
+          poster="/resources/showcase.png"
           className="size-full object-cover opacity-[0.04]"
-          autoPlay
-          loop
-          muted
-          playsInline
         />
         <div className="absolute inset-0 bg-[linear-gradient(135deg,rgba(248,250,252,0.98),rgba(239,246,255,0.92)_45%,rgba(255,247,237,0.78))]" />
       </div>

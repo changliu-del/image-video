@@ -23,6 +23,7 @@ import {
   ResultCard,
   StudioPanel,
 } from '@/components/create/workbench-ui';
+import { LazyVideo } from '@/components/media/lazy-video';
 import {
   commonWorkbenchCopy,
   imageVideoWorkbenchCopy,
@@ -102,6 +103,11 @@ const ACCEPTED_REFERENCE_IMAGE_TYPES = ACCEPTED_IMAGE_TYPES;
 const MODEL_ASSET_LIMIT = 96;
 const defaultTemplateCategory: string = imageToVideoTemplateCategories[0] ?? '';
 const LAST_IMAGE_VIDEO_TASK_KEY = 'image-video:last-task:v1';
+const emptyMaterialPosters = [
+  '/resources/showcase.png',
+  '/resources/example2.png',
+  '/resources/example5.png',
+] as const;
 type ModelAgeFilter = 'all' | 'child' | 'youth' | 'middle' | 'senior';
 type ModelGenderFilter = 'all' | 'female' | 'male';
 type ModelStyleFilter = 'all' | string;
@@ -1872,6 +1878,7 @@ export function ImageVideoWorkbench({
   const emptyMaterialCards = homepageWorkbenchMaterials.map((material, index) => ({
     ...material,
     label: emptyMaterialLabels[index] ?? copy.detailLabel,
+    poster: emptyMaterialPosters[index] ?? '/resources/showcase.png',
   }));
 
   return (
@@ -2313,14 +2320,10 @@ export function ImageVideoWorkbench({
                 {emptyMaterialCards.map((card) => (
                   <figure key={card.asset} className="text-center">
                     <div className="aspect-[3/4] overflow-hidden rounded-lg bg-white shadow-sm">
-                      <video
+                      <LazyVideo
                         src={card.asset}
+                        poster={card.poster}
                         className="size-full object-cover"
-                        autoPlay
-                        loop
-                        muted
-                        playsInline
-                        preload="auto"
                       />
                     </div>
                     <figcaption className="mt-4 text-sm font-bold text-gray-500">
