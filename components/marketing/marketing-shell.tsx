@@ -30,11 +30,11 @@ function Brand({ locale }: { locale: Locale }) {
   return (
     <Link href={getLocalizedHref(locale, '')} className="flex items-center gap-2">
       <span className="flex size-9 items-center justify-center rounded-lg bg-white text-lg font-black text-gray-950">
-        g
+        V
       </span>
       <span className="hidden flex-col leading-none sm:flex">
         <span className="text-base font-bold tracking-tight text-white">
-          gptimage
+          Vendeo
         </span>
         <span className="text-[10px] font-medium uppercase tracking-[0.22em] text-white/40">
           AI Commerce Studio

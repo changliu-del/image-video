@@ -1,10 +1,13 @@
 # Image Video Core KB
 
-Updated: 2026-06-03
+Updated: 2026-06-27
 
 ## Project Identity
 
-`image-video` is a personal ecommerce creative SaaS. Its first commercial target is helping sellers create product videos, campaign images, and virtual try-on assets from product/model references.
+`image-video` is a personal ecommerce creative SaaS. Its first commercial target
+is helping sellers create product videos, campaign images, and virtual try-on
+assets from product/model references. The public product brand used in
+marketing/auth copy is `Vendeo`.
 
 The project should optimize for fast commercial validation:
 

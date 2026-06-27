@@ -56,7 +56,7 @@ export const dashboardContent: Record<DashboardLocale, DashboardContent> = {
     },
     header: {
       admin: 'Administração',
-      marketingHome: 'Início gptimage',
+      marketingHome: 'Início Vendeo',
       credits: 'créditos',
       buy: 'Planos',
       language: 'Idioma',
@@ -90,7 +90,7 @@ export const dashboardContent: Record<DashboardLocale, DashboardContent> = {
     },
     header: {
       admin: 'Admin',
-      marketingHome: 'gptimage home',
+      marketingHome: 'Vendeo home',
       credits: 'credits',
       buy: 'Plans',
       language: 'Language',

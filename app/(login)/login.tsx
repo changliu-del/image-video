@@ -112,10 +112,10 @@ function BrandLockup() {
   return (
     <div className="flex items-center gap-3">
       <span className="flex size-10 items-center justify-center rounded-lg bg-white text-lg font-black text-gray-950">
-        g
+        V
       </span>
       <div>
-        <p className="text-lg font-semibold leading-tight text-white">gptimage</p>
+        <p className="text-lg font-semibold leading-tight text-white">Vendeo</p>
         <p className="text-xs text-white/45">AI Commerce Studio</p>
       </div>
     </div>

@@ -18,7 +18,7 @@ type SignupVerificationEmailResult = {
   skippedReason?: 'missing_config' | 'send_failed';
 };
 
-const EMAIL_BRAND = 'gptimage';
+const EMAIL_BRAND = 'Vendeo';
 
 export async function sendSignupVerificationCodeEmail(
   input: SignupVerificationEmailInput
@@ -82,9 +82,9 @@ function getVerificationCopy(locale?: string | null) {
 
   if (normalizedLocale === 'zh') {
     return {
-      subject: '你的 gptimage 注册验证码',
+      subject: '你的 Vendeo 注册验证码',
       title: '确认你的邮箱',
-      intro: '请输入下面的验证码完成 gptimage 注册。',
+      intro: '请输入下面的验证码完成 Vendeo 注册。',
       expiry: '验证码有效期',
       minutes: '分钟',
       outro: '如果不是你本人操作，可以忽略这封邮件。',
@@ -93,9 +93,9 @@ function getVerificationCopy(locale?: string | null) {
 
   if (normalizedLocale === 'pt') {
     return {
-      subject: 'Seu código de verificação do gptimage',
+      subject: 'Seu código de verificação do Vendeo',
       title: 'Confirme seu e-mail',
-      intro: 'Use o código abaixo para concluir seu cadastro no gptimage.',
+      intro: 'Use o código abaixo para concluir seu cadastro no Vendeo.',
       expiry: 'Este código expira em',
       minutes: 'minutos',
       outro: 'Se você não solicitou este código, ignore este e-mail.',
@@ -103,9 +103,9 @@ function getVerificationCopy(locale?: string | null) {
   }
 
   return {
-    subject: 'Your gptimage verification code',
+    subject: 'Your Vendeo verification code',
     title: 'Confirm your email',
-    intro: 'Use the code below to finish creating your gptimage account.',
+    intro: 'Use the code below to finish creating your Vendeo account.',
     expiry: 'This code expires in',
     minutes: 'minutes',
     outro: 'If you did not request this code, you can ignore this email.',

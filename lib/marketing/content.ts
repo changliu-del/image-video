@@ -548,24 +548,24 @@ const pt: MarketingContent = {
   ],
   footer: {
     description:
-      'gptimage é um estúdio de IA para e-commerce: crie imagens, vídeos e assets de campanha com rapidez e consistência.',
+      'Vendeo é um estúdio de IA para e-commerce: crie imagens, vídeos e assets de campanha com rapidez e consistência.',
     resources: 'Recursos',
-    resourceLabel: 'Gerador de assets gptimage',
+    resourceLabel: 'Gerador de assets Vendeo',
     languages: 'Idiomas',
     legal: 'Legal',
     privacy: 'Política de Privacidade',
     terms: 'Termos de Serviço',
     partners: 'Partners',
     contact: 'Contato',
-    copyright: '© 2026 gptimage. All rights reserved.',
+    copyright: '© 2026 Vendeo. All rights reserved.',
   },
   auth: {
     metadata: {
-      title: 'Entrar no gptimage — Commerce AI Studio',
+      title: 'Entrar no Vendeo — Commerce AI Studio',
       description:
-        'Entre ou crie sua conta no gptimage para gerar imagens, vídeos e assets de e-commerce com IA.',
+        'Entre ou crie sua conta no Vendeo para gerar imagens, vídeos e assets de e-commerce com IA.',
     },
-    title: 'Entre no gptimage',
+    title: 'Entre no Vendeo',
     subtitle: 'Use seu e-mail e senha para acessar seu workspace',
     loginTab: 'Entrar',
     registerTab: 'Registrar',
@@ -584,7 +584,7 @@ const pt: MarketingContent = {
     signIn: 'Entrar',
     register: 'Criar conta',
     loading: 'Carregando...',
-    switchToRegisterPrompt: 'Novo no gptimage?',
+    switchToRegisterPrompt: 'Novo no Vendeo?',
     switchToRegister: 'Criar conta',
     switchToLoginPrompt: 'Já tem uma conta?',
     switchToLogin: 'Entrar',
@@ -607,7 +607,7 @@ const pt: MarketingContent = {
   },
   home: {
     metadata: {
-      title: 'gptimage — Plataforma de assets com IA para e-commerce',
+      title: 'Vendeo — Plataforma de assets com IA para e-commerce',
       description:
         'Gere vídeos de produto, imagens comerciais e materiais de marketing para e-commerce com IA.',
     },
@@ -700,7 +700,7 @@ const pt: MarketingContent = {
     },
     what: {
       eyebrow: 'Resultados reais de vendedores reais',
-      title: 'O que o gptimage faz pela sua loja?',
+      title: 'O que o Vendeo faz pela sua loja?',
       description:
         'Uma plataforma de IA feita para e-commerce: envie uma imagem de produto, descreva a ideia e receba assets prontos para uso.',
       items: [
@@ -730,7 +730,7 @@ const pt: MarketingContent = {
     features: {
       title: 'Recursos centrais para e-commerce',
       description:
-        'Da fotografia de produto às campanhas, gptimage cobre o fluxo de assets para lojas digitais.',
+        'Da fotografia de produto às campanhas, Vendeo cobre o fluxo de assets para lojas digitais.',
       items: [
         {
           title: 'Geração de vídeo de produto',
@@ -792,9 +792,9 @@ const pt: MarketingContent = {
   },
   textToImage: {
     metadata: {
-      title: 'gptimage Texto para Imagem — Gerador de assets para e-commerce',
+      title: 'Vendeo Texto para Imagem — Gerador de assets para e-commerce',
       description:
-        'Gere imagens profissionais de produto a partir de descrições com o gptimage.',
+        'Gere imagens profissionais de produto a partir de descrições com o Vendeo.',
     },
     hero: {
       eyebrow: 'Estúdio de Imagem de Produto com IA',
@@ -859,9 +859,9 @@ const pt: MarketingContent = {
   },
   pricing: {
     metadata: {
-      title: 'Preços gptimage — Planos flexíveis para e-commerce',
+      title: 'Preços Vendeo — Planos flexíveis para e-commerce',
       description:
-        'Conheça os planos do gptimage para gerar imagens, vídeos e campanhas com IA.',
+        'Conheça os planos do Vendeo para gerar imagens, vídeos e campanhas com IA.',
     },
     hero: {
       eyebrow: 'Capacidade de Commerce AI',
@@ -963,7 +963,7 @@ const pt: MarketingContent = {
       title: 'Por que os planos se pagam rápido',
       points: [
         'Uma sessão terceirizada raramente cobre todos os formatos de canal.',
-        'gptimage expande várias cenas e assets em torno do mesmo SKU.',
+        'Vendeo expande várias cenas e assets em torno do mesmo SKU.',
         'Testes criativos mais rápidos reduzem perdas em anúncios e lançamentos.',
       ],
       includedTitle: 'Incluído após a compra',
@@ -998,7 +998,7 @@ const pt: MarketingContent = {
         },
         {
           question: 'Preciso instalar algo?',
-          answer: 'Não. gptimage funciona totalmente no navegador.',
+          answer: 'Não. Vendeo funciona totalmente no navegador.',
         },
       ],
     },
@@ -1036,11 +1036,11 @@ const en: MarketingContent = {
   auth: {
     ...pt.auth,
     metadata: {
-      title: 'Sign in to gptimage — Commerce AI Studio',
+      title: 'Sign in to Vendeo — Commerce AI Studio',
       description:
-        'Sign in or create a gptimage account to generate e-commerce images, videos, and campaign assets with AI.',
+        'Sign in or create a Vendeo account to generate e-commerce images, videos, and campaign assets with AI.',
     },
-    title: 'Sign in to gptimage',
+    title: 'Sign in to Vendeo',
     subtitle: 'Use your email and password to access your workspace',
     loginTab: 'Sign in',
     registerTab: 'Register',
@@ -1059,7 +1059,7 @@ const en: MarketingContent = {
     signIn: 'Sign in',
     register: 'Create account',
     loading: 'Loading...',
-    switchToRegisterPrompt: 'New to gptimage?',
+    switchToRegisterPrompt: 'New to Vendeo?',
     switchToRegister: 'Create account',
     switchToLoginPrompt: 'Already have an account?',
     switchToLogin: 'Sign in',
@@ -1083,7 +1083,7 @@ const en: MarketingContent = {
   home: {
     ...pt.home,
     metadata: {
-      title: 'gptimage — AI commerce asset studio',
+      title: 'Vendeo — AI commerce asset studio',
       description:
         'Generate product videos, commercial images, and campaign assets for e-commerce with AI.',
     },
@@ -1184,16 +1184,16 @@ const en: MarketingContent = {
   textToImage: {
     ...pt.textToImage,
     metadata: {
-      title: 'gptimage Text to Image — E-commerce asset generator',
+      title: 'Vendeo Text to Image — E-commerce asset generator',
       description:
-        'Generate professional product images from descriptions with gptimage.',
+        'Generate professional product images from descriptions with Vendeo.',
     },
     hero: {
       ...pt.textToImage.hero,
       eyebrow: 'AI Product Image Studio',
       title: 'Text to product image',
       description:
-        'Describe the scene, composition, and style. gptimage creates e-commerce images for PDPs, banners, and ads.',
+        'Describe the scene, composition, and style. Vendeo creates e-commerce images for PDPs, banners, and ads.',
       promptLabel: 'Prompt',
       promptPlaceholder:
         'Describe the product, scene, composition, background, and commercial use...',
@@ -1218,9 +1218,9 @@ const en: MarketingContent = {
   pricing: {
     ...pt.pricing,
     metadata: {
-      title: 'gptimage Pricing — Flexible plans for e-commerce',
+      title: 'Vendeo Pricing — Flexible plans for e-commerce',
       description:
-        'Explore gptimage plans for generating AI images, videos, and campaigns.',
+        'Explore Vendeo plans for generating AI images, videos, and campaigns.',
     },
     hero: {
       ...pt.pricing.hero,
@@ -1385,7 +1385,7 @@ const zh: MarketingContent = {
   footer: {
     ...pt.footer,
     resources: '资源',
-    resourceLabel: 'gptimage 素材生成器',
+    resourceLabel: 'Vendeo 素材生成器',
     languages: '语言',
     legal: '法律',
     privacy: '隐私政策',
@@ -1395,10 +1395,10 @@ const zh: MarketingContent = {
   auth: {
     ...pt.auth,
     metadata: {
-      title: '登录 gptimage — 电商 AI 工作室',
-      description: '登录或注册 gptimage，用 AI 生成电商图片、视频和营销素材。',
+      title: '登录 Vendeo — 电商 AI 工作室',
+      description: '登录或注册 Vendeo，用 AI 生成电商图片、视频和营销素材。',
     },
-    title: '登录 gptimage',
+    title: '登录 Vendeo',
     subtitle: '使用邮箱和密码访问你的工作台',
     loginTab: '登录',
     registerTab: '注册',
@@ -1434,7 +1434,7 @@ const zh: MarketingContent = {
   home: {
     ...pt.home,
     metadata: {
-      title: 'gptimage — 面向电商的 AI 素材工作室',
+      title: 'Vendeo — 面向电商的 AI 素材工作室',
       description: '用 AI 生成电商商品视频、商品图和营销素材。',
     },
     hero: {
@@ -1531,7 +1531,7 @@ const zh: MarketingContent = {
   textToImage: {
     ...pt.textToImage,
     metadata: {
-      title: 'gptimage 文生图 — 电商素材生成器',
+      title: 'Vendeo 文生图 — 电商素材生成器',
       description: '用文字描述生成专业商品图和电商素材。',
     },
     hero: {
@@ -1562,8 +1562,8 @@ const zh: MarketingContent = {
   pricing: {
     ...pt.pricing,
     metadata: {
-      title: 'gptimage 价格 — 面向电商的灵活套餐',
-      description: '了解 gptimage 的 AI 图片、视频和营销素材生成套餐。',
+      title: 'Vendeo 价格 — 面向电商的灵活套餐',
+      description: '了解 Vendeo 的 AI 图片、视频和营销素材生成套餐。',
     },
     hero: {
       ...pt.pricing.hero,
