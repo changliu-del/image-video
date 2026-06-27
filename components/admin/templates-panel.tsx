@@ -1,12 +1,30 @@
 'use client';
 
 import { useEffect, useMemo, useState } from 'react';
-import type { ReactNode } from 'react';
+import type { CSSProperties, ReactNode } from 'react';
+import {
+  DndContext,
+  KeyboardSensor,
+  PointerSensor,
+  closestCenter,
+  type DragEndEvent,
+  useSensor,
+  useSensors,
+} from '@dnd-kit/core';
+import {
+  SortableContext,
+  arrayMove,
+  sortableKeyboardCoordinates,
+  useSortable,
+  verticalListSortingStrategy,
+} from '@dnd-kit/sortable';
+import { CSS } from '@dnd-kit/utilities';
 import {
   ArrowDown,
   ArrowUp,
   Edit3,
   Eye,
+  GripVertical,
   ImagePlus,
   ListOrdered,
   Loader2,
@@ -330,6 +348,109 @@ function TemplatePreview({ template }: { template: AdminTemplate }) {
   );
 }
 
+function SortableTemplateOrderRow({
+  disabled,
+  dragLabel,
+  index,
+  moveDownLabel,
+  moveUpLabel,
+  onMove,
+  template,
+  total,
+}: {
+  disabled: boolean;
+  dragLabel: string;
+  index: number;
+  moveDownLabel: string;
+  moveUpLabel: string;
+  onMove: (index: number, direction: -1 | 1) => void;
+  template: AdminTemplate;
+  total: number;
+}) {
+  const {
+    attributes,
+    isDragging,
+    listeners,
+    setNodeRef,
+    transform,
+    transition,
+  } = useSortable({ id: template.id, disabled });
+
+  const style: CSSProperties = {
+    transform: CSS.Transform.toString(transform),
+    transition,
+    zIndex: isDragging ? 1 : undefined,
+  };
+
+  return (
+    <div
+      ref={setNodeRef}
+      style={style}
+      className={`flex items-center gap-3 border-b border-gray-100 bg-white px-3 py-3 last:border-b-0 ${
+        isDragging ? 'relative shadow-sm' : ''
+      }`}
+    >
+      <Button
+        type="button"
+        variant="ghost"
+        size="icon"
+        className="size-8 touch-none cursor-grab text-gray-400 active:cursor-grabbing"
+        disabled={disabled}
+        aria-label={dragLabel}
+        title={dragLabel}
+        {...attributes}
+        {...listeners}
+      >
+        <GripVertical className="size-4" />
+      </Button>
+      <div className="w-8 text-center text-xs font-semibold tabular-nums text-gray-400">
+        {index + 1}
+      </div>
+      <div className="size-14 shrink-0 overflow-hidden rounded-md bg-gray-100">
+        <img
+          src={template.thumbnailUrl}
+          alt=""
+          className="size-full object-cover"
+        />
+      </div>
+      <div className="min-w-0 flex-1">
+        <div className="truncate text-sm font-semibold text-gray-950">
+          {template.title}
+        </div>
+        <div className="mt-1 truncate text-xs text-gray-500">
+          {template.id}
+        </div>
+      </div>
+      <div className="flex shrink-0 items-center gap-1">
+        <Button
+          type="button"
+          variant="outline"
+          size="icon"
+          className="size-8"
+          disabled={disabled || index === 0}
+          onClick={() => onMove(index, -1)}
+          aria-label={moveUpLabel}
+          title={moveUpLabel}
+        >
+          <ArrowUp className="size-4" />
+        </Button>
+        <Button
+          type="button"
+          variant="outline"
+          size="icon"
+          className="size-8"
+          disabled={disabled || index === total - 1}
+          onClick={() => onMove(index, 1)}
+          aria-label={moveDownLabel}
+          title={moveDownLabel}
+        >
+          <ArrowDown className="size-4" />
+        </Button>
+      </div>
+    </div>
+  );
+}
+
 function TemplateMediaField({
   accept,
   assetId,
@@ -456,6 +577,15 @@ export function TemplatesPanel({
   const [modelOrderCategories, setModelOrderCategories] = useState<string[]>([]);
   const [loadingModelOrderCategories, setLoadingModelOrderCategories] =
     useState(false);
+
+  const orderSensors = useSensors(
+    useSensor(PointerSensor, {
+      activationConstraint: { distance: 4 },
+    }),
+    useSensor(KeyboardSensor, {
+      coordinateGetter: sortableKeyboardCoordinates,
+    })
+  );
 
   const activeTypeLabel = getAdminTemplateTypeLabel(activeType, locale);
 
@@ -965,6 +1095,21 @@ export function TemplatesPanel({
     });
   }
 
+  function handleOrderDragEnd(event: DragEndEvent) {
+    const { active, over } = event;
+    if (!over || active.id === over.id) return;
+
+    setOrderedTemplates((current) => {
+      const oldIndex = current.findIndex(
+        (template) => template.id === active.id
+      );
+      const newIndex = current.findIndex((template) => template.id === over.id);
+      if (oldIndex === -1 || newIndex === -1) return current;
+
+      return arrayMove(current, oldIndex, newIndex);
+    });
+  }
+
   async function saveTemplateOrder() {
     setSavingOrder(true);
     setOrderError(null);
@@ -1080,6 +1225,7 @@ export function TemplatesPanel({
         ? 'video/mp4'
         : 'image/png';
   const uploadDisabled = !form.id || Boolean(uploadingTarget);
+  const orderInteractionDisabled = savingOrder || loadingOrder;
 
   return (
     <>
@@ -1330,57 +1476,30 @@ export function TemplatesPanel({
             </div>
           ) : (
             <div className="max-h-[52vh] overflow-y-auto rounded-lg border border-gray-200">
-              {orderedTemplates.map((template, index) => (
-                <div
-                  key={template.id}
-                  className="flex items-center gap-3 border-b border-gray-100 px-3 py-3 last:border-b-0"
+              <DndContext
+                sensors={orderSensors}
+                collisionDetection={closestCenter}
+                onDragEnd={handleOrderDragEnd}
+              >
+                <SortableContext
+                  items={orderedTemplates.map((template) => template.id)}
+                  strategy={verticalListSortingStrategy}
                 >
-                  <div className="w-8 text-center text-xs font-semibold tabular-nums text-gray-400">
-                    {index + 1}
-                  </div>
-                  <div className="size-14 shrink-0 overflow-hidden rounded-md bg-gray-100">
-                    <img
-                      src={template.thumbnailUrl}
-                      alt=""
-                      className="size-full object-cover"
+                  {orderedTemplates.map((template, index) => (
+                    <SortableTemplateOrderRow
+                      key={template.id}
+                      disabled={orderInteractionDisabled}
+                      dragLabel={copy.reorder ?? 'Reorder'}
+                      index={index}
+                      moveDownLabel={copy.moveDown ?? 'Move down'}
+                      moveUpLabel={copy.moveUp ?? 'Move up'}
+                      onMove={moveOrderedTemplate}
+                      template={template}
+                      total={orderedTemplates.length}
                     />
-                  </div>
-                  <div className="min-w-0 flex-1">
-                    <div className="truncate text-sm font-semibold text-gray-950">
-                      {template.title}
-                    </div>
-                    <div className="mt-1 truncate text-xs text-gray-500">
-                      {template.id}
-                    </div>
-                  </div>
-                  <div className="flex shrink-0 items-center gap-1">
-                    <Button
-                      type="button"
-                      variant="outline"
-                      size="icon"
-                      className="size-8"
-                      disabled={index === 0}
-                      onClick={() => moveOrderedTemplate(index, -1)}
-                      aria-label={copy.moveUp ?? 'Move up'}
-                      title={copy.moveUp ?? 'Move up'}
-                    >
-                      <ArrowUp className="size-4" />
-                    </Button>
-                    <Button
-                      type="button"
-                      variant="outline"
-                      size="icon"
-                      className="size-8"
-                      disabled={index === orderedTemplates.length - 1}
-                      onClick={() => moveOrderedTemplate(index, 1)}
-                      aria-label={copy.moveDown ?? 'Move down'}
-                      title={copy.moveDown ?? 'Move down'}
-                    >
-                      <ArrowDown className="size-4" />
-                    </Button>
-                  </div>
-                </div>
-              ))}
+                  ))}
+                </SortableContext>
+              </DndContext>
             </div>
           )}
         </div>
