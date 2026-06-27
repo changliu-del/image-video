@@ -1,11 +1,3 @@
-import Link from 'next/link';
-import {
-  ArrowRight,
-  ImageIcon,
-  Shirt,
-  Video,
-} from 'lucide-react';
-
 import {
   normalizeDashboardLocale,
   type DashboardLocale,
@@ -15,7 +7,7 @@ import {
   dashboardHomeMedia,
 } from '@/lib/marketing/homepage-materials';
 import { DashboardInspirationGallery } from '@/components/dashboard/dashboard-inspiration-gallery';
-import { LazyDashboardVideo } from '@/components/dashboard/lazy-dashboard-video';
+import { DashboardWorkbenchCard } from '@/components/dashboard/dashboard-workbench-card';
 
 type DashboardPageProps = {
   searchParams?: Promise<{
@@ -140,12 +132,6 @@ const dashboardCopy: Record<DashboardLocale, DashboardCopy> = {
   },
 };
 
-const cardIcons = {
-  video: Video,
-  product: ImageIcon,
-  tryOn: Shirt,
-} satisfies Record<WorkbenchCardKey, typeof Video>;
-
 const cardPosters = {
   video: dashboardHomeFallbackImages[0],
   product: dashboardHomeFallbackImages[3],
@@ -161,45 +147,6 @@ function withDashboardLocale(href: string, locale: DashboardLocale) {
   const params = new URLSearchParams(query);
   params.set('locale', locale);
   return `${pathname}?${params.toString()}`;
-}
-
-function WorkbenchCardLink({
-  card,
-  locale,
-}: {
-  card: WorkbenchCard;
-  locale: DashboardLocale;
-}) {
-  const Icon = cardIcons[card.key];
-
-  return (
-    <Link
-      href={withDashboardLocale(card.href, locale)}
-      className="group flex min-h-[360px] flex-col overflow-hidden rounded-lg border border-gray-200 bg-white shadow-sm transition hover:-translate-y-0.5 hover:shadow-[0_18px_42px_rgba(79,70,229,0.13)]"
-    >
-      <div className="relative h-44 overflow-hidden bg-gray-100">
-        <LazyDashboardVideo
-          src={card.media}
-          poster={cardPosters[card.key]}
-          className="size-full object-cover transition duration-500 group-hover:scale-105"
-        />
-      </div>
-
-      <div className="flex flex-1 flex-col p-5">
-        <span className="flex size-10 items-center justify-center rounded-lg bg-indigo-50 text-indigo-600">
-          <Icon className="size-5" />
-        </span>
-        <h2 className="mt-5 text-xl font-black text-gray-950">{card.title}</h2>
-        <p className="mt-3 min-h-12 text-sm font-semibold leading-6 text-gray-500">
-          {card.description}
-        </p>
-        <span className="mt-auto inline-flex items-center gap-1 pt-6 text-sm font-bold text-indigo-600">
-          {card.action}
-          <ArrowRight className="size-4 transition group-hover:translate-x-0.5" />
-        </span>
-      </div>
-    </Link>
-  );
 }
 
 function DashboardHero({ copy, locale }: { copy: DashboardCopy; locale: DashboardLocale }) {
@@ -219,10 +166,13 @@ function DashboardHero({ copy, locale }: { copy: DashboardCopy; locale: Dashboar
 
           <div className="mt-8 grid gap-5 md:grid-cols-3">
             {copy.cards.map((card) => (
-              <WorkbenchCardLink
+              <DashboardWorkbenchCard
                 key={card.key}
-                card={card}
-                locale={locale}
+                card={{
+                  ...card,
+                  href: withDashboardLocale(card.href, locale),
+                }}
+                poster={cardPosters[card.key]}
               />
             ))}
           </div>
