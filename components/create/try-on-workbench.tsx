@@ -640,7 +640,10 @@ export function TryOnWorkbench({
           locale,
           limit: String(MODEL_ASSET_LIMIT),
         });
-        const modelResponse = await fetch(`/api/model-assets?${modelParams.toString()}`);
+        const modelResponse = await fetch(
+          `/api/model-assets?${modelParams.toString()}`,
+          { cache: 'no-store' }
+        );
         const modelBody = modelResponse.ok
           ? await modelResponse.json()
           : { items: [] };

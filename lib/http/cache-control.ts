@@ -7,6 +7,8 @@ export const TEMPLATE_CATALOG_LIST_CACHE_CONTROL =
 export const TEMPLATE_CATALOG_DETAIL_CACHE_CONTROL =
   TEMPLATE_CATALOG_LIST_CACHE_CONTROL;
 
+export const MODEL_ASSETS_CACHE_CONTROL = 'no-store';
+
 export const publicCatalogReadHeaders = {
   'Cache-Control': PUBLIC_CATALOG_CACHE_CONTROL,
 } as const;
@@ -17,4 +19,8 @@ export const templateCatalogListReadHeaders = {
 
 export const templateCatalogReadHeaders = {
   'Cache-Control': TEMPLATE_CATALOG_DETAIL_CACHE_CONTROL,
+} as const;
+
+export const modelAssetsReadHeaders = {
+  'Cache-Control': MODEL_ASSETS_CACHE_CONTROL,
 } as const;

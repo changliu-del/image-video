@@ -1,5 +1,5 @@
 import { type NextRequest, NextResponse } from 'next/server';
-import { publicCatalogReadHeaders } from '@/lib/http/cache-control';
+import { modelAssetsReadHeaders } from '@/lib/http/cache-control';
 import { isLocale } from '@/lib/marketing/content';
 import { listModelTemplates } from '@/lib/model-assets/catalog';
 
@@ -29,7 +29,7 @@ export async function GET(request: NextRequest) {
       style: optionalSearchParam(searchParams, 'style'),
     });
 
-    return NextResponse.json({ items }, { headers: publicCatalogReadHeaders });
+    return NextResponse.json({ items }, { headers: modelAssetsReadHeaders });
   } catch (error) {
     console.error('Failed to list model assets', error);
     return NextResponse.json(

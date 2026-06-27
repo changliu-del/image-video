@@ -66,6 +66,7 @@ describe('wanxiang model import contract', () => {
     const tryOn = readSource('components/create/try-on-workbench.tsx');
     const copy = readSource('components/create/workbench-copy.ts');
     const modelTemplates = readSource('lib/model-assets/catalog.ts');
+    const modelAssetsRoute = readSource('app/api/model-assets/route.ts');
 
     expect(copy).toContain("chooseModel: '模特库'");
     expect(copy).toContain("modelAgeFilter: '年龄'");
@@ -117,6 +118,10 @@ describe('wanxiang model import contract', () => {
     expect(modelTemplates).toContain('resolveModelPrompt');
     expect(modelTemplates).toContain('localizeModelCategoryTags');
     expect(modelTemplates).toContain('Math.min(Math.max(input.limit ?? 24, 1), 96)');
+    expect(modelAssetsRoute).toContain('modelAssetsReadHeaders');
+    expect(modelAssetsRoute).not.toContain('publicCatalogReadHeaders');
+    expect(imageVideo).toContain("cache: 'no-store'");
+    expect(tryOn).toContain("cache: 'no-store'");
     expect(tryOn).not.toContain('modelAssets.slice(0, 8)');
     expect(tryOn).not.toContain('copy.officialModel');
     expect(tryOn).not.toContain('copy.viewModelDetails');

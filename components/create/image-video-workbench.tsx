@@ -1657,6 +1657,7 @@ export function ImageVideoWorkbench({
           limit: String(MODEL_ASSET_LIMIT),
         });
         const response = await fetch(`/api/model-assets?${params.toString()}`, {
+          cache: 'no-store',
           signal: controller.signal,
         });
 

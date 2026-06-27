@@ -1,9 +1,11 @@
 import { describe, expect, it } from 'vitest';
 
 import {
+  MODEL_ASSETS_CACHE_CONTROL,
   PUBLIC_CATALOG_CACHE_CONTROL,
   TEMPLATE_CATALOG_DETAIL_CACHE_CONTROL,
   TEMPLATE_CATALOG_LIST_CACHE_CONTROL,
+  modelAssetsReadHeaders,
   publicCatalogReadHeaders,
   templateCatalogListReadHeaders,
   templateCatalogReadHeaders,
@@ -31,6 +33,13 @@ describe('public catalog cache headers', () => {
     });
     expect(templateCatalogReadHeaders).toEqual({
       'Cache-Control': TEMPLATE_CATALOG_DETAIL_CACHE_CONTROL,
+    });
+  });
+
+  it('keeps model assets uncached so Admin template edits are visible immediately', () => {
+    expect(MODEL_ASSETS_CACHE_CONTROL).toBe('no-store');
+    expect(modelAssetsReadHeaders).toEqual({
+      'Cache-Control': MODEL_ASSETS_CACHE_CONTROL,
     });
   });
 });
