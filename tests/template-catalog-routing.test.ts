@@ -462,6 +462,8 @@ describe('template catalog routing contract', () => {
     expect(apparel).not.toContain('generationType=apparel_image');
     expect(apparel).not.toContain('chooseFromLibrary');
     expect(apparel).not.toContain('selectedLibraryAsset');
+    expect(apparel).not.toContain('commonCopy.uploadImage');
+    expect(apparel).toContain('commonCopy.uploadClick');
     expect(apparel).toContain(
       'const canSubmit = !isSubmitting && Boolean(primaryFile);'
     );

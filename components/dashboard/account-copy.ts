@@ -202,7 +202,7 @@ export const billingCopy: Record<DashboardLocale, BillingCopy> = {
       basic: {
         description: 'For testing product videos, campaign images, and try-on flows.',
         features: [
-          '60 credits refresh every billing month',
+          '300 credits refresh every billing month',
           'All ecommerce image and video tools',
           'Good for 12 basic 5s videos',
         ],
@@ -210,7 +210,7 @@ export const billingCopy: Record<DashboardLocale, BillingCopy> = {
       plus: {
         description: 'For weekly launches and repeat ad creative production.',
         features: [
-          '180 credits refresh every billing month',
+          '900 credits refresh every billing month',
           'Priority queue in future production mode',
           'Good for 36 basic 5s videos',
         ],
@@ -218,7 +218,7 @@ export const billingCopy: Record<DashboardLocale, BillingCopy> = {
       pro: {
         description: 'For brands producing SKU batches and frequent video tests.',
         features: [
-          '480 credits refresh every billing month',
+          '2400 credits refresh every billing month',
           'Highest mock subscription allowance',
           'Good for 96 basic 5s videos',
         ],
@@ -375,15 +375,15 @@ export const creditsCopy: Record<DashboardLocale, CreditsCopy> = {
     packages: {
       starter: {
         description: 'A small top-up for prompt tests and product experiments.',
-        features: ['20 purchased credits', 'Never expire in mock mode', 'Good for 4 basic 5s videos'],
+        features: ['100 purchased credits', 'Never expire in mock mode', 'Good for 4 basic 5s videos'],
       },
       creator: {
         description: 'Extra room for a weekly batch of product images and clips.',
-        features: ['80 purchased credits', 'Never expire in mock mode', 'Good for 16 basic 5s videos'],
+        features: ['400 purchased credits', 'Never expire in mock mode', 'Good for 16 basic 5s videos'],
       },
       scale: {
         description: 'A larger reserve for catalog batches and campaign tests.',
-        features: ['240 purchased credits', 'Never expire in mock mode', 'Good for 48 basic 5s videos'],
+        features: ['1200 purchased credits', 'Never expire in mock mode', 'Good for 48 basic 5s videos'],
       },
     },
   },

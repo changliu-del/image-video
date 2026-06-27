@@ -96,8 +96,8 @@ describe('payment mock mode', () => {
     }
   });
 
-  it('keeps Brazilian credit packages on the exact R$0.50 credit conversion', () => {
-    expect(CREDIT_UNIT_AMOUNT).toBe(50);
+  it('keeps Brazilian credit packages on the exact R$0.10 credit conversion', () => {
+    expect(CREDIT_UNIT_AMOUNT).toBe(10);
 
     for (const creditPackage of MOCK_CREDIT_PACKAGES) {
       expect(creditPackage.currency).toBe(BILLING_CURRENCY);

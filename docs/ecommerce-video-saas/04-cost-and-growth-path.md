@@ -125,18 +125,18 @@ Stripe 抽成
 MVP credits 规则：
 
 ```text
-1 credit = R$0.50
-图生视频 Basic / 2.6 flash 5s: 5 credits
-图生视频 Pro / 2.7 5s: 17 credits
+1 credit = R$0.10
+图生视频 Basic / 2.6 flash 5s: 25 credits
+图生视频 Pro / 2.7 5s: 85 credits
 失败任务: 全额返还
 ```
 
 套餐示例：
 
 ```text
-Starter: R$10 -> 20 credits
-Creator: R$40 -> 80 credits
-Scale: R$120 -> 240 credits
+Starter: R$10 -> 100 credits
+Creator: R$40 -> 400 credits
+Scale: R$120 -> 1200 credits
 ```
 
 上线前必须做一次成本校准：

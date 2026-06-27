@@ -1,10 +1,12 @@
 export const BILLING_CURRENCY = 'brl';
 export type BillingCurrency = typeof BILLING_CURRENCY;
 
-export const CREDIT_UNIT_AMOUNT = 50;
-export const CREDIT_UNIT_LABEL = 'R$0.50';
+export const CREDIT_UNIT_AMOUNT = 10;
+export const CREDIT_UNIT_LABEL = 'R$0.10';
 export const PROVIDER_COST_MARKUP_MULTIPLIER = 3;
 export const CNY_TO_BRL_EXCHANGE_RATE = 0.7609;
+
+const PROVIDER_SELL_PRICE_ROUNDING_AMOUNT = 50;
 
 function assertPositiveInteger(value: number, label: string) {
   if (!Number.isInteger(value) || value <= 0) {
@@ -50,5 +52,9 @@ export function getCreditCostForProviderCnyCost(costCny: number) {
     PROVIDER_COST_MARKUP_MULTIPLIER *
     100;
 
-  return Math.max(1, Math.ceil(sellAmountInMinorUnits / CREDIT_UNIT_AMOUNT));
+  const roundedSellAmount =
+    Math.ceil(sellAmountInMinorUnits / PROVIDER_SELL_PRICE_ROUNDING_AMOUNT) *
+    PROVIDER_SELL_PRICE_ROUNDING_AMOUNT;
+
+  return Math.max(1, getCreditsForAmount(roundedSellAmount));
 }

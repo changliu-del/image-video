@@ -1256,15 +1256,15 @@ const en: MarketingContent = {
         description: 'For stores starting to test AI creative assets.',
         yearly: {
           price: 'R$24',
-          credits: '60 credits per month, billed yearly',
+          credits: '300 credits per month, billed yearly',
         },
         monthly: {
           price: 'R$30',
-          credits: '60 credits per month',
+          credits: '300 credits per month',
         },
         onetime: {
           price: 'R$10',
-          credits: '20 one-time credits',
+          credits: '100 one-time credits',
         },
         features: ['All creative tools', 'Image, video, and try-on', 'Best for tests'],
       },
@@ -1274,15 +1274,15 @@ const en: MarketingContent = {
         yearly: {
           oldPrice: 'R$90',
           price: 'R$72',
-          credits: '180 credits per month, billed yearly',
+          credits: '900 credits per month, billed yearly',
         },
         monthly: {
           price: 'R$90',
-          credits: '180 credits per month',
+          credits: '900 credits per month',
         },
         onetime: {
           price: 'R$40',
-          credits: '80 one-time credits',
+          credits: '400 one-time credits',
         },
         features: ['More room for campaigns', 'Image, video, and try-on', 'Recommended for weekly use'],
         highlighted: true,
@@ -1293,15 +1293,15 @@ const en: MarketingContent = {
         yearly: {
           oldPrice: 'R$240',
           price: 'R$192',
-          credits: '480 credits per month, billed yearly',
+          credits: '2400 credits per month, billed yearly',
         },
         monthly: {
           price: 'R$240',
-          credits: '480 credits per month',
+          credits: '2400 credits per month',
         },
         onetime: {
           price: 'R$120',
-          credits: '240 one-time credits',
+          credits: '1200 one-time credits',
         },
         features: ['Built for SKU batches', 'Largest credit reserve', 'Frequent creative testing'],
       },

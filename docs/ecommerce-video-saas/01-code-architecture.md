@@ -509,9 +509,9 @@ deployment docs and cost model
 MVP 计费规则建议：
 
 ```text
-1 credit = R$0.50
-图生视频 Basic / 2.6 flash 5s: 5 credits
-图生视频 Pro / 2.7 5s: 17 credits
+1 credit = R$0.10
+图生视频 Basic / 2.6 flash 5s: 25 credits
+图生视频 Pro / 2.7 5s: 85 credits
 失败任务: 全额返还
 ```
 

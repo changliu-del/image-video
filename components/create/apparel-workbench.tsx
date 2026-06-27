@@ -13,7 +13,6 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import {
   CanvasStage,
-  IconButtonCard,
   PanelSection,
   ResultCard,
   SegmentedOptions,
@@ -522,14 +521,6 @@ export function ApparelWorkbench({
                 onChange={(event) => selectPrimaryFile(event.target.files?.[0] ?? null)}
                 disabled={isSubmitting}
               />
-              <div className="mt-6">
-                <IconButtonCard
-                  icon={UploadCloud}
-                  label={commonCopy.uploadImage}
-                  onClick={() => document.getElementById('apparel-file-canvas')?.click()}
-                  disabled={isSubmitting}
-                />
-              </div>
             </div>
           )}
 

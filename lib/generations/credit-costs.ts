@@ -35,9 +35,9 @@ export function getCreditCostForDuration(
 }
 
 export function getApparelImageCreditCost() {
-  return 5;
+  return 25;
 }
 
 export function getTryOnCreditCost(mode: BillableTryOnMode) {
-  return mode === 'multi' ? 10 : 5;
+  return mode === 'multi' ? 50 : 25;
 }
