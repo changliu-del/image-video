@@ -24,6 +24,7 @@ import {
   getMarketingContent,
   type Locale,
 } from '@/lib/marketing/content';
+import { BrandMark } from '@/components/brand-mark';
 import { cn } from '@/lib/utils';
 
 type AuthMode = 'signin' | 'signup';
@@ -111,9 +112,7 @@ function getAuthError(content: AuthContent, error?: string) {
 function BrandLockup() {
   return (
     <div className="flex items-center gap-3">
-      <span className="flex size-10 items-center justify-center rounded-lg bg-white text-lg font-black text-gray-950">
-        V
-      </span>
+      <BrandMark className="size-10" />
       <div>
         <p className="text-lg font-semibold leading-tight text-white">Vendeo</p>
         <p className="text-xs text-white/45">AI Commerce Studio</p>

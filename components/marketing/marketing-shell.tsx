@@ -4,6 +4,7 @@ import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { useState } from 'react';
 import { Globe2, Menu, X } from 'lucide-react';
+import { BrandMark } from '@/components/brand-mark';
 import {
   getLocalizedHref,
   getMarketingContent,
@@ -29,9 +30,7 @@ const localeNames: Record<(typeof locales)[number], string> = {
 function Brand({ locale }: { locale: Locale }) {
   return (
     <Link href={getLocalizedHref(locale, '')} className="flex items-center gap-2">
-      <span className="flex size-9 items-center justify-center rounded-lg bg-white text-lg font-black text-gray-950">
-        V
-      </span>
+      <BrandMark className="size-9" />
       <span className="hidden flex-col leading-none sm:flex">
         <span className="text-base font-bold tracking-tight text-white">
           Vendeo
