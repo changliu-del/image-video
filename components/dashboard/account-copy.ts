@@ -123,7 +123,7 @@ export const billingCopy: Record<DashboardLocale, BillingCopy> = {
     intervalTabs: { month: 'Mensal', year: 'Anual' },
     intervalLabels: { month: 'Cobrança mensal', year: 'Cobrança anual' },
     intervalHint:
-      'Planos anuais mantêm a renovação mensal de créditos com menor preço efetivo por mês.',
+      'Planos anuais mantêm a mesma cota mensal de créditos em uma cobrança anual.',
     recommended: 'Recomendado',
     current: 'Atual',
     pricePeriod: { month: 'mês', year: 'ano' },
@@ -136,28 +136,16 @@ export const billingCopy: Record<DashboardLocale, BillingCopy> = {
     activating: 'Ativando...',
     plans: {
       basic: {
-        description: 'Para testar vídeos de produto, imagens de campanha e try-on.',
-        features: [
-          '60 créditos renovam a cada mês de billing',
-          'Todas as ferramentas de imagem e vídeo ecommerce',
-          'Bom para 12 vídeos básicos de 5s',
-        ],
+        description: 'Recarga mensal de créditos para produção leve de conteúdo de produto.',
+        features: [],
       },
       plus: {
-        description: 'Para lançamentos semanais e produção recorrente de criativos.',
-        features: [
-          '180 créditos renovam a cada mês de billing',
-          'Fila prioritária no modo de produção futuro',
-          'Bom para 36 vídeos básicos de 5s',
-        ],
+        description: 'Recarga mensal de créditos para lançamentos recorrentes.',
+        features: [],
       },
       pro: {
-        description: 'Para marcas com lotes de SKU e testes frequentes de vídeo.',
-        features: [
-          '480 créditos renovam a cada mês de billing',
-          'Maior cota de assinatura mock',
-          'Bom para 96 vídeos básicos de 5s',
-        ],
+        description: 'Recarga mensal de créditos para alto volume de SKUs e campanhas.',
+        features: [],
       },
     },
   },
@@ -187,7 +175,7 @@ export const billingCopy: Record<DashboardLocale, BillingCopy> = {
     intervalTabs: { month: 'Monthly', year: 'Annual' },
     intervalLabels: { month: 'Monthly billing', year: 'Yearly billing' },
     intervalHint:
-      'Annual plans keep monthly credit refresh semantics and use a lower effective monthly price.',
+      'Annual plans keep the same monthly credit allowance in one yearly billing cycle.',
     recommended: 'Recommended',
     current: 'Current',
     pricePeriod: { month: 'month', year: 'year' },
@@ -200,28 +188,16 @@ export const billingCopy: Record<DashboardLocale, BillingCopy> = {
     activating: 'Activating...',
     plans: {
       basic: {
-        description: 'For testing product videos, campaign images, and try-on flows.',
-        features: [
-          '300 credits refresh every billing month',
-          'All ecommerce image and video tools',
-          'Good for 12 basic 5s videos',
-        ],
+        description: 'Monthly credit top-up for light product content production.',
+        features: [],
       },
       plus: {
-        description: 'For weekly launches and repeat ad creative production.',
-        features: [
-          '900 credits refresh every billing month',
-          'Priority queue in future production mode',
-          'Good for 36 basic 5s videos',
-        ],
+        description: 'Monthly credit top-up for recurring launch production.',
+        features: [],
       },
       pro: {
-        description: 'For brands producing SKU batches and frequent video tests.',
-        features: [
-          '2400 credits refresh every billing month',
-          'Highest mock subscription allowance',
-          'Good for 96 basic 5s videos',
-        ],
+        description: 'Monthly credit top-up for high-volume SKU and campaign work.',
+        features: [],
       },
     },
   },

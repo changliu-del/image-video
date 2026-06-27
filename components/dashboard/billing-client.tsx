@@ -329,14 +329,16 @@ export function BillingClient({
                   </p>
                 </div>
 
-                <ul className="mt-6 grid gap-3 text-sm text-gray-700">
-                  {planCopy.features.map((feature) => (
-                    <li key={feature} className="flex items-start gap-2">
-                      <Check className="mt-0.5 size-4 shrink-0 text-emerald-500" />
-                      <span>{feature}</span>
-                    </li>
-                  ))}
-                </ul>
+                {planCopy.features.length > 0 ? (
+                  <ul className="mt-6 grid gap-3 text-sm text-gray-700">
+                    {planCopy.features.map((feature) => (
+                      <li key={feature} className="flex items-start gap-2">
+                        <Check className="mt-0.5 size-4 shrink-0 text-emerald-500" />
+                        <span>{feature}</span>
+                      </li>
+                    ))}
+                  </ul>
+                ) : null}
 
                 <form action={checkoutAction} className="mt-auto pt-6">
                   <input type="hidden" name="priceId" value={plan.priceId} />

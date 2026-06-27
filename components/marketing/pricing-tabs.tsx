@@ -129,14 +129,16 @@ export function PricingTabs({ plans, locale, labels }: PricingTabsProps) {
                     {price.credits}
                   </p>
                 </div>
-                <ul className="mb-8 grid gap-3">
-                  {plan.features.map((feature) => (
-                    <li key={feature} className="flex items-start gap-2 text-sm text-white/65">
-                      <Check className="mt-0.5 size-4 flex-shrink-0 text-emerald-300" />
-                      {feature}
-                    </li>
-                  ))}
-                </ul>
+                {plan.features.length > 0 ? (
+                  <ul className="mb-8 grid gap-3">
+                    {plan.features.map((feature) => (
+                      <li key={feature} className="flex items-start gap-2 text-sm text-white/65">
+                        <Check className="mt-0.5 size-4 flex-shrink-0 text-emerald-300" />
+                        {feature}
+                      </li>
+                    ))}
+                  </ul>
+                ) : null}
                 <Link
                   href={workspacePricingHref(billing, locale)}
                   className={cn(

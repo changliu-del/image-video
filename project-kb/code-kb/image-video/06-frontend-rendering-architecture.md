@@ -1,6 +1,6 @@
 # Frontend Rendering Architecture
 
-Updated: 2026-06-04
+Updated: 2026-06-27
 
 This note captures the default frontend architecture for the image-video SaaS after the dashboard billing/credits review. It should be loaded before broad frontend changes, dashboard route changes, workbench changes, pricing/auth flows, or any UI that mixes static controls with account/API data.
 
@@ -9,7 +9,11 @@ This note captures the default frontend architecture for the image-video SaaS af
 - Keep the dashboard shell persistent. `app/(dashboard)/layout.tsx` owns session-token access control, not full account hydration. Header/sidebar account details should load through focused client fetches such as `/api/user`.
 - Render the primary UI immediately. Plans, credit packages, workbench controls, marketing cards, and static copy should come from local catalogs/copy modules and should not wait on account/API calls.
 - Load dynamic account data through focused API routes or client fetches. Use small surfaces such as `/api/account/billing`, `/api/account/credits`, and `/api/user`; add skeleton, error, empty, and retry states where the data appears. Account balance, plan, and admin-link visibility should not block workspace first paint.
-- Preserve locale everywhere. Use `lib/dashboard/locale-url.ts` for server redirects and shared dashboard URLs, `useDashboardLocale()` for client components, and hidden `locale` fields for server-action forms.
+- Preserve supported locale everywhere. The active product locales are English
+  and Brazilian Portuguese (`pt`); new code should not add Chinese (`zh`) UI,
+  data, route, or test obligations. Use `lib/dashboard/locale-url.ts` for server
+  redirects and shared dashboard URLs, `useDashboardLocale()` for client
+  components, and hidden `locale` fields for server-action forms.
 - Do not put broad data fetches in root layout. Public marketing pages should not trigger user/account DB calls. Dashboard layout should verify the session token and let account-specific DB data hydrate asynchronously.
 - Keep business numbers shared. Subscription prices live in `lib/payments/catalog.ts`; generation credit costs live in `lib/generations/credit-costs.ts`. Frontend labels must read those helpers instead of hardcoding display costs.
 - Marketing pricing is acquisition UI. It should route users into workspace billing/credits. Workspace plans are the functional source of truth.
@@ -44,10 +48,13 @@ Fixed in this pass:
   video without first opening detail. Fetch detail by template id only when a
   user opens or applies a template so `prompt` does not bloat the first list
   response.
-- Template text is locale-aware. The API accepts `locale` and resolves
+- Template text is locale-aware for the supported product locales. The API
+  accepts `locale` and resolves
   `title_translations_json` and `prompt_translations_json` before returning
   `title` and detail `prompt`; `category` stays a stable code and UI surfaces
-  localize it through `getTemplateCategoryLabel`.
+  localize it through `getTemplateCategoryLabel`. Active template imports and
+  refresh scripts should keep English base fields plus Brazilian Portuguese
+  translations, not Chinese translation keys.
 - Dashboard demo video loading now triggers closer to viewport entry to reduce first-navigation media contention.
 
 ## 2026-06-24 Auth Refresh Fix
@@ -84,7 +91,7 @@ Still watch:
 - Does the first screen render useful controls before optional data loads?
 - Is every fetch scoped to the page/section that needs it?
 - Does every async area have loading, error, empty, and retry states?
-- Are locale-bearing links, redirects, and server-action forms preserving `locale`?
+- Are supported-locale links, redirects, and server-action forms preserving `locale`?
 - Are prices, credits, generation costs, and plan metadata read from shared catalog/cost modules?
 - Is the dashboard shell stable during route transitions?
-- Did browser smoke verify the exact changed route in the relevant locale?
+- Did browser smoke verify the exact changed route in the relevant supported locale?

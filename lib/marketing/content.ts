@@ -46,13 +46,8 @@ type MarketingContent = {
   navItems: NavItem[];
   footer: {
     description: string;
-    resources: string;
-    resourceLabel: string;
-    languages: string;
     legal: string;
     privacy: string;
-    terms: string;
-    partners: string;
     contact: string;
     copyright: string;
   };
@@ -549,13 +544,8 @@ const pt: MarketingContent = {
   footer: {
     description:
       'Vendeo é um estúdio de IA para e-commerce: crie imagens, vídeos e assets de campanha com rapidez e consistência.',
-    resources: 'Recursos',
-    resourceLabel: 'Gerador de assets Vendeo',
-    languages: 'Idiomas',
     legal: 'Legal',
-    privacy: 'Política de Privacidade',
-    terms: 'Termos de Serviço',
-    partners: 'Partners',
+    privacy: 'Privacy Policy',
     contact: 'Contato',
     copyright: '© 2026 Vendeo. All rights reserved.',
   },
@@ -628,7 +618,7 @@ const pt: MarketingContent = {
       ],
       stats: [
         { stat: '74', label: 'templates no catalogo' },
-        { stat: '1', label: 'crédito para imagem' },
+        { stat: '632', label: 'templates de imagem' },
         { stat: 'PT-BR', label: 'prompts locais' },
       ],
     },
@@ -883,7 +873,7 @@ const pt: MarketingContent = {
       yearly: 'Anual',
       monthly: 'Mensal',
       onetime: 'Avulso',
-      save: 'Economize 20%',
+      save: '节省 20%',
       secure: 'Veja planos e créditos no workspace',
       buy: 'Abrir planos',
       popular: 'Mais popular',
@@ -894,55 +884,57 @@ const pt: MarketingContent = {
         name: 'Basic',
         description: 'Para lojas que querem começar a testar assets com IA.',
         yearly: {
-          price: 'R$24',
-          credits: '60 créditos por mês, cobrança anual',
+          price: 'R$48',
+          credits: '480 créditos por mês, cobrança anual',
         },
         monthly: {
-          price: 'R$30',
-          credits: '60 créditos por mês',
+          price: 'R$48',
+          credits: '480 créditos por mês',
         },
         onetime: {
           price: 'R$10',
-          credits: '20 créditos avulsos',
+          credits: '100 créditos avulsos',
         },
-        features: ['Todas as ferramentas criativas', 'Imagem, vídeo e try-on', 'Ideal para testes'],
+        features: [],
       },
       {
         name: 'Plus',
         description: 'Para lançamentos recorrentes e produção diária de anúncios.',
         yearly: {
-          oldPrice: 'R$90',
-          price: 'R$72',
-          credits: '180 créditos por mês, cobrança anual',
+          oldPrice: 'R$200',
+          price: 'R$160',
+          credits: '2000 créditos por mês, cobrança anual',
         },
         monthly: {
-          price: 'R$90',
-          credits: '180 créditos por mês',
+          oldPrice: 'R$200',
+          price: 'R$160',
+          credits: '2000 créditos por mês',
         },
         onetime: {
           price: 'R$40',
-          credits: '80 créditos avulsos',
+          credits: '400 créditos avulsos',
         },
-        features: ['Mais margem para campanhas', 'Imagem, vídeo e try-on', 'Recomendado para uso semanal'],
+        features: [],
         highlighted: true,
       },
       {
         name: 'Pro',
         description: 'Para marcas, equipes e testes criativos frequentes.',
         yearly: {
-          oldPrice: 'R$240',
-          price: 'R$192',
-          credits: '480 créditos por mês, cobrança anual',
+          oldPrice: 'R$620',
+          price: 'R$372',
+          credits: '6200 créditos por mês, cobrança anual',
         },
         monthly: {
-          price: 'R$240',
-          credits: '480 créditos por mês',
+          oldPrice: 'R$620',
+          price: 'R$372',
+          credits: '6200 créditos por mês',
         },
         onetime: {
           price: 'R$120',
-          credits: '240 créditos avulsos',
+          credits: '1200 créditos avulsos',
         },
-        features: ['Para lotes de SKU', 'Maior reserva de créditos', 'Testes criativos frequentes'],
+        features: [],
       },
     ],
     value: {
@@ -1026,11 +1018,8 @@ const en: MarketingContent = {
   ],
   footer: {
     ...pt.footer,
-    resources: 'Resources',
-    languages: 'Languages',
     legal: 'Legal',
     privacy: 'Privacy Policy',
-    terms: 'Terms of Service',
     contact: 'Contact',
   },
   auth: {
@@ -1105,7 +1094,7 @@ const en: MarketingContent = {
       ],
       stats: [
         { stat: '74', label: 'catalog templates' },
-        { stat: '1', label: 'image credit' },
+        { stat: '632', label: 'image templates' },
         { stat: 'PT-BR', label: 'local prompts' },
       ],
     },
@@ -1244,7 +1233,7 @@ const en: MarketingContent = {
       yearly: 'Yearly',
       monthly: 'Monthly',
       onetime: 'One-time',
-      save: 'Save 20%',
+      save: '',
       secure: 'Open plans and credits in the workspace',
       buy: 'Open plans',
       popular: 'Most popular',
@@ -1255,55 +1244,57 @@ const en: MarketingContent = {
         name: 'Basic',
         description: 'For stores starting to test AI creative assets.',
         yearly: {
-          price: 'R$24',
-          credits: '300 credits per month, billed yearly',
+          price: 'R$48',
+          credits: '480 credits per month, billed yearly',
         },
         monthly: {
-          price: 'R$30',
-          credits: '300 credits per month',
+          price: 'R$48',
+          credits: '480 credits per month',
         },
         onetime: {
           price: 'R$10',
           credits: '100 one-time credits',
         },
-        features: ['All creative tools', 'Image, video, and try-on', 'Best for tests'],
+        features: [],
       },
       {
         name: 'Plus',
         description: 'For recurring launches and weekly ad production.',
         yearly: {
-          oldPrice: 'R$90',
-          price: 'R$72',
-          credits: '900 credits per month, billed yearly',
+          oldPrice: 'R$200',
+          price: 'R$160',
+          credits: '2000 credits per month, billed yearly',
         },
         monthly: {
-          price: 'R$90',
-          credits: '900 credits per month',
+          oldPrice: 'R$200',
+          price: 'R$160',
+          credits: '2000 credits per month',
         },
         onetime: {
           price: 'R$40',
           credits: '400 one-time credits',
         },
-        features: ['More room for campaigns', 'Image, video, and try-on', 'Recommended for weekly use'],
+        features: [],
         highlighted: true,
       },
       {
         name: 'Pro',
         description: 'For brands, SKU batches, and frequent creative tests.',
         yearly: {
-          oldPrice: 'R$240',
-          price: 'R$192',
-          credits: '2400 credits per month, billed yearly',
+          oldPrice: 'R$620',
+          price: 'R$372',
+          credits: '6200 credits per month, billed yearly',
         },
         monthly: {
-          price: 'R$240',
-          credits: '2400 credits per month',
+          oldPrice: 'R$620',
+          price: 'R$372',
+          credits: '6200 credits per month',
         },
         onetime: {
           price: 'R$120',
           credits: '1200 one-time credits',
         },
-        features: ['Built for SKU batches', 'Largest credit reserve', 'Frequent creative testing'],
+        features: [],
       },
     ],
     value: {
@@ -1384,12 +1375,8 @@ const zh: MarketingContent = {
   ],
   footer: {
     ...pt.footer,
-    resources: '资源',
-    resourceLabel: 'Vendeo 素材生成器',
-    languages: '语言',
     legal: '法律',
-    privacy: '隐私政策',
-    terms: '服务条款',
+    privacy: 'Privacy Policy',
     contact: '联系',
   },
   auth: {
@@ -1454,7 +1441,7 @@ const zh: MarketingContent = {
       ],
       stats: [
         { stat: '74', label: '个模板' },
-        { stat: '1', label: '图片算力值' },
+        { stat: '632', label: '图片模板' },
         { stat: 'PT-BR', label: '本地话术' },
       ],
     },
@@ -1583,7 +1570,7 @@ const zh: MarketingContent = {
       yearly: '年付',
       monthly: '月付',
       onetime: '单次购买',
-      save: '节省 20%',
+      save: '',
       secure: '在工作台查看订阅和算力值',
       buy: '进入订阅',
       popular: '最受欢迎',

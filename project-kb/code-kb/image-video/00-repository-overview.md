@@ -28,6 +28,10 @@ Updated: 2026-06-08
 - `/create/try-on`: virtual try-on workbench.
 - `/admin`: ops/admin management.
 
+Supported public locale values are `en` and `pt`. Do not treat `zh` or Chinese
+copy as a required route, translation, test, or data-import target for future
+code changes.
+
 ## Main API Routes
 
 - `app/api/assets/presign/route.ts`

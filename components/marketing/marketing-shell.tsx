@@ -232,57 +232,20 @@ function Footer({ content, locale }: { content: MarketingContent; locale: Locale
             {content.footer.description}
           </p>
         </div>
-        <div className="grid gap-8 sm:grid-cols-2 lg:grid-cols-4">
-          <div>
-            <h2 className="text-xs font-semibold uppercase tracking-wider text-white">
-              {content.footer.resources}
-            </h2>
-            <Link
-              href={getLocalizedHref(locale, '')}
-              className="mt-4 block text-sm text-white/45 transition hover:text-white"
-            >
-              {content.footer.resourceLabel}
-            </Link>
-          </div>
-          <div>
-            <h2 className="text-xs font-semibold uppercase tracking-wider text-white">
-              {content.footer.languages}
-            </h2>
-            <div className="mt-4 grid gap-3">
-              {locales.map((nextLocale) => (
-                <Link
-                  key={nextLocale}
-                  href={getLocalizedHref(nextLocale, '')}
-                  className="text-sm text-white/45 transition hover:text-white"
-                >
-                  {localeNames[nextLocale]}
-                </Link>
-              ))}
-            </div>
-          </div>
+        <div className="grid gap-8 sm:grid-cols-2">
           <div>
             <h2 className="text-xs font-semibold uppercase tracking-wider text-white">
               {content.footer.legal}
             </h2>
             <div className="mt-4 grid gap-3">
-              <Link
-                href="/legal/privacy-policy"
+              <a
+                href="https://lumalabs-app.com/legal/privacy-policy"
+                target="_blank"
+                rel="noreferrer"
                 className="text-sm text-white/45 transition hover:text-white"
               >
                 {content.footer.privacy}
-              </Link>
-              <Link
-                href="/legal/terms-of-service"
-                className="text-sm text-white/45 transition hover:text-white"
-              >
-                {content.footer.terms}
-              </Link>
-              <Link
-                href="/partners"
-                className="text-sm text-white/45 transition hover:text-white"
-              >
-                {content.footer.partners}
-              </Link>
+              </a>
             </div>
           </div>
           <div>

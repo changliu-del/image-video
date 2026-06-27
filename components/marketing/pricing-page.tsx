@@ -3,10 +3,91 @@ import { PricingTabs } from '@/components/marketing/pricing-tabs';
 import {
   getMarketingContent,
   type Locale,
+  type PricingPlan,
 } from '@/lib/marketing/content';
+import {
+  CREDIT_PACKAGES,
+  getEffectiveMonthlyAmount,
+  getSubscriptionPlansByInterval,
+} from '@/lib/payments/catalog';
+import { getAmountForCredits } from '@/lib/payments/pricing';
 
 type MarketingContent = ReturnType<typeof getMarketingContent>;
 type PricingContent = MarketingContent['pricing'];
+
+function formatCurrency(amount: number, currency: string, locale: Locale) {
+  return new Intl.NumberFormat(locale === 'pt' ? 'pt-BR' : 'en-US', {
+    style: 'currency',
+    currency: currency.toUpperCase(),
+    maximumFractionDigits: 0,
+  }).format(amount / 100);
+}
+
+function formatMonthlyCredits(credits: number, locale: Locale, billedYearly: boolean) {
+  if (locale === 'pt') {
+    return billedYearly
+      ? `${credits} créditos por mês, cobrança anual`
+      : `${credits} créditos por mês`;
+  }
+
+  return billedYearly
+    ? `${credits} credits per month, billed yearly`
+    : `${credits} credits per month`;
+}
+
+function formatOneTimeCredits(credits: number, locale: Locale) {
+  return locale === 'pt'
+    ? `${credits} créditos avulsos`
+    : `${credits} one-time credits`;
+}
+
+function getCatalogBackedPricingPlans(plans: PricingPlan[], locale: Locale) {
+  const monthlyPlans = getSubscriptionPlansByInterval('month');
+  const yearlyPlans = getSubscriptionPlansByInterval('year');
+
+  return plans.map((plan, index) => {
+    const monthlyPlan = monthlyPlans[index];
+    const yearlyPlan = yearlyPlans[index];
+    const creditPackage = CREDIT_PACKAGES[index];
+
+    if (!monthlyPlan || !yearlyPlan || !creditPackage) {
+      return plan;
+    }
+
+    const listMonthlyAmount = getAmountForCredits(monthlyPlan.monthlyCredits);
+    const monthlyOldPrice =
+      listMonthlyAmount > monthlyPlan.unitAmount
+        ? formatCurrency(listMonthlyAmount, monthlyPlan.currency, locale)
+        : undefined;
+    const yearlyMonthlyAmount = getEffectiveMonthlyAmount(yearlyPlan);
+    const yearlyOldPrice =
+      listMonthlyAmount > yearlyMonthlyAmount
+        ? formatCurrency(listMonthlyAmount, yearlyPlan.currency, locale)
+        : undefined;
+
+    return {
+      ...plan,
+      yearly: {
+        ...plan.yearly,
+        oldPrice: yearlyOldPrice,
+        price: formatCurrency(yearlyMonthlyAmount, yearlyPlan.currency, locale),
+        credits: formatMonthlyCredits(yearlyPlan.monthlyCredits, locale, true),
+      },
+      monthly: {
+        ...plan.monthly,
+        oldPrice: monthlyOldPrice,
+        price: formatCurrency(monthlyPlan.unitAmount, monthlyPlan.currency, locale),
+        credits: formatMonthlyCredits(monthlyPlan.monthlyCredits, locale, false),
+      },
+      onetime: {
+        ...plan.onetime,
+        oldPrice: undefined,
+        price: formatCurrency(creditPackage.unitAmount, creditPackage.currency, locale),
+        credits: formatOneTimeCredits(creditPackage.credits, locale),
+      },
+    };
+  });
+}
 
 function PricingHero({ content }: { content: PricingContent['hero'] }) {
   const badgeIcons = [Rocket, TrendingUp, Clock];
@@ -139,11 +220,12 @@ function PricingFaq({ content }: { content: PricingContent['faq'] }) {
 
 export function MarketingPricingPage({ locale }: { locale: Locale }) {
   const content = getMarketingContent(locale).pricing;
+  const plans = getCatalogBackedPricingPlans(content.plans, locale);
 
   return (
     <main className="bg-gray-950">
       <PricingHero content={content.hero} />
-      <PricingTabs plans={content.plans} locale={locale} labels={content.tabs} />
+      <PricingTabs plans={plans} locale={locale} labels={content.tabs} />
       <ValueSection content={content.value} />
       <PricingFaq content={content.faq} />
     </main>

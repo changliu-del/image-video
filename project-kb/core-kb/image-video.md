@@ -52,6 +52,9 @@ There is also older fal.ai/FFmpeg runner code in `lib/generations/runner.ts` and
 - Keep first-party KB under `project-kb/`.
 - Keep product/deployment docs under `docs/ecommerce-video-saas/`.
 - Use plugin skill `image-video-studio` for project-specific Codex work.
+- Do not design new code for Chinese UI/data support. Active product-facing code
+  only needs English and Brazilian Portuguese (`pt`) unless the user explicitly
+  asks for a one-off Chinese surface.
 - Frontend dashboard pages should use a persistent shell plus async section data: render local controls/catalogs immediately, then hydrate account/API data through focused client fetches with loading/error/retry states. See `project-kb/code-kb/image-video/06-frontend-rendering-architecture.md`.
 
 ## Open Architecture Decisions

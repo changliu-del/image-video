@@ -2,7 +2,6 @@ import {
   BILLING_CURRENCY,
   type BillingCurrency,
   getAmountForCredits,
-  getDiscountedAnnualAmount,
 } from './pricing';
 
 export const SUBSCRIPTION_INTERVALS = ['month', 'year'] as const;
@@ -51,45 +50,37 @@ type SubscriptionTierDefinition = {
   features: string[];
 };
 
+function getSubscriptionMonthlyAmount(credits: number, pricePercent = 100) {
+  return Math.round((getAmountForCredits(credits) * pricePercent) / 100);
+}
+
 const subscriptionTierDefinitions: SubscriptionTierDefinition[] = [
   {
     tier: 'basic',
     displayName: 'Basic',
-    description: 'For testing product videos, campaign images, and try-on flows.',
-    monthlyCredits: 300,
-    monthlyUnitAmount: getAmountForCredits(300),
-    annualUnitAmount: getDiscountedAnnualAmount(getAmountForCredits(300)),
-    features: [
-      '300 credits refresh every billing month',
-      'All ecommerce image and video tools',
-      'Good for 12 basic 5s videos',
-    ],
+    description: 'Monthly credit top-up for light product content production.',
+    monthlyCredits: 480,
+    monthlyUnitAmount: getSubscriptionMonthlyAmount(480),
+    annualUnitAmount: getSubscriptionMonthlyAmount(480) * 12,
+    features: [],
   },
   {
     tier: 'plus',
     displayName: 'Plus',
-    description: 'For weekly launches and repeat ad creative production.',
-    monthlyCredits: 900,
-    monthlyUnitAmount: getAmountForCredits(900),
-    annualUnitAmount: getDiscountedAnnualAmount(getAmountForCredits(900)),
-    features: [
-      '900 credits refresh every billing month',
-      'Priority queue in future production mode',
-      'Good for 36 basic 5s videos',
-    ],
+    description: 'Monthly credit top-up for recurring launch production.',
+    monthlyCredits: 2000,
+    monthlyUnitAmount: getSubscriptionMonthlyAmount(2000, 80),
+    annualUnitAmount: getSubscriptionMonthlyAmount(2000, 80) * 12,
+    features: [],
   },
   {
     tier: 'pro',
     displayName: 'Pro',
-    description: 'For brands producing SKU batches and frequent video tests.',
-    monthlyCredits: 2400,
-    monthlyUnitAmount: getAmountForCredits(2400),
-    annualUnitAmount: getDiscountedAnnualAmount(getAmountForCredits(2400)),
-    features: [
-      '2400 credits refresh every billing month',
-      'Highest mock subscription allowance',
-      'Good for 96 basic 5s videos',
-    ],
+    description: 'Monthly credit top-up for high-volume SKU and campaign work.',
+    monthlyCredits: 6200,
+    monthlyUnitAmount: getSubscriptionMonthlyAmount(6200, 60),
+    annualUnitAmount: getSubscriptionMonthlyAmount(6200, 60) * 12,
+    features: [],
   },
 ];
 
@@ -123,7 +114,6 @@ export const SUBSCRIPTION_PLANS: SubscriptionPlan[] =
         unitAmount: definition.annualUnitAmount,
         productId: `mock_prod_subscription_${definition.tier}_annual`,
         priceId: `mock_price_subscription_${definition.tier}_annual`,
-        savePercent: 20,
       },
     ];
   });

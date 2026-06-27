@@ -1,14 +1,18 @@
 # Frontend Workflows
 
-Updated: 2026-06-11
+Updated: 2026-06-27
 
 ## Dashboard Shell
 
 - `app/(dashboard)/layout.tsx` protects authenticated dashboard routes with the session token only, so the workspace shell can render without waiting on a user-table read.
 - `app/(dashboard)/dashboard-header.tsx` handles language menu, user menu, pricing link, and displayed credits. It starts from the session user id and hydrates account details through `/api/user`.
 - `app/(dashboard)/app-shell.tsx` provides sidebar navigation.
-- `lib/dashboard/content.ts` provides pt/en/zh dashboard strings.
-- `lib/dashboard/locale-url.ts` is the shared server/client URL helper for preserving dashboard locale in redirects and links.
+- `lib/dashboard/content.ts` provides dashboard strings for supported product
+  locales only: English and Brazilian Portuguese (`pt`).
+- `lib/dashboard/locale-url.ts` is the shared server/client URL helper for preserving supported dashboard locale in redirects and links.
+- Do not add or maintain Chinese (`zh`) UI copy, locale branches, import output,
+  or tests unless a future task explicitly asks for that specific Chinese
+  surface.
 
 Dashboard header credits and admin visibility are async account details. Do not block the dashboard route on DB user reads just to render those header affordances.
 
