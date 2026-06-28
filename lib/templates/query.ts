@@ -5,7 +5,6 @@ import { alias } from 'drizzle-orm/pg-core';
 import { revalidateTag, unstable_cache } from 'next/cache';
 import { db } from '@/lib/db/drizzle';
 import { assets, templates } from '@/lib/db/schema';
-import { buildPublicUrl } from '@/lib/storage/r2';
 import type {
   TemplateCatalogDetailItem,
   TemplateCatalogListItem,
@@ -16,6 +15,7 @@ import {
   getTemplateCategoriesForType,
   normalizeTemplateCategoryForType,
 } from '@/lib/templates/category-config';
+import { resolvePublicTemplateMediaUrl } from '@/lib/templates/public-media-url';
 
 const templateCatalogMetadataCacheKey =
   '__imageVideoPublishedTemplateCatalogMetadataCache';
@@ -40,11 +40,6 @@ type TemplateListRow = {
   sortOrder: number;
   createdAt: Date;
   updatedAt: Date;
-};
-
-type TemplateMediaAssetSnapshot = {
-  status: string | null;
-  storageKey: string | null;
 };
 
 type TemplateDetailRow = TemplateListRow & {
@@ -122,18 +117,6 @@ function resolveLocalizedText(
   locale: Locale
 ) {
   return locale === 'pt' ? portuguese || english : english;
-}
-
-function resolvePublicTemplateMediaUrl(
-  fallbackUrl: string,
-  asset: TemplateMediaAssetSnapshot
-) {
-  const storageKey = asset.storageKey?.trim();
-  if (asset.status === 'uploaded' && storageKey?.startsWith('templates/')) {
-    return buildPublicUrl(storageKey);
-  }
-
-  return fallbackUrl;
 }
 
 function resolvePublicTemplateMediaUrls(row: TemplateListRow) {

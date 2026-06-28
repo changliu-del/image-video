@@ -305,10 +305,10 @@ describe('template catalog routing contract', () => {
     expect(query).toContain(
       '.leftJoin(previewAsset, eq(templates.previewAssetId, previewAsset.id))'
     );
-    expect(query).toContain("asset.status === 'uploaded'");
-    expect(query).toContain("storageKey?.startsWith('templates/')");
-    expect(query).toContain('return buildPublicUrl(storageKey);');
-    expect(query).toContain('return fallbackUrl;');
+    expect(query).toContain("from '@/lib/templates/public-media-url'");
+    expect(query).toContain('resolvePublicTemplateMediaUrl(row.thumbnailUrl');
+    expect(query).toContain('resolvePublicTemplateMediaUrl(row.previewUrl');
+    expect(query).not.toContain("from '@/lib/storage/r2'");
   });
 
   it('keeps bundled starter resources outside the R2 template namespace', () => {

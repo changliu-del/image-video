@@ -37,7 +37,10 @@ Updated: 2026-06-27
 template list/detail APIs should return direct CDN URLs for uploaded template
 assets whose `assets.storage_key` starts with `templates/`, so browsers fetch
 template thumbnails/previews from the CDN instead of proxying every byte through
-Vercel Functions. `/api/template-media/{assetId}` remains a compatibility and
+Vercel Functions. This public template URL resolution should depend only on
+`R2_PUBLIC_BASE_URL`; it must not require R2 write credentials. If the CDN base
+is unavailable, keep returning the stored `/api/template-media/{assetId}`
+snapshot URL. `/api/template-media/{assetId}` remains a compatibility and
 fallback route for historical stored snapshots, range checks, and explicit
 `external/` template media. User uploads and generated outputs must still be
 displayed through `/api/asset-media/{assetId}` because they are private user
