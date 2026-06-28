@@ -93,12 +93,15 @@ function UserMenu({
       <>
         <Link
           href={withDashboardLocale('/sign-in', locale)}
+          prefetch={false}
           className="text-sm font-medium text-gray-600 hover:text-gray-950"
         >
           {labels.signIn}
         </Link>
         <Button asChild className="rounded-full bg-gray-950 text-white hover:bg-gray-800">
-          <Link href={withDashboardLocale('/sign-up', locale)}>{labels.startFree}</Link>
+          <Link href={withDashboardLocale('/sign-up', locale)} prefetch={false}>
+            {labels.startFree}
+          </Link>
         </Button>
       </>
     );
@@ -125,7 +128,11 @@ function UserMenu({
       </DropdownMenuTrigger>
       <DropdownMenuContent align="end" className="flex flex-col gap-1">
         <DropdownMenuItem className="cursor-pointer">
-          <Link href={withDashboardLocale('/dashboard/profile', locale)} className="flex w-full items-center">
+          <Link
+            href={withDashboardLocale('/dashboard/profile', locale)}
+            prefetch={false}
+            className="flex w-full items-center"
+          >
             <Settings className="mr-2 h-4 w-4" />
             <span>{labels.account}</span>
           </Link>
@@ -204,6 +211,7 @@ function DashboardLanguageMenu({
                 searchParams,
                 locale: nextLocale,
               })}
+              prefetch={false}
               className="flex cursor-pointer items-center justify-between gap-4"
             >
               <span>{content.localeNames[nextLocale]}</span>
@@ -274,6 +282,7 @@ export function DashboardHeader({
         <div className="flex items-center gap-1.5">
           <Link
             href={homeHref}
+            prefetch={false}
             className={cn(
               'inline-flex h-9 items-center gap-2 rounded-full px-2 text-sm font-bold transition',
               isAdminPage
@@ -289,6 +298,7 @@ export function DashboardHeader({
           {!isAdminPage && user && canAccessAdmin(user) ? (
             <Link
               href={withDashboardLocale('/admin', locale)}
+              prefetch={false}
               className="inline-flex h-9 items-center gap-2 rounded-full px-2 text-sm font-bold text-gray-800 transition hover:bg-indigo-50 hover:text-indigo-600"
             >
               <ShieldCheck className="size-4" />
@@ -301,6 +311,7 @@ export function DashboardHeader({
             <>
             <Link
               href={withDashboardLocale('/dashboard/profile', locale)}
+              prefetch={false}
               className="hidden h-9 items-center gap-2 rounded-full border border-indigo-100 bg-indigo-50 px-3 text-sm font-semibold text-indigo-600 shadow-sm transition hover:border-indigo-200 hover:bg-indigo-100 md:flex"
             >
               <Gem className="size-4 fill-indigo-300 text-indigo-500" />
@@ -309,6 +320,7 @@ export function DashboardHeader({
             </Link>
             <Link
               href={withDashboardLocale('/dashboard/billing', locale)}
+              prefetch={false}
               className={cn(
                 'hidden h-9 items-center rounded-full border border-gray-200 bg-white px-4 text-sm font-semibold text-gray-800 shadow-sm transition hover:border-indigo-200 hover:text-indigo-600 sm:flex',
                 pathname.startsWith('/dashboard/billing') && 'text-indigo-600'

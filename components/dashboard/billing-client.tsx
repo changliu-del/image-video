@@ -126,7 +126,10 @@ export function BillingClient({
                 </p>
               </div>
               <Button asChild variant="outline" className="w-full md:w-auto">
-                <Link href={withDashboardLocale('/dashboard/profile', locale)}>
+                <Link
+                  href={withDashboardLocale('/dashboard/profile', locale)}
+                  prefetch={false}
+                >
                   <Wallet className="size-4" />
                   {copy.buyExtra}
                 </Link>

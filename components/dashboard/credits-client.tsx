@@ -160,7 +160,10 @@ export function CreditsClient({ embedded = false }: CreditsClientProps = {}) {
           ) : null}
           <div className="mt-5 flex flex-col gap-2 sm:flex-row">
             <Button asChild variant="ghost">
-              <Link href={withDashboardLocale('/create/video', locale)}>
+              <Link
+                href={withDashboardLocale('/create/video', locale)}
+                prefetch={false}
+              >
                 {copy.createVideo}
                 <ArrowUpRight className="size-4" />
               </Link>

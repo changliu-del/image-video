@@ -51,7 +51,7 @@ function SidebarLink({
         : pathname === href || pathname.startsWith(`${href}/`);
 
   return (
-    <Link href={withDashboardLocale(href, locale)}>
+    <Link href={withDashboardLocale(href, locale)} prefetch={false}>
       <span
         className={cn(
           'my-0.5 flex h-9 w-full items-center gap-2 rounded-lg px-3 text-sm font-semibold text-gray-500 transition hover:bg-indigo-50 hover:text-indigo-600',

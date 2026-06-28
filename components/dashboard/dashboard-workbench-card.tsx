@@ -80,6 +80,7 @@ export function DashboardWorkbenchCard({
     <Link
       ref={cardRef}
       href={card.href}
+      prefetch={false}
       className="group flex min-h-[360px] flex-col overflow-hidden rounded-lg border border-gray-200 bg-white shadow-sm transition hover:-translate-y-0.5 hover:shadow-[0_18px_42px_rgba(79,70,229,0.13)]"
       onPointerEnter={armPreview}
       onFocusCapture={armPreview}

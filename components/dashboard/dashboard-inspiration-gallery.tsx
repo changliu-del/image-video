@@ -16,11 +16,12 @@ import {
   type PublicTemplateItem,
   type PublicTemplatesApiResponse,
 } from '@/lib/templates/public-client';
+import { scheduleIdleWork } from '@/lib/browser/deferred-work';
 import { cn } from '@/lib/utils';
 
 type GalleryTemplateType = Exclude<TemplateType, 'model'>;
 type GalleryType = GalleryTemplateType | 'all';
-type GalleryStatus = 'loading' | 'ready' | 'error';
+type GalleryStatus = 'idle' | 'loading' | 'ready' | 'error';
 
 type TemplateBucket = {
   hasMore: boolean;
@@ -118,8 +119,8 @@ function interleaveItems(buckets: Record<GalleryTemplateType, TemplateBucket>) {
   return items;
 }
 
-function useTemplateGallery(locale: DashboardLocale) {
-  const [status, setStatus] = useState<GalleryStatus>('loading');
+function useTemplateGallery(locale: DashboardLocale, enabled: boolean) {
+  const [status, setStatus] = useState<GalleryStatus>('idle');
   const [isLoadingMore, setIsLoadingMore] = useState(false);
   const [reloadKey, setReloadKey] = useState(0);
   const [buckets, setBuckets] = useState<
@@ -132,6 +133,8 @@ function useTemplateGallery(locale: DashboardLocale) {
   const loadingMoreRef = useRef(false);
 
   useEffect(() => {
+    if (!enabled) return;
+
     const controller = new AbortController();
     let ignore = false;
 
@@ -187,13 +190,16 @@ function useTemplateGallery(locale: DashboardLocale) {
       }
     }
 
-    loadTemplates();
+    const cancelIdleLoad = scheduleIdleWork(() => {
+      void loadTemplates();
+    }, 1200);
 
     return () => {
       ignore = true;
+      cancelIdleLoad();
       controller.abort();
     };
-  }, [locale, reloadKey]);
+  }, [enabled, locale, reloadKey]);
 
   const loadMore = useCallback(
     async (active: GalleryType) => {
@@ -352,6 +358,7 @@ function GalleryCard({
   return (
     <Link
       href={templateHref(item, locale)}
+      prefetch={false}
       className="group mb-5 block break-inside-avoid overflow-hidden rounded-lg bg-white shadow-sm ring-1 ring-gray-100 transition hover:-translate-y-0.5 hover:shadow-[0_18px_42px_rgba(15,23,42,0.12)]"
     >
       <div
@@ -396,9 +403,11 @@ export function DashboardInspirationGallery({
 }) {
   const copy = copyByLocale[locale];
   const [active, setActive] = useState<GalleryType>('all');
+  const galleryRef = useRef<HTMLElement>(null);
   const sentinelRef = useRef<HTMLDivElement>(null);
+  const [shouldLoadGallery, setShouldLoadGallery] = useState(false);
   const { buckets, isLoadingMore, loadMore, reload, status } =
-    useTemplateGallery(locale);
+    useTemplateGallery(locale, shouldLoadGallery);
   const total = galleryTypes.reduce(
     (sum, type) => sum + buckets[type].total,
     0
@@ -411,6 +420,32 @@ export function DashboardInspirationGallery({
     active === 'all'
       ? galleryTypes.some((type) => buckets[type].hasMore)
       : buckets[active].hasMore;
+
+  useEffect(() => {
+    if (shouldLoadGallery) return;
+
+    const galleryElement = galleryRef.current;
+    if (!galleryElement) return;
+
+    if (!('IntersectionObserver' in window)) {
+      return scheduleIdleWork(() => setShouldLoadGallery(true), 1600);
+    }
+
+    const observer = new IntersectionObserver(
+      ([entry]) => {
+        if (entry?.isIntersecting) {
+          setShouldLoadGallery(true);
+          observer.disconnect();
+        }
+      },
+      {
+        rootMargin: '240px 0px',
+      }
+    );
+
+    observer.observe(galleryElement);
+    return () => observer.disconnect();
+  }, [shouldLoadGallery]);
 
   useEffect(() => {
     if (status !== 'ready' || !hasMore) return;
@@ -433,7 +468,10 @@ export function DashboardInspirationGallery({
   }, [active, hasMore, loadMore, status]);
 
   return (
-    <section className="bg-white px-5 pb-20 pt-12 md:px-8 md:pb-24">
+    <section
+      ref={galleryRef}
+      className="bg-white px-5 pb-20 pt-12 md:px-8 md:pb-24"
+    >
       <div className="mx-auto max-w-7xl">
         <div className="text-center">
           <h2 className="relative inline-flex text-4xl font-black tracking-tight text-gray-950 md:text-5xl">

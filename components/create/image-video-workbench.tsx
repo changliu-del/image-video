@@ -60,6 +60,7 @@ import {
   type PublicTemplateDetailItem,
   type PublicTemplateItem,
 } from '@/lib/templates/public-client';
+import { scheduleIdleWork } from '@/lib/browser/deferred-work';
 import { cn } from '@/lib/utils';
 
 type CompleteAssetResponse = {
@@ -1568,9 +1569,13 @@ export function ImageVideoWorkbench({
       }
     }
 
-    void loadTemplates();
+    const cancelIdleLoad = scheduleIdleWork(() => {
+      void loadTemplates();
+    }, 900);
+
     return () => {
       cancelled = true;
+      cancelIdleLoad();
       controller.abort();
     };
   }, [locale, requestedTemplateId, templateCategory, templateReloadKey]);

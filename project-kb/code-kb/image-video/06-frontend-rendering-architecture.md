@@ -43,6 +43,14 @@ Use this pattern for account, billing, credits, settings, and operational dashbo
 
 Fixed in this pass:
 
+- Dashboard workspace links opt out of automatic Next.js Link prefetch. Do not
+  let sidebar/header/cards/gallery links prefetch every possible dashboard
+  route on first paint; keep route warming explicit and scoped to the user's
+  next likely action.
+- Dashboard inspiration templates must not load on first mount. Defer the
+  three `/api/templates` gallery requests until the section is near the
+  viewport, then schedule them through browser idle time so a quick click into
+  `/create/video` does not compete with dashboard gallery IO.
 - `/dashboard` no longer waits on a DB `getUser()` call before rendering the workspace shell. `app/(dashboard)/layout.tsx` verifies the session token through `getSessionUserId()`, then the header fetches `/api/user` for balance, plan, user menu, and admin-link state.
 - `/admin` also uses session-first rendering. `app/(dashboard)/admin/page.tsx` only redirects unauthenticated sessions; `AdminShell` fetches `/api/user` client-side before showing ops/admin tabs or the forbidden state. Admin data APIs remain server-authorized.
 - Marketing home template catalog refresh is deferred with `IntersectionObserver`, so users who click into the workspace immediately are not competing with `/api/templates`.
