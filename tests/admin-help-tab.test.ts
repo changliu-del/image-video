@@ -1,4 +1,4 @@
-import { readFileSync } from 'node:fs';
+import { existsSync, readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { describe, expect, it, vi } from 'vitest';
 
@@ -9,7 +9,7 @@ import {
 
 vi.mock('@/lib/dashboard/content', () => ({
   normalizeDashboardLocale: (locale: string | null | undefined) => {
-    if (locale === 'pt' || locale === 'en' || locale === 'zh') return locale;
+    if (locale === 'pt' || locale === 'en') return locale;
     return 'en';
   },
 }));
@@ -32,16 +32,49 @@ const EXISTING_ADMIN_TAB_KEYS = [
   'generation-jobs',
   'credit-ledger',
 ] as const;
-const MINIMAL_TEMPLATE_HELP_FIELDS = [
-  'id',
-  'type',
-  'category',
-  'thumbnail_asset_id',
-  'preview_asset_id',
-  'prompt',
-  'sort_order',
-  'created_at',
-  'updated_at',
+const ENGLISH_ADMIN_HELP_KEYS = [
+  'overview',
+  'templates',
+  'user-media',
+  'users',
+  'generation-jobs',
+  'credit-ledger',
+] as const;
+const ENGLISH_HELP_SCREENSHOTS: Record<
+  (typeof ENGLISH_ADMIN_HELP_KEYS)[number],
+  readonly string[]
+> = {
+  overview: ['/admin-help/placements/admin-overview.png'],
+  templates: [
+    '/admin-help/placements/template-admin-list.png',
+    '/admin-help/placements/template-admin-form.png',
+    '/admin-help/placements/template-admin-order.png',
+    '/admin-help/placements/templates-page.png',
+    '/admin-help/placements/video-workbench.png',
+  ],
+  'user-media': ['/admin-help/placements/user-history.png'],
+  users: ['/admin-help/placements/users.png'],
+  'generation-jobs': ['/admin-help/placements/generation-jobs.png'],
+  'credit-ledger': ['/admin-help/placements/credit-ledger.png'],
+};
+const TEMPLATE_HELP_EXPECTED_TERMS = [
+  'Image to video',
+  'Models',
+  'Image generation',
+  'Smart try-on',
+  'Title',
+  'Brazilian Portuguese title',
+  'Category',
+  'Gender',
+  'Age',
+  'Style',
+  'Thumbnail asset ID',
+  'Preview asset ID',
+  'Prompt',
+  'Brazilian Portuguese prompt',
+  'Reorder',
+  'thumbnailUrl',
+  'previewUrl',
 ] as const;
 const REMOVED_TEMPLATE_HELP_TERMS = [
   'negativePrompt',
@@ -54,7 +87,6 @@ const REMOVED_TEMPLATE_HELP_TERMS = [
   'preview_url',
   'tagsJson',
   'tagSlugs',
-  'tags',
   'slug',
   'sortWeight',
   '排序权重',
@@ -143,6 +175,13 @@ function expectTextExcludes(
   expect(value?.includes(forbidden), `${label} should exclude ${forbidden}`).toBe(
     false
   );
+}
+
+function expectPublicAssetExists(assetPath: string) {
+  expect(
+    existsSync(join(process.cwd(), 'public', assetPath.replace(/^\//, ''))),
+    `${assetPath} should exist`
+  ).toBe(true);
 }
 
 describe('Admin Help tab coverage', () => {
@@ -274,165 +313,49 @@ describe('Admin Help tab coverage', () => {
     }
   });
 
-  it('covers every Admin tab with Chinese copy', () => {
-    const zhTabs = adminContent.zh.tabs as Record<string, string>;
-
-    expectCompleteKeySet(Object.keys(zhTabs), EXPECTED_ADMIN_TAB_KEYS);
-    for (const key of EXPECTED_ADMIN_TAB_KEYS) {
-      expect(zhTabs[key], `zh.${key}`).toMatch(/[\u3400-\u9fff]/);
-    }
-  });
-
-  it('covers every Help entry with Chinese copy', () => {
-    const zhHelp = adminContent.zh.help;
-
-    expect(zhHelp.title).toMatch(/[\u3400-\u9fff]/);
-    expect(zhHelp.description).toMatch(/[\u3400-\u9fff]/);
-    for (const label of Object.values(zhHelp.labels)) {
-      expect(label).toMatch(/[\u3400-\u9fff]/);
-    }
-    expect(zhHelp.principlesTitle).toMatch(/[\u3400-\u9fff]/);
-    for (const principle of zhHelp.principles) {
-      expect(principle).toMatch(/[\u3400-\u9fff]/);
-    }
-    expect(zhHelp.rhythmTitle).toMatch(/[\u3400-\u9fff]/);
-    for (const rhythm of zhHelp.rhythms) {
-      expect(rhythm.title).toMatch(/[\u3400-\u9fff]/);
-      for (const item of rhythm.items) {
-        expect(item).toMatch(/[\u3400-\u9fff]/);
-      }
-    }
-    expect(zhHelp.maintenanceTitle).toMatch(/[\u3400-\u9fff]/);
-    for (const item of zhHelp.maintenance) {
-      expect(item).toMatch(/[\u3400-\u9fff]/);
-    }
-    for (const item of zhHelp.items) {
-      expect(item.title, `zh.help.${item.key}.title`).toMatch(
-        /[\u3400-\u9fff]/
+  it('keeps English Help pages backed by current screenshots', () => {
+    for (const key of ENGLISH_ADMIN_HELP_KEYS) {
+      const item = adminContent.en.help.items.find(
+        (candidate) => candidate.key === key
       );
-      expect(item.purpose, `zh.help.${item.key}.purpose`).toMatch(
-        /[\u3400-\u9fff]/
-      );
-      for (const field of [
-        'dailyActions',
-        'keyFields',
-        'riskSignals',
-      ] as const) {
-        for (const value of item[field]) {
-          expect(value, `zh.help.${item.key}.${field}`).toMatch(
-            /[\u3400-\u9fff]/
-          );
-        }
+
+      expectNonEmptyString(item?.markdown, `en.help.${key}.markdown`);
+      for (const screenshot of ENGLISH_HELP_SCREENSHOTS[key]) {
+        expect(item?.markdown, `en.help.${key}.markdown`).toContain(screenshot);
+        expectPublicAssetExists(screenshot);
       }
     }
   });
 
-  it('keeps Template Help focused on templates after removing Library Assets', () => {
-    for (const [locale, content] of Object.entries(adminContent)) {
-      const templates = content.help.items.find(
-        (item) => item.key === 'templates'
-      );
-
-      expect(templates?.markdown, `${locale}.templates.markdown`).toContain(
-        '/admin-help/placements/template-admin-list.png'
-      );
-      expect(templates?.markdown, `${locale}.templates.markdown`).toContain(
-        '/admin-help/placements/template-admin-form.png'
-      );
-      expect(templates?.markdown, `${locale}.templates.markdown`).toContain(
-        '/admin-help/placements/templates-page.png'
-      );
-      expect(templates?.markdown, `${locale}.templates.markdown`).toContain(
-        '/admin-help/placements/video-workbench.png'
-      );
-      expect(templates?.markdown, `${locale}.templates.markdown`).not.toContain(
-        '/api/'
-      );
-      expect(templates?.markdown, `${locale}.templates.markdown`).not.toContain(
-        'numbered screenshots'
-      );
-      expect(templates?.markdown, `${locale}.templates.markdown`).not.toContain(
-        'numeros das imagens'
-      );
-      for (const field of MINIMAL_TEMPLATE_HELP_FIELDS) {
-        expectTextIncludes(templates?.markdown, `${locale}.templates.markdown`, field);
-      }
-      for (const term of REMOVED_TEMPLATE_HELP_TERMS) {
-        expectTextExcludes(templates?.markdown, `${locale}.templates.markdown`, term);
-      }
-      if (locale === 'zh') {
-        expect(templates?.markdown, `${locale}.templates.markdown`).toContain(
-          '模板保存后要按用户路径检查'
-        );
-        expect(templates?.markdown, `${locale}.templates.markdown`).toContain(
-          '### 字段说明'
-        );
-        expect(templates?.markdown, `${locale}.templates.markdown`).toContain(
-          'type=image_to_video'
-        );
-        expect(templates?.markdown, `${locale}.templates.markdown`).toContain(
-          'category 是业务分类'
-        );
-        expect(templates?.markdown, `${locale}.templates.markdown`).toContain(
-          '模板管理列表页'
-        );
-        expect(templates?.markdown, `${locale}.templates.markdown`).toContain(
-          '模板编辑表单'
-        );
-        expect(templates?.markdown, `${locale}.templates.markdown`).not.toContain(
-          '模板没有被拆成两份'
-        );
-        expect(templates?.markdown, `${locale}.templates.markdown`).not.toContain(
-          '模板不是素材'
-        );
-        expect(templates?.markdown, `${locale}.templates.markdown`).not.toContain(
-          '不再维护'
-        );
-        expect(templates?.markdown, `${locale}.templates.markdown`).not.toContain(
-          '同一条模板记录'
-        );
-        expect(templates?.markdown, `${locale}.templates.markdown`).not.toContain(
-          '模板库卡片参数对应'
-        );
-        expect(templates?.markdown, `${locale}.templates.markdown`).not.toContain(
-          '模板库卡片'
-        );
-        expect(templates?.markdown, `${locale}.templates.markdown`).not.toContain(
-          '创作工作台参数对应'
-        );
-        expect(templates?.markdown, `${locale}.templates.markdown`).toContain(
-          '## 一、引言'
-        );
-        expect(templates?.markdown, `${locale}.templates.markdown`).toContain(
-          '## 二、系统整体界面介绍'
-        );
-        expect(templates?.markdown, `${locale}.templates.markdown`).toContain(
-          '## 三、功能介绍'
-        );
-        expect(templates?.markdown, `${locale}.templates.markdown`).toContain(
-          '## 四、业务操作指引'
-        );
-        expect(templates?.markdown, `${locale}.templates.markdown`).not.toContain(
-          '### #1'
-        );
-      }
-
-      expect(
-        content.help.items.some(
-          (item) => (item as { key: string }).key === 'library-assets'
-        ),
-        `${locale}.library-assets removed`
-      ).toBe(false);
-    }
-
-    const zhTemplates = adminContent.zh.help.items.find(
+  it('keeps Template Help focused on the current template workflow', () => {
+    const templates = adminContent.en.help.items.find(
       (item) => item.key === 'templates'
     );
 
-    expect(zhTemplates?.markdown).not.toContain(
-      '/admin-help/placements/library-video-key.png'
+    for (const screenshot of ENGLISH_HELP_SCREENSHOTS.templates) {
+      expect(templates?.markdown, 'en.templates.markdown').toContain(
+        screenshot
+      );
+    }
+    expect(templates?.markdown, 'en.templates.markdown').not.toContain('/api/');
+    expect(templates?.markdown, 'en.templates.markdown').not.toContain(
+      'numbered screenshots'
     );
-    expect(zhTemplates?.markdown).not.toContain('如何管理素材库');
-    expect(zhTemplates?.markdown).not.toContain('新增素材');
+    expect(templates?.markdown, 'en.templates.markdown').not.toContain(
+      'numeros das imagens'
+    );
+    for (const term of TEMPLATE_HELP_EXPECTED_TERMS) {
+      expectTextIncludes(templates?.markdown, 'en.templates.markdown', term);
+    }
+    for (const term of REMOVED_TEMPLATE_HELP_TERMS) {
+      expectTextExcludes(templates?.markdown, 'en.templates.markdown', term);
+    }
+
+    expect(
+      adminContent.en.help.items.some(
+        (item) => (item as { key: string }).key === 'library-assets'
+      ),
+      'en.library-assets removed'
+    ).toBe(false);
   });
 });

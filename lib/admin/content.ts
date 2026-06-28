@@ -319,6 +319,260 @@ type AdminHelpCopy = {
   items: AdminHelpItem[];
 };
 
+const enAdminHelpMarkdown: Record<AdminTabKey, string> = {
+  overview: `# Overview
+
+## What this page decides
+
+Use Overview as the first daily triage screen. It combines account creation, authenticated activity, retention, generation volume, failures, and queue pressure so operators can decide whether the day needs content work, support work, provider follow-up, or payment reconciliation.
+
+![Admin overview](/admin-help/placements/admin-overview.png)
+
+## Daily operating flow
+
+1. Start with **Today** and **7 days**. Use longer ranges only when a campaign or release needs context.
+2. Read the summary cards first: registrations, active rate, retention, generation success, failures, and running jobs.
+3. Move to the funnel only after the cards show a real change. The funnel separates signup, authenticated activity, generation intent, and successful output.
+4. Check the trend panels for timing. A spike that starts after a release, provider incident, or campaign change should be investigated with that event in mind.
+5. Open Generation Jobs only when failures, running jobs, or stuck queue signals rise.
+6. Open Credit Ledger only when purchase, refund, reserve, or balance questions are involved.
+
+## Fields and panels operators should read
+
+| Area | What to look for | Where to confirm |
+|---|---|---|
+| Date range | The exact period under review | Overview date inputs and presets |
+| Summary cards | Top-level movement and severity | Overview cards |
+| Funnel | Where users stop before generation | Overview funnel |
+| Activity trend | Whether the issue is isolated or recurring | Overview trend |
+| Generation mix | Which creation type changed | Overview generation mix |
+| Queue health | Failed, running, or stuck generation jobs | Generation Jobs |
+
+## Risk signals
+
+- Activity and retention are estimated from authenticated uploads and generation jobs; they are not session analytics.
+- A fast failure spike usually points to provider, media format, schema, or worker issues before it points to template copy.
+- Running jobs are not automatically bad. Investigate when they stay active without progress or when the stuck ratio rises.
+- Payment conclusions do not belong in Overview. Use Credit Ledger for balance and Stripe-related explanations.`,
+
+  templates: `# Templates
+
+## What this page decides
+
+Templates are the public recipes users browse before creating. Each template belongs to one operational type: **Image to video**, **Models**, **Image generation**, or **Smart try-on**. The type decides which Admin sub-page and frontend workflow owns the template; category only classifies the template inside that type.
+
+## Admin list
+
+![Admin template list](/admin-help/placements/template-admin-list.png)
+
+- Use the Templates sidebar dropdown to choose the type before editing.
+- Search by **ID** when support or engineering gives a precise identifier.
+- Search by **Title** before creating anything similar.
+- For image/video/image-generation/try-on templates, filter by **Category**.
+- For model templates, use **Gender**, **Age**, and **Style** filters. Admin stores them as one category string, but operators should think of them as three browsing dimensions.
+- Use **Reorder** only after the correct type and category are selected.
+
+## Create and edit form
+
+![Admin template form](/admin-help/placements/template-admin-form.png)
+
+- **Title** is the English display name.
+- **Brazilian Portuguese title** is the pt-BR display name.
+- **Category** is a business classification inside the selected type. Do not use it as a workflow selector.
+- For model templates, compose category from gender, age, and style.
+- **Thumbnail asset ID** powers list cards.
+- **Preview asset ID** powers detail previews and model/detail imagery.
+- **Prompt** is the English generation instruction that can reach the workbench.
+- **Brazilian Portuguese prompt** is the pt-BR instruction.
+- Upload thumbnail or preview media only after the template has been saved, because upload needs a template ID.
+
+## Reorder
+
+![Template order](/admin-help/placements/template-admin-order.png)
+
+- Ordering applies only within the same type and category.
+- Reordering does not publish or unpublish a template; it changes the sequence users see.
+- For model templates, choose the exact category group before moving rows.
+
+## Frontend checks after saving
+
+![Frontend templates page](/admin-help/placements/templates-page.png)
+
+- The public templates page should show the saved thumbnail, title, category, and preview behavior in English.
+- Template list responses expose thumbnailUrl; detail responses expose previewUrl and prompt data.
+- If the card looks correct but the detail preview fails, inspect preview asset ID and media processing before changing copy.
+
+![Creation workbench template placement](/admin-help/placements/video-workbench.png)
+
+- The matching creation page should load templates by type.
+- Selecting a template should fill the editable prompt and keep the user in control.
+- Test with a realistic product image before calling a template campaign-ready.
+
+## Checklist
+
+- Do not create a duplicate without checking ID, title, and category first.
+- Do not place a model, try-on, image generation, or image-to-video template under the wrong type.
+- Do not leave important templates without understandable thumbnail and preview media.
+- Do not publish placeholder prompts.
+- After editing, verify the Admin row, public browsing page, and matching workbench.`,
+
+  'user-media': `# User History
+
+## What this page decides
+
+User History is the support surface for private user media. It answers what a user uploaded, generated, reused, hid, or deleted from their own workspace. It is not a public catalog and it is not a replacement for Templates.
+
+![User history](/admin-help/placements/user-history.png)
+
+## Daily operating flow
+
+1. Search by user email first when answering a support case.
+2. Search by material ID when a workbench, generation job, or support note gives a specific asset reference.
+3. Use source and flow to separate user uploads from generated images or generated videos.
+4. Open details before changing visibility. The preview, MIME type, source, generation status, and last-used time are the evidence.
+5. Hide or delete entries only when the user requested it, the material is invalid, or support policy requires it.
+
+## Fields operators should read
+
+| Field | How to use it |
+|---|---|
+| Material ID / Asset ID | Precise support and engineering lookup |
+| User email | Account owner of the private media |
+| Source | User upload, generated image, or generated video |
+| Flow | Image to video, product image, or try-on context |
+| Visibility | Whether the entry is active, hidden, or deleted |
+| Favorite / Uses / Last used | Whether the user intentionally reused the material |
+| Generation status | Confirms whether generated media came from a successful or failed job |
+
+## Risk signals
+
+- This is private user data. Do not treat screenshots or previews as reusable marketing assets.
+- Admin delete is a soft delete through visibility; it should not be used as a bulk cleanup tool.
+- Raw asset storage URLs are not the display contract. Browser previews should flow through the app media route.
+- If support asks why a result failed, switch to Generation Jobs after identifying the related job.`,
+
+  users: `# Users
+
+## What this page decides
+
+Users is the account and access-control surface. It is used for support lookup, role management, account status, subscription context, and credit-balance checks. It should not be used as the final explanation for credit movements; Credit Ledger owns that evidence.
+
+![Users](/admin-help/placements/users.png)
+
+## Daily operating flow
+
+1. Search by email before editing anything.
+2. Confirm account status, role, credit balance, subscription status, and plan.
+3. Change role only when access has been approved.
+4. Use soft delete for account deactivation cases; restore only after confirming the same user should regain access.
+5. When the question is about balance, open Credit Ledger and compare movements before replying.
+
+## Fields operators should read
+
+| Field | How to use it |
+|---|---|
+| Email / Name | Primary support identity |
+| Account status | Active or deleted account state |
+| Role | member, ops, or admin permissions |
+| Credit balance | Current account balance, not the movement history |
+| Subscription status / Plan | Payment and entitlement context |
+| Created / Updated | Account timeline and recent changes |
+
+## Risk signals
+
+- Changing role can grant Admin access. Review ops and admin changes twice.
+- Do not revoke your own admin access.
+- Credit balance can be stale without the ledger context. Use Credit Ledger for purchase, reserve, capture, refund, or adjustment explanations.
+- Deleted accounts may still appear in support searches for audit reasons.`,
+
+  'generation-jobs': `# Generation Jobs
+
+## What this page decides
+
+Generation Jobs is the operational trace from user input to provider result. It helps operators answer whether a creation is queued, running, succeeded, failed, how many credits were reserved, what input summary was submitted, and what media can be previewed.
+
+![Generation jobs](/admin-help/placements/generation-jobs.png)
+
+## Daily operating flow
+
+1. Search by job ID when support has one.
+2. Search by prompt, product name, template ID, status, user, or provider error when the issue is less precise.
+3. Open details to compare input preview and result preview before diagnosing quality.
+4. Treat queued, submitting, and running as active states. Investigate when they remain active too long or cluster after a release/provider event.
+5. Use error message edits only for recovery notes or clearer support context. The page does not let operators directly change job status.
+6. For credit questions, jump to Credit Ledger after identifying the job.
+
+## Fields operators should read
+
+| Field | How to use it |
+|---|---|
+| gen_id | Precise lookup and cross-tab reference |
+| Type | Image to video, product image, or try-on |
+| Status | Queued, submitting, running, succeeded, or failed |
+| Input summary | Fast triage of prompt/product/template context |
+| Duration | Requested generation duration when present |
+| Reserved credits | Credits held for this job |
+| Input / Result previews | Media evidence in the detail view |
+| Error message | Provider or worker failure clue |
+
+## Risk signals
+
+- The input summary is only a summary; do not skip previewing the original media when quality matters.
+- A failed job with reserved credits may need refund/capture review in Credit Ledger.
+- Deleting jobs is an admin cleanup action, not a normal support response.
+- If many jobs fail together, investigate provider, worker, schema, or media routing before editing templates.`,
+
+  'credit-ledger': `# Credit Ledger
+
+## What this page decides
+
+Credit Ledger is the source of truth for credit movement. It explains purchases, reservations, captures, refunds, and manual adjustments. Use it whenever a user asks why a balance changed.
+
+![Credit ledger](/admin-help/placements/credit-ledger.png)
+
+## Daily operating flow
+
+1. Search by user email or user ID for account-level balance questions.
+2. Search by job ID for generation reserve, capture, or refund questions.
+3. Use Stripe event ID or metadata when reconciling checkout and webhook cases.
+4. Compare **delta** and **balance after** before writing a support answer.
+5. Edit metadata JSON only to correct or enrich audit context; do not use it to change balance.
+
+## Fields operators should read
+
+| Field | How to use it |
+|---|---|
+| User email / User ID | Account tied to the movement |
+| Delta | Credit increase or decrease |
+| Reason | purchase, reserve, capture, refund, or manual adjustment |
+| Balance after | Account balance after this movement |
+| Job ID / Job status / Template ID | Generation context |
+| Stripe event ID | Payment reconciliation |
+| Metadata JSON | Package, note, source, checkout, and webhook context |
+| Created | Movement timing |
+
+## Risk signals
+
+- The ledger explains balance; it is not a normal editable table.
+- Missing Stripe event IDs on purchase-like entries need review.
+- Large manual adjustments need an external business note.
+- If user balance and ledger history disagree, reconcile before replying to support.`,
+
+  help: `# Help
+
+## What this page decides
+
+Help is the operating handbook for Admin. It should tell operators what each tab is for, which fields matter, where to verify a change, and which actions are high-risk.
+
+## Maintenance rules
+
+- Update Help whenever a tab gains a field, filter, permission, or operating rule.
+- Keep writing action-oriented: what to check, what to change, where to verify.
+- Use screenshots only from the current English UI.
+- Move deep implementation details to engineering docs; Help should stay usable during support and campaign work.
+- When the same support mistake happens twice, add the rule to the relevant page.`,
+};
+
 export type AdminContent = {
   common: AdminCommonCopy;
   shell: {
@@ -1406,6 +1660,7 @@ Templates agora sao registros pequenos por tipo de pagina. A tabela de templates
         {
           key: 'overview',
           title: 'Overview',
+          markdown: enAdminHelpMarkdown.overview,
           purpose:
             'Check activity, retention, the registration-to-generation funnel, and generation queue health before prioritizing the day.',
           dailyActions: [
@@ -1427,66 +1682,7 @@ Templates agora sao registros pequenos por tipo de pagina. A tabela de templates
         {
           key: 'templates',
           title: 'Templates',
-          markdown: `# Templates
-
-## Purpose
-
-Templates are now small records grouped by type page. The templates table stores type, business category, thumbnail_asset_id, preview_asset_id, prompt, and sort_order. The type chooses the operational page: image_to_video, model, image_to_image, or try_on.
-
-## Where to operate and verify
-
-### Admin list
-
-![Admin template list](/admin-help/placements/template-admin-list.png)
-
-- Use the separate ID, title, and category filters inside the current type before creating another similar template.
-- The table shows id, type, category, order, prompt, and updated_at so operators can decide what to review first.
-- Create opens the form. Preview uploads happen from detail or edit views.
-- Reorder opens the selected type and category so operators can adjust the visible sequence.
-
-### Create and edit form
-
-![Admin template form](/admin-help/placements/template-admin-form.png)
-
-- Fill type, category, thumbnail_asset_id, preview_asset_id, and prompt.
-- type=image_to_video, model, image_to_image, or try_on chooses the page where the template appears.
-- category is the business classification inside that type, for example product, fashion, or food.
-- sort_order is changed through Reorder and only applies inside the same type and category.
-- For saved templates, upload or select thumbnail and preview media to explain the expected result.
-
-### Frontend template library
-
-![Frontend templates page](/admin-help/placements/templates-page.png)
-
-- Users find templates through category and text search.
-- The list API returns thumbnailUrl for the card thumbnail.
-- The detail API returns previewUrl and prompt for the main preview and workbench fill.
-
-### Creation workbench
-
-![Creation workbench template placement](/admin-help/placements/video-workbench.png)
-
-- Each operational page loads templates by its own type.
-- When a user chooses a template, the prompt fills the editable prompt field.
-- The saved template must work with a real product image.
-
-## Fields operators need to review
-
-- ID: system-generated identifier for links, tasks, and search. Use it to locate a template in support or investigation.
-- type: capability type and operational page for the template.
-- category: business classification inside that type. Do not use category to represent a page or workbench.
-- sort_order: order inside the same type and category; the API applies it to list results but does not publish the field.
-- thumbnail_asset_id: asset used for the list thumbnail; the API publishes it as thumbnailUrl.
-- preview_asset_id: asset used for the main video or image; the detail API publishes it as previewUrl.
-- prompt: real generation instruction; do not publish placeholder text.
-- created_at and updated_at: basic creation and last-edit audit.
-
-## Checklist
-
-- Do not create a duplicate without filtering by ID, title, and category.
-- Do not leave important browsing templates without understandable preview media.
-- The prompt must match the real generation flow.
-- After saving, check the matching frontend page and workbench.`,
+          markdown: enAdminHelpMarkdown.templates,
           purpose:
             'Maintain minimal templates by type and confirm they appear on the right operational page.',
           dailyActions: [
@@ -1508,6 +1704,7 @@ Templates are now small records grouped by type page. The templates table stores
         {
           key: 'user-media',
           title: 'User History',
+          markdown: enAdminHelpMarkdown['user-media'],
           purpose:
             'Inspect private media that users uploaded, generated, or reused without operating the technical assets table.',
           dailyActions: [
@@ -1529,6 +1726,7 @@ Templates are now small records grouped by type page. The templates table stores
         {
           key: 'users',
           title: 'Users',
+          markdown: enAdminHelpMarkdown.users,
           purpose:
             'Inspect account, role, credits, and subscription state for support, access, and payment cases.',
           dailyActions: [
@@ -1550,6 +1748,7 @@ Templates are now small records grouped by type page. The templates table stores
         {
           key: 'generation-jobs',
           title: 'Generation Jobs',
+          markdown: enAdminHelpMarkdown['generation-jobs'],
           purpose:
             'Investigate each generation from input to result, including status, template, cost, and provider error.',
           dailyActions: [
@@ -1572,6 +1771,7 @@ Templates are now small records grouped by type page. The templates table stores
         {
           key: 'credit-ledger',
           title: 'Credit Ledger',
+          markdown: enAdminHelpMarkdown['credit-ledger'],
           purpose:
             'Operational source for credit balance, purchases, reserves, captures, refunds, and manual adjustments.',
           dailyActions: [
@@ -1593,6 +1793,7 @@ Templates are now small records grouped by type page. The templates table stores
         {
           key: 'help',
           title: 'Help',
+          markdown: enAdminHelpMarkdown.help,
           purpose:
             'Act as the Admin training and governance column so operators know what each tab is meant to decide.',
           dailyActions: [
