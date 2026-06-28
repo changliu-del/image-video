@@ -78,11 +78,16 @@ collapsing those controls back into a single generic search box.
 
 Template rows keep `thumbnail_asset_id` and `preview_asset_id` for upload
 integrity, but also store `thumbnail_url`, `preview_url`,
-`thumbnail_mime_type`, and `preview_mime_type` as read snapshots. Public and
-Admin template lists should read these template columns directly instead of
-joining `assets` just to render cards or detail previews. The stored URLs use
-the stable app media route `/api/template-media/{assetId}` so template media
-still goes through the existing proxy, range support, and memory cache path.
+`thumbnail_mime_type`, and `preview_mime_type` as read snapshots. Admin template
+lists should read these template columns directly instead of joining `assets`
+just to render cards or detail previews. The stored URLs still use the stable
+app media route `/api/template-media/{assetId}` for compatibility, but public
+template list/detail APIs join the referenced asset rows only to resolve direct
+`R2_PUBLIC_BASE_URL + storage_key` CDN URLs when the asset is uploaded and the
+storage key starts with `templates/`. This keeps public template media bytes off
+the Next API hot path while preserving `/api/template-media/{assetId}` as the
+fallback route for historical snapshots, range checks, and explicit `external/`
+media.
 
 Admin support tables expose field-specific filters for the common operator
 lookups. User History supports user email and Material ID (`assetId`) filters.
@@ -98,10 +103,10 @@ User History is private support data. It must use current-user scoped APIs and
 headers.
 
 The media bytes referenced by User History and Generation Jobs should be served
-through `/api/asset-media/{assetId}` for browser display, mirroring the template
-media route. Keep list/detail APIs private, but do not send raw
-`assets.public_url` values to workbenches or Admin previews; that column is R2
-storage metadata and can point at a bucket endpoint that is not public.
+through `/api/asset-media/{assetId}` for browser display. Keep list/detail APIs
+private, and do not send raw `assets.public_url` values to workbenches or Admin
+previews; that column is R2 storage metadata and can point at a bucket endpoint
+that is not public.
 `/api/asset-media/{assetId}` is also private user data: it must require the
 current session user, scope the asset lookup by `assets.user_id`, and return
 `Cache-Control: private, no-store`. Public cache headers belong only on public

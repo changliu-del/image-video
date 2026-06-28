@@ -96,21 +96,23 @@ Do not treat `assets.public_url` as the frontend display contract. It is storage
 metadata for the R2 object and may point at a bucket endpoint that is not
 browser-readable.
 
-Template media follows this pattern already: Admin upload writes regular
-`assets` rows with R2 metadata, but `templates.thumbnail_url` and
-`templates.preview_url` store `/api/template-media/{assetId}`. That route reads
-the configured `R2_PUBLIC_BASE_URL` plus the asset `storage_key` server-side,
-supports byte ranges for video, and sets public media cache headers. The
-frontend still sees only the app media route; the route owns the storage-origin
-fetch.
+Template media uses two layers: Admin upload writes regular `assets` rows with
+R2 metadata, and `templates.thumbnail_url` / `templates.preview_url` still store
+`/api/template-media/{assetId}` as stable snapshots. Public template list/detail
+APIs join the referenced assets and, when an uploaded asset has a
+`templates/...` storage key, return a direct CDN URL from `R2_PUBLIC_BASE_URL +
+storage_key` so browsers fetch public thumbnails/previews from Cloudflare
+instead of proxying each byte through Vercel Functions. `/api/template-media`
+remains the compatibility/fallback route for stored snapshots, byte-range
+checks, and explicit `external/` media.
 
-User uploads and generated outputs should follow the same app-route pattern:
+User uploads and generated outputs are different because they are private:
 status APIs, user history, Admin previews, and workbench upload completion
 should return `/api/asset-media/{assetId}` for browser display. Provider-facing
-payloads must not use `/api/asset-media/{assetId}` because that route is private
-and requires the user's session cookie. For Wanxiang submit payloads, resolve
-uploaded input assets to short-lived R2 signed GET URLs server-side; keep
-`/api/asset-media/{assetId}` as the browser display contract only.
+payloads must not use `/api/asset-media/{assetId}` because that route requires
+the user's session cookie. For Wanxiang submit payloads, resolve uploaded input
+assets to short-lived R2 signed GET URLs server-side; keep `/api/asset-media/{assetId}`
+as the browser display contract only.
 
 ## Architecture Caveat
 

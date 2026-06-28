@@ -183,7 +183,8 @@ describe('template catalog routing contract', () => {
     expect(query).toContain('loadPublishedTemplateRowsForTypeFromNextCache');
     expect(query).toContain('revalidateTag(templateCatalogDataCacheTag, { expire: 0 })');
     expect(query).toContain('deserializeTemplateDetailRow');
-    expect(query).toContain('previewUrl: row.previewUrl');
+    expect(query).toContain('resolvePublicTemplateMediaUrls(row)');
+    expect(query).toContain('previewUrl: mediaUrls.previewUrl');
     expect(query).toContain('clearPublishedTemplateCatalogCache');
     expect(templatesPage).toContain("media: 'preview'");
     expect(templatesPage).toContain('src={template.previewUrl}');
@@ -291,6 +292,23 @@ describe('template catalog routing contract', () => {
     expect(mediaRoute).not.toContain('createSignedGetUrl');
     expect(mediaRoute).not.toContain('refreshTemplateMediaCache');
     expect(mediaRoute).not.toContain('deleteTemplateMediaCacheEntries');
+  });
+
+  it('returns direct CDN URLs for R2-backed public template media', () => {
+    const query = readSource('lib/templates/query.ts');
+
+    expect(query).toContain("alias(assets, 'template_thumbnail_asset')");
+    expect(query).toContain("alias(assets, 'template_preview_asset')");
+    expect(query).toContain(
+      '.leftJoin(thumbnailAsset, eq(templates.thumbnailAssetId, thumbnailAsset.id))'
+    );
+    expect(query).toContain(
+      '.leftJoin(previewAsset, eq(templates.previewAssetId, previewAsset.id))'
+    );
+    expect(query).toContain("asset.status === 'uploaded'");
+    expect(query).toContain("storageKey?.startsWith('templates/')");
+    expect(query).toContain('return buildPublicUrl(storageKey);');
+    expect(query).toContain('return fallbackUrl;');
   });
 
   it('keeps bundled starter resources outside the R2 template namespace', () => {

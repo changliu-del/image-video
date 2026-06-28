@@ -33,11 +33,16 @@ Updated: 2026-06-27
 - `NEXT_PUBLIC_SENTRY_DSN`
 - `SENTRY_AUTH_TOKEN`
 
-`R2_PUBLIC_BASE_URL` is storage metadata for persisted asset rows. Frontend
-media display should use app media routes instead: `/api/template-media/{assetId}`
-for template media and `/api/asset-media/{assetId}` for user uploads/generated
-outputs. Do not fix broken workbench previews by adding signed-URL fallback
-logic to the frontend.
+`R2_PUBLIC_BASE_URL` is the public CDN base for public R2 objects. Public
+template list/detail APIs should return direct CDN URLs for uploaded template
+assets whose `assets.storage_key` starts with `templates/`, so browsers fetch
+template thumbnails/previews from the CDN instead of proxying every byte through
+Vercel Functions. `/api/template-media/{assetId}` remains a compatibility and
+fallback route for historical stored snapshots, range checks, and explicit
+`external/` template media. User uploads and generated outputs must still be
+displayed through `/api/asset-media/{assetId}` because they are private user
+data. Do not fix broken private previews by adding signed-URL fallback logic to
+the frontend.
 
 Do not hide app media route failures by adding public-URL or signed-URL
 fallbacks. Fix the owning data/config path directly: R2-backed assets must have

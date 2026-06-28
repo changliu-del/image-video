@@ -1,9 +1,11 @@
 import 'server-only';
 
-import { asc, sql } from 'drizzle-orm';
+import { asc, eq, sql } from 'drizzle-orm';
+import { alias } from 'drizzle-orm/pg-core';
 import { revalidateTag, unstable_cache } from 'next/cache';
 import { db } from '@/lib/db/drizzle';
-import { templates } from '@/lib/db/schema';
+import { assets, templates } from '@/lib/db/schema';
+import { buildPublicUrl } from '@/lib/storage/r2';
 import type {
   TemplateCatalogDetailItem,
   TemplateCatalogListItem,
@@ -28,12 +30,21 @@ type TemplateListRow = {
   type: TemplateType;
   category: string;
   thumbnailAssetId: number;
+  thumbnailAssetStatus: string | null;
+  thumbnailStorageKey: string | null;
   previewAssetId: number;
+  previewAssetStatus: string | null;
+  previewStorageKey: string | null;
   thumbnailUrl: string;
   previewUrl: string;
   sortOrder: number;
   createdAt: Date;
   updatedAt: Date;
+};
+
+type TemplateMediaAssetSnapshot = {
+  status: string | null;
+  storageKey: string | null;
 };
 
 type TemplateDetailRow = TemplateListRow & {
@@ -80,6 +91,8 @@ export type PublishedTemplatesResult = {
 };
 
 const supportedLocales = new Set(['pt', 'en']);
+const thumbnailAsset = alias(assets, 'template_thumbnail_asset');
+const previewAsset = alias(assets, 'template_preview_asset');
 
 function templateCatalogCacheState() {
   const globalScope = globalThis as typeof globalThis & {
@@ -111,18 +124,45 @@ function resolveLocalizedText(
   return locale === 'pt' ? portuguese || english : english;
 }
 
+function resolvePublicTemplateMediaUrl(
+  fallbackUrl: string,
+  asset: TemplateMediaAssetSnapshot
+) {
+  const storageKey = asset.storageKey?.trim();
+  if (asset.status === 'uploaded' && storageKey?.startsWith('templates/')) {
+    return buildPublicUrl(storageKey);
+  }
+
+  return fallbackUrl;
+}
+
+function resolvePublicTemplateMediaUrls(row: TemplateListRow) {
+  return {
+    thumbnailUrl: resolvePublicTemplateMediaUrl(row.thumbnailUrl, {
+      status: row.thumbnailAssetStatus,
+      storageKey: row.thumbnailStorageKey,
+    }),
+    previewUrl: resolvePublicTemplateMediaUrl(row.previewUrl, {
+      status: row.previewAssetStatus,
+      storageKey: row.previewStorageKey,
+    }),
+  };
+}
+
 function mapTemplateListRow(
   row: TemplateListRow,
   locale: Locale
 ): TemplateCatalogListItem {
+  const mediaUrls = resolvePublicTemplateMediaUrls(row);
+
   return {
     id: String(row.id),
     title: resolveLocalizedText(row.title, row.ptTitle, locale),
     type: row.type,
     category:
       normalizeTemplateCategoryForType(row.type, row.category) ?? row.category,
-    thumbnailUrl: row.thumbnailUrl,
-    previewUrl: row.previewUrl,
+    thumbnailUrl: mediaUrls.thumbnailUrl,
+    previewUrl: mediaUrls.previewUrl,
     createdAt: row.createdAt.toISOString(),
     updatedAt: row.updatedAt.toISOString(),
   };
@@ -163,7 +203,11 @@ function baseTemplateDetailQuery() {
       type: templates.type,
       category: templates.category,
       thumbnailAssetId: templates.thumbnailAssetId,
+      thumbnailAssetStatus: thumbnailAsset.status,
+      thumbnailStorageKey: thumbnailAsset.storageKey,
       previewAssetId: templates.previewAssetId,
+      previewAssetStatus: previewAsset.status,
+      previewStorageKey: previewAsset.storageKey,
       thumbnailUrl: templates.thumbnailUrl,
       previewUrl: templates.previewUrl,
       prompt: templates.prompt,
@@ -172,7 +216,9 @@ function baseTemplateDetailQuery() {
       createdAt: templates.createdAt,
       updatedAt: templates.updatedAt,
     })
-    .from(templates);
+    .from(templates)
+    .leftJoin(thumbnailAsset, eq(templates.thumbnailAssetId, thumbnailAsset.id))
+    .leftJoin(previewAsset, eq(templates.previewAssetId, previewAsset.id));
 }
 
 function sortTemplateCategories(type: TemplateType, categories: string[]) {
@@ -269,7 +315,7 @@ async function loadPublishedTemplateRowsForType(type: TemplateType) {
 
 const loadPublishedTemplateRowsForTypeFromNextCache = unstable_cache(
   loadPublishedTemplateRowsForType,
-  ['image-video-published-template-rows-v1'],
+  ['image-video-published-template-rows-v2'],
   {
     tags: [templateCatalogDataCacheTag],
     revalidate: templateCatalogDataCacheRevalidateSeconds,
