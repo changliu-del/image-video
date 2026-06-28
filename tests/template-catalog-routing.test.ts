@@ -482,6 +482,31 @@ describe('template catalog routing contract', () => {
     );
   });
 
+  it('marks the create-video navigation waterfall in browser performance', () => {
+    const timing = readSource('lib/performance/create-video-navigation.ts');
+    const appShell = readSource('app/(dashboard)/app-shell.tsx');
+    const dashboardCard = readSource(
+      'components/dashboard/dashboard-workbench-card.tsx'
+    );
+    const workbench = readSource('components/create/image-video-workbench.tsx');
+    const gallery = readSource(
+      'components/dashboard/dashboard-inspiration-gallery.tsx'
+    );
+
+    expect(timing).toContain('iv:create-video:click');
+    expect(timing).toContain('iv:create-video:rsc-returned');
+    expect(timing).toContain('iv:create-video:workbench-mounted');
+    expect(timing).toContain('iv:create-video:templates-loaded');
+    expect(timing).toContain('iv:dashboard:inspiration-templates-start');
+    expect(timing).toContain('__imageVideoPerf');
+
+    expect(appShell).toContain("origin: 'dashboard-sidebar'");
+    expect(dashboardCard).toContain("origin: 'dashboard-card'");
+    expect(workbench).toContain('markCreateVideoWorkbenchMounted()');
+    expect(workbench).toContain('markCreateVideoTemplatesLoaded');
+    expect(gallery).toContain('markDashboardInspirationTemplatesStart');
+  });
+
   it('keeps image reference upload single-select in the image-to-video workbench', () => {
     const source = readSource('components/create/image-video-workbench.tsx');
     const copy = readSource('components/create/workbench-copy.ts');

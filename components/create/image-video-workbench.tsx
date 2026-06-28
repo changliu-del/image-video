@@ -61,6 +61,13 @@ import {
   type PublicTemplateItem,
 } from '@/lib/templates/public-client';
 import { scheduleIdleWork } from '@/lib/browser/deferred-work';
+import {
+  markCreateVideoTemplatesError,
+  markCreateVideoTemplatesLoaded,
+  markCreateVideoTemplatesStart,
+  markCreateVideoWorkbenchMounted,
+  observeCreateVideoRscReturn,
+} from '@/lib/performance/create-video-navigation';
 import { cn } from '@/lib/utils';
 
 type CompleteAssetResponse = {
@@ -1301,6 +1308,11 @@ export function ImageVideoWorkbench({
   const templateSentinelRef = useRef<HTMLDivElement>(null);
   const requestedTemplateId = initialTemplateId;
 
+  useEffect(() => {
+    markCreateVideoWorkbenchMounted();
+    return observeCreateVideoRscReturn();
+  }, []);
+
   const isSubmitting = Boolean(submitLabel);
   const trimmedPrompt = prompt.trim();
   const selectedResultUrl = resultUrl(jobStatus);
@@ -1505,6 +1517,12 @@ export function ImageVideoWorkbench({
         });
         if (templateCategory) params.set('category', templateCategory);
 
+        markCreateVideoTemplatesStart({
+          category: templateCategory || 'all',
+          locale,
+          page: 1,
+          pageSize: TEMPLATE_PAGE_SIZE,
+        });
         const response = await fetch(`/api/templates?${params.toString()}`, {
           signal: controller.signal,
         });
@@ -1531,6 +1549,12 @@ export function ImageVideoWorkbench({
             (template) => String(template.id) === requestedTemplateId
           );
 
+          markCreateVideoTemplatesLoaded({
+            category: templateCategory || 'all',
+            itemCount: nextTemplates.length,
+            locale,
+            total,
+          });
           setTemplates(nextTemplates);
           setTemplateTotal(total);
           setTemplatePage(page);
@@ -1556,6 +1580,10 @@ export function ImageVideoWorkbench({
         }
       } catch {
         if (!cancelled) {
+          markCreateVideoTemplatesError({
+            category: templateCategory || 'all',
+            locale,
+          });
           setTemplates([]);
           setTemplateTotal(0);
           setTemplatePage(1);

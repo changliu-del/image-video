@@ -21,6 +21,7 @@ import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
 import { SubmitButton } from '@/app/(dashboard)/pricing/submit-button';
 import { useDashboardLocale, withDashboardLocale } from '@/lib/dashboard/use-dashboard-locale';
+import { markCreateVideoNavigationClick } from '@/lib/performance/create-video-navigation';
 import { creditsCopy } from '@/components/dashboard/account-copy';
 
 type CreditLedgerEntry = {
@@ -94,6 +95,7 @@ function BalanceValue({
 export function CreditsClient({ embedded = false }: CreditsClientProps = {}) {
   const locale = useDashboardLocale();
   const copy = creditsCopy[locale];
+  const createVideoHref = withDashboardLocale('/create/video', locale);
   const { data, error, isLoading, mutate } = useSWR('/api/account/credits', fetcher, {
     revalidateOnFocus: false,
   });
@@ -161,8 +163,14 @@ export function CreditsClient({ embedded = false }: CreditsClientProps = {}) {
           <div className="mt-5 flex flex-col gap-2 sm:flex-row">
             <Button asChild variant="ghost">
               <Link
-                href={withDashboardLocale('/create/video', locale)}
+                href={createVideoHref}
                 prefetch={false}
+                onClick={() =>
+                  markCreateVideoNavigationClick({
+                    href: createVideoHref,
+                    origin: 'credits-link',
+                  })
+                }
               >
                 {copy.createVideo}
                 <ArrowUpRight className="size-4" />

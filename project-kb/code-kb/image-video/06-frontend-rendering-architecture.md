@@ -75,6 +75,12 @@ Fixed in this pass:
   prefilled default prompt values. `/create/video`, `/create/apparel`, and
   `/create/try-on` should initialize prompt state only from an explicit URL
   prompt or user/template action so the input is empty on first entry.
+- First-entry performance investigations should use browser performance marks,
+  not guesswork. `/create/video` navigation marks `iv:create-video:click`,
+  `iv:create-video:rsc-returned`, `iv:create-video:workbench-mounted`, and
+  `iv:create-video:templates-loaded`; dashboard inspiration marks
+  `iv:dashboard:inspiration-templates-*` so template gallery IO can be compared
+  against the user's first navigation.
 
 ## 2026-06-24 Auth Refresh Fix
 

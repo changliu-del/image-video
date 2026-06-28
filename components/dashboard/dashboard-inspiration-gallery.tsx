@@ -17,6 +17,11 @@ import {
   type PublicTemplatesApiResponse,
 } from '@/lib/templates/public-client';
 import { scheduleIdleWork } from '@/lib/browser/deferred-work';
+import {
+  markDashboardInspirationTemplatesError,
+  markDashboardInspirationTemplatesLoaded,
+  markDashboardInspirationTemplatesStart,
+} from '@/lib/performance/create-video-navigation';
 import { cn } from '@/lib/utils';
 
 type GalleryTemplateType = Exclude<TemplateType, 'model'>;
@@ -140,6 +145,11 @@ function useTemplateGallery(locale: DashboardLocale, enabled: boolean) {
 
     async function loadTemplates() {
       setStatus('loading');
+      markDashboardInspirationTemplatesStart({
+        locale,
+        pageSize: galleryPageSize,
+        types: galleryTypes,
+      });
       try {
         const responses = await Promise.all(
           galleryTypes.map(async (type) => {
@@ -175,6 +185,14 @@ function useTemplateGallery(locale: DashboardLocale, enabled: boolean) {
         );
 
         if (!ignore) {
+          markDashboardInspirationTemplatesLoaded({
+            itemCount: responses.reduce(
+              (sum, [, bucket]) => sum + bucket.items.length,
+              0
+            ),
+            locale,
+            types: galleryTypes,
+          });
           setBuckets(
             Object.fromEntries(responses) as Record<
               GalleryTemplateType,
@@ -185,6 +203,10 @@ function useTemplateGallery(locale: DashboardLocale, enabled: boolean) {
         }
       } catch {
         if (!ignore) {
+          markDashboardInspirationTemplatesError({
+            locale,
+            types: galleryTypes,
+          });
           setStatus('error');
         }
       }

@@ -17,6 +17,7 @@ import {
 
 import { getDashboardContent } from '@/lib/dashboard/content';
 import { useDashboardLocale, withDashboardLocale } from '@/lib/dashboard/use-dashboard-locale';
+import { markCreateVideoNavigationClick } from '@/lib/performance/create-video-navigation';
 import { cn } from '@/lib/utils';
 import type { DashboardHeaderUser } from './dashboard-header';
 
@@ -49,9 +50,21 @@ function SidebarLink({
       : match === 'exact' || href === '/'
         ? pathname === href
         : pathname === href || pathname.startsWith(`${href}/`);
+  const localizedHref = withDashboardLocale(href, locale);
 
   return (
-    <Link href={withDashboardLocale(href, locale)} prefetch={false}>
+    <Link
+      href={localizedHref}
+      prefetch={false}
+      onClick={() => {
+        if (href === '/create/video') {
+          markCreateVideoNavigationClick({
+            href: localizedHref,
+            origin: 'dashboard-sidebar',
+          });
+        }
+      }}
+    >
       <span
         className={cn(
           'my-0.5 flex h-9 w-full items-center gap-2 rounded-lg px-3 text-sm font-semibold text-gray-500 transition hover:bg-indigo-50 hover:text-indigo-600',

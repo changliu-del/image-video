@@ -11,6 +11,7 @@ import {
 } from 'lucide-react';
 
 import { LazyDashboardVideo } from '@/components/dashboard/lazy-dashboard-video';
+import { markCreateVideoNavigationClick } from '@/lib/performance/create-video-navigation';
 
 type WorkbenchCardKey = 'video' | 'product' | 'tryOn';
 
@@ -45,6 +46,15 @@ export function DashboardWorkbenchCard({
   const armPreview = useCallback(() => {
     setIsPreviewArmed(true);
   }, []);
+
+  const markNavigationClick = useCallback(() => {
+    if (card.key !== 'video') return;
+
+    markCreateVideoNavigationClick({
+      href: card.href,
+      origin: 'dashboard-card',
+    });
+  }, [card.href, card.key]);
 
   useEffect(() => {
     if (isPreviewArmed) return;
@@ -85,6 +95,7 @@ export function DashboardWorkbenchCard({
       onPointerEnter={armPreview}
       onFocusCapture={armPreview}
       onTouchStart={armPreview}
+      onClick={markNavigationClick}
     >
       <div className="relative h-44 overflow-hidden bg-gray-100">
         <LazyDashboardVideo
