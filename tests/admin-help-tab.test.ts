@@ -358,4 +358,32 @@ describe('Admin Help tab coverage', () => {
       'en.library-assets removed'
     ).toBe(false);
   });
+
+  it('documents the current Admin management query fields', () => {
+    const expectedTerms: Record<
+      (typeof ENGLISH_ADMIN_HELP_KEYS)[number],
+      readonly string[]
+    > = {
+      overview: ['Generation Jobs', 'Credit Ledger'],
+      templates: ['ID', 'Title', 'Category'],
+      'user-media': ['User email', 'Material ID'],
+      users: ['Email', 'Name'],
+      'generation-jobs': ['gen_id'],
+      'credit-ledger': ['User email', 'Created from', 'Created to'],
+    };
+
+    for (const [key, terms] of Object.entries(expectedTerms)) {
+      const item = adminContent.en.help.items.find(
+        (candidate) => candidate.key === key
+      );
+
+      for (const term of terms) {
+        expectTextIncludes(
+          item?.markdown,
+          `en.help.${key}.markdown`,
+          term
+        );
+      }
+    }
+  });
 });

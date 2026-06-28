@@ -426,9 +426,9 @@ User History is the support surface for private user media. It answers what a us
 
 ## Daily operating flow
 
-1. Search by user email first when answering a support case.
-2. Search by material ID when a workbench, generation job, or support note gives a specific asset reference.
-3. Use source and flow to separate user uploads from generated images or generated videos.
+1. Use the **User email** field first when answering a support case.
+2. Use the **Material ID** field when a workbench, generation job, or support note gives a specific asset reference.
+3. Combine field filters with the keyword search only when the case also mentions source, flow, visibility, or generation status.
 4. Open details before changing visibility. The preview, MIME type, source, generation status, and last-used time are the evidence.
 5. Hide or delete entries only when the user requested it, the material is invalid, or support policy requires it.
 
@@ -436,7 +436,9 @@ User History is the support surface for private user media. It answers what a us
 
 | Field | How to use it |
 |---|---|
-| Material ID / Asset ID | Precise support and engineering lookup |
+| User email filter | Account-level lookup for private media owned by one user |
+| Material ID filter | Precise asset lookup from support notes, workbenches, or engineering |
+| Material ID / Asset ID | Row-level support and engineering reference |
 | User email | Account owner of the private media |
 | Source | User upload, generated image, or generated video |
 | Flow | Image to video, product image, or try-on context |
@@ -461,16 +463,19 @@ Users is the account and access-control surface. It is used for support lookup, 
 
 ## Daily operating flow
 
-1. Search by email before editing anything.
-2. Confirm account status, role, credit balance, subscription status, and plan.
-3. Change role only when access has been approved.
-4. Use soft delete for account deactivation cases; restore only after confirming the same user should regain access.
-5. When the question is about balance, open Credit Ledger and compare movements before replying.
+1. Use the **Email** field for exact support lookup before editing anything.
+2. Use the **Name** field when support only has a display name or partial account identity.
+3. Confirm account status, role, credit balance, subscription status, and plan.
+4. Change role only when access has been approved.
+5. Use soft delete for account deactivation cases; restore only after confirming the same user should regain access.
+6. When the question is about balance, open Credit Ledger and compare movements before replying.
 
 ## Fields operators should read
 
 | Field | How to use it |
 |---|---|
+| Email filter | Primary account lookup for support and access changes |
+| Name filter | Secondary lookup when email is unavailable |
 | Email / Name | Primary support identity |
 | Account status | Active or deleted account state |
 | Role | member, ops, or admin permissions |
@@ -495,7 +500,7 @@ Generation Jobs is the operational trace from user input to provider result. It 
 
 ## Daily operating flow
 
-1. Search by job ID when support has one.
+1. Use the **gen_id** field when support has a precise job identifier.
 2. Search by prompt, product name, template ID, status, user, or provider error when the issue is less precise.
 3. Open details to compare input preview and result preview before diagnosing quality.
 4. Treat queued, submitting, and running as active states. Investigate when they remain active too long or cluster after a release/provider event.
@@ -506,7 +511,8 @@ Generation Jobs is the operational trace from user input to provider result. It 
 
 | Field | How to use it |
 |---|---|
-| gen_id | Precise lookup and cross-tab reference |
+| gen_id filter | Precise job lookup and cross-tab reference |
+| gen_id | Row identifier for support, Credit Ledger, and engineering |
 | Type | Image to video, product image, or try-on |
 | Status | Queued, submitting, running, succeeded, or failed |
 | Input summary | Fast triage of prompt/product/template context |
@@ -532,16 +538,19 @@ Credit Ledger is the source of truth for credit movement. It explains purchases,
 
 ## Daily operating flow
 
-1. Search by user email or user ID for account-level balance questions.
-2. Search by job ID for generation reserve, capture, or refund questions.
-3. Use Stripe event ID or metadata when reconciling checkout and webhook cases.
-4. Compare **delta** and **balance after** before writing a support answer.
-5. Edit metadata JSON only to correct or enrich audit context; do not use it to change balance.
+1. Use the **User email** field for account-level balance questions.
+2. Use **Created from** and **Created to** together when reconciling a support window, campaign day, or payment incident.
+3. Search by job ID for generation reserve, capture, or refund questions.
+4. Use Stripe event ID or metadata when reconciling checkout and webhook cases.
+5. Compare **delta** and **balance after** before writing a support answer.
+6. Edit metadata JSON only to correct or enrich audit context; do not use it to change balance.
 
 ## Fields operators should read
 
 | Field | How to use it |
 |---|---|
+| User email filter | Account-level ledger lookup |
+| Created from / Created to | Inclusive date-window search for credit movements |
 | User email / User ID | Account tied to the movement |
 | Delta | Credit increase or decrease |
 | Reason | purchase, reserve, capture, refund, or manual adjustment |
@@ -1536,8 +1545,11 @@ Templates agora sao registros pequenos por tipo de pagina. A tabela de templates
         },
         filters: {
           userId: 'User ID',
+          userEmail: 'User email',
           jobId: 'Job ID',
           createdAt: 'Created',
+          createdFrom: 'Created from',
+          createdTo: 'Created to',
         },
       },
     },

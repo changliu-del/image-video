@@ -5,19 +5,32 @@ import { adminRouteError, readJsonBody } from '../_utils';
 
 export async function GET(request: NextRequest) {
   try {
+    const searchParams = request.nextUrl.searchParams;
     const { search, page, pageSize } = parsePagination(
-      request.nextUrl.searchParams
+      searchParams
     );
     return NextResponse.json(
       await listCredits({
         search,
         page,
         pageSize,
-        userId: request.nextUrl.searchParams.get('userId') ?? '',
-        jobId: request.nextUrl.searchParams.get('jobId') ?? '',
+        userId: searchParams.get('userId') ?? '',
+        userEmail:
+          searchParams.get('userEmail') ?? searchParams.get('email') ?? '',
+        jobId: searchParams.get('jobId') ?? '',
         createdAt:
-          request.nextUrl.searchParams.get('createdAt') ??
-          request.nextUrl.searchParams.get('created') ??
+          searchParams.get('createdAt') ??
+          searchParams.get('created') ??
+          '',
+        createdFrom:
+          searchParams.get('createdFrom') ??
+          searchParams.get('from') ??
+          searchParams.get('startDate') ??
+          '',
+        createdTo:
+          searchParams.get('createdTo') ??
+          searchParams.get('to') ??
+          searchParams.get('endDate') ??
           '',
       })
     );

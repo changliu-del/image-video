@@ -84,6 +84,15 @@ joining `assets` just to render cards or detail previews. The stored URLs use
 the stable app media route `/api/template-media/{assetId}` so template media
 still goes through the existing proxy, range support, and memory cache path.
 
+Admin support tables expose field-specific filters for the common operator
+lookups. User History supports user email and Material ID (`assetId`) filters.
+Users supports email and name filters. Generation Jobs supports a `gen_id`
+filter backed by `generation_jobs.id`. Credit Ledger supports user email, job
+ID, and a created date range (`createdFrom` / `createdTo`); the end date is
+treated as the full selected day for date-input searches. Keep Help copy,
+AdminShell filter config, API routes, and service-layer conditions aligned when
+adding or renaming these filters.
+
 User History is private support data. It must use current-user scoped APIs and
 `Cache-Control: no-store`; it should never be served through public catalog
 headers.

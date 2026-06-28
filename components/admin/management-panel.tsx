@@ -575,8 +575,8 @@ export function ManagementPanel({
   const toolbarFilters = config.filterFields?.length ? (
     <>
       {config.filterFields.map((field) => (
-        <label key={field.key} className="grid gap-1">
-          <span className="text-[11px] font-semibold uppercase text-gray-500">
+        <label key={field.key} className="grid min-w-0 gap-1 sm:w-52">
+          <span className="text-xs font-semibold uppercase text-gray-500">
             {field.label}
           </span>
           <Input
@@ -589,7 +589,7 @@ export function ManagementPanel({
               }))
             }
             placeholder={field.placeholder}
-            className="w-52"
+            className="h-9"
           />
         </label>
       ))}

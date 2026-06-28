@@ -43,6 +43,29 @@ const updateCreditLedgerSchema = z
   })
   .strict();
 
+function parseCreditLedgerDateBound(
+  value: string,
+  bound: 'from' | 'to'
+): Date | null {
+  const trimmed = value.trim();
+  if (!trimmed) return null;
+
+  const dateOnly = /^\d{4}-\d{2}-\d{2}$/.test(trimmed);
+  const date = dateOnly
+    ? new Date(`${trimmed}T00:00:00.000Z`)
+    : new Date(trimmed);
+
+  if (Number.isNaN(date.getTime())) {
+    throw new Error('Invalid credit ledger date range');
+  }
+
+  if (dateOnly && bound === 'to') {
+    date.setUTCDate(date.getUTCDate() + 1);
+  }
+
+  return date;
+}
+
 function selectCreditsWithContext() {
   return db
     .select({
@@ -81,8 +104,11 @@ function adminCreditLedgerRecordToListItem({
 export async function listCredits(params: {
   search?: string;
   userId?: string;
+  userEmail?: string;
   jobId?: string;
   createdAt?: string;
+  createdFrom?: string;
+  createdTo?: string;
   page?: number;
   pageSize?: number;
 }): Promise<PaginatedResult<AdminCreditLedgerListItem>> {
@@ -90,8 +116,11 @@ export async function listCredits(params: {
   const {
     search = '',
     userId = '',
+    userEmail = '',
     jobId = '',
     createdAt = '',
+    createdFrom = '',
+    createdTo = '',
     page = 1,
     pageSize = 20,
   } = params;
@@ -146,8 +175,23 @@ export async function listCredits(params: {
     conditions.push(exactCol(creditLedger.userId, userId));
   }
 
+  if (userEmail.trim()) {
+    conditions.push(ilikeCol(users.email, userEmail));
+  }
+
   if (jobId.trim()) {
     conditions.push(exactCol(creditLedger.jobId, jobId));
+  }
+
+  const fromDate = parseCreditLedgerDateBound(createdFrom, 'from');
+  const toDate = parseCreditLedgerDateBound(createdTo, 'to');
+
+  if (fromDate) {
+    conditions.push(sql`${creditLedger.createdAt} >= ${fromDate}`);
+  }
+
+  if (toDate) {
+    conditions.push(sql`${creditLedger.createdAt} < ${toDate}`);
   }
 
   if (createdAt.trim()) {

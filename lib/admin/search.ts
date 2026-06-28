@@ -11,6 +11,7 @@ export const ADMIN_OPERATIONAL_SEARCH_FIELDS: Record<
 > = {
   users: ['email', 'name', 'role', 'subscriptionStatus', 'accountStatus'],
   'user-media': [
+    'assetId',
     'userEmail',
     'userName',
     'title',
@@ -22,6 +23,7 @@ export const ADMIN_OPERATIONAL_SEARCH_FIELDS: Record<
     'mimeType',
   ],
   'generation-jobs': [
+    'id',
     'inputSummary',
     'status',
     'generationType',
@@ -34,6 +36,7 @@ export const ADMIN_OPERATIONAL_SEARCH_FIELDS: Record<
     'stripeEventId',
     'generationType',
     'jobStatus',
+    'createdAt',
     'note',
   ],
 };

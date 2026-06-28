@@ -35,7 +35,7 @@ describe('Admin operational search fields', () => {
 
   it('includes the operational fields operators naturally search by', () => {
     expect(ADMIN_OPERATIONAL_SEARCH_FIELDS.users).toEqual(
-      expect.arrayContaining(['email'])
+      expect.arrayContaining(['email', 'name'])
     );
     expect(ADMIN_OPERATIONAL_SEARCH_FIELDS.templates).toEqual(
       expect.arrayContaining(['id', 'title', 'type', 'category', 'prompt'])
@@ -59,6 +59,7 @@ describe('Admin operational search fields', () => {
     ).toBe(false);
     expect(ADMIN_OPERATIONAL_SEARCH_FIELDS['user-media']).toEqual(
       expect.arrayContaining([
+        'assetId',
         'userEmail',
         'title',
         'source',
@@ -67,10 +68,15 @@ describe('Admin operational search fields', () => {
       ])
     );
     expect(ADMIN_OPERATIONAL_SEARCH_FIELDS['generation-jobs']).toEqual(
-      expect.arrayContaining(['inputSummary', 'status', 'generationType'])
+      expect.arrayContaining(['id', 'inputSummary', 'status', 'generationType'])
     );
     expect(ADMIN_OPERATIONAL_SEARCH_FIELDS['credit-ledger']).toEqual(
-      expect.arrayContaining(['userEmail', 'reason', 'stripeEventId'])
+      expect.arrayContaining([
+        'userEmail',
+        'reason',
+        'stripeEventId',
+        'createdAt',
+      ])
     );
   });
 });

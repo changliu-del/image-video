@@ -1,6 +1,6 @@
 import 'server-only';
 
-import { and, desc, eq, or, sql } from 'drizzle-orm';
+import { and, desc, eq, or, sql, type SQL } from 'drizzle-orm';
 import { z } from 'zod';
 import { db } from '@/lib/db/drizzle';
 import { buildAssetMediaUrl } from '@/lib/assets/media-url';
@@ -128,34 +128,51 @@ function userMediaRecordToListItem({
 }
 
 export async function listAdminUserMedia(params: {
+  assetId?: string;
   search?: string;
+  userEmail?: string;
   page?: number;
   pageSize?: number;
 }): Promise<PaginatedResult<AdminUserMediaListItem>> {
   await requireOpsOrAdmin();
-  const { search, page, pageSize } = {
+  const { assetId, search, userEmail, page, pageSize } = {
+    assetId: '',
     search: '',
+    userEmail: '',
     page: 1,
     pageSize: 20,
     ...params,
   };
+  const conditions: SQL[] = [];
   const query = search.trim();
-  const where = query
-    ? or(
-        exactCol(userMediaHistory.id, query),
-        exactCol(userMediaHistory.assetId, query),
-        exactCol(userMediaHistory.userId, query),
-        ilikeCol(users.email, query),
-        ilikeCol(users.name, query),
-        ilikeCol(userMediaHistory.title, query),
-        ilikeCol(userMediaHistory.source, query),
-        ilikeCol(userMediaHistory.generationType, query),
-        ilikeCol(userMediaHistory.role, query),
-        ilikeCol(userMediaHistory.visibility, query),
-        ilikeCol(generationJobs.status, query),
-        ilikeCol(assets.mimeType, query)
-      )
-    : undefined;
+
+  if (query) {
+    const searchCondition = or(
+      exactCol(userMediaHistory.id, query),
+      exactCol(userMediaHistory.assetId, query),
+      exactCol(userMediaHistory.userId, query),
+      ilikeCol(users.email, query),
+      ilikeCol(users.name, query),
+      ilikeCol(userMediaHistory.title, query),
+      ilikeCol(userMediaHistory.source, query),
+      ilikeCol(userMediaHistory.generationType, query),
+      ilikeCol(userMediaHistory.role, query),
+      ilikeCol(userMediaHistory.visibility, query),
+      ilikeCol(generationJobs.status, query),
+      ilikeCol(assets.mimeType, query)
+    );
+    if (searchCondition) conditions.push(searchCondition);
+  }
+
+  if (assetId.trim()) {
+    conditions.push(exactCol(userMediaHistory.assetId, assetId));
+  }
+
+  if (userEmail.trim()) {
+    conditions.push(ilikeCol(users.email, userEmail));
+  }
+
+  const where = conditions.length ? and(...conditions) : undefined;
 
   const [rows, countResult] = await Promise.all([
     withPagination(

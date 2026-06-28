@@ -9,11 +9,21 @@ import { adminRouteError, readJsonBody } from '../_utils';
 
 export async function GET(request: NextRequest) {
   try {
+    const searchParams = request.nextUrl.searchParams;
     const { search, page, pageSize } = parsePagination(
-      request.nextUrl.searchParams
+      searchParams
     );
     return NextResponse.json(
-      await listAdminUserMedia({ search, page, pageSize })
+      await listAdminUserMedia({
+        search,
+        page,
+        pageSize,
+        userEmail: searchParams.get('userEmail') ?? '',
+        assetId:
+          searchParams.get('assetId') ??
+          searchParams.get('materialId') ??
+          '',
+      })
     );
   } catch (error) {
     return adminRouteError(error, 'Failed to list user media');

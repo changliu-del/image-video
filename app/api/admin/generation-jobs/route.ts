@@ -5,10 +5,18 @@ import { adminRouteError, readJsonBody } from '../_utils';
 
 export async function GET(request: NextRequest) {
   try {
+    const searchParams = request.nextUrl.searchParams;
     const { search, page, pageSize } = parsePagination(
-      request.nextUrl.searchParams
+      searchParams
     );
-    return NextResponse.json(await listJobs({ search, page, pageSize }));
+    return NextResponse.json(
+      await listJobs({
+        search,
+        page,
+        pageSize,
+        genId: searchParams.get('genId') ?? searchParams.get('id') ?? '',
+      })
+    );
   } catch (error) {
     return adminRouteError(error, 'Failed to list generation jobs');
   }

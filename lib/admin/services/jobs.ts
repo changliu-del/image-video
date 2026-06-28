@@ -1,6 +1,6 @@
 import 'server-only';
 
-import { desc, eq, or, sql } from 'drizzle-orm';
+import { and, desc, eq, or, sql, type SQL } from 'drizzle-orm';
 import { alias } from 'drizzle-orm/pg-core';
 import { z } from 'zod';
 import { db } from '@/lib/db/drizzle';
@@ -203,39 +203,49 @@ async function getAdminGenerationJobRecord(id: number) {
 }
 
 export async function listJobs(params: {
+  genId?: string;
   search?: string;
   page?: number;
   pageSize?: number;
 }): Promise<PaginatedResult<AdminGenerationJob>> {
   await requireOpsOrAdmin();
-  const { search = '', page = 1, pageSize = 20 } = params;
+  const { genId = '', search = '', page = 1, pageSize = 20 } = params;
+  const conditions: SQL[] = [];
   const query = search.trim();
-  const where = query
-    ? or(
-        exactCol(generationJobs.id, query),
-        exactCol(generationJobs.userId, query),
-        exactCol(generationJobs.inputAssetId, query),
-        exactCol(generationJobs.outputAssetId, query),
-        exactCol(generationJobs.providerTaskId, query),
-        exactCol(generationJobs.triggerRunId, query),
-        exactJsonTextField(generationJobs.inputJson, 'templateId', query),
-        exactJsonTextField(generationJobs.inputJson, 'modelAssetId', query),
-        exactJsonTextField(generationJobs.inputJson, 'modelTemplateId', query),
-        exactJsonTextField(generationJobs.inputJson, 'garmentAssetId', query),
-        sql`${generationJobs.inputJson}->'garmentAssetIds' ? ${query}`,
-        ilikeCol(users.email, query),
-        ilikeCol(users.name, query),
-        ilikeCol(generationJobs.status, query),
-        ilikeCol(generationJobs.generationType, query),
-        ilikeCol(generationJobs.provider, query),
-        ilikeCol(generationJobs.errorMessage, query),
-        ilikeJsonTextField(generationJobs.inputJson, 'tryOnMode', query),
-        ilikeJsonTextField(generationJobs.inputJson, 'productName', query),
-        ilikeJsonTextField(generationJobs.inputJson, 'headline', query),
-        ilikeJsonTextField(generationJobs.inputJson, 'prompt', query),
-        ilikeJsonTextField(generationJobs.inputJson, 'aspectRatio', query)
-      )
-    : undefined;
+
+  if (query) {
+    const searchCondition = or(
+      exactCol(generationJobs.id, query),
+      exactCol(generationJobs.userId, query),
+      exactCol(generationJobs.inputAssetId, query),
+      exactCol(generationJobs.outputAssetId, query),
+      exactCol(generationJobs.providerTaskId, query),
+      exactCol(generationJobs.triggerRunId, query),
+      exactJsonTextField(generationJobs.inputJson, 'templateId', query),
+      exactJsonTextField(generationJobs.inputJson, 'modelAssetId', query),
+      exactJsonTextField(generationJobs.inputJson, 'modelTemplateId', query),
+      exactJsonTextField(generationJobs.inputJson, 'garmentAssetId', query),
+      sql`${generationJobs.inputJson}->'garmentAssetIds' ? ${query}`,
+      ilikeCol(users.email, query),
+      ilikeCol(users.name, query),
+      ilikeCol(generationJobs.status, query),
+      ilikeCol(generationJobs.generationType, query),
+      ilikeCol(generationJobs.provider, query),
+      ilikeCol(generationJobs.errorMessage, query),
+      ilikeJsonTextField(generationJobs.inputJson, 'tryOnMode', query),
+      ilikeJsonTextField(generationJobs.inputJson, 'productName', query),
+      ilikeJsonTextField(generationJobs.inputJson, 'headline', query),
+      ilikeJsonTextField(generationJobs.inputJson, 'prompt', query),
+      ilikeJsonTextField(generationJobs.inputJson, 'aspectRatio', query)
+    );
+    if (searchCondition) conditions.push(searchCondition);
+  }
+
+  if (genId.trim()) {
+    conditions.push(exactCol(generationJobs.id, genId));
+  }
+
+  const where = conditions.length ? and(...conditions) : undefined;
   const [rows, countResult] = await Promise.all([
     withPagination(
       selectJobsWithAssets()

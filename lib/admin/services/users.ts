@@ -1,6 +1,6 @@
 import 'server-only';
 
-import { desc, eq, or, sql } from 'drizzle-orm';
+import { and, desc, eq, or, sql, type SQL } from 'drizzle-orm';
 import { z } from 'zod';
 import { db } from '@/lib/db/drizzle';
 import { USER_ROLES, users, type User, type UserRole } from '@/lib/db/schema';
@@ -59,33 +59,49 @@ function adminUserToListItem(user: AdminUser): AdminUserListItem {
 }
 
 export async function listUsers(params: {
+  email?: string;
+  name?: string;
   search?: string;
   page?: number;
   pageSize?: number;
 }): Promise<PaginatedResult<AdminUserListItem>> {
   await requireAdmin();
-  const { search, page, pageSize } = {
+  const { email, name, search, page, pageSize } = {
+    email: '',
+    name: '',
     search: '',
     page: 1,
     pageSize: 20,
     ...params,
   };
+  const conditions: SQL[] = [];
   const query = search.trim();
 
-  const where = query
-    ? or(
-        exactCol(users.id, query),
-        exactCol(users.stripeCustomerId, query),
-        exactCol(users.stripeSubscriptionId, query),
-        exactCol(users.stripeProductId, query),
-        ilikeCol(users.email, query),
-        ilikeCol(users.name, query),
-        ilikeCol(users.role, query),
-        ilikeCol(users.planName, query),
-        ilikeCol(users.subscriptionStatus, query),
-        sql`(case when ${users.deletedAt} is null then 'active' else 'deleted' end) ILIKE ${'%' + query + '%'}`
-      )
-    : undefined;
+  if (query) {
+    const searchCondition = or(
+      exactCol(users.id, query),
+      exactCol(users.stripeCustomerId, query),
+      exactCol(users.stripeSubscriptionId, query),
+      exactCol(users.stripeProductId, query),
+      ilikeCol(users.email, query),
+      ilikeCol(users.name, query),
+      ilikeCol(users.role, query),
+      ilikeCol(users.planName, query),
+      ilikeCol(users.subscriptionStatus, query),
+      sql`(case when ${users.deletedAt} is null then 'active' else 'deleted' end) ILIKE ${'%' + query + '%'}`
+    );
+    if (searchCondition) conditions.push(searchCondition);
+  }
+
+  if (email.trim()) {
+    conditions.push(ilikeCol(users.email, email));
+  }
+
+  if (name.trim()) {
+    conditions.push(ilikeCol(users.name, name));
+  }
+
+  const where = conditions.length ? and(...conditions) : undefined;
 
   const [rows, countResult] = await Promise.all([
     withPagination(

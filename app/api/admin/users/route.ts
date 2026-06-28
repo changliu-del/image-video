@@ -17,7 +17,8 @@ import {
 
 export async function GET(request: NextRequest) {
   try {
-    const id = request.nextUrl.searchParams.get('id');
+    const searchParams = request.nextUrl.searchParams;
+    const id = searchParams.get('id');
 
     if (id) {
       const user = await getUserById(readPositiveIntegerId(id));
@@ -29,10 +30,14 @@ export async function GET(request: NextRequest) {
       return NextResponse.json(user);
     }
 
-    const { search, page, pageSize } = parsePagination(
-      request.nextUrl.searchParams
-    );
-    const result = await listUsers({ search, page, pageSize });
+    const { search, page, pageSize } = parsePagination(searchParams);
+    const result = await listUsers({
+      search,
+      page,
+      pageSize,
+      email: searchParams.get('email') ?? '',
+      name: searchParams.get('name') ?? '',
+    });
     return NextResponse.json(result);
   } catch (error) {
     return adminRouteError(error, 'Failed to list users');

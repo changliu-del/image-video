@@ -94,10 +94,47 @@ describe('Admin backend safety rails', () => {
     const source = readSource('app/api/admin/user-media/route.ts');
 
     expect(source).toContain('listAdminUserMedia');
+    expect(source).toContain("searchParams.get('userEmail')");
+    expect(source).toContain("searchParams.get('assetId')");
+    expect(source).toContain("searchParams.get('materialId')");
     expect(source).toContain('updateAdminUserMedia');
     expect(source).toContain('softDeleteAdminUserMedia');
     expect(source).not.toContain('Cache-Control');
     expect(source).not.toContain('public,');
+  });
+
+  it('keeps Admin field filters wired from UI to backend services', () => {
+    const shell = readSource('app/(dashboard)/admin/components/admin-shell.tsx');
+    const usersRoute = readSource('app/api/admin/users/route.ts');
+    const jobsRoute = readSource('app/api/admin/generation-jobs/route.ts');
+    const creditsRoute = readSource('app/api/admin/credit-ledger/route.ts');
+    const usersService = readSource('lib/admin/services/users.ts');
+    const jobsService = readSource('lib/admin/services/jobs.ts');
+    const creditsService = readSource('lib/admin/services/credits.ts');
+
+    expect(shell).toContain("key: 'email'");
+    expect(shell).toContain("key: 'name'");
+    expect(shell).toContain("key: 'userEmail'");
+    expect(shell).toContain("key: 'assetId'");
+    expect(shell).toContain("key: 'genId'");
+    expect(shell).toContain("key: 'createdFrom'");
+    expect(shell).toContain("key: 'createdTo'");
+
+    expect(usersRoute).toContain("searchParams.get('email')");
+    expect(usersRoute).toContain("searchParams.get('name')");
+    expect(usersService).toContain('ilikeCol(users.email, email)');
+    expect(usersService).toContain('ilikeCol(users.name, name)');
+
+    expect(jobsRoute).toContain("searchParams.get('genId')");
+    expect(jobsService).toContain('exactCol(generationJobs.id, genId)');
+
+    expect(creditsRoute).toContain("searchParams.get('userEmail')");
+    expect(creditsRoute).toContain("searchParams.get('createdFrom')");
+    expect(creditsRoute).toContain("searchParams.get('createdTo')");
+    expect(creditsService).toContain('ilikeCol(users.email, userEmail)');
+    expect(creditsService).toContain('parseCreditLedgerDateBound');
+    expect(creditsService).toContain('creditLedger.createdAt} >=');
+    expect(creditsService).toContain('creditLedger.createdAt} <');
   });
 
   it('does not expose the technical assets table as an Admin management API', () => {

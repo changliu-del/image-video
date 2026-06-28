@@ -173,6 +173,18 @@ function buildManagementConfigs(
         'createdAt',
         'updatedAt',
       ],
+      filterFields: [
+        {
+          key: 'email',
+          label: management.users.fields.email,
+          placeholder: management.users.fields.email,
+        },
+        {
+          key: 'name',
+          label: management.users.fields.name,
+          placeholder: management.users.fields.name,
+        },
+      ],
       tableMinWidth: 1180,
       modalLayout: 'stacked',
       editableFields: [
@@ -259,6 +271,18 @@ function buildManagementConfigs(
         'createdAt',
         'updatedAt',
       ],
+      filterFields: [
+        {
+          key: 'userEmail',
+          label: management['user-media'].fields.userEmail,
+          placeholder: management['user-media'].fields.userEmail,
+        },
+        {
+          key: 'assetId',
+          label: management['user-media'].columns.assetId,
+          placeholder: management['user-media'].columns.assetId,
+        },
+      ],
       tableMinWidth: 1480,
       editableFields: [
         {
@@ -329,6 +353,13 @@ function buildManagementConfigs(
         'createdAt',
         'updatedAt',
       ],
+      filterFields: [
+        {
+          key: 'genId',
+          label: management['generation-jobs'].columns.id,
+          placeholder: management['generation-jobs'].columns.id,
+        },
+      ],
       tableMinWidth: 1380,
       editableFields: [
         {
@@ -394,16 +425,23 @@ function buildManagementConfigs(
       ],
       filterFields: [
         {
-          key: 'userId',
-          label: management['credit-ledger'].filters?.userId ?? 'User ID',
+          key: 'userEmail',
+          label: management['credit-ledger'].fields.userEmail,
+          placeholder: management['credit-ledger'].fields.userEmail,
         },
         {
           key: 'jobId',
           label: management['credit-ledger'].filters?.jobId ?? 'Job ID',
         },
         {
-          key: 'createdAt',
-          label: management['credit-ledger'].filters?.createdAt ?? 'Created',
+          key: 'createdFrom',
+          label:
+            management['credit-ledger'].filters?.createdFrom ?? 'Created from',
+          type: 'date',
+        },
+        {
+          key: 'createdTo',
+          label: management['credit-ledger'].filters?.createdTo ?? 'Created to',
           type: 'date',
         },
       ],
