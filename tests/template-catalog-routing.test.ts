@@ -438,6 +438,7 @@ describe('template catalog routing contract', () => {
     expect(source).toContain('imageVideoModelModes');
     expect(source).toContain('wanxiang_2_7');
     expect(source).toContain('wanxiang_2_6_first_frame');
+    expect(source).toContain("useState<ImageVideoModelMode>('wanxiang_2_7')");
     expect(source).toContain('/api/model-assets?');
     expect(source).toContain('ImageVideoModelLibraryDrawer');
     expect(source).toContain('modelTemplateId: appearingModel.id');
@@ -449,6 +450,8 @@ describe('template catalog routing contract', () => {
     expect(source).toContain("nextMode === 'wanxiang_2_6_first_frame'");
     expect(source).toContain("setPrompt('');");
     expect(source).toContain('videoModelMode: selectedVideoModelMode');
+    expect(copy).toContain("eyebrow: 'Pro'");
+    expect(copy).toContain("eyebrow: 'Basic'");
     expect(copy).toContain('Most powerful model');
     expect(copy).toContain('Modelo mais poderoso');
     expect(copy).toContain('图生视频 Pro');

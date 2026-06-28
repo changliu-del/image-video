@@ -131,12 +131,12 @@ export const imageVideoWorkbenchCopy = {
     ],
     modelModes: {
       wanxiang_2_7: {
-        eyebrow: 'Modelo 1',
+        eyebrow: 'Pro',
         title: 'Imagem para vídeo Pro',
         description: 'Modelo mais poderoso',
       },
       wanxiang_2_6_first_frame: {
-        eyebrow: 'Modelo 2',
+        eyebrow: 'Basic',
         title: 'Imagem para vídeo',
         description: 'Baseado no primeiro frame',
       },
@@ -223,12 +223,12 @@ export const imageVideoWorkbenchCopy = {
     ],
     modelModes: {
       wanxiang_2_7: {
-        eyebrow: 'Model 1',
+        eyebrow: 'Pro',
         title: 'Image-to-video Pro',
         description: 'Most powerful model',
       },
       wanxiang_2_6_first_frame: {
-        eyebrow: 'Model 2',
+        eyebrow: 'Basic',
         title: 'Image-to-video',
         description: 'Based on first frame',
       },
@@ -315,12 +315,12 @@ export const imageVideoWorkbenchCopy = {
     ],
     modelModes: {
       wanxiang_2_7: {
-        eyebrow: '模型1',
+        eyebrow: 'Pro',
         title: '图生视频 Pro',
         description: '最强模型',
       },
       wanxiang_2_6_first_frame: {
-        eyebrow: '模型2',
+        eyebrow: 'Basic',
         title: '图生视频',
         description: '基于首帧',
       },

@@ -1249,7 +1249,7 @@ export function ImageVideoWorkbench({
     IMAGE_TO_VIDEO_DURATION_SECONDS
   );
   const [selectedVideoModelMode, setSelectedVideoModelMode] =
-    useState<ImageVideoModelMode>('wanxiang_2_6_first_frame');
+    useState<ImageVideoModelMode>('wanxiang_2_7');
   const [isReferencePanelOpen, setIsReferencePanelOpen] = useState(false);
   const [isModelLibraryOpen, setIsModelLibraryOpen] = useState(false);
   const [referenceImageFiles, setReferenceImageFiles] = useState<File[]>([]);
