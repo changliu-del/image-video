@@ -460,6 +460,28 @@ describe('template catalog routing contract', () => {
     expect(copy).toContain('出镜模特');
   });
 
+  it('keeps workbench prompt boxes empty until the user or URL provides text', () => {
+    const imageVideo = readSource('components/create/image-video-workbench.tsx');
+    const apparel = readSource('components/create/apparel-workbench.tsx');
+    const tryOn = readSource('components/create/try-on-workbench.tsx');
+
+    expect(imageVideo).toContain(
+      'const [prompt, setPrompt] = useState(() => starterPrompt);'
+    );
+    expect(imageVideo).not.toContain('starterPrompt || copy.promptPresets[0]');
+    expect(imageVideo).not.toContain('current || copy.promptPresets[0]');
+    expect(imageVideo).not.toContain('currentPrompt || copy.promptPresets[0]');
+
+    expect(apparel).toContain(
+      'const [prompt, setPrompt] = useState(() => starterPrompt);'
+    );
+    expect(apparel).not.toContain('starterPrompt || copy.defaultPrompt');
+
+    expect(tryOn).toContain(
+      'const [prompt, setPrompt] = useState(() => starterPrompt);'
+    );
+  });
+
   it('keeps image reference upload single-select in the image-to-video workbench', () => {
     const source = readSource('components/create/image-video-workbench.tsx');
     const copy = readSource('components/create/workbench-copy.ts');

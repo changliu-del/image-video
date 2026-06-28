@@ -71,6 +71,10 @@ Fixed in this pass:
   asset in `lib/marketing/homepage-materials.ts`. Do not source paused-state
   posters from a separate fallback image array, or the lazy/static state can
   show unrelated content before autoplay starts.
+- Workbench prompt text areas should use placeholder copy for guidance, not
+  prefilled default prompt values. `/create/video`, `/create/apparel`, and
+  `/create/try-on` should initialize prompt state only from an explicit URL
+  prompt or user/template action so the input is empty on first entry.
 
 ## 2026-06-24 Auth Refresh Fix
 

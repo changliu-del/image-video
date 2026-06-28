@@ -1242,9 +1242,7 @@ export function ImageVideoWorkbench({
   const taskCopy = taskFlowPanelCopy[locale];
   const starterPrompt = initialPrompt.trim();
   const [sourcePreviews, setSourcePreviews] = useState<string[]>([]);
-  const [prompt, setPrompt] = useState(
-    () => starterPrompt || copy.promptPresets[0]
-  );
+  const [prompt, setPrompt] = useState(() => starterPrompt);
   const [durationSeconds, setDurationSeconds] = useState(
     IMAGE_TO_VIDEO_DURATION_SECONDS
   );
@@ -1812,10 +1810,6 @@ export function ImageVideoWorkbench({
   }, [detailTemplate, locale, templateDetailReloadKey]);
 
   useEffect(() => {
-    setPrompt((current) => current || copy.promptPresets[0]);
-  }, [copy.promptPresets]);
-
-  useEffect(() => {
     if (!jobId || !shouldPollJobStatus(jobStatus)) return;
 
     let cancelled = false;
@@ -1964,7 +1958,7 @@ export function ImageVideoWorkbench({
     setError(null);
     setPrompt((currentPrompt) =>
       buildPromptWithAppearingModel(
-        currentPrompt || copy.promptPresets[0],
+        currentPrompt,
         model,
         copy,
         selectedModelAsset

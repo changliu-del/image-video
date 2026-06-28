@@ -201,9 +201,7 @@ export function ApparelWorkbench({
   const starterTemplateId = initialTemplateId.trim();
   const [primaryFile, setPrimaryFile] = useState<File | null>(null);
   const [primaryPreview, setPrimaryPreview] = useState<string | null>(null);
-  const [prompt, setPrompt] = useState(
-    () => starterPrompt || copy.defaultPrompt
-  );
+  const [prompt, setPrompt] = useState(() => starterPrompt);
   const [selectedTemplateId, setSelectedTemplateId] = useState<string | null>(
     () => starterTemplateId || null
   );
