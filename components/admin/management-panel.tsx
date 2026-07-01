@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import type { ComponentType } from 'react';
 import { Edit3, Eye, Loader2, RotateCcw, Search, Trash2 } from 'lucide-react';
+import { AdminDateInput } from '@/components/admin/admin-date-input';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import {
@@ -579,18 +580,32 @@ export function ManagementPanel({
           <span className="text-xs font-semibold uppercase text-gray-500">
             {field.label}
           </span>
-          <Input
-            value={filters[field.key] ?? ''}
-            type={field.type ?? 'text'}
-            onChange={(event) =>
-              setFilters((current) => ({
-                ...current,
-                [field.key]: event.target.value,
-              }))
-            }
-            placeholder={field.placeholder}
-            className="h-9"
-          />
+          {field.type === 'date' ? (
+            <AdminDateInput
+              value={filters[field.key] ?? ''}
+              onChange={(event) =>
+                setFilters((current) => ({
+                  ...current,
+                  [field.key]: event.target.value,
+                }))
+              }
+              aria-label={field.label}
+              className="h-9"
+            />
+          ) : (
+            <Input
+              value={filters[field.key] ?? ''}
+              type={field.type ?? 'text'}
+              onChange={(event) =>
+                setFilters((current) => ({
+                  ...current,
+                  [field.key]: event.target.value,
+                }))
+              }
+              placeholder={field.placeholder}
+              className="h-9"
+            />
+          )}
         </label>
       ))}
       <Button

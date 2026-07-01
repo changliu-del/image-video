@@ -15,8 +15,8 @@ import {
   Timer,
   UserPlus,
 } from 'lucide-react';
+import { AdminDateInput } from '@/components/admin/admin-date-input';
 import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
 import type { AdminContent } from '@/lib/admin/content';
 import type {
   AdminDashboardDailyTrendSeries,
@@ -1034,8 +1034,7 @@ export function AdminDashboardPanel({ content }: AdminDashboardPanelProps) {
               <span className="text-xs font-semibold uppercase text-gray-500">
                 {content.dashboard.from}
               </span>
-              <Input
-                type="date"
+              <AdminDateInput
                 value={range.from}
                 onChange={(event) =>
                   setRange((current) => ({
@@ -1050,8 +1049,7 @@ export function AdminDashboardPanel({ content }: AdminDashboardPanelProps) {
               <span className="text-xs font-semibold uppercase text-gray-500">
                 {content.dashboard.to}
               </span>
-              <Input
-                type="date"
+              <AdminDateInput
                 value={range.to}
                 onChange={(event) =>
                   setRange((current) => ({

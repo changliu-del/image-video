@@ -103,6 +103,12 @@ treated as the full selected day for date-input searches. Keep Help copy,
 AdminShell filter config, API routes, and service-layer conditions aligned when
 adding or renaming these filters.
 
+The runtime Admin shell is English-only. Date filters and dashboard date ranges
+must not rely on native `type="date"` rendering, because browser or OS locale can
+show non-English empty-state placeholders. Use the Admin `YYYY-MM-DD` text date
+input pattern for operator-facing date fields while preserving the same
+`YYYY-MM-DD` API query values.
+
 User History is private support data. It must use current-user scoped APIs and
 `Cache-Control: no-store`; it should never be served through public catalog
 headers.

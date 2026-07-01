@@ -137,6 +137,21 @@ describe('Admin backend safety rails', () => {
     expect(creditsService).toContain('creditLedger.createdAt} <');
   });
 
+  it('keeps Admin date inputs in English instead of native browser locale placeholders', () => {
+    const dateInput = readSource('components/admin/admin-date-input.tsx');
+    const managementPanel = readSource('components/admin/management-panel.tsx');
+    const dashboardPanel = readSource('components/admin/dashboard-panel.tsx');
+
+    expect(dateInput).toContain("placeholder = 'YYYY-MM-DD'");
+    expect(dateInput).toContain('type="text"');
+    expect(dateInput).toContain('inputMode="numeric"');
+    expect(dateInput).toContain('pattern="[0-9]{4}-[0-9]{2}-[0-9]{2}"');
+    expect(managementPanel).toContain('<AdminDateInput');
+    expect(dashboardPanel).toContain('<AdminDateInput');
+    expect(managementPanel).not.toContain('type="date"');
+    expect(dashboardPanel).not.toContain('type="date"');
+  });
+
   it('does not expose the technical assets table as an Admin management API', () => {
     const serviceIndex = readSource('lib/admin/services/index.ts');
 
