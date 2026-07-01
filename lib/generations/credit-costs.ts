@@ -35,7 +35,10 @@ export function getCreditCostForDuration(
     options.videoModelMode ?? DEFAULT_IMAGE_VIDEO_MODEL_MODE
   );
   return getCreditCostForProviderCnyCost(
-    config.providerUnitCostCnyPerSecond * durationSeconds
+    config.providerUnitCostCnyPerSecond * durationSeconds,
+    {
+      markupMultiplier: config.providerCostMarkupMultiplier,
+    }
   );
 }
 

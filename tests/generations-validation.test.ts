@@ -70,8 +70,8 @@ describe('imageToVideoGenerationRequestSchema', () => {
     expect(parsed.durationSeconds).toBe(IMAGE_TO_VIDEO_DURATION_SECONDS);
     expect(parsed.videoModelMode).toBe(DEFAULT_IMAGE_VIDEO_MODEL_MODE);
     expect(parsed.inputAssetIds).toEqual([validImageToVideoRequest.inputAssetId]);
-    expect(getCreditCostForDuration(IMAGE_TO_VIDEO_DURATION_SECONDS)).toBe(25);
-    expect(getCreditCostForGeneration(parsed)).toBe(25);
+    expect(getCreditCostForDuration(IMAGE_TO_VIDEO_DURATION_SECONDS)).toBe(15);
+    expect(getCreditCostForGeneration(parsed)).toBe(15);
   });
 
   it('accepts 5-15s image-to-video durations and scales credit cost', () => {
@@ -88,8 +88,8 @@ describe('imageToVideoGenerationRequestSchema', () => {
     expect(fifteenSecondVideo.durationSeconds).toBe(
       IMAGE_TO_VIDEO_MAX_DURATION_SECONDS
     );
-    expect(getCreditCostForGeneration(tenSecondVideo)).toBe(45);
-    expect(getCreditCostForGeneration(fifteenSecondVideo)).toBe(65);
+    expect(getCreditCostForGeneration(tenSecondVideo)).toBe(30);
+    expect(getCreditCostForGeneration(fifteenSecondVideo)).toBe(45);
   });
 
   it('prices Pro image-to-video mode from its higher provider cost', () => {
@@ -98,10 +98,13 @@ describe('imageToVideoGenerationRequestSchema', () => {
       videoModelMode: 'wanxiang_2_7' satisfies ImageVideoModelMode,
     });
 
-    expect(getCreditCostForGeneration(proVideo)).toBe(85);
+    expect(getCreditCostForGeneration(proVideo)).toBe(45);
     expect(
       getCreditCostForDuration(10, { videoModelMode: 'wanxiang_2_7' })
-    ).toBe(170);
+    ).toBe(85);
+    expect(
+      getCreditCostForDuration(15, { videoModelMode: 'wanxiang_2_7' })
+    ).toBe(130);
   });
 
   it('rejects image-to-video durations outside the 5-15s range', () => {
@@ -131,7 +134,7 @@ describe('imageToVideoGenerationRequestSchema', () => {
     });
 
     expect(parsed.durationSeconds).toBe(IMAGE_TO_VIDEO_DURATION_SECONDS);
-    expect(getCreditCostForGeneration(parsed)).toBe(25);
+    expect(getCreditCostForGeneration(parsed)).toBe(15);
   });
 
   it('supports the legacy image-to-video alias but normalizes to image_to_video', () => {
@@ -238,7 +241,7 @@ describe('apparelImageGenerationRequestSchema', () => {
     });
 
     expect(parsed.generationType).toBe('apparel_image');
-    expect(getCreditCostForGeneration(parsed)).toBe(15);
+    expect(getCreditCostForGeneration(parsed)).toBe(10);
   });
 
   it('accepts workbench controls for apparel image requests', () => {
@@ -280,7 +283,7 @@ describe('tryOnGenerationRequestSchema', () => {
     expect(parsed.tryOnMode).toBe('single');
     expect(parsed.inputAssetId).toBe('201');
     expect(parsed.garmentAssetIds).toEqual(['301']);
-    expect(getCreditCostForGeneration(parsed)).toBe(15);
+    expect(getCreditCostForGeneration(parsed)).toBe(10);
   });
 
   it('accepts mode as the try-on mode alias', () => {
@@ -293,7 +296,7 @@ describe('tryOnGenerationRequestSchema', () => {
 
     expect(parsed.tryOnMode).toBe('multi');
     expect(parsed.modelAssetId).toBe('201');
-    expect(getCreditCostForGeneration(parsed)).toBe(15);
+    expect(getCreditCostForGeneration(parsed)).toBe(10);
   });
 
   it('accepts model templates for try-on requests', () => {

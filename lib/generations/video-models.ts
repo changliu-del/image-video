@@ -14,6 +14,7 @@ type ImageToVideoModelConfig = {
   resolution: '720P' | '1080P';
   audio: boolean;
   providerUnitCostCnyPerSecond: number;
+  providerCostMarkupMultiplier?: number;
 };
 
 export const IMAGE_TO_VIDEO_MODEL_CONFIGS: Record<
@@ -33,6 +34,7 @@ export const IMAGE_TO_VIDEO_MODEL_CONFIGS: Record<
     resolution: '720P',
     audio: true,
     providerUnitCostCnyPerSecond: 0.733924,
+    providerCostMarkupMultiplier: 1.5,
   },
 };
 

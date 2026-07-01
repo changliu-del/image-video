@@ -11,7 +11,7 @@ describe('getSignupFreeCreditsAmount', () => {
   it('defaults to enough credits for three 5s generations', () => {
     expect(getSignupFreeCreditsAmount({})).toBe(DEFAULT_SIGNUP_FREE_CREDITS);
     expect(DEFAULT_SIGNUP_FREE_CREDITS).toBe(IMAGE_TO_VIDEO_CREDIT_COST * 3);
-    expect(DEFAULT_SIGNUP_FREE_CREDITS).toBe(75);
+    expect(DEFAULT_SIGNUP_FREE_CREDITS).toBe(45);
   });
 
   it('uses a positive integer env override', () => {

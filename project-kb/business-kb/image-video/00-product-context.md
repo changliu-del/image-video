@@ -1,6 +1,6 @@
 # Product Context
 
-Updated: 2026-06-26
+Updated: 2026-07-01
 
 ## Product
 
@@ -24,11 +24,11 @@ The product helps ecommerce sellers produce short videos, product campaign image
 
 ## Current Credit Costs
 
-- Pricing basis: Brazilian local-company/Pix MVP uses 3x provider cost markup and an exact conversion of 1 credit = R$0.10.
-- Image-to-video basic mode (`wanxiang_2_6_first_frame`, Wanxiang 2.6 flash 720P no-audio): costs are derived from provider CNY/second cost, CNY->BRL rate snapshot, 3x markup, and R$0.10 credits; default 5s costs 25 credits.
-- Image-to-video Pro mode (`wanxiang_2_7`, Wanxiang 2.7 720P): default 5s costs 85 credits.
-- Apparel image uses Bailian Wanxiang `wan2.7-image-pro` image editing at 0.50 CNY per successful output image; with 3x markup it costs 15 credits.
-- Try-on single and multi both use Bailian Wanxiang `wan2.7-image-pro` image editing and currently request one successful output image, so both cost 15 credits.
+- Pricing basis: Brazilian local-company/Pix MVP uses 2x provider cost markup by default and an exact conversion of 1 credit = R$0.10.
+- Image-to-video basic mode (`wanxiang_2_6_first_frame`, Wanxiang 2.6 flash 720P no-audio): costs are derived from provider CNY/second cost, CNY->BRL rate snapshot, 2x markup, and R$0.10 credits; default 5s costs 15 credits.
+- Image-to-video Pro mode (`wanxiang_2_7`, Wanxiang 2.7 720P): costs use a 1.5x provider markup; default 5s costs 45 credits.
+- Apparel image uses Bailian Wanxiang `wan2.7-image-pro` image editing at 0.50 CNY per successful output image; with 2x markup it costs 10 credits.
+- Try-on single and multi both use Bailian Wanxiang `wan2.7-image-pro` image editing and currently request one successful output image, so both cost 10 credits.
 
 ## Current Pricing Model
 

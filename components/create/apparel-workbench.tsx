@@ -3,10 +3,13 @@
 import { useEffect, useState } from 'react';
 import {
   AlertCircle,
+  CheckCircle2,
+  ImagePlus,
   Loader2,
   Palette,
   PanelsTopLeft,
   UploadCloud,
+  X,
 } from 'lucide-react';
 
 import { Button } from '@/components/ui/button';
@@ -65,6 +68,59 @@ type JobStatusResponse = {
 const MAX_IMAGE_BYTES = 10 * 1024 * 1024;
 const ACCEPTED_IMAGE_TYPES = ['image/png', 'image/jpeg', 'image/webp'];
 const aspectRatios: AspectRatio[] = ['9:16', '1:1', '16:9'];
+
+const apparelTaskFlowCopy = {
+  pt: {
+    title: 'Fluxo',
+    close: 'Fechar',
+    currentTask: 'Tarefa atual',
+    noTask: 'Nenhuma tarefa iniciada ainda.',
+    status: 'Status',
+    prompt: 'Prompt',
+    input: 'Imagem de entrada',
+    output: 'Resultado',
+    generatingHint:
+      'A tarefa está em andamento. Acompanhe o progresso aqui; a imagem aparece à direita quando terminar.',
+    readyHint: 'Tarefa concluída. O resultado está disponível à direita.',
+    failedHint: 'A tarefa falhou. Veja a mensagem de erro e tente novamente.',
+    progressHint:
+      'Gerando agora. Abra o fluxo para acompanhar o progresso.',
+    viewTaskFlow: 'Ver fluxo',
+  },
+  en: {
+    title: 'Flow',
+    close: 'Close',
+    currentTask: 'Current task',
+    noTask: 'No task has been started yet.',
+    status: 'Status',
+    prompt: 'Prompt',
+    input: 'Input image',
+    output: 'Result',
+    generatingHint:
+      'This task is still generating. Track progress here; the image will appear on the right when it is ready.',
+    readyHint: 'Task complete. The result is available on the right.',
+    failedHint: 'The task failed. Check the error message and try again.',
+    progressHint:
+      'Generation is running. Open the flow to track progress.',
+    viewTaskFlow: 'View flow',
+  },
+  zh: {
+    title: '任务流',
+    close: '关闭',
+    currentTask: '当前任务',
+    noTask: '还没有生成任务。',
+    status: '任务状态',
+    prompt: '生成描述',
+    input: '输入图片',
+    output: '生成结果',
+    generatingHint:
+      '任务正在生成中，可在这里查看进度；完成后图片会自动显示在右侧。',
+    readyHint: '任务已完成，右侧可以查看生成图片。',
+    failedHint: '任务失败，请查看错误信息后重新生成。',
+    progressHint: '任务正在生成中，可打开任务流查看进度。',
+    viewTaskFlow: '查看任务流',
+  },
+};
 
 async function readResponseError(response: Response, fallback: string) {
   try {
@@ -137,6 +193,136 @@ function resultUrl(status: JobStatusResponse | null) {
   );
 }
 
+function ApparelTaskFlowDrawer({
+  copy,
+  inputPreview,
+  isOpen,
+  jobId,
+  jobStatus,
+  onClose,
+  prompt,
+  resultPreview,
+  statusLabel,
+}: {
+  copy: typeof apparelTaskFlowCopy.en;
+  inputPreview?: string | null;
+  isOpen: boolean;
+  jobId?: string | null;
+  jobStatus: JobStatusResponse | null;
+  onClose: () => void;
+  prompt: string;
+  resultPreview?: string | null;
+  statusLabel?: string | null;
+}) {
+  if (!isOpen) return null;
+
+  const failed = jobStatus?.status === 'failed';
+  const completed = jobStatus?.status === 'succeeded';
+  const hint = failed
+    ? copy.failedHint
+    : completed
+      ? copy.readyHint
+      : jobId
+        ? copy.generatingHint
+        : copy.noTask;
+
+  return (
+    <div className="fixed inset-0 z-50 bg-gray-950/45 backdrop-blur-sm">
+      <div className="ml-auto flex h-full w-full max-w-md flex-col bg-white shadow-2xl">
+        <div className="flex items-center justify-between gap-4 border-b border-gray-200 px-5 py-4">
+          <div>
+            <p className="text-xs font-black uppercase text-indigo-600">
+              {copy.currentTask}
+            </p>
+            <h2 className="mt-1 text-xl font-black text-gray-950">
+              {copy.title}
+            </h2>
+          </div>
+          <button
+            type="button"
+            onClick={onClose}
+            className="grid size-9 shrink-0 place-items-center rounded-md text-gray-500 transition hover:bg-gray-100 hover:text-gray-950"
+            aria-label={copy.close}
+          >
+            <X className="size-5" />
+          </button>
+        </div>
+
+        <div className="min-h-0 flex-1 space-y-4 overflow-y-auto px-5 py-5">
+          <div className="rounded-lg border border-indigo-100 bg-indigo-50 px-4 py-3 text-sm font-semibold leading-6 text-indigo-800">
+            {hint}
+          </div>
+
+          {jobId ? (
+            <>
+              <div className="rounded-lg border border-gray-200 bg-white p-4">
+                <div className="flex items-start justify-between gap-3">
+                  <div>
+                    <p className="text-xs font-black uppercase text-gray-400">
+                      {copy.status}
+                    </p>
+                  </div>
+                  <span className="inline-flex shrink-0 items-center gap-1 rounded-full bg-gray-100 px-3 py-1 text-xs font-black text-gray-600">
+                    {failed ? (
+                      <AlertCircle className="size-3.5 text-red-500" />
+                    ) : completed ? (
+                      <CheckCircle2 className="size-3.5 text-emerald-500" />
+                    ) : (
+                      <Loader2 className="size-3.5 animate-spin text-indigo-500" />
+                    )}
+                    {statusLabel ?? jobStatus?.status}
+                  </span>
+                </div>
+              </div>
+
+              <div className="rounded-lg border border-gray-200 bg-white p-4">
+                <p className="text-xs font-black uppercase text-gray-400">
+                  {copy.input}
+                </p>
+                {inputPreview ? (
+                  <img
+                    src={inputPreview}
+                    alt=""
+                    className="mt-3 aspect-[4/5] w-full rounded-lg bg-gray-100 object-contain"
+                  />
+                ) : (
+                  <div className="mt-3 grid aspect-[4/5] place-items-center rounded-lg bg-gray-100 text-gray-300">
+                    <ImagePlus className="size-8" />
+                  </div>
+                )}
+              </div>
+
+              <div className="rounded-lg border border-gray-200 bg-white p-4">
+                <p className="text-xs font-black uppercase text-gray-400">
+                  {copy.prompt}
+                </p>
+                <p className="mt-2 whitespace-pre-wrap text-sm font-semibold leading-6 text-gray-800">
+                  {prompt || '-'}
+                </p>
+              </div>
+
+              {resultPreview ? (
+                <div className="rounded-lg border border-gray-200 bg-white p-4">
+                  <p className="text-xs font-black uppercase text-gray-400">
+                    {copy.output}
+                  </p>
+                  <div className="mt-3 overflow-hidden rounded-lg bg-gray-950">
+                    <img
+                      src={resultPreview}
+                      alt=""
+                      className="max-h-72 w-full object-contain"
+                    />
+                  </div>
+                </div>
+              ) : null}
+            </>
+          ) : null}
+        </div>
+      </div>
+    </div>
+  );
+}
+
 async function uploadAsset(file: File, labels: typeof commonWorkbenchCopy.en) {
   const body = new FormData();
   body.append('file', file);
@@ -186,6 +372,7 @@ export function ApparelWorkbench({
   const locale = useDashboardLocale();
   const copy = apparelWorkbenchCopy[locale];
   const commonCopy = commonWorkbenchCopy[locale];
+  const taskCopy = apparelTaskFlowCopy[locale];
   const starterPrompt = initialPrompt.trim();
   const starterTemplateId = initialTemplateId.trim();
   const [primaryFile, setPrimaryFile] = useState<File | null>(null);
@@ -198,6 +385,7 @@ export function ApparelWorkbench({
   const [submitLabel, setSubmitLabel] = useState<string | null>(null);
   const [jobId, setJobId] = useState<string | null>(null);
   const [jobStatus, setJobStatus] = useState<JobStatusResponse | null>(null);
+  const [isTaskFlowOpen, setIsTaskFlowOpen] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   const isSubmitting = Boolean(submitLabel);
@@ -376,15 +564,17 @@ export function ApparelWorkbench({
   const statusLabel = jobStatus?.progressLabel ?? jobStatus?.status ?? (jobId ? commonCopy.generating : null);
 
   return (
-    <form
-      onSubmit={handleSubmit}
-      className="flex min-h-[calc(100dvh-58px)] flex-col bg-[#f5f7fb] text-gray-950 lg:flex-row"
-    >
+    <>
+      <form
+        onSubmit={handleSubmit}
+        className="flex min-h-[calc(100dvh-58px)] flex-col bg-[#f5f7fb] text-gray-950 lg:flex-row"
+      >
       <StudioPanel
         footer={
           <div className="flex items-center gap-3">
             <button
               type="button"
+              onClick={() => setIsTaskFlowOpen(true)}
               className="inline-flex h-11 items-center gap-2 rounded-full px-3 text-sm font-bold text-indigo-600"
             >
               <PanelsTopLeft className="size-4" />
@@ -483,6 +673,23 @@ export function ApparelWorkbench({
         contentClassName="flex min-h-0 flex-1 items-center py-4"
       >
         <div className="mx-auto w-full max-w-[900px]">
+          {jobId && !terminalStatus(jobStatus?.status) && !selectedResultUrl ? (
+            <div className="mb-5 flex flex-wrap items-center justify-between gap-3 rounded-lg border border-indigo-100 bg-white/90 px-4 py-3 shadow-sm">
+              <span className="inline-flex min-w-0 items-center gap-2 text-sm font-bold text-gray-700">
+                <Loader2 className="size-4 shrink-0 animate-spin text-indigo-500" />
+                <span className="truncate">{taskCopy.progressHint}</span>
+              </span>
+              <button
+                type="button"
+                onClick={() => setIsTaskFlowOpen(true)}
+                className="inline-flex h-9 shrink-0 items-center gap-1.5 rounded-full bg-indigo-600 px-4 text-xs font-black text-white transition hover:bg-indigo-700"
+              >
+                <PanelsTopLeft className="size-4" />
+                {taskCopy.viewTaskFlow}
+              </button>
+            </div>
+          ) : null}
+
           {selectedResultUrl ? (
             <ResultCard
               resultUrl={selectedResultUrl}
@@ -533,6 +740,18 @@ export function ApparelWorkbench({
 
         </div>
       </CanvasStage>
-    </form>
+      </form>
+      <ApparelTaskFlowDrawer
+        copy={taskCopy}
+        inputPreview={sourcePreview}
+        isOpen={isTaskFlowOpen}
+        jobId={jobId}
+        jobStatus={jobStatus}
+        onClose={() => setIsTaskFlowOpen(false)}
+        prompt={prompt}
+        resultPreview={selectedResultUrl}
+        statusLabel={statusLabel}
+      />
+    </>
   );
 }

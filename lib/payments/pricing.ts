@@ -6,7 +6,7 @@ export const CREDIT_UNIT_LABEL = 'R$0.10';
 export const DIRECT_TOP_UP_UNIT_AMOUNT = 100;
 export const DIRECT_TOP_UP_CREDITS_PER_UNIT =
   DIRECT_TOP_UP_UNIT_AMOUNT / CREDIT_UNIT_AMOUNT;
-export const PROVIDER_COST_MARKUP_MULTIPLIER = 3;
+export const PROVIDER_COST_MARKUP_MULTIPLIER = 2;
 export const CNY_TO_BRL_EXCHANGE_RATE = 0.7609;
 
 const PROVIDER_SELL_PRICE_ROUNDING_AMOUNT = 50;
@@ -44,16 +44,22 @@ export function getDiscountedAnnualAmount(
   return Math.round((annualAmount * (100 - savePercent)) / 100);
 }
 
-export function getCreditCostForProviderCnyCost(costCny: number) {
+export function getCreditCostForProviderCnyCost(
+  costCny: number,
+  options: { markupMultiplier?: number } = {}
+) {
   if (!Number.isFinite(costCny) || costCny <= 0) {
     throw new Error('provider CNY cost must be positive');
   }
 
+  const markupMultiplier =
+    options.markupMultiplier ?? PROVIDER_COST_MARKUP_MULTIPLIER;
+  if (!Number.isFinite(markupMultiplier) || markupMultiplier <= 0) {
+    throw new Error('provider cost markup multiplier must be positive');
+  }
+
   const sellAmountInMinorUnits =
-    costCny *
-    CNY_TO_BRL_EXCHANGE_RATE *
-    PROVIDER_COST_MARKUP_MULTIPLIER *
-    100;
+    costCny * CNY_TO_BRL_EXCHANGE_RATE * markupMultiplier * 100;
 
   const roundedSellAmount =
     Math.ceil(sellAmountInMinorUnits / PROVIDER_SELL_PRICE_ROUNDING_AMOUNT) *

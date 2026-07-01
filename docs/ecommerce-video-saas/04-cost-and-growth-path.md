@@ -126,10 +126,10 @@ MVP credits 规则：
 
 ```text
 1 credit = R$0.10
-图生视频 Basic / 2.6 flash 5s: 25 credits
-图生视频 Pro / 2.7 5s: 85 credits
-商品图 / wan2.7-image-pro: 15 credits
-智能试衣 / wan2.7-image-pro: 15 credits
+图生视频 Basic / 2.6 flash 5s: 15 credits
+图生视频 Pro / 2.7 5s: 45 credits
+商品图 / wan2.7-image-pro: 10 credits
+智能试衣 / wan2.7-image-pro: 10 credits
 失败任务: 全额返还
 ```
 
