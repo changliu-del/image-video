@@ -97,4 +97,15 @@ describe('provider output storage contract', () => {
     expect(adminJobs).toContain('outputAsset');
     expect(adminJobs).toContain('finalPreviewUrl: finalPreview.url');
   });
+
+  it('records generated outputs into the current user media history', () => {
+    const jobs = readSource('lib/generations/jobs.ts');
+    const markJobSucceeded = functionBody(jobs, 'markJobSucceeded');
+
+    expect(markJobSucceeded).toContain('await upsertUserMediaHistory({');
+    expect(markJobSucceeded).toContain('userId: input.job.userId');
+    expect(markJobSucceeded).toContain('assetId: transitioned.outputAssetId');
+    expect(markJobSucceeded).toContain('generationJobId: input.job.id');
+    expect(markJobSucceeded).toContain('source: transitioned.source');
+  });
 });

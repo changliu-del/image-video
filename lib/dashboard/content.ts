@@ -11,6 +11,7 @@ type DashboardContent = {
     apparel: string;
     tryOn: string;
     personal: string;
+    userHistory: string;
     credits: string;
     billing: string;
     security: string;
@@ -49,6 +50,7 @@ export const dashboardContent: Record<DashboardLocale, DashboardContent> = {
       apparel: 'Imagem de produto',
       tryOn: 'Provador virtual',
       personal: 'Pessoal',
+      userHistory: 'Histórico',
       credits: 'Créditos',
       billing: 'Planos',
       security: 'Segurança',
@@ -83,6 +85,7 @@ export const dashboardContent: Record<DashboardLocale, DashboardContent> = {
       apparel: 'Product image',
       tryOn: 'Virtual try-on',
       personal: 'Personal',
+      userHistory: 'User history',
       credits: 'Credits',
       billing: 'Plans',
       security: 'Security',
@@ -117,6 +120,7 @@ export const dashboardContent: Record<DashboardLocale, DashboardContent> = {
       apparel: '商品图',
       tryOn: '智能试衣',
       personal: '个人空间',
+      userHistory: 'User history',
       credits: '算力值',
       billing: '订阅计划',
       security: '安全',

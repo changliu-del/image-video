@@ -54,6 +54,7 @@ describe('user media private API', () => {
 describe('user media catalog contract', () => {
   it('returns workbench tile media fields and only lists uploaded visible assets', () => {
     const service = readSource('lib/user-media/service.ts');
+    const validation = readSource('lib/user-media/validation.ts');
 
     for (const field of [
       'assetUrl',
@@ -69,6 +70,11 @@ describe('user media catalog contract', () => {
     }
 
     expect(service).toContain("eq(assets.status, 'uploaded')");
+    expect(validation).toContain("sourceGroup: z.enum(['generated']).optional()");
+    expect(validation).toContain("sourceGroup: searchParams.get('sourceGroup')");
+    expect(service).toContain("input.sourceGroup === 'generated'");
+    expect(service).toContain("eq(userMediaHistory.source, 'generated_image')");
+    expect(service).toContain("eq(userMediaHistory.source, 'generated_video')");
     expect(service).toContain('asset.userId !== payload.userId');
     expect(service).toContain('buildAssetMediaUrl(asset.id)');
     expect(service).not.toContain('assetUrl: asset.publicUrl');

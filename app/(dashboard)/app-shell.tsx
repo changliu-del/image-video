@@ -7,6 +7,7 @@ import { useState } from 'react';
 import {
   ChevronDown,
   CreditCard,
+  History,
   Home,
   ImageIcon,
   MessageCircle,
@@ -142,6 +143,12 @@ export function AppShell({
     { href: '/create/try-on', icon: Shirt, label: content.nav.tryOn },
   ];
   const personalItems: ShellItem[] = [
+    {
+      href: '/dashboard/history',
+      icon: History,
+      label: content.nav.userHistory,
+      match: 'exact',
+    },
     {
       href: '/dashboard/profile',
       icon: UserRound,

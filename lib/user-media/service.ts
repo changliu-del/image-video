@@ -239,6 +239,15 @@ function buildListWhere(input: ListUserMediaInput) {
     conditions.push(eq(userMediaHistory.source, input.source));
   }
 
+  if (input.sourceGroup === 'generated') {
+    conditions.push(
+      or(
+        eq(userMediaHistory.source, 'generated_image'),
+        eq(userMediaHistory.source, 'generated_video')
+      )!
+    );
+  }
+
   if (input.generationType) {
     conditions.push(
       or(

@@ -14,6 +14,7 @@ describe('workspace route auth boundary', () => {
 
   it('requires auth for account, billing, admin, and personal job routes', () => {
     expect(workspaceRouteRequiresAuth('/dashboard/profile')).toBe(true);
+    expect(workspaceRouteRequiresAuth('/dashboard/history')).toBe(true);
     expect(workspaceRouteRequiresAuth('/dashboard/billing')).toBe(true);
     expect(workspaceRouteRequiresAuth('/dashboard/credits')).toBe(true);
     expect(workspaceRouteRequiresAuth('/dashboard/security')).toBe(true);

@@ -61,6 +61,14 @@ Workbench copy should refer to history only on surfaces that still select user-o
 Do not restore "official material" and "my history" source tabs until the team
 has a staffed content ingestion and quality workflow.
 
+## User Dashboard Behavior
+
+The user-facing Personal -> User history page lists only the current user's
+generated outputs. It uses `/api/user-media?sourceGroup=generated` for the mixed
+view and source-specific filters for `generated_image` and `generated_video`.
+Uploaded inputs remain available to workbenches that explicitly need user-owned
+materials, but they should not appear in the Personal history page.
+
 ## Admin Behavior
 
 Admin tabs intentionally exclude Library Assets. Keep the management registry,
