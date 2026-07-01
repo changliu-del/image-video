@@ -1,6 +1,6 @@
 # Image Video Core KB
 
-Updated: 2026-06-27
+Updated: 2026-07-01
 
 ## Project Identity
 
@@ -48,6 +48,9 @@ There is also older fal.ai/FFmpeg runner code in `lib/generations/runner.ts` and
 ## Stable Decisions
 
 - Keep this project personal and lightweight; do not add company release workflow unless explicitly requested.
+- Do not create a new Git branch for every task. Use the current branch by
+  default, and create/switch branches only when the user explicitly asks or
+  when a genuinely risky change needs isolated branch review.
 - Prefer hosted Vercel, Neon/Postgres, R2, Stripe, and provider APIs before renting servers.
 - Keep first-party KB under `project-kb/`.
 - Keep product/deployment docs under `docs/ecommerce-video-saas/`.

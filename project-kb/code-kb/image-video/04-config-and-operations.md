@@ -1,6 +1,6 @@
 # Config and Operations
 
-Updated: 2026-06-27
+Updated: 2026-07-01
 
 ## Common Environment Variables
 
@@ -90,11 +90,14 @@ local validation:
 2. Review `git status --short` and stage only files that belong to the current
    task. If unrelated user changes are present and cannot be cleanly separated,
    ask before committing.
-3. Commit with a concise task summary and push the current branch to `origin`.
-4. Wait 5 minutes after the successful push, then validate the affected
+3. Do not create a new branch for every task. Continue on the current branch by
+   default; create or switch branches only when the user explicitly asks for it
+   or a high-risk change needs isolated review.
+4. Commit with a concise task summary and push the current branch to `origin`.
+5. Wait 5 minutes after the successful push, then validate the affected
    production route or API directly. Treat the live route/API as the default
    acceptance signal.
-5. Report the pushed branch, commit, live acceptance result, and any remaining
+6. Report the pushed branch, commit, live acceptance result, and any remaining
    risk.
 
 If Vercel shows a failed deployment and the failure is caused by the current
