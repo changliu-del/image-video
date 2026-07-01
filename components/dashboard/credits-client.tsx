@@ -22,7 +22,10 @@ import { cn } from '@/lib/utils';
 import { SubmitButton } from '@/app/(dashboard)/pricing/submit-button';
 import { useDashboardLocale, withDashboardLocale } from '@/lib/dashboard/use-dashboard-locale';
 import { markCreateVideoNavigationClick } from '@/lib/performance/create-video-navigation';
-import { creditsCopy } from '@/components/dashboard/account-copy';
+import {
+  creditsCopy,
+  getPaymentsPausedCopy,
+} from '@/components/dashboard/account-copy';
 
 type CreditLedgerEntry = {
   id: string;
@@ -37,6 +40,9 @@ type CreditsAccount = {
     creditBalance: number;
   };
   ledger: CreditLedgerEntry[];
+  payments: {
+    checkoutEnabled: boolean;
+  };
 };
 
 type CreditsClientProps = {
@@ -95,11 +101,15 @@ function BalanceValue({
 export function CreditsClient({ embedded = false }: CreditsClientProps = {}) {
   const locale = useDashboardLocale();
   const copy = creditsCopy[locale];
+  const pausedCopy = getPaymentsPausedCopy(locale);
   const createVideoHref = withDashboardLocale('/create/video', locale);
   const { data, error, isLoading, mutate } = useSWR('/api/account/credits', fetcher, {
     revalidateOnFocus: false,
   });
   const ledger = data?.ledger ?? [];
+  const checkoutEnabled = data?.payments.checkoutEnabled;
+  const checkoutUnavailable = checkoutEnabled !== true;
+  const checkoutPaused = checkoutEnabled === false;
   const Title = embedded ? 'h2' : 'h1';
 
   const content = (
@@ -158,6 +168,12 @@ export function CreditsClient({ embedded = false }: CreditsClientProps = {}) {
               >
                 {copy.retry}
               </button>
+            </div>
+          ) : null}
+          {checkoutPaused ? (
+            <div className="mt-5 rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900">
+              <p className="font-semibold">{pausedCopy.creditsTitle}</p>
+              <p className="mt-1 text-amber-800">{pausedCopy.creditsBody}</p>
             </div>
           ) : null}
           <div className="mt-5 flex flex-col gap-2 sm:flex-row">
@@ -236,7 +252,12 @@ export function CreditsClient({ embedded = false }: CreditsClientProps = {}) {
                   <input type="hidden" name="priceId" value={creditPackage.priceId} />
                   <input type="hidden" name="locale" value={locale} />
                   <SubmitButton
-                    label={`${copy.buy} ${creditPackage.shortName}`}
+                    disabled={checkoutUnavailable}
+                    label={
+                      checkoutPaused
+                        ? pausedCopy.creditButton
+                        : `${copy.buy} ${creditPackage.shortName}`
+                    }
                     loadingLabel={copy.adding}
                   />
                 </form>

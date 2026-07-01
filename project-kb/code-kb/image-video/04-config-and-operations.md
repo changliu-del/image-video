@@ -27,6 +27,7 @@ Updated: 2026-06-27
 - `STRIPE_SECRET_KEY`
 - `STRIPE_WEBHOOK_SECRET`
 - `PAYMENTS_MOCK`
+- `PAYMENTS_CHECKOUT_ENABLED`
 - `ADMIN_API_URL` and `ADMIN_API_TOKEN` only for the legacy `/api/creative-templates` proxy; local Admin template/library/user-media management does not depend on them.
 - `NEXT_PUBLIC_POSTHOG_KEY`
 - `NEXT_PUBLIC_POSTHOG_HOST`
@@ -61,6 +62,12 @@ payments, and any cloud-worker app callbacks. Wanxiang provider input media
 must not use `BASE_URL + /api/asset-media/{assetId}` because that app media route
 is private and requires the user's session cookie; use short-lived R2 signed GET
 URLs for provider submit payloads.
+
+`PAYMENTS_CHECKOUT_ENABLED` is the payment/recharge kill switch. It defaults to
+disabled unless set to `true`, `1`, `yes`, or `on`. Keep it disabled when mock
+payments or real checkout should not let users subscribe to plans or buy credit
+top-ups. `PAYMENTS_MOCK` only selects the mock payment provider; it does not
+open checkout by itself.
 
 Trigger.dev keys are environment-specific. A local `TRIGGER_SECRET_KEY` starting
 with `tr_dev_` enqueues runs into the Development environment; they will not

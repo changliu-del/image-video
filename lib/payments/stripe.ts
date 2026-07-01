@@ -12,6 +12,10 @@ import {
   getMockStripeProducts,
   isPaymentMockEnabled,
 } from '@/lib/payments/mock';
+import {
+  getPaymentCheckoutDisabledRedirect,
+  isPaymentCheckoutEnabled,
+} from '@/lib/payments/availability';
 import { db } from '@/lib/db/drizzle';
 import { type User, users } from '@/lib/db/schema';
 import { withDashboardLocale } from '@/lib/dashboard/locale-url';
@@ -253,6 +257,10 @@ export async function createCheckoutSession({
   priceId: string;
   locale?: string | null;
 }) {
+  if (!isPaymentCheckoutEnabled()) {
+    redirect(getPaymentCheckoutDisabledRedirect(priceId, locale));
+  }
+
   if (isPaymentMockEnabled()) {
     return createMockCheckoutSession({ priceId, locale });
   }

@@ -36,6 +36,7 @@ values such as `template_uuid` or `asset_123` in new tests and fixtures.
 Updated: 2026-06-27
 
 - `lib/payments/catalog.ts` is the shared source of truth for subscription plans and one-time credit packages.
+- `PAYMENTS_CHECKOUT_ENABLED` is the global checkout switch. It defaults to disabled and must be set to `true`, `1`, `yes`, or `on` before users can subscribe to plans or buy credit top-ups. `PAYMENTS_MOCK` can stay true for local/mock provider behavior, but it no longer opens checkout by itself.
 - Subscription plans are Basic, Plus, and Pro across `month` and `year` intervals.
 - `lib/payments/mock.ts` derives mock Stripe products/prices from the catalog and still exposes `MOCK_MONTHLY_PLANS` for compatibility.
 - `lib/payments/stripe.ts` routes mock subscription checkout through the same local grant/update flow for monthly and annual plans.

@@ -88,6 +88,42 @@ type ProfileCopy = {
   save: string;
 };
 
+type PaymentsPausedCopy = {
+  billingTitle: string;
+  billingBody: string;
+  creditsTitle: string;
+  creditsBody: string;
+  planButton: string;
+  creditButton: string;
+};
+
+const paymentsPausedCopy = {
+  pt: {
+    billingTitle: 'Planos pausados',
+    billingBody:
+      'Assinaturas e recargas estão temporariamente indisponíveis. O saldo atual continua disponível para criação.',
+    creditsTitle: 'Recargas pausadas',
+    creditsBody:
+      'A compra de créditos está temporariamente indisponível. Você ainda pode usar o saldo atual nas ferramentas de criação.',
+    planButton: 'Planos pausados',
+    creditButton: 'Recargas pausadas',
+  },
+  en: {
+    billingTitle: 'Plans paused',
+    billingBody:
+      'Subscriptions and top-ups are temporarily unavailable. Your current credit balance is still available for creation.',
+    creditsTitle: 'Top-ups paused',
+    creditsBody:
+      'Credit purchases are temporarily unavailable. You can still use your current balance in the creation tools.',
+    planButton: 'Plans paused',
+    creditButton: 'Top-ups paused',
+  },
+} satisfies Record<'pt' | 'en', PaymentsPausedCopy>;
+
+export function getPaymentsPausedCopy(locale: DashboardLocale) {
+  return locale === 'pt' ? paymentsPausedCopy.pt : paymentsPausedCopy.en;
+}
+
 export const billingCopy: Record<DashboardLocale, BillingCopy> = {
   pt: {
     badge: 'Planos e saldo',
@@ -108,7 +144,7 @@ export const billingCopy: Record<DashboardLocale, BillingCopy> = {
       'Ao confirmar um plano, a conta é atualizada, os créditos são adicionados e o histórico registra a movimentação para consulta.',
     mockSuccess: 'Assinatura ativada e créditos adicionados.',
     mockCanceled: 'Assinatura cancelada. O saldo restante continua disponível.',
-    loadError: 'O status da conta não carregou. Os planos continuam disponíveis.',
+    loadError: 'O status da conta não carregou. Atualize antes de alterar planos.',
     retry: 'Tentar novamente',
     manageBilling: 'Gerenciar pagamento',
     cancelPlan: 'Cancelar plano',
@@ -160,7 +196,7 @@ export const billingCopy: Record<DashboardLocale, BillingCopy> = {
       'When a plan is confirmed, the account is updated, credits are added, and the history records the balance change for review.',
     mockSuccess: 'Subscription activated and credits were added.',
     mockCanceled: 'Subscription was canceled. Your remaining credit balance stays available.',
-    loadError: 'Account status did not load. Plans remain available.',
+    loadError: 'Account status did not load. Refresh before changing plans.',
     retry: 'Retry',
     manageBilling: 'Manage billing',
     cancelPlan: 'Cancel plan',
@@ -269,7 +305,7 @@ export const creditsCopy: Record<DashboardLocale, CreditsCopy> = {
     topUpRate: 'Taxa de recarga',
     rateHint: 'proporção fixa de compra direta',
     createVideo: 'Criar vídeo',
-    loadError: 'O saldo da conta não carregou. Os pacotes continuam disponíveis.',
+    loadError: 'O saldo da conta não carregou. Atualize antes de comprar créditos.',
     retry: 'Tentar novamente',
     flexible: 'Flexível',
     purchasedCredits: 'créditos',
@@ -316,7 +352,7 @@ export const creditsCopy: Record<DashboardLocale, CreditsCopy> = {
     topUpRate: 'Top-up rate',
     rateHint: 'fixed direct-purchase ratio',
     createVideo: 'Create a video',
-    loadError: 'Account balance did not load. Credit packages remain available.',
+    loadError: 'Account balance did not load. Refresh before buying credits.',
     retry: 'Retry',
     flexible: 'Flexible',
     purchasedCredits: 'credits',

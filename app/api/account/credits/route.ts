@@ -3,6 +3,7 @@ import { desc, eq } from 'drizzle-orm';
 import { db } from '@/lib/db/drizzle';
 import { creditLedger } from '@/lib/db/schema';
 import { getUser } from '@/lib/db/queries';
+import { isPaymentCheckoutEnabled } from '@/lib/payments/availability';
 
 export const dynamic = 'force-dynamic';
 
@@ -33,5 +34,8 @@ export async function GET() {
       creditBalance: user.creditBalance,
     },
     ledger,
+    payments: {
+      checkoutEnabled: isPaymentCheckoutEnabled(),
+    },
   });
 }

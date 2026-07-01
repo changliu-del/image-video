@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { SUBSCRIPTION_PLANS } from '@/lib/payments/catalog';
 import { getUser } from '@/lib/db/queries';
+import { isPaymentCheckoutEnabled } from '@/lib/payments/availability';
 
 export const dynamic = 'force-dynamic';
 
@@ -44,5 +45,8 @@ export async function GET() {
     hasActivePlan:
       user.subscriptionStatus === 'active' ||
       user.subscriptionStatus === 'trialing',
+    payments: {
+      checkoutEnabled: isPaymentCheckoutEnabled(),
+    },
   });
 }

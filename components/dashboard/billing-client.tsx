@@ -28,7 +28,11 @@ import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
 import { SubmitButton } from '@/app/(dashboard)/pricing/submit-button';
 import { useDashboardLocale, withDashboardLocale } from '@/lib/dashboard/use-dashboard-locale';
-import { billingCopy, subscriptionStatusLabels } from '@/components/dashboard/account-copy';
+import {
+  billingCopy,
+  getPaymentsPausedCopy,
+  subscriptionStatusLabels,
+} from '@/components/dashboard/account-copy';
 
 type BillingAccount = {
   user: {
@@ -39,6 +43,9 @@ type BillingAccount = {
   };
   activePlan: SubscriptionPlan | null;
   hasActivePlan: boolean;
+  payments: {
+    checkoutEnabled: boolean;
+  };
 };
 
 type BillingClientProps = {
@@ -89,6 +96,7 @@ export function BillingClient({
 }: BillingClientProps) {
   const locale = useDashboardLocale();
   const copy = billingCopy[locale];
+  const pausedCopy = getPaymentsPausedCopy(locale);
   const [selectedInterval, setSelectedInterval] = useState(initialInterval);
   const { data, error, isLoading, mutate } = useSWR('/api/account/billing', fetcher, {
     revalidateOnFocus: false,
@@ -99,6 +107,10 @@ export function BillingClient({
   );
   const activePlan = data?.activePlan ?? null;
   const hasActivePlan = Boolean(data?.hasActivePlan);
+  const checkoutEnabled = data?.payments.checkoutEnabled;
+  const checkoutUnavailable = checkoutEnabled !== true;
+  const checkoutPaused =
+    checkoutState === 'payments_disabled' || checkoutEnabled === false;
   const subscriptionStatus = data?.user.subscriptionStatus;
   const subscriptionStatusLabel = subscriptionStatus
     ? subscriptionStatusLabels[locale][subscriptionStatus] ?? subscriptionStatus
@@ -125,15 +137,27 @@ export function BillingClient({
                   {copy.intro}
                 </p>
               </div>
-              <Button asChild variant="outline" className="w-full md:w-auto">
-                <Link
-                  href={withDashboardLocale('/dashboard/profile', locale)}
-                  prefetch={false}
+              {checkoutUnavailable ? (
+                <Button
+                  type="button"
+                  variant="outline"
+                  disabled
+                  className="w-full md:w-auto"
                 >
                   <Wallet className="size-4" />
-                  {copy.buyExtra}
-                </Link>
-              </Button>
+                  {checkoutPaused ? pausedCopy.creditButton : copy.buyExtra}
+                </Button>
+              ) : (
+                <Button asChild variant="outline" className="w-full md:w-auto">
+                  <Link
+                    href={withDashboardLocale('/dashboard/profile', locale)}
+                    prefetch={false}
+                  >
+                    <Wallet className="size-4" />
+                    {copy.buyExtra}
+                  </Link>
+                </Button>
+              )}
             </div>
 
             <div className="mt-6 grid gap-3 sm:grid-cols-3">
@@ -200,6 +224,12 @@ export function BillingClient({
             {subscriptionState === 'mock_canceled' ? (
               <div className="mt-5 rounded-lg border border-white/15 bg-white/10 px-4 py-3 text-sm text-white/75">
                 {copy.mockCanceled}
+              </div>
+            ) : null}
+            {checkoutPaused ? (
+              <div className="mt-5 rounded-lg border border-amber-300/30 bg-amber-300/10 px-4 py-3 text-sm text-amber-100">
+                <p className="font-semibold">{pausedCopy.billingTitle}</p>
+                <p className="mt-1 text-amber-50/80">{pausedCopy.billingBody}</p>
               </div>
             ) : null}
             {error ? (
@@ -347,8 +377,14 @@ export function BillingClient({
                   <input type="hidden" name="priceId" value={plan.priceId} />
                   <input type="hidden" name="locale" value={locale} />
                   <SubmitButton
-                    disabled={current}
-                    label={current ? copy.currentButton : `${copy.choose} ${plan.displayName}`}
+                    disabled={current || checkoutUnavailable}
+                    label={
+                      current
+                        ? copy.currentButton
+                        : checkoutPaused
+                          ? pausedCopy.planButton
+                          : `${copy.choose} ${plan.displayName}`
+                    }
                     loadingLabel={copy.activating}
                   />
                 </form>

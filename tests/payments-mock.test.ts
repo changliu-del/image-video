@@ -1,6 +1,10 @@
 import { describe, expect, it } from 'vitest';
 
 import {
+  getPaymentCheckoutDisabledRedirect,
+  isPaymentCheckoutEnabled,
+} from '../lib/payments/availability';
+import {
   MOCK_CREDIT_PACKAGES,
   MOCK_MONTHLY_PLANS,
   MOCK_SUBSCRIPTION_PLANS,
@@ -21,6 +25,42 @@ import {
 } from '../lib/payments/pricing';
 
 describe('payment mock mode', () => {
+  it('keeps checkout disabled unless the explicit switch is enabled', () => {
+    expect(isPaymentCheckoutEnabled({})).toBe(false);
+    expect(
+      isPaymentCheckoutEnabled({
+        PAYMENTS_MOCK: 'true',
+      })
+    ).toBe(false);
+    expect(
+      isPaymentCheckoutEnabled({
+        PAYMENTS_CHECKOUT_ENABLED: 'true',
+      })
+    ).toBe(true);
+    expect(
+      isPaymentCheckoutEnabled({
+        PAYMENTS_CHECKOUT_ENABLED: '1',
+      })
+    ).toBe(true);
+    expect(
+      isPaymentCheckoutEnabled({
+        PAYMENTS_CHECKOUT_ENABLED: 'false',
+      })
+    ).toBe(false);
+  });
+
+  it('routes disabled checkout attempts back to the owning wallet surface', () => {
+    expect(
+      getPaymentCheckoutDisabledRedirect('mock_price_credits_starter', 'pt')
+    ).toBe('/dashboard/profile?checkout=payments_disabled&locale=pt');
+    expect(
+      getPaymentCheckoutDisabledRedirect('mock_price_subscription_basic_monthly', 'en')
+    ).toBe('/dashboard/billing?checkout=payments_disabled&locale=en');
+    expect(getPaymentCheckoutDisabledRedirect('unknown_price', 'en')).toBe(
+      '/dashboard/billing?checkout=payments_disabled&locale=en'
+    );
+  });
+
   it('defaults to enabled outside production', () => {
     expect(isPaymentMockEnabled({})).toBe(true);
     expect(isPaymentMockEnabled({ NODE_ENV: 'development' })).toBe(true);

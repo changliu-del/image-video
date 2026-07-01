@@ -235,6 +235,7 @@ async function main() {
 
   await writeEnvFile({
     PAYMENTS_MOCK: paymentsMock ? 'true' : 'false',
+    PAYMENTS_CHECKOUT_ENABLED: 'false',
     POSTGRES_URL,
     STRIPE_SECRET_KEY,
     STRIPE_WEBHOOK_SECRET,
