@@ -1,6 +1,6 @@
 # User History and Admin
 
-Updated: 2026-06-11
+Updated: 2026-07-01
 
 `library_assets` has been removed from the active product surface. The project no
 longer maintains an official reusable material table, public library asset API,
@@ -38,6 +38,11 @@ allows only `user_upload`, `generated_image`, and `generated_video`.
 
 ## Workbench Behavior
 
+- Workbench uploads should go through the same-origin `/api/assets/upload`
+  route, which uploads to R2 server-side, marks the asset uploaded, and records
+  user media history. Do not reintroduce browser `PUT` uploads to presigned R2
+  URLs in create workbenches; production failures show up as `assets` rows stuck
+  in `pending` with no matching `generation_jobs` row.
 - `/create/video` uses image-to-video templates, a single uploaded or selected
   first-frame/source image, and an optional appearing model selected from
   `/api/model-assets` (`templates.type = 'model'`). The appearing-model library

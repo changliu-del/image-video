@@ -39,10 +39,8 @@ import { cn } from '@/lib/utils';
 
 type AspectRatio = '9:16' | '1:1' | '16:9';
 
-type PresignResponse = {
+type AssetUploadResponse = {
   assetId: string;
-  uploadUrl: string;
-  storageKey: string;
 };
 
 type GenerationResponse = {
@@ -140,36 +138,27 @@ function resultUrl(status: JobStatusResponse | null) {
 }
 
 async function uploadAsset(file: File, labels: typeof commonWorkbenchCopy.en) {
-  const presign = await postJson<PresignResponse>(
-    '/api/assets/presign',
-    {
-      fileName: file.name,
-      mimeType: file.type,
-      sizeBytes: file.size,
-    },
-    labels.uploadPrepareError
-  );
+  const body = new FormData();
+  body.append('file', file);
 
-  const uploadResponse = await fetch(presign.uploadUrl, {
-    method: 'PUT',
-    headers: { 'Content-Type': file.type },
-    body: file,
+  const uploadResponse = await fetch('/api/assets/upload', {
+    method: 'POST',
+    body,
   });
 
-  if (!uploadResponse.ok) {
-    throw new Error(labels.uploadFailed);
+  if (uploadResponse.status === 401) {
+    throw new AuthenticationRequiredError();
   }
 
-  await postJson(
-    '/api/assets/complete',
-    {
-      assetId: presign.assetId,
-      storageKey: presign.storageKey,
-    },
-    labels.imageSaveError
-  );
+  if (!uploadResponse.ok) {
+    throw new Error(
+      await readResponseError(uploadResponse, labels.uploadFailed)
+    );
+  }
 
-  return presign.assetId;
+  const uploaded = (await uploadResponse.json()) as AssetUploadResponse;
+
+  return uploaded.assetId;
 }
 
 async function fetchJobStatus(jobId: string, labels: typeof commonWorkbenchCopy.en) {

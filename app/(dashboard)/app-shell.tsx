@@ -9,6 +9,7 @@ import {
   CreditCard,
   Home,
   ImageIcon,
+  MessageCircle,
   ShieldCheck,
   Shirt,
   UserRound,
@@ -150,6 +151,7 @@ export function AppShell({
     { href: '/dashboard/billing', icon: CreditCard, label: content.nav.billing },
     { href: '/dashboard/security', icon: ShieldCheck, label: content.nav.security },
   ];
+  const contactLabel = locale === 'pt' ? 'Contato' : 'Contact';
 
   if (pathname === '/admin' || pathname.startsWith('/admin/')) {
     return <>{children}</>;
@@ -163,6 +165,12 @@ export function AppShell({
           <SidebarSection title={content.nav.tools} items={toolItems} collapsible />
           <SidebarSection title={content.nav.personal} items={personalItems} />
           <div className="mt-auto border-t border-gray-200 pt-3">
+            <SidebarLink
+              href="/contact"
+              icon={MessageCircle}
+              label={contactLabel}
+              match="exact"
+            />
             {user ? (
               <p className="truncate px-3 text-[11px] font-medium text-gray-400">
                 {user.name || user.email}

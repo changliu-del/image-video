@@ -95,16 +95,22 @@ describe('user media catalog contract', () => {
     expect(completeRoute).toContain('publicUrl: buildAssetMediaUrl(updatedAsset.id)');
   });
 
-  it('lets the image-to-video workbench upload through the same-origin asset API', () => {
+  it('lets workbenches upload through the same-origin asset API', () => {
     const uploadRoute = readSource('app/api/assets/upload/route.ts');
-    const workbench = readSource('components/create/image-video-workbench.tsx');
+    const imageVideo = readSource('components/create/image-video-workbench.tsx');
+    const apparel = readSource('components/create/apparel-workbench.tsx');
+    const tryOn = readSource('components/create/try-on-workbench.tsx');
 
     expect(uploadRoute).toContain('request.formData()');
     expect(uploadRoute).toContain('uploadObjectToR2({');
     expect(uploadRoute).toContain('markAssetUploaded({');
     expect(uploadRoute).toContain("source: 'user_upload'");
-    expect(workbench).toContain("fetch('/api/assets/upload'");
-    expect(workbench).not.toContain('fetch(presign.uploadUrl');
+    for (const workbench of [imageVideo, apparel, tryOn]) {
+      expect(workbench).toContain("fetch('/api/assets/upload'");
+      expect(workbench).not.toContain('fetch(presign.uploadUrl');
+      expect(workbench).not.toContain("'/api/assets/presign'");
+      expect(workbench).not.toContain("'/api/assets/complete'");
+    }
   });
 
   it('keeps deleted history hidden on later upserts and sorts null usage after recency', () => {
