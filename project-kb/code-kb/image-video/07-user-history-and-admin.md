@@ -52,7 +52,7 @@ allows only `user_upload`, `generated_image`, and `generated_video`.
   the model template preview image and sends both images through the Wanxiang
   2.7 reference-to-video media array: source/product image as Image 1 and model
   image as Image 2.
-- `/create/apparel` uses image-to-image templates plus the user's current uploaded product image; it does not load user history.
+- `/create/apparel` uses image-to-image templates plus the user's current uploaded product image; it does not load user history. When a template is selected, its preview media is resolved to a provider-accessible background reference image and sent to Wanxiang image edit as Image 1 before the uploaded product image. The provider prompt is prefixed with `背景图参考图1，背景图就是图1。` so the model treats Image 1 as the background.
 - `/create/try-on` uses `/api/model-assets`, backed by `templates` rows where
   `type = 'model'`, for model selection plus the user's private garment/history
   items.

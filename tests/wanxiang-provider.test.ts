@@ -415,6 +415,7 @@ describe('Wanxiang capability exports', () => {
 
     await submitCloth(
       {
+        backgroundImageUrl: 'https://img.test/background.jpg',
         inputImageUrl: 'https://img.test/a.jpg',
         prompt: 'Create a clean product campaign image.',
         aspectRatio: '16:9'
@@ -440,8 +441,12 @@ describe('Wanxiang capability exports', () => {
               {
                 role: 'user',
                 content: [
+                  { image: 'https://img.test/background.jpg' },
                   { image: 'https://img.test/a.jpg' },
-                  { text: 'Create a clean product campaign image.' }
+                  {
+                    text:
+                      '背景图参考图1，背景图就是图1。Create a clean product campaign image.'
+                  }
                 ]
               }
             ]

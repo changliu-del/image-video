@@ -11,6 +11,8 @@ import {
 
 export const DEFAULT_WANXIANG_IMAGE_EDIT_MODEL = 'wan2.7-image-pro';
 export const DEFAULT_WANXIANG_IMAGE_EDIT_SIZE = '2K';
+const APPAREL_BACKGROUND_REFERENCE_PROMPT_PREFIX =
+  '背景图参考图1，背景图就是图1。';
 
 const ASPECT_RATIO_SIZES: Record<string, string> = {
   '1:1': '2048*2048',
@@ -82,16 +84,21 @@ function toDashScopeImageEditSubmitPayload(
 }
 
 function buildApparelImageContent(payload: WanxiangPayload, prompt?: string) {
+  const backgroundImageUrl = firstString(payload.backgroundImageUrl);
   const imageUrl =
     firstString(payload.inputImageUrl) ||
     firstString(payload.imageUrl) ||
     firstString(payload.imgUrl);
 
-  const text =
+  const baseText =
     prompt ||
     'Create a polished ecommerce product image from the reference image. Keep the product identity accurate, improve lighting and composition, and avoid adding unrelated objects.';
+  const text = backgroundImageUrl
+    ? `${APPAREL_BACKGROUND_REFERENCE_PROMPT_PREFIX}${baseText}`
+    : baseText;
 
   return [
+    ...(backgroundImageUrl ? [{ image: backgroundImageUrl }] : []),
     ...(imageUrl ? [{ image: imageUrl }] : []),
     { text },
   ];

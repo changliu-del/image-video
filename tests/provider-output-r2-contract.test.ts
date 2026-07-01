@@ -108,4 +108,22 @@ describe('provider output storage contract', () => {
     expect(markJobSucceeded).toContain('generationJobId: input.job.id');
     expect(markJobSucceeded).toContain('source: transitioned.source');
   });
+
+  it('sends image-to-image template media as the apparel background reference', () => {
+    const jobs = readSource('lib/generations/jobs.ts');
+    const buildProviderInputAssets = functionBody(
+      jobs,
+      'buildProviderInputAssets'
+    );
+
+    expect(jobs).toContain('function resolveTemplateReferenceImageUrl');
+    expect(jobs).toContain('preview_asset.storage_key as preview_storage_key');
+    expect(buildProviderInputAssets).toContain(
+      'const backgroundImageUrl = await resolveTemplateReferenceImageUrl({'
+    );
+    expect(buildProviderInputAssets).toContain("type: 'image_to_image'");
+    expect(buildProviderInputAssets).toContain(
+      '...(backgroundImageUrl ? { backgroundImageUrl } : {})'
+    );
+  });
 });

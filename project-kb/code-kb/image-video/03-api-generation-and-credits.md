@@ -50,7 +50,7 @@ Generation credit cost is currently:
 - Brazil/Pix pricing uses `lib/payments/pricing.ts`: 1 credit = R$0.10, default provider cost markup = 2x, and the Wanxiang CNY->BRL rate snapshot is centralized there.
 - Image-to-video basic mode (`wanxiang_2_6_first_frame`, Wanxiang 2.6 flash 720P no-audio): default 5s costs 15 credits; 10s costs 30 credits; 15s costs 45 credits.
 - Image-to-video Pro mode (`wanxiang_2_7`, Wanxiang 2.7 720P): uses a 1.5x provider cost markup; default 5s costs 45 credits; 10s costs 85 credits; 15s costs 130 credits. The appearing-model library is only available in this mode; when selected, the provider payload uses Wanxiang 2.7 reference-to-video (`wan2.7-r2v`) so both the source/product image and the model image are sent as reference images.
-- Apparel image: 10 credits. It uses Bailian Wanxiang `wan2.7-image-pro` image editing at 0.50 CNY per successful output image, converted through the shared 2x markup rule.
+- Apparel image: 10 credits. It uses Bailian Wanxiang `wan2.7-image-pro` image editing at 0.50 CNY per successful output image, converted through the shared 2x markup rule. When an image-to-image template is selected, the worker sends the template preview image as provider Image 1 / background reference before the user's product image, and prefixes the provider prompt with `背景图参考图1，背景图就是图1。`.
 - Try-on single: 10 credits.
 - Try-on multi: 10 credits. Current try-on requests produce one output image; provider billing is per successful output image, not per garment input.
 

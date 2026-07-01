@@ -65,6 +65,13 @@ type AssetRecord = {
   sizeBytes: number | null;
 };
 
+type TemplateReferenceMedia = {
+  previewStorageKey: string | null;
+  thumbnailStorageKey: string | null;
+  previewUrl: string | null;
+  thumbnailUrl: string | null;
+};
+
 type JobRecord = {
   id: string;
   status: string;
@@ -585,6 +592,72 @@ async function resolveModelTemplateMediaUrl(
   );
 }
 
+async function getTemplateReferenceMedia(input: {
+  id: string;
+  type: TemplateType;
+}): Promise<TemplateReferenceMedia | null> {
+  const rows = await client`
+    select
+      t.id,
+      t.preview_url,
+      t.thumbnail_url,
+      preview_asset.storage_key as preview_storage_key,
+      thumbnail_asset.storage_key as thumbnail_storage_key
+    from templates t
+    left join assets preview_asset on preview_asset.id = t.preview_asset_id
+    left join assets thumbnail_asset on thumbnail_asset.id = t.thumbnail_asset_id
+    where t.id = ${input.id}
+      and t.type = ${input.type}
+    limit 1
+  `;
+  const row = rows[0] as Record<string, unknown> | undefined;
+
+  if (!row) {
+    return null;
+  }
+
+  return {
+    previewStorageKey: toNullableString(row.preview_storage_key),
+    thumbnailStorageKey: toNullableString(row.thumbnail_storage_key),
+    previewUrl: toNullableString(row.preview_url),
+    thumbnailUrl: toNullableString(row.thumbnail_url),
+  };
+}
+
+async function resolveTemplateReferenceImageUrl(input: {
+  templateId: string | null | undefined;
+  type: TemplateType;
+}) {
+  if (!input.templateId) {
+    return null;
+  }
+
+  const template = await getTemplateReferenceMedia({
+    id: input.templateId,
+    type: input.type,
+  });
+
+  if (!template) {
+    throw new GenerationApiError(
+      404,
+      'template_reference_not_found',
+      'Template reference image was not found'
+    );
+  }
+
+  const storageKey =
+    template.previewStorageKey ?? template.thumbnailStorageKey;
+
+  if (storageKey) {
+    return createSignedGetUrl({
+      storageKey,
+      expiresInSeconds: 3600,
+    });
+  }
+
+  return template.previewUrl ?? template.thumbnailUrl;
+}
+
 function buildProviderAssetUrl(asset: AssetRecord) {
   return createSignedGetUrl({
     storageKey: asset.storageKey,
@@ -622,12 +695,19 @@ async function buildProviderInputAssets(
         ...(modelImageUrl ? { modelImageUrl } : {}),
       };
     }
-    case 'apparel_image':
+    case 'apparel_image': {
+      const backgroundImageUrl = await resolveTemplateReferenceImageUrl({
+        templateId: generation.templateId,
+        type: 'image_to_image',
+      });
+
       return {
+        ...(backgroundImageUrl ? { backgroundImageUrl } : {}),
         inputImageUrl: await buildProviderAssetUrl(
           assetsById.get(generation.inputAssetId)!
         ),
       };
+    }
     case 'try_on':
       const modelMediaUrl =
         (await resolveModelTemplateMediaUrl(modelTemplate)) ??
