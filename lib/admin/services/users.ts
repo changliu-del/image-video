@@ -3,7 +3,13 @@ import 'server-only';
 import { and, desc, eq, or, sql, type SQL } from 'drizzle-orm';
 import { z } from 'zod';
 import { db } from '@/lib/db/drizzle';
-import { USER_ROLES, users, type User, type UserRole } from '@/lib/db/schema';
+import {
+  creditLedger,
+  USER_ROLES,
+  users,
+  type User,
+  type UserRole,
+} from '@/lib/db/schema';
 import { requireAdmin } from '@/lib/db/queries';
 import {
   exactCol,
@@ -38,6 +44,17 @@ const updateUserSchema = z
     email: z.string().trim().email().max(255).optional(),
     name: z.string().trim().max(100).nullable().optional(),
     role: z.enum(USER_ROLES).optional(),
+    creditBalance: z
+      .preprocess((value) => {
+        if (typeof value === 'string' && value.trim() === '') {
+          return Number.NaN;
+        }
+        if (value === null) {
+          return Number.NaN;
+        }
+        return Number(value);
+      }, z.number().int().min(0))
+      .optional(),
   })
   .strict();
 
@@ -138,6 +155,7 @@ export async function updateUser(id: number, data: unknown) {
   const admin = await requireAdmin();
   const parsed = updateUserSchema.parse(data);
   const role = parsed.role;
+  const requestedCreditBalance = parsed.creditBalance;
 
   if (admin.id === id && role && role !== 'admin') {
     throw new Error('Cannot revoke your own admin role');
@@ -157,21 +175,68 @@ export async function updateUser(id: number, data: unknown) {
     nextData.role = role;
   }
 
-  if (Object.keys(nextData).length === 0) {
+  if (
+    Object.keys(nextData).length === 0 &&
+    requestedCreditBalance === undefined
+  ) {
     throw new Error('No fields to update');
   }
 
-  const [row] = await db
-    .update(users)
-    .set({ ...nextData, updatedAt: new Date() })
-    .where(eq(users.id, id))
-    .returning(adminUserColumns);
+  return db.transaction(async (tx) => {
+    await tx.execute(sql`select pg_advisory_xact_lock(${id})`);
 
-  if (!row) {
-    throw new Error('User not found');
-  }
+    const [current] = await tx
+      .select(adminUserColumns)
+      .from(users)
+      .where(eq(users.id, id))
+      .limit(1);
 
-  return adminUserToListItem(row);
+    if (!current) {
+      throw new Error('User not found');
+    }
+
+    const updateData: Partial<typeof users.$inferInsert> = { ...nextData };
+    const previousBalance = Number(current.creditBalance ?? 0);
+    const balanceDelta =
+      requestedCreditBalance === undefined
+        ? 0
+        : requestedCreditBalance - previousBalance;
+
+    if (requestedCreditBalance !== undefined && balanceDelta !== 0) {
+      updateData.creditBalance = requestedCreditBalance;
+    }
+
+    if (Object.keys(updateData).length === 0) {
+      return adminUserToListItem(current);
+    }
+
+    const [row] = await tx
+      .update(users)
+      .set({ ...updateData, updatedAt: new Date() })
+      .where(eq(users.id, id))
+      .returning(adminUserColumns);
+
+    if (!row) {
+      throw new Error('User not found');
+    }
+
+    if (requestedCreditBalance !== undefined && balanceDelta !== 0) {
+      await tx.insert(creditLedger).values({
+        userId: id,
+        delta: balanceDelta,
+        reason: 'admin_adjust',
+        balanceAfter: requestedCreditBalance,
+        metadataJson: {
+          adminUserId: admin.id,
+          previousBalance,
+          source: 'admin_user_edit',
+          targetBalance: requestedCreditBalance,
+        },
+      });
+    }
+
+    return adminUserToListItem(row);
+  });
 }
 
 export async function softDeleteUser(id: number) {

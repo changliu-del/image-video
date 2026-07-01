@@ -152,6 +152,26 @@ describe('Admin backend safety rails', () => {
     expect(dashboardPanel).not.toContain('type="date"');
   });
 
+  it('routes direct Admin user credit edits through the credit ledger', () => {
+    const shell = readSource('app/(dashboard)/admin/components/admin-shell.tsx');
+    const managementPanel = readSource('components/admin/management-panel.tsx');
+    const usersService = readSource('lib/admin/services/users.ts');
+
+    expect(shell).toContain("key: 'creditBalance'");
+    expect(shell).toContain('min: 0');
+    expect(shell).toContain('step: 1');
+    expect(managementPanel).toContain(
+      'return value.trim() ? Number(value) : null;'
+    );
+    expect(usersService).toContain('creditBalance: z');
+    expect(usersService).toContain('pg_advisory_xact_lock');
+    expect(usersService).toContain('.insert(creditLedger)');
+    expect(usersService).toContain("reason: 'admin_adjust'");
+    expect(usersService).toContain("source: 'admin_user_edit'");
+    expect(usersService).toContain('previousBalance');
+    expect(usersService).toContain('targetBalance');
+  });
+
   it('does not expose the technical assets table as an Admin management API', () => {
     const serviceIndex = readSource('lib/admin/services/index.ts');
 

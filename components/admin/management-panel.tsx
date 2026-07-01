@@ -34,6 +34,8 @@ export type AdminField = {
   type?: FieldType;
   options?: SelectOption[];
   readOnly?: boolean;
+  min?: number;
+  step?: number;
 };
 
 export type AdminFilterField = {
@@ -154,6 +156,8 @@ function DetailField({
         <Input
           value={value}
           type={field.type === 'number' ? 'number' : 'text'}
+          min={field.min}
+          step={field.step}
           disabled={disabled}
           onChange={(event) => onChange(event.target.value)}
         />

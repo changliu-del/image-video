@@ -103,6 +103,11 @@ treated as the full selected day for date-input searches. Keep Help copy,
 AdminShell filter config, API routes, and service-layer conditions aligned when
 adding or renaming these filters.
 
+Users Admin can edit `creditBalance` as an absolute target balance. Any non-zero
+credit change from the Users edit form must update `users.credit_balance` and
+insert a matching `credit_ledger` row with `reason = 'admin_adjust'` in the same
+transaction, with metadata marking the source as `admin_user_edit`.
+
 The runtime Admin shell is English-only. Date filters and dashboard date ranges
 must not rely on native `type="date"` rendering, because browser or OS locale can
 show non-English empty-state placeholders. Use the Admin `YYYY-MM-DD` text date

@@ -204,7 +204,8 @@ function buildManagementConfigs(
           key: 'creditBalance',
           label: management.users.fields.creditBalance,
           type: 'number',
-          readOnly: true,
+          min: 0,
+          step: 1,
         },
         {
           key: 'subscriptionStatus',
