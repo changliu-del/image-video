@@ -90,20 +90,11 @@ function UserMenu({
 
   if (!user) {
     return (
-      <>
-        <Link
-          href={withDashboardLocale('/sign-in', locale)}
-          prefetch={false}
-          className="text-sm font-medium text-gray-600 hover:text-gray-950"
-        >
-          {labels.signIn}
+      <Button asChild className="rounded-full bg-gray-950 text-white hover:bg-gray-800">
+        <Link href={withDashboardLocale('/sign-up', locale)} prefetch={false}>
+          {labels.startFree}
         </Link>
-        <Button asChild className="rounded-full bg-gray-950 text-white hover:bg-gray-800">
-          <Link href={withDashboardLocale('/sign-up', locale)} prefetch={false}>
-            {labels.startFree}
-          </Link>
-        </Button>
-      </>
+      </Button>
     );
   }
 
