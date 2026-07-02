@@ -115,84 +115,84 @@ type WorkbookColumn = {
   minWidth: number;
 };
 
-const fallbackWorkbookHeaders: Record<ProductAnalyticsRankType, string[]> = {
+const workbookHeadersByRank: Record<ProductAnalyticsRankType, string[]> = {
   sales: [
     '排名',
-    '商品图片',
     '商品名称',
+    '商品ID',
+    '商品图片',
+    '店铺名',
     '商品售价',
     '国家/地区',
-    '店铺名',
-    '店铺总销量',
     '商品分类',
     '佣金比例',
     '销量',
     '销量环比',
-    '销售额',
     '总销量',
     '总销售额',
-    '商品状态',
+    '销售额',
     '预估商品上架时间',
+    '店铺总销量',
     'FastMoss 商品详情页',
     'TikTok 官网商品详情页',
     'FastMoss 店铺详情页',
+    '商品状态',
   ],
   new: [
     '排名',
-    '商品图片',
     '商品名称',
+    '商品封面',
     '商品售价',
     '国家/地区',
-    '店铺名',
-    '店铺总销量',
-    '商品分类',
-    '销量',
-    '总销量',
-    '总销售额',
-    '商品状态',
-    '预估商品上架时间',
-    'FastMoss 商品详情页',
-    'TikTok 官网商品详情页',
-    'FastMoss 店铺详情页',
-  ],
-  promoted: [
-    '排名',
-    '商品图片',
-    '商品名称',
-    '商品售价',
-    '国家/地区',
-    '店铺名',
-    '店铺总销量',
+    '所属店铺',
+    '店铺封面',
+    '店铺销量',
     '商品分类',
     '佣金比例',
     '销量',
     '销量环比',
     '销售额',
     '总销量',
+    '商品状态',
+    '预估商品上架时间',
+  ],
+  promoted: [
+    '排名',
+    '商品封面链接',
+    '商品名称',
+    '售价',
+    '国家/地区',
+    '所属店铺名称',
+    '店铺总销量',
+    '商品分类',
+    '佣金比例',
+    '总销量',
     '总销售额',
-    'FastMoss 商品详情页',
-    'TikTok 官网商品详情页',
-    'FastMoss 店铺详情页',
+    '关联达人数',
+    '关联达人总数',
+    'FastMoss商品详情页',
+    'TikTok官网商品详情页',
+    'FastMoss店铺详情页',
+    '商品状态',
+    '预估商品上架时间',
   ],
   'video-products': [
     '排名',
-    '商品图片',
-    '商品名称',
+    '商品标题',
     '商品售价',
-    '国家/地区',
-    '店铺名',
     '商品分类',
+    '商品封面',
     '视频标题',
-    '视频地址',
     '视频播放量',
     '视频销量',
+    '视频地址',
     '视频总销量',
     '视频总销售额',
     '总播放量',
     '总点赞量',
-    '总评论数',
-    'FastMoss 商品详情页',
-    'TikTok 官网商品详情页',
+    '预估商品上架时间',
+    'TikTok商品链接',
+    'FastMoss商品详情页链接',
   ],
 };
 
@@ -239,10 +239,6 @@ const fieldAliases = {
 
 function compactHeader(value: string) {
   return value.replace(/\s+/g, '').toLowerCase();
-}
-
-function isVisibleWorkbookHeader(header: string) {
-  return header.trim() !== '' && !/^__EMPTY(?:_\d+)?$/i.test(header);
 }
 
 function headerMatches(
@@ -326,25 +322,9 @@ function columnMinWidth(kind: WorkbookColumnKind) {
 }
 
 function buildWorkbookColumns(
-  headers: string[],
   rankType: ProductAnalyticsRankType
 ): WorkbookColumn[] {
-  const sourceHeaders = headers.length
-    ? headers
-    : fallbackWorkbookHeaders[rankType];
-  const uniqueHeaders = sourceHeaders
-    .map((header) => header.trim())
-    .filter(
-      (header, index, all) =>
-        isVisibleWorkbookHeader(header) &&
-        all.findIndex((item) => compactHeader(item) === compactHeader(header)) === index
-    );
-
-  if (!uniqueHeaders.some(isRankHeader)) {
-    uniqueHeaders.unshift('排名');
-  }
-
-  return uniqueHeaders.map((header) => {
+  return workbookHeadersByRank[rankType].map((header) => {
     const kind = inferColumnKind(header);
     return {
       header,
@@ -626,8 +606,8 @@ export function ProductAnalyticsPage({
     return preview;
   }, [categories, selectedCategory, showAllCategories]);
   const workbookColumns = useMemo(
-    () => buildWorkbookColumns(data?.headers ?? [], rankType),
-    [data?.headers, rankType]
+    () => buildWorkbookColumns(rankType),
+    [rankType]
   );
   const tableMinWidth = useMemo(
     () =>

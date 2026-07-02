@@ -45,7 +45,6 @@ export type ProductAnalyticsItemDto = {
 
 export type ProductAnalyticsListResponse = {
   list: ProductAnalyticsItemDto[];
-  headers: string[];
   categories: string[];
   activeCategory: string | null;
   total: number;
@@ -105,19 +104,6 @@ function itemToDto(
   };
 }
 
-function headersFromMetadata(metadata: Record<string, unknown> | null) {
-  const headers = metadata?.headers;
-  if (!Array.isArray(headers)) return [];
-  return headers
-    .map((header) => (typeof header === 'string' ? header.trim() : ''))
-    .filter(
-      (header, index, all) =>
-        header &&
-        !/^__EMPTY(?:_\d+)?$/i.test(header) &&
-        all.indexOf(header) === index
-    );
-}
-
 export async function listActiveProductAnalyticsItems({
   category = '',
   page,
@@ -135,7 +121,6 @@ export async function listActiveProductAnalyticsItems({
       sourceFileName: productAnalyticsBatches.sourceFileName,
       rowCount: productAnalyticsBatches.rowCount,
       importedAt: productAnalyticsBatches.createdAt,
-      metadataJson: productAnalyticsBatches.metadataJson,
     })
     .from(productAnalyticsActiveBatches)
     .innerJoin(
@@ -148,7 +133,6 @@ export async function listActiveProductAnalyticsItems({
   if (!active) {
     return {
       list: [],
-      headers: [],
       categories: [],
       activeCategory: null,
       total: 0,
@@ -203,7 +187,6 @@ export async function listActiveProductAnalyticsItems({
 
   return {
     list: rows.map(itemToDto),
-    headers: headersFromMetadata(active.metadataJson),
     categories,
     activeCategory,
     total: totalValue,
