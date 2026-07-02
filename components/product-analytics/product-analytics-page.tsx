@@ -32,14 +32,11 @@ type ProductAnalyticsCopy = {
   moreCategories: string;
   fewerCategories: string;
   product: string;
-  video: string;
   sales: string;
   revenue: string;
   totalSales: string;
   totalRevenue: string;
-  views: string;
-  likes: string;
-  actions: string;
+  image: string;
   shop: string;
   category: string;
   commission: string;
@@ -55,7 +52,6 @@ type ProductAnalyticsCopy = {
   source: string;
   fastmoss: string;
   tiktok: string;
-  videoLink: string;
 };
 
 const copy: Record<'en' | 'pt', ProductAnalyticsCopy> = {
@@ -64,14 +60,11 @@ const copy: Record<'en' | 'pt', ProductAnalyticsCopy> = {
     moreCategories: 'More',
     fewerCategories: 'Less',
     product: 'Product',
-    video: 'Video content',
     sales: 'Sales',
     revenue: 'Revenue',
     totalSales: 'Total sales',
     totalRevenue: 'Total revenue',
-    views: 'Views',
-    likes: 'Likes',
-    actions: 'Actions',
+    image: 'Product image',
     shop: 'Shop',
     category: 'Category',
     commission: 'Commission',
@@ -87,21 +80,17 @@ const copy: Record<'en' | 'pt', ProductAnalyticsCopy> = {
     source: 'Source',
     fastmoss: 'FastMoss',
     tiktok: 'TikTok',
-    videoLink: 'Video',
   },
   pt: {
     allCategories: 'Todas',
     moreCategories: 'Mais',
     fewerCategories: 'Menos',
     product: 'Produto',
-    video: 'Conteúdo do vídeo',
     sales: 'Vendas',
     revenue: 'Receita',
     totalSales: 'Vendas totais',
     totalRevenue: 'Receita total',
-    views: 'Visualizações',
-    likes: 'Curtidas',
-    actions: 'Ações',
+    image: 'Imagem do produto',
     shop: 'Loja',
     category: 'Categoria',
     commission: 'Comissão',
@@ -117,7 +106,6 @@ const copy: Record<'en' | 'pt', ProductAnalyticsCopy> = {
     source: 'Origem',
     fastmoss: 'FastMoss',
     tiktok: 'TikTok',
-    videoLink: 'Vídeo',
   },
 };
 
@@ -163,7 +151,7 @@ function Metric({
   );
 }
 
-function ActionLink({
+function SourceLink({
   href,
   label,
 }: {
@@ -178,10 +166,54 @@ function ActionLink({
       target="_blank"
       rel="noreferrer"
       title={label}
-      className="inline-flex size-8 items-center justify-center rounded-md border border-gray-200 bg-white text-gray-500 transition hover:border-indigo-200 hover:bg-indigo-50 hover:text-indigo-600"
+      className="inline-flex h-7 items-center gap-1.5 rounded-md border border-gray-200 bg-white px-2.5 text-[11px] font-semibold text-gray-500 transition hover:border-indigo-200 hover:bg-indigo-50 hover:text-indigo-600"
     >
-      <ExternalLink className="size-4" />
-      <span className="sr-only">{label}</span>
+      <ExternalLink className="size-3.5" />
+      {label}
+    </a>
+  );
+}
+
+function ProductImage({
+  item,
+  label,
+}: {
+  item: ProductAnalyticsItemDto;
+  label: string;
+}) {
+  const image = item.productImageUrl ? (
+    <img src={item.productImageUrl} alt="" className="size-full object-cover" />
+  ) : (
+    <div className="grid size-full place-items-center text-gray-300">
+      <PackageOpen className="size-5" />
+    </div>
+  );
+
+  const content = (
+    <>
+      {image}
+      <span className="absolute left-1 top-1 rounded bg-black/65 px-1.5 py-0.5 text-[10px] font-bold text-white">
+        #{item.rank}
+      </span>
+    </>
+  );
+
+  const className =
+    'relative size-16 shrink-0 overflow-hidden rounded-lg border border-gray-100 bg-gray-100';
+
+  if (!item.productImageUrl) {
+    return <div className={className}>{content}</div>;
+  }
+
+  return (
+    <a
+      href={item.productImageUrl}
+      target="_blank"
+      rel="noreferrer"
+      title={label}
+      className={className}
+    >
+      {content}
     </a>
   );
 }
@@ -194,23 +226,8 @@ function ProductCell({
   labels: ProductAnalyticsCopy;
 }) {
   return (
-    <div className="flex min-w-[360px] gap-3">
-      <div className="relative size-16 shrink-0 overflow-hidden rounded-lg border border-gray-100 bg-gray-100">
-        {item.productImageUrl ? (
-          <img
-            src={item.productImageUrl}
-            alt=""
-            className="size-full object-cover"
-          />
-        ) : (
-          <div className="grid size-full place-items-center text-gray-300">
-            <PackageOpen className="size-5" />
-          </div>
-        )}
-        <span className="absolute left-1 top-1 rounded bg-black/65 px-1.5 py-0.5 text-[10px] font-bold text-white">
-          #{item.rank}
-        </span>
-      </div>
+    <div className="flex min-w-[420px] gap-3">
+      <ProductImage item={item} label={labels.image} />
       <div className="min-w-0">
         <div className="line-clamp-2 text-sm font-semibold leading-5 text-gray-950">
           {item.productName}
@@ -238,35 +255,15 @@ function ProductCell({
             </span>
           ) : null}
         </div>
-      </div>
-    </div>
-  );
-}
-
-function VideoCell({
-  item,
-  labels,
-  locale,
-}: {
-  item: ProductAnalyticsItemDto;
-  labels: ProductAnalyticsCopy;
-  locale: string;
-}) {
-  return (
-    <div className="min-w-[280px] max-w-[360px]">
-      <div className="line-clamp-2 text-sm font-semibold text-gray-900">
-        {item.videoTitle ?? '-'}
-      </div>
-      <div className="mt-2 grid grid-cols-2 gap-3">
-        <Metric
-          label={labels.views}
-          value={formatInteger(item.videoViews, locale)}
-        />
-        <Metric
-          label={labels.sales}
-          value={formatInteger(item.videoSales, locale)}
-          tone="accent"
-        />
+        <div className="mt-2 flex flex-wrap items-center gap-2">
+          <SourceLink href={item.fastmossProductUrl} label={labels.fastmoss} />
+          <SourceLink href={item.tiktokProductUrl} label={labels.tiktok} />
+          {item.listedAtText ? (
+            <span className="text-[11px] font-medium text-gray-400">
+              {labels.listed}: {item.listedAtText}
+            </span>
+          ) : null}
+        </div>
       </div>
     </div>
   );
@@ -484,20 +481,14 @@ export function ProductAnalyticsPage({
             </div>
           ) : (
             <div className="overflow-x-auto">
-              <table className="w-full min-w-[1180px] text-left">
+              <table className="w-full min-w-[920px] text-left">
                 <thead className="bg-gray-50 text-xs uppercase text-gray-500">
                   <tr>
                     <th className="px-5 py-3">{labels.product}</th>
-                    {rankType === 'video-products' ? (
-                      <th className="px-5 py-3">{labels.video}</th>
-                    ) : null}
                     <th className="px-5 py-3">{labels.sales}</th>
                     <th className="px-5 py-3">{labels.revenue}</th>
                     <th className="px-5 py-3">{labels.totalSales}</th>
                     <th className="px-5 py-3">{labels.totalRevenue}</th>
-                    <th className="px-5 py-3">{labels.views}</th>
-                    <th className="px-5 py-3">{labels.likes}</th>
-                    <th className="px-5 py-3">{labels.actions}</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-gray-100">
@@ -506,15 +497,6 @@ export function ProductAnalyticsPage({
                       <td className="px-5 py-4">
                         <ProductCell item={item} labels={labels} />
                       </td>
-                      {rankType === 'video-products' ? (
-                        <td className="px-5 py-4">
-                          <VideoCell
-                            item={item}
-                            labels={labels}
-                            locale={locale}
-                          />
-                        </td>
-                      ) : null}
                       <td className="px-5 py-4">
                         <Metric
                           label={labels.sales}
@@ -554,42 +536,6 @@ export function ProductAnalyticsPage({
                             locale
                           )}
                         />
-                      </td>
-                      <td className="px-5 py-4">
-                        <Metric
-                          label={labels.views}
-                          value={formatInteger(
-                            item.totalViews ?? item.videoViews,
-                            locale
-                          )}
-                        />
-                      </td>
-                      <td className="px-5 py-4">
-                        <Metric
-                          label={labels.likes}
-                          value={formatInteger(item.totalLikes, locale)}
-                        />
-                      </td>
-                      <td className="px-5 py-4">
-                        <div className="flex items-center gap-2">
-                          <ActionLink
-                            href={item.fastmossProductUrl}
-                            label={labels.fastmoss}
-                          />
-                          <ActionLink
-                            href={item.tiktokProductUrl}
-                            label={labels.tiktok}
-                          />
-                          <ActionLink
-                            href={item.videoUrl}
-                            label={labels.videoLink}
-                          />
-                        </div>
-                        {item.listedAtText ? (
-                          <div className="mt-2 text-[11px] font-medium text-gray-400">
-                            {labels.listed}: {item.listedAtText}
-                          </div>
-                        ) : null}
                       </td>
                     </tr>
                   ))}
