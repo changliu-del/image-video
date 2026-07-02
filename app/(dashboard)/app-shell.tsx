@@ -199,12 +199,12 @@ export function AppShell({
       <aside className="hidden w-[208px] shrink-0 border-r border-gray-200 bg-white lg:block">
         <nav className="sticky top-[58px] flex h-[calc(100dvh-58px)] flex-col overflow-y-auto px-3 py-4">
           <SidebarLink href="/dashboard" icon={Home} label={content.nav.home} match="exact" />
-          <SidebarSection title={content.nav.tools} items={toolItems} collapsible />
           <SidebarSection
             title={content.nav.dataAnalysis}
             items={analyticsItems}
             collapsible
           />
+          <SidebarSection title={content.nav.tools} items={toolItems} collapsible />
           <SidebarSection title={content.nav.personal} items={personalItems} />
           <div className="mt-auto border-t border-gray-200 pt-3">
             <SidebarLink
