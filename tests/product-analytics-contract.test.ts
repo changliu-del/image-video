@@ -60,10 +60,15 @@ describe('product analytics import and workspace contract', () => {
     expect(appShell).toContain("href: '/analytics/promoted'");
     expect(appShell).toContain("href: '/analytics/video-products'");
     expect(route).toContain("searchParams.get('rankType')");
+    expect(route).toContain("searchParams.get('category')");
     expect(route).toContain('listActiveProductAnalyticsItems');
     expect(page).toContain('fastmossProductUrl');
     expect(page).toContain('tiktokProductUrl');
     expect(page).toContain('videoUrl');
+    expect(page).toContain('selectedCategory');
+    expect(page).toContain('allCategories');
+    expect(page).not.toContain('Search product');
+    expect(page).not.toContain("params.set('search'");
     expect(catalog).toContain("'video-products'");
   });
 });

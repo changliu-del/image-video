@@ -7,7 +7,6 @@ import {
   Loader2,
   PackageOpen,
   RefreshCw,
-  Search,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import {
@@ -26,9 +25,12 @@ import {
 import { cn } from '@/lib/utils';
 
 const PAGE_SIZE = 30;
+const CATEGORY_PREVIEW_LIMIT = 12;
 
 type ProductAnalyticsCopy = {
-  search: string;
+  allCategories: string;
+  moreCategories: string;
+  fewerCategories: string;
   product: string;
   video: string;
   sales: string;
@@ -58,7 +60,9 @@ type ProductAnalyticsCopy = {
 
 const copy: Record<'en' | 'pt', ProductAnalyticsCopy> = {
   en: {
-    search: 'Search product, shop, category...',
+    allCategories: 'All',
+    moreCategories: 'More',
+    fewerCategories: 'Less',
     product: 'Product',
     video: 'Video content',
     sales: 'Sales',
@@ -86,7 +90,9 @@ const copy: Record<'en' | 'pt', ProductAnalyticsCopy> = {
     videoLink: 'Video',
   },
   pt: {
-    search: 'Buscar produto, loja, categoria...',
+    allCategories: 'Todas',
+    moreCategories: 'Mais',
+    fewerCategories: 'Menos',
     product: 'Produto',
     video: 'Conteúdo do vídeo',
     sales: 'Vendas',
@@ -275,14 +281,27 @@ export function ProductAnalyticsPage({
   const labels = copy[locale === 'pt' ? 'pt' : 'en'];
   const [rankType, setRankType] = useState(initialRank);
   const [page, setPage] = useState(1);
-  const [search, setSearch] = useState('');
-  const [appliedSearch, setAppliedSearch] = useState('');
+  const [selectedCategory, setSelectedCategory] = useState('');
+  const [showAllCategories, setShowAllCategories] = useState(false);
   const [data, setData] = useState<ProductAnalyticsListResponse | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
   const activeConfig = productAnalyticsRankConfig[rankType];
   const hasNext = Boolean(data && page * data.pageSize < data.total);
+  const categories = data?.categories ?? [];
+  const visibleCategories = useMemo(() => {
+    if (showAllCategories) return categories;
+    const preview = categories.slice(0, CATEGORY_PREVIEW_LIMIT);
+    if (
+      selectedCategory &&
+      categories.includes(selectedCategory) &&
+      !preview.includes(selectedCategory)
+    ) {
+      return [...preview, selectedCategory];
+    }
+    return preview;
+  }, [categories, selectedCategory, showAllCategories]);
 
   const endpoint = useMemo(() => {
     const params = new URLSearchParams({
@@ -290,9 +309,9 @@ export function ProductAnalyticsPage({
       page: String(page),
       pageSize: String(PAGE_SIZE),
     });
-    if (appliedSearch) params.set('search', appliedSearch);
+    if (selectedCategory) params.set('category', selectedCategory);
     return `/api/product-analytics?${params}`;
-  }, [appliedSearch, page, rankType]);
+  }, [page, rankType, selectedCategory]);
 
   async function loadData() {
     setIsLoading(true);
@@ -300,7 +319,11 @@ export function ProductAnalyticsPage({
     try {
       const response = await fetch(endpoint);
       if (!response.ok) throw new Error(labels.loadFailed);
-      setData((await response.json()) as ProductAnalyticsListResponse);
+      const nextData = (await response.json()) as ProductAnalyticsListResponse;
+      setData(nextData);
+      if (selectedCategory && nextData.activeCategory !== selectedCategory) {
+        setSelectedCategory(nextData.activeCategory ?? '');
+      }
     } catch (loadError) {
       setError(loadError instanceof Error ? loadError.message : labels.loadFailed);
     } finally {
@@ -315,13 +338,13 @@ export function ProductAnalyticsPage({
   function selectRank(type: ProductAnalyticsRankType) {
     setRankType(type);
     setPage(1);
-    setAppliedSearch('');
-    setSearch('');
+    setSelectedCategory('');
+    setShowAllCategories(false);
   }
 
-  function submitSearch() {
+  function selectCategory(category: string) {
     setPage(1);
-    setAppliedSearch(search.trim());
+    setSelectedCategory(category);
   }
 
   return (
@@ -372,26 +395,57 @@ export function ProductAnalyticsPage({
                 </Link>
               ))}
             </div>
-            <div className="flex gap-2">
-              <div className="relative min-w-0 flex-1">
-                <Search className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-gray-400" />
-                <input
-                  value={search}
-                  onChange={(event) => setSearch(event.target.value)}
-                  onKeyDown={(event) => {
-                    if (event.key === 'Enter') submitSearch();
-                  }}
-                  placeholder={labels.search}
-                  className="h-10 w-full rounded-md border border-gray-200 bg-white pl-9 pr-3 text-sm outline-none transition placeholder:text-gray-400 focus:border-indigo-300"
-                />
-              </div>
-              <Button type="button" onClick={submitSearch} className="gap-2">
-                <Search className="size-4" />
-                {labels.search.split(' ')[0]}
-              </Button>
-            </div>
           </div>
         </header>
+
+        <section className="rounded-lg border border-gray-200 bg-white p-4 shadow-sm">
+          <div className="flex flex-col gap-3 lg:flex-row lg:items-start">
+            <div className="shrink-0 pt-2 text-xs font-bold uppercase text-gray-500">
+              {labels.category}
+            </div>
+            <div className="flex flex-1 flex-wrap gap-2">
+              <button
+                type="button"
+                onClick={() => selectCategory('')}
+                className={cn(
+                  'h-8 rounded-full px-4 text-xs font-bold transition',
+                  selectedCategory
+                    ? 'bg-gray-100 text-gray-500 hover:bg-gray-200 hover:text-gray-800'
+                    : 'bg-pink-500 text-white shadow-sm'
+                )}
+              >
+                {labels.allCategories}
+              </button>
+              {visibleCategories.map((category) => (
+                <button
+                  key={category}
+                  type="button"
+                  onClick={() => selectCategory(category)}
+                  className={cn(
+                    'h-8 max-w-[220px] truncate rounded-full px-4 text-xs font-bold transition',
+                    selectedCategory === category
+                      ? 'bg-pink-500 text-white shadow-sm'
+                      : 'bg-gray-100 text-gray-600 hover:bg-gray-200 hover:text-gray-900'
+                  )}
+                  title={category}
+                >
+                  {category}
+                </button>
+              ))}
+              {categories.length > CATEGORY_PREVIEW_LIMIT ? (
+                <button
+                  type="button"
+                  onClick={() => setShowAllCategories((value) => !value)}
+                  className="h-8 rounded-full bg-pink-50 px-4 text-xs font-bold text-pink-600 transition hover:bg-pink-100"
+                >
+                  {showAllCategories
+                    ? labels.fewerCategories
+                    : labels.moreCategories}
+                </button>
+              ) : null}
+            </div>
+          </div>
+        </section>
 
         <section className="rounded-lg border border-gray-200 bg-white shadow-sm">
           <div className="flex items-center justify-between border-b border-gray-200 px-5 py-3">

@@ -98,8 +98,10 @@ Imports write a new `product_analytics_batches` row plus
 same transaction and delete older batches for that rank. User-facing
 `/analytics/...` pages read only the active batch through
 `/api/product-analytics`, so a replacement never exposes a blank intermediate
-state. Do not patch ranking rows manually; fix the workbook and re-import from
-Admin.
+state. The user-facing ranking API returns the current batch's distinct product
+categories and supports category-chip filtering only; do not add a free-text
+search surface for these imported rankings. Do not patch ranking rows manually;
+fix the workbook and re-import from Admin.
 
 Template rows keep `thumbnail_asset_id` and `preview_asset_id` for upload
 integrity, but also store `thumbnail_url`, `preview_url`,

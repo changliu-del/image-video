@@ -1,4 +1,4 @@
-import { and, asc, count, eq, ilike, or } from 'drizzle-orm';
+import { and, asc, count, desc, eq, isNotNull, sql } from 'drizzle-orm';
 import { db } from '@/lib/db/drizzle';
 import {
   productAnalyticsActiveBatches,
@@ -44,6 +44,8 @@ export type ProductAnalyticsItemDto = {
 
 export type ProductAnalyticsListResponse = {
   list: ProductAnalyticsItemDto[];
+  categories: string[];
+  activeCategory: string | null;
   total: number;
   page: number;
   pageSize: number;
@@ -100,27 +102,16 @@ function itemToDto(
   };
 }
 
-function searchCondition(search: string) {
-  const query = `%${search.trim()}%`;
-  return or(
-    ilike(productAnalyticsItems.productName, query),
-    ilike(productAnalyticsItems.category, query),
-    ilike(productAnalyticsItems.shopName, query),
-    ilike(productAnalyticsItems.productId, query),
-    ilike(productAnalyticsItems.videoTitle, query)
-  );
-}
-
 export async function listActiveProductAnalyticsItems({
+  category = '',
   page,
   pageSize,
   rankType,
-  search = '',
 }: {
+  category?: string;
   page: number;
   pageSize: number;
   rankType: ProductAnalyticsRankType;
-  search?: string;
 }): Promise<ProductAnalyticsListResponse> {
   const [active] = await db
     .select({
@@ -138,13 +129,44 @@ export async function listActiveProductAnalyticsItems({
     .limit(1);
 
   if (!active) {
-    return { list: [], total: 0, page, pageSize, batch: null };
+    return {
+      list: [],
+      categories: [],
+      activeCategory: null,
+      total: 0,
+      page,
+      pageSize,
+      batch: null,
+    };
   }
 
+  const normalizedCategory = sql<string>`trim(${productAnalyticsItems.category})`;
+  const categoryRows = await db
+    .select({
+      name: normalizedCategory,
+      value: count(),
+    })
+    .from(productAnalyticsItems)
+    .where(
+      and(
+        eq(productAnalyticsItems.batchId, active.batchId),
+        isNotNull(productAnalyticsItems.category),
+        sql`length(trim(${productAnalyticsItems.category})) > 0`
+      )
+    )
+    .groupBy(normalizedCategory)
+    .orderBy(desc(count()), asc(normalizedCategory));
+  const categories = categoryRows
+    .map((row) => row.name.trim())
+    .filter((name, index, names) => name && names.indexOf(name) === index);
+  const requestedCategory = category.trim();
+  const activeCategory = categories.includes(requestedCategory)
+    ? requestedCategory
+    : null;
+
   const filters = [eq(productAnalyticsItems.batchId, active.batchId)];
-  if (search.trim()) {
-    const condition = searchCondition(search.trim());
-    if (condition) filters.push(condition);
+  if (activeCategory) {
+    filters.push(sql`trim(${productAnalyticsItems.category}) = ${activeCategory}`);
   }
   const whereClause = and(...filters);
 
@@ -163,6 +185,8 @@ export async function listActiveProductAnalyticsItems({
 
   return {
     list: rows.map(itemToDto),
+    categories,
+    activeCategory,
     total: totalValue,
     page,
     pageSize,

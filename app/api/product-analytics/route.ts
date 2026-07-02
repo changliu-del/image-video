@@ -4,17 +4,16 @@ import { normalizeProductAnalyticsRank } from '@/lib/product-analytics/catalog';
 import { listActiveProductAnalyticsItems } from '@/lib/product-analytics/query';
 
 export async function GET(request: NextRequest) {
-  const { search, page, pageSize } = parsePagination(
-    request.nextUrl.searchParams
-  );
+  const { page, pageSize } = parsePagination(request.nextUrl.searchParams);
   const rankType = normalizeProductAnalyticsRank(
     request.nextUrl.searchParams.get('rankType')
   );
+  const category = request.nextUrl.searchParams.get('category')?.trim() ?? '';
 
   return NextResponse.json(
     await listActiveProductAnalyticsItems({
       rankType,
-      search,
+      category,
       page,
       pageSize,
     }),
