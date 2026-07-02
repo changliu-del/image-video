@@ -1,6 +1,5 @@
 'use client';
 
-import Link from 'next/link';
 import { useEffect, useMemo, useState } from 'react';
 import {
   ExternalLink,
@@ -11,17 +10,13 @@ import {
 import { Button } from '@/components/ui/button';
 import {
   productAnalyticsRankConfig,
-  productAnalyticsRankTypes,
   type ProductAnalyticsRankType,
 } from '@/lib/product-analytics/catalog';
 import type {
   ProductAnalyticsItemDto,
   ProductAnalyticsListResponse,
 } from '@/lib/product-analytics/query';
-import {
-  useDashboardLocale,
-  withDashboardLocale,
-} from '@/lib/dashboard/use-dashboard-locale';
+import { useDashboardLocale } from '@/lib/dashboard/use-dashboard-locale';
 import { cn } from '@/lib/utils';
 
 const PAGE_SIZE = 30;
@@ -49,7 +44,6 @@ type ProductAnalyticsCopy = {
   next: string;
   page: string;
   rows: string;
-  source: string;
   fastmoss: string;
   tiktok: string;
 };
@@ -77,7 +71,6 @@ const copy: Record<'en' | 'pt', ProductAnalyticsCopy> = {
     next: 'Next',
     page: 'Page',
     rows: 'rows',
-    source: 'Source',
     fastmoss: 'FastMoss',
     tiktok: 'TikTok',
   },
@@ -103,7 +96,6 @@ const copy: Record<'en' | 'pt', ProductAnalyticsCopy> = {
     next: 'Próxima',
     page: 'Página',
     rows: 'linhas',
-    source: 'Origem',
     fastmoss: 'FastMoss',
     tiktok: 'TikTok',
   },
@@ -276,7 +268,7 @@ export function ProductAnalyticsPage({
 }) {
   const locale = useDashboardLocale();
   const labels = copy[locale === 'pt' ? 'pt' : 'en'];
-  const [rankType, setRankType] = useState(initialRank);
+  const rankType = initialRank;
   const [page, setPage] = useState(1);
   const [selectedCategory, setSelectedCategory] = useState('');
   const [showAllCategories, setShowAllCategories] = useState(false);
@@ -332,12 +324,11 @@ export function ProductAnalyticsPage({
     void loadData();
   }, [endpoint]);
 
-  function selectRank(type: ProductAnalyticsRankType) {
-    setRankType(type);
+  useEffect(() => {
     setPage(1);
     setSelectedCategory('');
     setShowAllCategories(false);
-  }
+  }, [rankType]);
 
   function selectCategory(category: string) {
     setPage(1);
@@ -347,52 +338,10 @@ export function ProductAnalyticsPage({
   return (
     <main className="min-h-[calc(100dvh-58px)] bg-[#f5f7fb] px-4 py-5 text-gray-950 sm:px-6 lg:px-8">
       <div className="mx-auto max-w-7xl space-y-4">
-        <header className="flex flex-col gap-4 rounded-lg border border-gray-200 bg-white p-5 shadow-sm lg:flex-row lg:items-end lg:justify-between">
-          <div>
-            <p className="text-xs font-bold uppercase text-indigo-500">
-              {labels.source}
-            </p>
-            <h1 className="mt-1 text-2xl font-bold tracking-tight">
-              {activeConfig.title[locale === 'pt' ? 'pt' : 'en']}
-            </h1>
-            <p className="mt-2 max-w-2xl text-sm text-gray-500">
-              {activeConfig.description[locale === 'pt' ? 'pt' : 'en']}
-            </p>
-            {data?.batch ? (
-              <p className="mt-2 text-xs font-medium text-gray-400">
-                {data.batch.sourceFileName} · {data.batch.rowCount}{' '}
-                {labels.rows}
-              </p>
-            ) : null}
-          </div>
-
-          <div className="flex flex-col gap-3 sm:min-w-[420px]">
-            <div className="flex flex-wrap gap-2">
-              {productAnalyticsRankTypes.map((type) => (
-                <Link
-                  key={type}
-                  href={withDashboardLocale(
-                    productAnalyticsRankConfig[type].path,
-                    locale
-                  )}
-                  prefetch={false}
-                  onClick={() => selectRank(type)}
-                  className={cn(
-                    'rounded-md border px-3 py-2 text-xs font-semibold transition',
-                    rankType === type
-                      ? 'border-indigo-200 bg-indigo-50 text-indigo-700'
-                      : 'border-gray-200 bg-white text-gray-500 hover:border-gray-300 hover:text-gray-900'
-                  )}
-                >
-                  {
-                    productAnalyticsRankConfig[type].shortLabel[
-                      locale === 'pt' ? 'pt' : 'en'
-                    ]
-                  }
-                </Link>
-              ))}
-            </div>
-          </div>
+        <header className="rounded-lg border border-gray-200 bg-white p-5 shadow-sm">
+          <h1 className="text-2xl font-bold tracking-tight">
+            {activeConfig.title[locale === 'pt' ? 'pt' : 'en']}
+          </h1>
         </header>
 
         <section className="rounded-lg border border-gray-200 bg-white p-4 shadow-sm">

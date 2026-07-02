@@ -69,6 +69,10 @@ describe('product analytics import and workspace contract', () => {
     expect(page).toContain('allCategories');
     expect(page).not.toContain('Search product');
     expect(page).not.toContain("params.set('search'");
+    expect(page).not.toContain('productAnalyticsRankTypes.map');
+    expect(page).not.toContain('activeConfig.description');
+    expect(page).not.toContain('sourceFileName');
+    expect(page).not.toContain('labels.source');
     expect(page).not.toContain('labels.views');
     expect(page).not.toContain('labels.likes');
     expect(page).not.toContain('labels.actions');

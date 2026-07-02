@@ -103,8 +103,11 @@ categories and supports category-chip filtering only; do not add a free-text
 search surface for these imported rankings. The user-facing ranking table should
 render only the imported product image plus FastMoss and TikTok source links;
 do not add generic Views, Likes, Actions, or separate video-link columns unless
-the workbook contract changes. Do not patch ranking rows manually; fix the
-workbook and re-import from Admin.
+the workbook contract changes. The dashboard sidebar is the only user-facing
+rank navigation; the ranking page header should show the current rank title
+only, without Source labels, rank tabs, workbook file names, import timestamps,
+or import row counts. Do not patch ranking rows manually; fix the workbook and
+re-import from Admin.
 
 Template rows keep `thumbnail_asset_id` and `preview_asset_id` for upload
 integrity, but also store `thumbnail_url`, `preview_url`,
