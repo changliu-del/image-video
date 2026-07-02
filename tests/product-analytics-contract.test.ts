@@ -79,7 +79,13 @@ describe('product analytics import and workspace contract', () => {
     expect(page).toContain("'视频播放量'");
     expect(page).toContain("en: 'Linked creators'");
     expect(page).toContain("pt: 'Criadores vinculados'");
-    expect(page).toContain("en: 'Video URL'");
+    expect(page).toContain("en: 'Video'");
+    expect(page).toContain("pt: 'Vídeo'");
+    expect(page).toContain('VideoPreviewCell');
+    expect(page).toContain('PlayCircle');
+    expect(page).toContain("return 'video'");
+    expect(page).not.toContain("en: 'Listed at'");
+    expect(page).not.toContain("column('预估商品上架时间'");
     expect(page).toContain('column.label[localeKey]');
     expect(page).not.toContain('data?.headers');
     expect(page).toContain('selectedCategory');

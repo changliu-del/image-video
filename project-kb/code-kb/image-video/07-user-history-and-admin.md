@@ -110,6 +110,11 @@ match the FastMoss workbook language, but visible table labels must follow the
 current page locale (`en` or Brazilian Portuguese `pt`) and must not expose
 Chinese headers in the UI. Avoid collapsing the pages back to generic
 Sales/Revenue/Total columns or dynamically adopting arbitrary uploaded headers.
+Keep the workbook's estimated listed-at field out of these user-facing ranking
+tables unless product explicitly asks for it again. For the `video-products`
+rank, render the `视频地址` source value as a video preview/open-video cell with
+the product cover and play affordance; current FastMoss exports provide TikTok
+page URLs there, not direct playable video bytes for an inline `<video>`.
 The dashboard sidebar is the only user-facing rank navigation; the ranking page
 header should show the current rank title only, without Source labels, rank
 tabs, workbook file names, import timestamps, or import row counts. Do not patch

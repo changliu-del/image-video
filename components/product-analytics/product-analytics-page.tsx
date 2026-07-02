@@ -5,6 +5,7 @@ import {
   ExternalLink,
   Loader2,
   PackageOpen,
+  PlayCircle,
   RefreshCw,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -36,7 +37,6 @@ type ProductAnalyticsCopy = {
   shop: string;
   category: string;
   commission: string;
-  listed: string;
   loading: string;
   loadFailed: string;
   empty: string;
@@ -65,7 +65,6 @@ const copy: Record<'en' | 'pt', ProductAnalyticsCopy> = {
     shop: 'Shop',
     category: 'Category',
     commission: 'Commission',
-    listed: 'Listed',
     loading: 'Loading ranking...',
     loadFailed: 'Ranking could not be loaded.',
     empty: 'No imported data yet.',
@@ -92,7 +91,6 @@ const copy: Record<'en' | 'pt', ProductAnalyticsCopy> = {
     shop: 'Loja',
     category: 'Categoria',
     commission: 'Comissão',
-    listed: 'Publicado',
     loading: 'Carregando ranking...',
     loadFailed: 'Não foi possível carregar o ranking.',
     empty: 'Ainda não há dados importados.',
@@ -107,7 +105,13 @@ const copy: Record<'en' | 'pt', ProductAnalyticsCopy> = {
   },
 };
 
-type WorkbookColumnKind = 'rank' | 'image' | 'link' | 'product' | 'text';
+type WorkbookColumnKind =
+  | 'rank'
+  | 'image'
+  | 'link'
+  | 'product'
+  | 'text'
+  | 'video';
 
 type WorkbookColumn = {
   sourceHeader: string;
@@ -142,7 +146,6 @@ const columnLabels: Record<string, Record<'en' | 'pt', string>> = {
   totalSales: { en: 'Total sales', pt: 'Vendas totais' },
   totalRevenue: { en: 'Total revenue', pt: 'Receita total' },
   status: { en: 'Status', pt: 'Status' },
-  listedAt: { en: 'Listed at', pt: 'Publicado em' },
   fastmossProduct: { en: 'FastMoss product', pt: 'Produto no FastMoss' },
   tiktokProduct: { en: 'TikTok product', pt: 'Produto no TikTok' },
   fastmossShop: { en: 'FastMoss shop', pt: 'Loja no FastMoss' },
@@ -154,7 +157,7 @@ const columnLabels: Record<string, Record<'en' | 'pt', string>> = {
   videoTitle: { en: 'Video title', pt: 'Título do vídeo' },
   videoViews: { en: 'Video views', pt: 'Visualizações do vídeo' },
   videoSales: { en: 'Video sales', pt: 'Vendas do vídeo' },
-  videoUrl: { en: 'Video URL', pt: 'URL do vídeo' },
+  videoPreview: { en: 'Video', pt: 'Vídeo' },
   videoTotalSales: {
     en: 'Video total sales',
     pt: 'Vendas totais do vídeo',
@@ -196,7 +199,6 @@ const workbookColumnsByRank: Record<
     column('总销量', 'totalSales'),
     column('总销售额', 'totalRevenue'),
     column('销售额', 'revenue'),
-    column('预估商品上架时间', 'listedAt'),
     column('店铺总销量', 'shopSales'),
     column('FastMoss 商品详情页', 'fastmossProduct'),
     column('TikTok 官网商品详情页', 'tiktokProduct'),
@@ -219,7 +221,6 @@ const workbookColumnsByRank: Record<
     column('销售额', 'revenue'),
     column('总销量', 'totalSales'),
     column('商品状态', 'status'),
-    column('预估商品上架时间', 'listedAt'),
   ],
   promoted: [
     column('排名', 'rank'),
@@ -239,7 +240,6 @@ const workbookColumnsByRank: Record<
     column('TikTok官网商品详情页', 'tiktokProduct'),
     column('FastMoss店铺详情页', 'fastmossShop'),
     column('商品状态', 'status'),
-    column('预估商品上架时间', 'listedAt'),
   ],
   'video-products': [
     column('排名', 'rank'),
@@ -250,12 +250,11 @@ const workbookColumnsByRank: Record<
     column('视频标题', 'videoTitle'),
     column('视频播放量', 'videoViews'),
     column('视频销量', 'videoSales'),
-    column('视频地址', 'videoUrl'),
+    column('视频地址', 'videoPreview'),
     column('视频总销量', 'videoTotalSales'),
     column('视频总销售额', 'videoTotalRevenue'),
     column('总播放量', 'totalViews'),
     column('总点赞量', 'totalLikes'),
-    column('预估商品上架时间', 'listedAt'),
     column('TikTok商品链接', 'tiktokProduct'),
     column('FastMoss商品详情页链接', 'fastmossProduct'),
   ],
@@ -279,7 +278,6 @@ const fieldAliases = {
   revenue: ['销售额', 'Revenue'],
   totalRevenue: ['总销售额', 'Total revenue'],
   status: ['商品状态', 'Status'],
-  listed: ['预估商品上架时间', 'Listed at'],
   fastmossProductUrl: [
     'FastMoss 商品详情页',
     'FastMoss商品详情页',
@@ -329,6 +327,10 @@ function isProductHeader(header: string) {
   return headerMatches(header, fieldAliases.productName);
 }
 
+function isVideoHeader(header: string) {
+  return headerMatches(header, fieldAliases.videoAddress);
+}
+
 function isLinkHeader(header: string) {
   const normalized = compactHeader(header);
   return (
@@ -365,6 +367,7 @@ function isIntegerHeader(header: string) {
 
 function inferColumnKind(header: string): WorkbookColumnKind {
   if (isRankHeader(header)) return 'rank';
+  if (isVideoHeader(header)) return 'video';
   if (isImageHeader(header)) return 'image';
   if (isLinkHeader(header)) return 'link';
   if (isProductHeader(header)) return 'product';
@@ -381,6 +384,8 @@ function columnMinWidth(kind: WorkbookColumnKind) {
       return 360;
     case 'link':
       return 152;
+    case 'video':
+      return 256;
     default:
       return 156;
   }
@@ -476,6 +481,52 @@ function ProductImage({
   );
 }
 
+function VideoPreviewCell({
+  href,
+  thumbnailUrl,
+  title,
+  label,
+}: {
+  href: string | null;
+  thumbnailUrl: string | null;
+  title: string | null;
+  label: string;
+}) {
+  if (!href) return <span className="text-sm text-gray-400">-</span>;
+
+  return (
+    <a
+      href={href}
+      target="_blank"
+      rel="noreferrer"
+      title={title ?? label}
+      className="group flex w-[236px] items-center gap-3 rounded-lg border border-gray-200 bg-white p-2 transition hover:border-indigo-200 hover:bg-indigo-50"
+    >
+      <span className="relative h-14 w-20 shrink-0 overflow-hidden rounded-md bg-gray-100">
+        {thumbnailUrl ? (
+          <img src={thumbnailUrl} alt="" className="size-full object-cover" />
+        ) : (
+          <span className="grid size-full place-items-center text-gray-300">
+            <PackageOpen className="size-5" />
+          </span>
+        )}
+        <span className="absolute inset-0 grid place-items-center bg-black/25 text-white">
+          <PlayCircle className="size-5" />
+        </span>
+      </span>
+      <span className="min-w-0">
+        <span className="line-clamp-2 text-xs font-semibold leading-4 text-gray-900">
+          {title ?? label}
+        </span>
+        <span className="mt-1 inline-flex items-center gap-1 text-[11px] font-semibold text-indigo-600">
+          <ExternalLink className="size-3" />
+          {label}
+        </span>
+      </span>
+    </a>
+  );
+}
+
 function cleanCellString(value: unknown) {
   if (value == null) return null;
   const text = String(value).replace(/\s+/g, ' ').trim();
@@ -516,7 +567,6 @@ function getFallbackCellValue(
     return item.totalRevenueAmount;
   }
   if (headerMatches(header, fieldAliases.status)) return item.status;
-  if (headerMatches(header, fieldAliases.listed)) return item.listedAtText;
   if (headerMatches(header, fieldAliases.fastmossProductUrl)) {
     return item.fastmossProductUrl;
   }
@@ -528,7 +578,7 @@ function getFallbackCellValue(
   }
   if (headerMatches(header, fieldAliases.videoTitle)) return item.videoTitle;
   if (headerMatches(header, fieldAliases.videoAddress)) {
-    return item.rawJson[header];
+    return item.videoUrl;
   }
   if (headerMatches(header, fieldAliases.videoViews)) return item.videoViews;
   if (headerMatches(header, fieldAliases.videoSales)) return item.videoSales;
@@ -627,6 +677,23 @@ function WorkbookCell({
     if (!href) return <span className="text-sm text-gray-400">-</span>;
     return (
       <SourceLink href={href} label={linkLabel(column.sourceHeader, labels)} />
+    );
+  }
+
+  if (column.kind === 'video') {
+    return (
+      <VideoPreviewCell
+        href={normalizedHref(value)}
+        thumbnailUrl={
+          cleanCellString(getWorkbookCellValue(item, '商品封面')) ??
+          imageFallbackForHeader(item, column.sourceHeader)
+        }
+        title={
+          cleanCellString(item.videoTitle) ??
+          cleanCellString(getWorkbookCellValue(item, '视频标题'))
+        }
+        label={label}
+      />
     );
   }
 
