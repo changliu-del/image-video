@@ -26,6 +26,7 @@ type ProductAnalyticsCopy = {
   allCategories: string;
   moreCategories: string;
   fewerCategories: string;
+  rank: string;
   product: string;
   sales: string;
   revenue: string;
@@ -53,6 +54,7 @@ const copy: Record<'en' | 'pt', ProductAnalyticsCopy> = {
     allCategories: 'All',
     moreCategories: 'More',
     fewerCategories: 'Less',
+    rank: 'Rank',
     product: 'Product',
     sales: 'Sales',
     revenue: 'Revenue',
@@ -78,6 +80,7 @@ const copy: Record<'en' | 'pt', ProductAnalyticsCopy> = {
     allCategories: 'Todas',
     moreCategories: 'Mais',
     fewerCategories: 'Menos',
+    rank: 'Posição',
     product: 'Produto',
     sales: 'Vendas',
     revenue: 'Receita',
@@ -181,14 +184,7 @@ function ProductImage({
     </div>
   );
 
-  const content = (
-    <>
-      {image}
-      <span className="absolute left-1 top-1 rounded bg-black/65 px-1.5 py-0.5 text-[10px] font-bold text-white">
-        #{item.rank}
-      </span>
-    </>
-  );
+  const content = image;
 
   const className =
     'relative size-16 shrink-0 overflow-hidden rounded-lg border border-gray-100 bg-gray-100';
@@ -430,9 +426,10 @@ export function ProductAnalyticsPage({
             </div>
           ) : (
             <div className="overflow-x-auto">
-              <table className="w-full min-w-[920px] text-left">
+              <table className="w-full min-w-[980px] text-left">
                 <thead className="bg-gray-50 text-xs uppercase text-gray-500">
                   <tr>
+                    <th className="w-20 px-5 py-3">{labels.rank}</th>
                     <th className="px-5 py-3">{labels.product}</th>
                     <th className="px-5 py-3">{labels.sales}</th>
                     <th className="px-5 py-3">{labels.revenue}</th>
@@ -443,6 +440,11 @@ export function ProductAnalyticsPage({
                 <tbody className="divide-y divide-gray-100">
                   {data.list.map((item) => (
                     <tr key={item.id} className="align-top">
+                      <td className="px-5 py-4">
+                        <span className="inline-flex h-8 min-w-8 items-center justify-center rounded-md bg-gray-100 px-2 text-sm font-bold text-gray-700">
+                          {item.rank}
+                        </span>
+                      </td>
                       <td className="px-5 py-4">
                         <ProductCell item={item} labels={labels} />
                       </td>
