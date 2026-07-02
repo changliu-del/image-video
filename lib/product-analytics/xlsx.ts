@@ -126,6 +126,10 @@ function normalizeRawJson(row: RawWorkbookRow) {
   );
 }
 
+function isVisibleWorkbookHeader(header: string) {
+  return header.trim() !== '' && !/^__EMPTY(?:_\d+)?$/i.test(header);
+}
+
 function deriveProductId(row: RawWorkbookRow) {
   const explicit = readValue(row, ['商品ID', 'Product ID']);
   if (explicit) return explicit;
@@ -246,7 +250,7 @@ export function parseProductAnalyticsWorkbook(
     defval: null,
     raw: false,
   });
-  const headers = rows[0] ? Object.keys(rows[0]) : [];
+  const headers = rows[0] ? Object.keys(rows[0]).filter(isVisibleWorkbookHeader) : [];
   const items = rows
     .map((row, index) => parseProductAnalyticsRow(row, rankType, index))
     .filter((item): item is ParsedProductAnalyticsItem => Boolean(item));

@@ -47,6 +47,7 @@ type ProductAnalyticsCopy = {
   rows: string;
   fastmoss: string;
   tiktok: string;
+  open: string;
 };
 
 const copy: Record<'en' | 'pt', ProductAnalyticsCopy> = {
@@ -75,6 +76,7 @@ const copy: Record<'en' | 'pt', ProductAnalyticsCopy> = {
     rows: 'rows',
     fastmoss: 'FastMoss',
     tiktok: 'TikTok',
+    open: 'Open',
   },
   pt: {
     allCategories: 'Todas',
@@ -101,8 +103,256 @@ const copy: Record<'en' | 'pt', ProductAnalyticsCopy> = {
     rows: 'linhas',
     fastmoss: 'FastMoss',
     tiktok: 'TikTok',
+    open: 'Abrir',
   },
 };
+
+type WorkbookColumnKind = 'rank' | 'image' | 'link' | 'product' | 'text';
+
+type WorkbookColumn = {
+  header: string;
+  kind: WorkbookColumnKind;
+  minWidth: number;
+};
+
+const fallbackWorkbookHeaders: Record<ProductAnalyticsRankType, string[]> = {
+  sales: [
+    '排名',
+    '商品图片',
+    '商品名称',
+    '商品售价',
+    '国家/地区',
+    '店铺名',
+    '店铺总销量',
+    '商品分类',
+    '佣金比例',
+    '销量',
+    '销量环比',
+    '销售额',
+    '总销量',
+    '总销售额',
+    '商品状态',
+    '预估商品上架时间',
+    'FastMoss 商品详情页',
+    'TikTok 官网商品详情页',
+    'FastMoss 店铺详情页',
+  ],
+  new: [
+    '排名',
+    '商品图片',
+    '商品名称',
+    '商品售价',
+    '国家/地区',
+    '店铺名',
+    '店铺总销量',
+    '商品分类',
+    '销量',
+    '总销量',
+    '总销售额',
+    '商品状态',
+    '预估商品上架时间',
+    'FastMoss 商品详情页',
+    'TikTok 官网商品详情页',
+    'FastMoss 店铺详情页',
+  ],
+  promoted: [
+    '排名',
+    '商品图片',
+    '商品名称',
+    '商品售价',
+    '国家/地区',
+    '店铺名',
+    '店铺总销量',
+    '商品分类',
+    '佣金比例',
+    '销量',
+    '销量环比',
+    '销售额',
+    '总销量',
+    '总销售额',
+    'FastMoss 商品详情页',
+    'TikTok 官网商品详情页',
+    'FastMoss 店铺详情页',
+  ],
+  'video-products': [
+    '排名',
+    '商品图片',
+    '商品名称',
+    '商品售价',
+    '国家/地区',
+    '店铺名',
+    '商品分类',
+    '视频标题',
+    '视频地址',
+    '视频播放量',
+    '视频销量',
+    '视频总销量',
+    '视频总销售额',
+    '总播放量',
+    '总点赞量',
+    '总评论数',
+    'FastMoss 商品详情页',
+    'TikTok 官网商品详情页',
+  ],
+};
+
+const fieldAliases = {
+  rank: ['排名', 'Rank'],
+  productImage: ['商品图片', '商品封面', '商品封面链接', 'Product image'],
+  productId: ['商品ID', 'Product ID'],
+  productName: ['商品名称', '商品标题', 'Product name'],
+  price: ['商品售价', '售价', 'Price'],
+  region: ['国家/地区', 'Region'],
+  shopName: ['店铺名', '所属店铺', '所属店铺名称', 'Shop'],
+  shopImage: ['店铺封面', 'Shop image'],
+  shopSales: ['店铺总销量', '店铺销量', 'Shop sales'],
+  category: ['商品分类', 'Category'],
+  commission: ['佣金比例', 'Commission'],
+  sales: ['销量', 'Sales'],
+  salesChange: ['销量环比', 'Sales change'],
+  totalSales: ['总销量', 'Total sales'],
+  revenue: ['销售额', 'Revenue'],
+  totalRevenue: ['总销售额', 'Total revenue'],
+  status: ['商品状态', 'Status'],
+  listed: ['预估商品上架时间', 'Listed at'],
+  fastmossProductUrl: [
+    'FastMoss 商品详情页',
+    'FastMoss商品详情页',
+    'FastMoss商品详情页链接',
+  ],
+  tiktokProductUrl: [
+    'TikTok 官网商品详情页',
+    'TikTok官网商品详情页',
+    'TikTok商品链接',
+  ],
+  fastmossShopUrl: ['FastMoss 店铺详情页', 'FastMoss店铺详情页'],
+  videoTitle: ['视频标题', 'Video title'],
+  videoAddress: ['视频地址', 'Video URL'],
+  videoViews: ['视频播放量', 'Video views'],
+  videoSales: ['视频销量', 'Video sales'],
+  videoTotalSales: ['视频总销量', 'Video total sales'],
+  videoTotalRevenue: ['视频总销售额', 'Video total revenue'],
+  totalViews: ['总播放量', 'Total views'],
+  totalLikes: ['总点赞量', '总点赞数'],
+  totalComments: ['总评论数'],
+} as const;
+
+function compactHeader(value: string) {
+  return value.replace(/\s+/g, '').toLowerCase();
+}
+
+function isVisibleWorkbookHeader(header: string) {
+  return header.trim() !== '' && !/^__EMPTY(?:_\d+)?$/i.test(header);
+}
+
+function headerMatches(
+  header: string,
+  aliases: readonly string[]
+) {
+  const normalized = compactHeader(header);
+  return aliases.some((alias) => compactHeader(alias) === normalized);
+}
+
+function isRankHeader(header: string) {
+  return headerMatches(header, fieldAliases.rank);
+}
+
+function isImageHeader(header: string) {
+  return (
+    headerMatches(header, fieldAliases.productImage) ||
+    headerMatches(header, fieldAliases.shopImage)
+  );
+}
+
+function isProductHeader(header: string) {
+  return headerMatches(header, fieldAliases.productName);
+}
+
+function isLinkHeader(header: string) {
+  const normalized = compactHeader(header);
+  return (
+    normalized.includes('url') ||
+    normalized.includes('link') ||
+    normalized.includes('链接') ||
+    normalized.includes('详情页') ||
+    normalized.includes('地址')
+  );
+}
+
+function isRevenueHeader(header: string) {
+  return (
+    headerMatches(header, fieldAliases.revenue) ||
+    headerMatches(header, fieldAliases.totalRevenue) ||
+    headerMatches(header, fieldAliases.videoTotalRevenue)
+  );
+}
+
+function isIntegerHeader(header: string) {
+  return [
+    fieldAliases.rank,
+    fieldAliases.shopSales,
+    fieldAliases.sales,
+    fieldAliases.totalSales,
+    fieldAliases.videoViews,
+    fieldAliases.videoSales,
+    fieldAliases.videoTotalSales,
+    fieldAliases.totalViews,
+    fieldAliases.totalLikes,
+    fieldAliases.totalComments,
+  ].some((aliases) => headerMatches(header, aliases));
+}
+
+function inferColumnKind(header: string): WorkbookColumnKind {
+  if (isRankHeader(header)) return 'rank';
+  if (isImageHeader(header)) return 'image';
+  if (isLinkHeader(header)) return 'link';
+  if (isProductHeader(header)) return 'product';
+  return 'text';
+}
+
+function columnMinWidth(kind: WorkbookColumnKind) {
+  switch (kind) {
+    case 'rank':
+      return 88;
+    case 'image':
+      return 104;
+    case 'product':
+      return 360;
+    case 'link':
+      return 152;
+    default:
+      return 156;
+  }
+}
+
+function buildWorkbookColumns(
+  headers: string[],
+  rankType: ProductAnalyticsRankType
+): WorkbookColumn[] {
+  const sourceHeaders = headers.length
+    ? headers
+    : fallbackWorkbookHeaders[rankType];
+  const uniqueHeaders = sourceHeaders
+    .map((header) => header.trim())
+    .filter(
+      (header, index, all) =>
+        isVisibleWorkbookHeader(header) &&
+        all.findIndex((item) => compactHeader(item) === compactHeader(header)) === index
+    );
+
+  if (!uniqueHeaders.some(isRankHeader)) {
+    uniqueHeaders.unshift('排名');
+  }
+
+  return uniqueHeaders.map((header) => {
+    const kind = inferColumnKind(header);
+    return {
+      header,
+      kind,
+      minWidth: columnMinWidth(kind),
+    };
+  });
+}
 
 function formatInteger(value: number | null, locale: string) {
   if (value == null) return '-';
@@ -118,32 +368,6 @@ function formatCurrency(value: number | null, locale: string) {
     currency: 'BRL',
     maximumFractionDigits: 2,
   }).format(value);
-}
-
-function Metric({
-  label,
-  value,
-  tone = 'default',
-}: {
-  label: string;
-  value: string;
-  tone?: 'default' | 'accent';
-}) {
-  return (
-    <div>
-      <div className="text-[11px] font-semibold uppercase text-gray-400">
-        {label}
-      </div>
-      <div
-        className={cn(
-          'mt-1 whitespace-nowrap text-sm font-semibold',
-          tone === 'accent' ? 'text-orange-600' : 'text-gray-950'
-        )}
-      >
-        {value}
-      </div>
-    </div>
-  );
 }
 
 function SourceLink({
@@ -170,14 +394,14 @@ function SourceLink({
 }
 
 function ProductImage({
-  item,
+  src,
   label,
 }: {
-  item: ProductAnalyticsItemDto;
+  src: string | null;
   label: string;
 }) {
-  const image = item.productImageUrl ? (
-    <img src={item.productImageUrl} alt="" className="size-full object-cover" />
+  const image = src ? (
+    <img src={src} alt="" className="size-full object-cover" />
   ) : (
     <div className="grid size-full place-items-center text-gray-300">
       <PackageOpen className="size-5" />
@@ -189,13 +413,13 @@ function ProductImage({
   const className =
     'relative size-16 shrink-0 overflow-hidden rounded-lg border border-gray-100 bg-gray-100';
 
-  if (!item.productImageUrl) {
+  if (!src) {
     return <div className={className}>{content}</div>;
   }
 
   return (
     <a
-      href={item.productImageUrl}
+      href={src}
       target="_blank"
       rel="noreferrer"
       title={label}
@@ -206,54 +430,168 @@ function ProductImage({
   );
 }
 
-function ProductCell({
+function cleanCellString(value: unknown) {
+  if (value == null) return null;
+  const text = String(value).replace(/\s+/g, ' ').trim();
+  return text && text !== '-' ? text : null;
+}
+
+function normalizedHref(value: unknown) {
+  const text = cleanCellString(value);
+  return text && /^https?:\/\//i.test(text) ? text : null;
+}
+
+function getFallbackCellValue(
+  item: ProductAnalyticsItemDto,
+  header: string
+) {
+  if (headerMatches(header, fieldAliases.rank)) return item.rank;
+  if (headerMatches(header, fieldAliases.productImage)) {
+    return item.productImageUrl;
+  }
+  if (headerMatches(header, fieldAliases.productId)) return item.productId;
+  if (headerMatches(header, fieldAliases.productName)) return item.productName;
+  if (headerMatches(header, fieldAliases.price)) return item.priceText;
+  if (headerMatches(header, fieldAliases.region)) return item.region;
+  if (headerMatches(header, fieldAliases.shopName)) return item.shopName;
+  if (headerMatches(header, fieldAliases.shopImage)) return item.shopImageUrl;
+  if (headerMatches(header, fieldAliases.shopSales)) return item.shopSales;
+  if (headerMatches(header, fieldAliases.category)) return item.category;
+  if (headerMatches(header, fieldAliases.commission)) {
+    return item.commissionRateText;
+  }
+  if (headerMatches(header, fieldAliases.sales)) return item.sales;
+  if (headerMatches(header, fieldAliases.salesChange)) {
+    return item.salesChangeText;
+  }
+  if (headerMatches(header, fieldAliases.totalSales)) return item.totalSales;
+  if (headerMatches(header, fieldAliases.revenue)) return item.revenueAmount;
+  if (headerMatches(header, fieldAliases.totalRevenue)) {
+    return item.totalRevenueAmount;
+  }
+  if (headerMatches(header, fieldAliases.status)) return item.status;
+  if (headerMatches(header, fieldAliases.listed)) return item.listedAtText;
+  if (headerMatches(header, fieldAliases.fastmossProductUrl)) {
+    return item.fastmossProductUrl;
+  }
+  if (headerMatches(header, fieldAliases.tiktokProductUrl)) {
+    return item.tiktokProductUrl;
+  }
+  if (headerMatches(header, fieldAliases.fastmossShopUrl)) {
+    return item.fastmossShopUrl;
+  }
+  if (headerMatches(header, fieldAliases.videoTitle)) return item.videoTitle;
+  if (headerMatches(header, fieldAliases.videoAddress)) {
+    return item.rawJson[header];
+  }
+  if (headerMatches(header, fieldAliases.videoViews)) return item.videoViews;
+  if (headerMatches(header, fieldAliases.videoSales)) return item.videoSales;
+  if (headerMatches(header, fieldAliases.videoTotalSales)) {
+    return item.videoTotalSales;
+  }
+  if (headerMatches(header, fieldAliases.videoTotalRevenue)) {
+    return item.videoTotalRevenueAmount;
+  }
+  if (headerMatches(header, fieldAliases.totalViews)) return item.totalViews;
+  if (headerMatches(header, fieldAliases.totalLikes)) return item.totalLikes;
+  if (headerMatches(header, fieldAliases.totalComments)) {
+    return item.totalComments;
+  }
+  return null;
+}
+
+function getWorkbookCellValue(
+  item: ProductAnalyticsItemDto,
+  header: string
+) {
+  if (Object.prototype.hasOwnProperty.call(item.rawJson, header)) {
+    return item.rawJson[header];
+  }
+  return getFallbackCellValue(item, header);
+}
+
+function formatWorkbookValue(
+  value: unknown,
+  header: string,
+  locale: string
+) {
+  if (value == null || value === '') return '-';
+  if (typeof value === 'number') {
+    if (isRevenueHeader(header)) return formatCurrency(value, locale);
+    if (isIntegerHeader(header)) return formatInteger(value, locale);
+    return new Intl.NumberFormat(locale === 'pt' ? 'pt-BR' : 'en-US').format(
+      value
+    );
+  }
+  if (typeof value === 'object') return JSON.stringify(value);
+  return String(value);
+}
+
+function linkLabel(header: string, labels: ProductAnalyticsCopy) {
+  const normalized = compactHeader(header);
+  if (normalized.includes('fastmoss')) return labels.fastmoss;
+  if (normalized.includes('tiktok')) return labels.tiktok;
+  return labels.open;
+}
+
+function imageFallbackForHeader(
+  item: ProductAnalyticsItemDto,
+  header: string
+) {
+  if (headerMatches(header, fieldAliases.shopImage)) return item.shopImageUrl;
+  return item.productImageUrl;
+}
+
+function WorkbookCell({
+  column,
   item,
   labels,
+  locale,
 }: {
+  column: WorkbookColumn;
   item: ProductAnalyticsItemDto;
   labels: ProductAnalyticsCopy;
+  locale: string;
 }) {
-  return (
-    <div className="flex min-w-[420px] gap-3">
-      <ProductImage item={item} label={labels.image} />
-      <div className="min-w-0">
-        <div className="line-clamp-2 text-sm font-semibold leading-5 text-gray-950">
-          {item.productName}
-        </div>
-        <div className="mt-1 flex flex-wrap items-center gap-x-2 gap-y-1 text-xs font-medium text-gray-500">
-          {item.priceText ? (
-            <span className="text-orange-600">{item.priceText}</span>
-          ) : null}
-          {item.category ? (
-            <span>
-              {labels.category}: {item.category}
-            </span>
-          ) : null}
-          {item.region ? <span>{item.region}</span> : null}
-        </div>
-        <div className="mt-1 flex flex-wrap items-center gap-x-2 gap-y-1 text-xs text-gray-400">
-          {item.shopName ? (
-            <span>
-              {labels.shop}: {item.shopName}
-            </span>
-          ) : null}
-          {item.commissionRateText ? (
-            <span>
-              {labels.commission}: {item.commissionRateText}
-            </span>
-          ) : null}
-        </div>
-        <div className="mt-2 flex flex-wrap items-center gap-2">
-          <SourceLink href={item.fastmossProductUrl} label={labels.fastmoss} />
-          <SourceLink href={item.tiktokProductUrl} label={labels.tiktok} />
-          {item.listedAtText ? (
-            <span className="text-[11px] font-medium text-gray-400">
-              {labels.listed}: {item.listedAtText}
-            </span>
-          ) : null}
+  const value = getWorkbookCellValue(item, column.header);
+
+  if (column.kind === 'rank') {
+    return (
+      <span className="inline-flex h-8 min-w-8 items-center justify-center rounded-md bg-gray-100 px-2 text-sm font-bold text-gray-700">
+        {formatWorkbookValue(value ?? item.rank, column.header, locale)}
+      </span>
+    );
+  }
+
+  if (column.kind === 'image') {
+    return (
+      <ProductImage
+        src={cleanCellString(value) ?? imageFallbackForHeader(item, column.header)}
+        label={column.header}
+      />
+    );
+  }
+
+  if (column.kind === 'link') {
+    const href = normalizedHref(value);
+    if (!href) return <span className="text-sm text-gray-400">-</span>;
+    return <SourceLink href={href} label={linkLabel(column.header, labels)} />;
+  }
+
+  if (column.kind === 'product') {
+    return (
+      <div className="min-w-[320px] max-w-[420px]">
+        <div className="line-clamp-3 text-sm font-semibold leading-5 text-gray-950">
+          {formatWorkbookValue(value, column.header, locale)}
         </div>
       </div>
-    </div>
+    );
+  }
+
+  return (
+    <span className="block max-w-[220px] whitespace-normal break-words text-sm font-medium leading-5 text-gray-700">
+      {formatWorkbookValue(value, column.header, locale)}
+    </span>
   );
 }
 
@@ -287,6 +625,18 @@ export function ProductAnalyticsPage({
     }
     return preview;
   }, [categories, selectedCategory, showAllCategories]);
+  const workbookColumns = useMemo(
+    () => buildWorkbookColumns(data?.headers ?? [], rankType),
+    [data?.headers, rankType]
+  );
+  const tableMinWidth = useMemo(
+    () =>
+      workbookColumns.reduce(
+        (width, column) => width + column.minWidth,
+        0
+      ),
+    [workbookColumns]
+  );
 
   const endpoint = useMemo(() => {
     const params = new URLSearchParams({
@@ -426,68 +776,40 @@ export function ProductAnalyticsPage({
             </div>
           ) : (
             <div className="overflow-x-auto">
-              <table className="w-full min-w-[980px] text-left">
-                <thead className="bg-gray-50 text-xs uppercase text-gray-500">
+              <table
+                className="w-full text-left"
+                style={{ minWidth: tableMinWidth }}
+              >
+                <thead className="bg-gray-50 text-xs text-gray-500">
                   <tr>
-                    <th className="w-20 px-5 py-3">{labels.rank}</th>
-                    <th className="px-5 py-3">{labels.product}</th>
-                    <th className="px-5 py-3">{labels.sales}</th>
-                    <th className="px-5 py-3">{labels.revenue}</th>
-                    <th className="px-5 py-3">{labels.totalSales}</th>
-                    <th className="px-5 py-3">{labels.totalRevenue}</th>
+                    {workbookColumns.map((column) => (
+                      <th
+                        key={column.header}
+                        className="px-5 py-3 font-bold"
+                        style={{ minWidth: column.minWidth }}
+                        title={column.header}
+                      >
+                        {column.header}
+                      </th>
+                    ))}
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-gray-100">
                   {data.list.map((item) => (
                     <tr key={item.id} className="align-top">
-                      <td className="px-5 py-4">
-                        <span className="inline-flex h-8 min-w-8 items-center justify-center rounded-md bg-gray-100 px-2 text-sm font-bold text-gray-700">
-                          {item.rank}
-                        </span>
-                      </td>
-                      <td className="px-5 py-4">
-                        <ProductCell item={item} labels={labels} />
-                      </td>
-                      <td className="px-5 py-4">
-                        <Metric
-                          label={labels.sales}
-                          value={formatInteger(
-                            item.sales ?? item.videoSales,
-                            locale
-                          )}
-                          tone="accent"
-                        />
-                        {item.salesChangeText ? (
-                          <div className="mt-1 text-xs font-medium text-gray-400">
-                            {item.salesChangeText}
-                          </div>
-                        ) : null}
-                      </td>
-                      <td className="px-5 py-4">
-                        <Metric
-                          label={labels.revenue}
-                          value={formatCurrency(item.revenueAmount, locale)}
-                        />
-                      </td>
-                      <td className="px-5 py-4">
-                        <Metric
-                          label={labels.totalSales}
-                          value={formatInteger(
-                            item.totalSales ?? item.videoTotalSales,
-                            locale
-                          )}
-                        />
-                      </td>
-                      <td className="px-5 py-4">
-                        <Metric
-                          label={labels.totalRevenue}
-                          value={formatCurrency(
-                            item.totalRevenueAmount ??
-                              item.videoTotalRevenueAmount,
-                            locale
-                          )}
-                        />
-                      </td>
+                      {workbookColumns.map((column) => (
+                        <td
+                          key={`${item.id}-${column.header}`}
+                          className="px-5 py-4"
+                        >
+                          <WorkbookCell
+                            column={column}
+                            item={item}
+                            labels={labels}
+                            locale={locale}
+                          />
+                        </td>
+                      ))}
                     </tr>
                   ))}
                 </tbody>

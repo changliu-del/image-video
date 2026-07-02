@@ -22,6 +22,8 @@ describe('product analytics import and workspace contract', () => {
     expect(migration).toContain('ON DELETE CASCADE');
     expect(service).toContain('parseProductAnalyticsWorkbook');
     expect(parser).toContain("import * as XLSX from 'xlsx'");
+    expect(parser).toContain('isVisibleWorkbookHeader');
+    expect(parser).toContain('__EMPTY');
     expect(service).toContain('.onConflictDoUpdate');
     expect(service).toContain('productAnalyticsActiveBatches.rankType');
     expect(service).toContain('ne(productAnalyticsBatches.id, batch.id)');
@@ -52,6 +54,7 @@ describe('product analytics import and workspace contract', () => {
     const page = readSource(
       'components/product-analytics/product-analytics-page.tsx'
     );
+    const query = readSource('lib/product-analytics/query.ts');
     const catalog = readSource('lib/product-analytics/catalog.ts');
 
     expect(appShell).toContain('content.nav.dataAnalysis');
@@ -62,10 +65,17 @@ describe('product analytics import and workspace contract', () => {
     expect(route).toContain("searchParams.get('rankType')");
     expect(route).toContain("searchParams.get('category')");
     expect(route).toContain('listActiveProductAnalyticsItems');
+    expect(query).toContain('metadataJson');
+    expect(query).toContain('headersFromMetadata');
+    expect(query).toContain('rawJson');
+    expect(query).toContain('__EMPTY');
     expect(page).toContain('productImageUrl');
     expect(page).toContain('fastmossProductUrl');
     expect(page).toContain('tiktokProductUrl');
-    expect(page).toContain('labels.rank');
+    expect(page).toContain('fallbackWorkbookHeaders');
+    expect(page).toContain('buildWorkbookColumns');
+    expect(page).toContain('data?.headers');
+    expect(page).toContain("'视频播放量'");
     expect(page).toContain('selectedCategory');
     expect(page).toContain('allCategories');
     expect(page).not.toContain('Search product');

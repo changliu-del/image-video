@@ -100,15 +100,16 @@ same transaction and delete older batches for that rank. User-facing
 `/api/product-analytics`, so a replacement never exposes a blank intermediate
 state. The user-facing ranking API returns the current batch's distinct product
 categories and supports category-chip filtering only; do not add a free-text
-search surface for these imported rankings. The user-facing ranking table should
-render the rank number as its own left table column, not as a badge over the
-product image. The product cell should render only the imported product image
-plus FastMoss and TikTok source links; do not add generic Views, Likes, Actions,
-or separate video-link columns unless the workbook contract changes. The
-dashboard sidebar is the only user-facing rank navigation; the ranking page
-header should show the current rank title only, without Source labels, rank
-tabs, workbook file names, import timestamps, or import row counts. Do not patch
-ranking rows manually; fix the workbook and re-import from Admin.
+search surface for these imported rankings. The ranking list should be driven by
+the active workbook's `metadataJson.headers` and each row's `rawJson`, because
+the Sales, New product, Promoted, and Video product exports do not share one
+common field set. Keep rank and source/image fields rendered with appropriate
+table-cell affordances, but avoid collapsing the pages back to generic
+Sales/Revenue/Total columns. The dashboard sidebar is the only user-facing rank
+navigation; the ranking page header should show the current rank title only,
+without Source labels, rank tabs, workbook file names, import timestamps, or
+import row counts. Do not patch ranking rows manually; fix the workbook and
+re-import from Admin.
 
 Template rows keep `thumbnail_asset_id` and `preview_asset_id` for upload
 integrity, but also store `thumbnail_url`, `preview_url`,
