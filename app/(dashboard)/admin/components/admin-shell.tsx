@@ -4,6 +4,7 @@ import { useSearchParams } from 'next/navigation';
 import { useEffect, useMemo, useState } from 'react';
 import {
   BookOpenText,
+  BarChart3,
   ChevronDown,
   Film,
   Gauge,
@@ -15,6 +16,7 @@ import {
 } from 'lucide-react';
 import { AdminDashboardPanel } from '@/components/admin/dashboard-panel';
 import { AdminHelpPanel } from '@/components/admin/help-panel';
+import { ProductAnalyticsPanel } from '@/components/admin/product-analytics-panel';
 import { TemplatesPanel } from '@/components/admin/templates-panel';
 import {
   ManagementPanel,
@@ -46,6 +48,11 @@ const TABLES = [
     adminOnly: false,
   },
   {
+    key: 'product-analytics',
+    icon: BarChart3,
+    adminOnly: false,
+  },
+  {
     key: 'user-media',
     icon: Images,
     adminOnly: false,
@@ -72,7 +79,7 @@ type TableKey = (typeof TABLES)[number]['key'];
 type VisibleTable = (typeof TABLES)[number];
 type ManagementTableKey = Exclude<
   TableKey,
-  'overview' | 'templates' | 'help'
+  'overview' | 'templates' | 'product-analytics' | 'help'
 >;
 type AdminShellUser = {
   id: number;
@@ -887,6 +894,14 @@ export function AdminShell() {
               canPublish={canManageUsers}
               content={content}
               locale={locale}
+            />
+          </div>
+        ) : null}
+        {visitedTabs.includes('product-analytics') ? (
+          <div hidden={activeTab !== 'product-analytics'}>
+            <ProductAnalyticsPanel
+              content={content}
+              canImport={canManageUsers}
             />
           </div>
         ) : null}

@@ -76,6 +76,7 @@ Admin search fields, and Help copy aligned with these active areas:
 
 - Overview
 - Templates
+- Product Analytics
 - User History
 - Users
 - Generation Jobs
@@ -88,6 +89,17 @@ Use `type` for the operational page/workbench and `category` only for the
 business classification within that type. Each template sub-tab exposes
 field-specific Admin filters for template ID, title, and category; avoid
 collapsing those controls back into a single generic search box.
+
+Product Analytics is the manual xlsx import surface for workspace ranking
+pages. The four ranking types are `sales`, `new`, `promoted`, and
+`video-products`, sourced from operator-uploaded FastMoss-style xlsx files.
+Imports write a new `product_analytics_batches` row plus
+`product_analytics_items`, then switch `product_analytics_active_batches` in the
+same transaction and delete older batches for that rank. User-facing
+`/analytics/...` pages read only the active batch through
+`/api/product-analytics`, so a replacement never exposes a blank intermediate
+state. Do not patch ranking rows manually; fix the workbook and re-import from
+Admin.
 
 Template rows keep `thumbnail_asset_id` and `preview_asset_id` for upload
 integrity, but also store `thumbnail_url`, `preview_url`,

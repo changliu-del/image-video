@@ -2,6 +2,7 @@ import {
   check,
   index,
   jsonb,
+  numeric,
   pgTable,
   varchar,
   text,
@@ -58,6 +59,15 @@ export const TEMPLATE_TYPES = [
   'try_on',
 ] as const;
 export type TemplateType = (typeof TEMPLATE_TYPES)[number];
+
+export const PRODUCT_ANALYTICS_RANK_TYPES = [
+  'sales',
+  'new',
+  'promoted',
+  'video-products',
+] as const;
+export type ProductAnalyticsRankType =
+  (typeof PRODUCT_ANALYTICS_RANK_TYPES)[number];
 
 export const USER_MEDIA_HISTORY_SOURCES = [
   'user_upload',
@@ -472,9 +482,148 @@ export const creditLedger = pgTable(
   ]
 );
 
+export const productAnalyticsBatches = pgTable(
+  'product_analytics_batches',
+  {
+    id: integer('id')
+      .primaryKey()
+      .default(sql`nextval('product_analytics_batches_id_seq'::regclass)`),
+    rankType: varchar('rank_type', { length: 32 })
+      .$type<ProductAnalyticsRankType>()
+      .notNull(),
+    sourceFileName: text('source_file_name').notNull(),
+    rowCount: integer('row_count').notNull().default(0),
+    importedByUserId: integer('imported_by_user_id').references(() => users.id),
+    metadataJson: jsonb('metadata_json')
+      .$type<Record<string, unknown>>()
+      .notNull()
+      .default(sql`'{}'::jsonb`),
+    createdAt: timestamp('created_at').notNull().defaultNow(),
+  },
+  (table) => [
+    index('product_analytics_batches_rank_created_idx').on(
+      table.rankType,
+      table.createdAt
+    ),
+    check(
+      'product_analytics_batches_rank_type_check',
+      sql`${table.rankType} in ('sales', 'new', 'promoted', 'video-products')`
+    ),
+    check(
+      'product_analytics_batches_row_count_check',
+      sql`${table.rowCount} >= 0`
+    ),
+    check(
+      'product_analytics_batches_source_file_name_check',
+      sql`length(trim(${table.sourceFileName})) > 0`
+    ),
+  ]
+);
+
+export const productAnalyticsActiveBatches = pgTable(
+  'product_analytics_active_batches',
+  {
+    rankType: varchar('rank_type', { length: 32 })
+      .$type<ProductAnalyticsRankType>()
+      .primaryKey(),
+    batchId: integer('batch_id')
+      .notNull()
+      .references(() => productAnalyticsBatches.id),
+    updatedAt: timestamp('updated_at').notNull().defaultNow(),
+  },
+  (table) => [
+    index('product_analytics_active_batch_id_idx').on(table.batchId),
+    check(
+      'product_analytics_active_batches_rank_type_check',
+      sql`${table.rankType} in ('sales', 'new', 'promoted', 'video-products')`
+    ),
+  ]
+);
+
+export const productAnalyticsItems = pgTable(
+  'product_analytics_items',
+  {
+    id: integer('id')
+      .primaryKey()
+      .default(sql`nextval('product_analytics_items_id_seq'::regclass)`),
+    batchId: integer('batch_id')
+      .notNull()
+      .references(() => productAnalyticsBatches.id, { onDelete: 'cascade' }),
+    rankType: varchar('rank_type', { length: 32 })
+      .$type<ProductAnalyticsRankType>()
+      .notNull(),
+    rank: integer('rank').notNull(),
+    productId: text('product_id'),
+    productName: text('product_name').notNull(),
+    productImageUrl: text('product_image_url'),
+    priceText: text('price_text'),
+    region: varchar('region', { length: 32 }),
+    shopName: text('shop_name'),
+    shopImageUrl: text('shop_image_url'),
+    shopSales: integer('shop_sales'),
+    category: text('category'),
+    commissionRateText: text('commission_rate_text'),
+    sales: integer('sales'),
+    salesChangeText: text('sales_change_text'),
+    totalSales: integer('total_sales'),
+    revenueAmount: numeric('revenue_amount', {
+      precision: 14,
+      scale: 2,
+    }),
+    totalRevenueAmount: numeric('total_revenue_amount', {
+      precision: 14,
+      scale: 2,
+    }),
+    status: text('status'),
+    listedAtText: text('listed_at_text'),
+    fastmossProductUrl: text('fastmoss_product_url'),
+    tiktokProductUrl: text('tiktok_product_url'),
+    fastmossShopUrl: text('fastmoss_shop_url'),
+    videoTitle: text('video_title'),
+    videoUrl: text('video_url'),
+    videoViews: integer('video_views'),
+    videoSales: integer('video_sales'),
+    videoTotalSales: integer('video_total_sales'),
+    videoTotalRevenueAmount: numeric('video_total_revenue_amount', {
+      precision: 14,
+      scale: 2,
+    }),
+    totalViews: integer('total_views'),
+    totalLikes: integer('total_likes'),
+    totalComments: integer('total_comments'),
+    rawJson: jsonb('raw_json')
+      .$type<Record<string, unknown>>()
+      .notNull()
+      .default(sql`'{}'::jsonb`),
+    createdAt: timestamp('created_at').notNull().defaultNow(),
+  },
+  (table) => [
+    index('product_analytics_items_batch_rank_idx').on(
+      table.batchId,
+      table.rank
+    ),
+    index('product_analytics_items_rank_type_rank_idx').on(
+      table.rankType,
+      table.rank
+    ),
+    index('product_analytics_items_product_name_idx').on(table.productName),
+    index('product_analytics_items_category_idx').on(table.category),
+    check(
+      'product_analytics_items_rank_type_check',
+      sql`${table.rankType} in ('sales', 'new', 'promoted', 'video-products')`
+    ),
+    check('product_analytics_items_rank_check', sql`${table.rank} > 0`),
+    check(
+      'product_analytics_items_product_name_check',
+      sql`length(trim(${table.productName})) > 0`
+    ),
+  ]
+);
+
 export const usersRelations = relations(users, ({ many }) => ({
   assets: many(assets),
   generationJobs: many(generationJobs),
+  productAnalyticsBatches: many(productAnalyticsBatches),
   userMediaHistory: many(userMediaHistory),
   creditLedgerEntries: many(creditLedger),
 }));
@@ -554,6 +703,37 @@ export const creditLedgerRelations = relations(creditLedger, ({ one }) => ({
   }),
 }));
 
+export const productAnalyticsBatchesRelations = relations(
+  productAnalyticsBatches,
+  ({ one, many }) => ({
+    importedByUser: one(users, {
+      fields: [productAnalyticsBatches.importedByUserId],
+      references: [users.id],
+    }),
+    items: many(productAnalyticsItems),
+  })
+);
+
+export const productAnalyticsActiveBatchesRelations = relations(
+  productAnalyticsActiveBatches,
+  ({ one }) => ({
+    batch: one(productAnalyticsBatches, {
+      fields: [productAnalyticsActiveBatches.batchId],
+      references: [productAnalyticsBatches.id],
+    }),
+  })
+);
+
+export const productAnalyticsItemsRelations = relations(
+  productAnalyticsItems,
+  ({ one }) => ({
+    batch: one(productAnalyticsBatches, {
+      fields: [productAnalyticsItems.batchId],
+      references: [productAnalyticsBatches.id],
+    }),
+  })
+);
+
 export type User = typeof users.$inferSelect;
 export type NewUser = typeof users.$inferInsert;
 export type Asset = typeof assets.$inferSelect;
@@ -566,3 +746,7 @@ export type UserMediaHistory = typeof userMediaHistory.$inferSelect;
 export type NewUserMediaHistory = typeof userMediaHistory.$inferInsert;
 export type CreditLedgerEntry = typeof creditLedger.$inferSelect;
 export type NewCreditLedgerEntry = typeof creditLedger.$inferInsert;
+export type ProductAnalyticsBatch = typeof productAnalyticsBatches.$inferSelect;
+export type NewProductAnalyticsBatch = typeof productAnalyticsBatches.$inferInsert;
+export type ProductAnalyticsItem = typeof productAnalyticsItems.$inferSelect;
+export type NewProductAnalyticsItem = typeof productAnalyticsItems.$inferInsert;

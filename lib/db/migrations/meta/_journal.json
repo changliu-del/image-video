@@ -218,6 +218,13 @@
       "when": 1780000028000,
       "tag": "0031_template_portuguese_columns",
       "breakpoints": true
+    },
+    {
+      "idx": 31,
+      "version": "7",
+      "when": 1780000029000,
+      "tag": "0032_product_analytics_imports",
+      "breakpoints": true
     }
   ]
 }

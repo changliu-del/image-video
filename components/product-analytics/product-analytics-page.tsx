@@ -1,0 +1,574 @@
+'use client';
+
+import Link from 'next/link';
+import { useEffect, useMemo, useState } from 'react';
+import {
+  ExternalLink,
+  Loader2,
+  PackageOpen,
+  RefreshCw,
+  Search,
+} from 'lucide-react';
+import { Button } from '@/components/ui/button';
+import {
+  productAnalyticsRankConfig,
+  productAnalyticsRankTypes,
+  type ProductAnalyticsRankType,
+} from '@/lib/product-analytics/catalog';
+import type {
+  ProductAnalyticsItemDto,
+  ProductAnalyticsListResponse,
+} from '@/lib/product-analytics/query';
+import {
+  useDashboardLocale,
+  withDashboardLocale,
+} from '@/lib/dashboard/use-dashboard-locale';
+import { cn } from '@/lib/utils';
+
+const PAGE_SIZE = 30;
+
+type ProductAnalyticsCopy = {
+  search: string;
+  product: string;
+  video: string;
+  sales: string;
+  revenue: string;
+  totalSales: string;
+  totalRevenue: string;
+  views: string;
+  likes: string;
+  actions: string;
+  shop: string;
+  category: string;
+  commission: string;
+  listed: string;
+  loading: string;
+  loadFailed: string;
+  empty: string;
+  retry: string;
+  previous: string;
+  next: string;
+  page: string;
+  rows: string;
+  source: string;
+  fastmoss: string;
+  tiktok: string;
+  videoLink: string;
+};
+
+const copy: Record<'en' | 'pt', ProductAnalyticsCopy> = {
+  en: {
+    search: 'Search product, shop, category...',
+    product: 'Product',
+    video: 'Video content',
+    sales: 'Sales',
+    revenue: 'Revenue',
+    totalSales: 'Total sales',
+    totalRevenue: 'Total revenue',
+    views: 'Views',
+    likes: 'Likes',
+    actions: 'Actions',
+    shop: 'Shop',
+    category: 'Category',
+    commission: 'Commission',
+    listed: 'Listed',
+    loading: 'Loading ranking...',
+    loadFailed: 'Ranking could not be loaded.',
+    empty: 'No imported data yet.',
+    retry: 'Retry',
+    previous: 'Previous',
+    next: 'Next',
+    page: 'Page',
+    rows: 'rows',
+    source: 'Source',
+    fastmoss: 'FastMoss',
+    tiktok: 'TikTok',
+    videoLink: 'Video',
+  },
+  pt: {
+    search: 'Buscar produto, loja, categoria...',
+    product: 'Produto',
+    video: 'Conteúdo do vídeo',
+    sales: 'Vendas',
+    revenue: 'Receita',
+    totalSales: 'Vendas totais',
+    totalRevenue: 'Receita total',
+    views: 'Visualizações',
+    likes: 'Curtidas',
+    actions: 'Ações',
+    shop: 'Loja',
+    category: 'Categoria',
+    commission: 'Comissão',
+    listed: 'Publicado',
+    loading: 'Carregando ranking...',
+    loadFailed: 'Não foi possível carregar o ranking.',
+    empty: 'Ainda não há dados importados.',
+    retry: 'Tentar novamente',
+    previous: 'Anterior',
+    next: 'Próxima',
+    page: 'Página',
+    rows: 'linhas',
+    source: 'Origem',
+    fastmoss: 'FastMoss',
+    tiktok: 'TikTok',
+    videoLink: 'Vídeo',
+  },
+};
+
+function formatInteger(value: number | null, locale: string) {
+  if (value == null) return '-';
+  return new Intl.NumberFormat(locale === 'pt' ? 'pt-BR' : 'en-US', {
+    maximumFractionDigits: 0,
+  }).format(value);
+}
+
+function formatCurrency(value: number | null, locale: string) {
+  if (value == null) return '-';
+  return new Intl.NumberFormat(locale === 'pt' ? 'pt-BR' : 'en-US', {
+    style: 'currency',
+    currency: 'BRL',
+    maximumFractionDigits: 2,
+  }).format(value);
+}
+
+function Metric({
+  label,
+  value,
+  tone = 'default',
+}: {
+  label: string;
+  value: string;
+  tone?: 'default' | 'accent';
+}) {
+  return (
+    <div>
+      <div className="text-[11px] font-semibold uppercase text-gray-400">
+        {label}
+      </div>
+      <div
+        className={cn(
+          'mt-1 whitespace-nowrap text-sm font-semibold',
+          tone === 'accent' ? 'text-orange-600' : 'text-gray-950'
+        )}
+      >
+        {value}
+      </div>
+    </div>
+  );
+}
+
+function ActionLink({
+  href,
+  label,
+}: {
+  href: string | null;
+  label: string;
+}) {
+  if (!href) return null;
+
+  return (
+    <a
+      href={href}
+      target="_blank"
+      rel="noreferrer"
+      title={label}
+      className="inline-flex size-8 items-center justify-center rounded-md border border-gray-200 bg-white text-gray-500 transition hover:border-indigo-200 hover:bg-indigo-50 hover:text-indigo-600"
+    >
+      <ExternalLink className="size-4" />
+      <span className="sr-only">{label}</span>
+    </a>
+  );
+}
+
+function ProductCell({
+  item,
+  labels,
+}: {
+  item: ProductAnalyticsItemDto;
+  labels: ProductAnalyticsCopy;
+}) {
+  return (
+    <div className="flex min-w-[360px] gap-3">
+      <div className="relative size-16 shrink-0 overflow-hidden rounded-lg border border-gray-100 bg-gray-100">
+        {item.productImageUrl ? (
+          <img
+            src={item.productImageUrl}
+            alt=""
+            className="size-full object-cover"
+          />
+        ) : (
+          <div className="grid size-full place-items-center text-gray-300">
+            <PackageOpen className="size-5" />
+          </div>
+        )}
+        <span className="absolute left-1 top-1 rounded bg-black/65 px-1.5 py-0.5 text-[10px] font-bold text-white">
+          #{item.rank}
+        </span>
+      </div>
+      <div className="min-w-0">
+        <div className="line-clamp-2 text-sm font-semibold leading-5 text-gray-950">
+          {item.productName}
+        </div>
+        <div className="mt-1 flex flex-wrap items-center gap-x-2 gap-y-1 text-xs font-medium text-gray-500">
+          {item.priceText ? (
+            <span className="text-orange-600">{item.priceText}</span>
+          ) : null}
+          {item.category ? (
+            <span>
+              {labels.category}: {item.category}
+            </span>
+          ) : null}
+          {item.region ? <span>{item.region}</span> : null}
+        </div>
+        <div className="mt-1 flex flex-wrap items-center gap-x-2 gap-y-1 text-xs text-gray-400">
+          {item.shopName ? (
+            <span>
+              {labels.shop}: {item.shopName}
+            </span>
+          ) : null}
+          {item.commissionRateText ? (
+            <span>
+              {labels.commission}: {item.commissionRateText}
+            </span>
+          ) : null}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function VideoCell({
+  item,
+  labels,
+  locale,
+}: {
+  item: ProductAnalyticsItemDto;
+  labels: ProductAnalyticsCopy;
+  locale: string;
+}) {
+  return (
+    <div className="min-w-[280px] max-w-[360px]">
+      <div className="line-clamp-2 text-sm font-semibold text-gray-900">
+        {item.videoTitle ?? '-'}
+      </div>
+      <div className="mt-2 grid grid-cols-2 gap-3">
+        <Metric
+          label={labels.views}
+          value={formatInteger(item.videoViews, locale)}
+        />
+        <Metric
+          label={labels.sales}
+          value={formatInteger(item.videoSales, locale)}
+          tone="accent"
+        />
+      </div>
+    </div>
+  );
+}
+
+export function ProductAnalyticsPage({
+  initialRank,
+}: {
+  initialRank: ProductAnalyticsRankType;
+}) {
+  const locale = useDashboardLocale();
+  const labels = copy[locale === 'pt' ? 'pt' : 'en'];
+  const [rankType, setRankType] = useState(initialRank);
+  const [page, setPage] = useState(1);
+  const [search, setSearch] = useState('');
+  const [appliedSearch, setAppliedSearch] = useState('');
+  const [data, setData] = useState<ProductAnalyticsListResponse | null>(null);
+  const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+
+  const activeConfig = productAnalyticsRankConfig[rankType];
+  const hasNext = Boolean(data && page * data.pageSize < data.total);
+
+  const endpoint = useMemo(() => {
+    const params = new URLSearchParams({
+      rankType,
+      page: String(page),
+      pageSize: String(PAGE_SIZE),
+    });
+    if (appliedSearch) params.set('search', appliedSearch);
+    return `/api/product-analytics?${params}`;
+  }, [appliedSearch, page, rankType]);
+
+  async function loadData() {
+    setIsLoading(true);
+    setError(null);
+    try {
+      const response = await fetch(endpoint);
+      if (!response.ok) throw new Error(labels.loadFailed);
+      setData((await response.json()) as ProductAnalyticsListResponse);
+    } catch (loadError) {
+      setError(loadError instanceof Error ? loadError.message : labels.loadFailed);
+    } finally {
+      setIsLoading(false);
+    }
+  }
+
+  useEffect(() => {
+    void loadData();
+  }, [endpoint]);
+
+  function selectRank(type: ProductAnalyticsRankType) {
+    setRankType(type);
+    setPage(1);
+    setAppliedSearch('');
+    setSearch('');
+  }
+
+  function submitSearch() {
+    setPage(1);
+    setAppliedSearch(search.trim());
+  }
+
+  return (
+    <main className="min-h-[calc(100dvh-58px)] bg-[#f5f7fb] px-4 py-5 text-gray-950 sm:px-6 lg:px-8">
+      <div className="mx-auto max-w-7xl space-y-4">
+        <header className="flex flex-col gap-4 rounded-lg border border-gray-200 bg-white p-5 shadow-sm lg:flex-row lg:items-end lg:justify-between">
+          <div>
+            <p className="text-xs font-bold uppercase text-indigo-500">
+              {labels.source}
+            </p>
+            <h1 className="mt-1 text-2xl font-bold tracking-tight">
+              {activeConfig.title[locale === 'pt' ? 'pt' : 'en']}
+            </h1>
+            <p className="mt-2 max-w-2xl text-sm text-gray-500">
+              {activeConfig.description[locale === 'pt' ? 'pt' : 'en']}
+            </p>
+            {data?.batch ? (
+              <p className="mt-2 text-xs font-medium text-gray-400">
+                {data.batch.sourceFileName} · {data.batch.rowCount}{' '}
+                {labels.rows}
+              </p>
+            ) : null}
+          </div>
+
+          <div className="flex flex-col gap-3 sm:min-w-[420px]">
+            <div className="flex flex-wrap gap-2">
+              {productAnalyticsRankTypes.map((type) => (
+                <Link
+                  key={type}
+                  href={withDashboardLocale(
+                    productAnalyticsRankConfig[type].path,
+                    locale
+                  )}
+                  prefetch={false}
+                  onClick={() => selectRank(type)}
+                  className={cn(
+                    'rounded-md border px-3 py-2 text-xs font-semibold transition',
+                    rankType === type
+                      ? 'border-indigo-200 bg-indigo-50 text-indigo-700'
+                      : 'border-gray-200 bg-white text-gray-500 hover:border-gray-300 hover:text-gray-900'
+                  )}
+                >
+                  {
+                    productAnalyticsRankConfig[type].shortLabel[
+                      locale === 'pt' ? 'pt' : 'en'
+                    ]
+                  }
+                </Link>
+              ))}
+            </div>
+            <div className="flex gap-2">
+              <div className="relative min-w-0 flex-1">
+                <Search className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-gray-400" />
+                <input
+                  value={search}
+                  onChange={(event) => setSearch(event.target.value)}
+                  onKeyDown={(event) => {
+                    if (event.key === 'Enter') submitSearch();
+                  }}
+                  placeholder={labels.search}
+                  className="h-10 w-full rounded-md border border-gray-200 bg-white pl-9 pr-3 text-sm outline-none transition placeholder:text-gray-400 focus:border-indigo-300"
+                />
+              </div>
+              <Button type="button" onClick={submitSearch} className="gap-2">
+                <Search className="size-4" />
+                {labels.search.split(' ')[0]}
+              </Button>
+            </div>
+          </div>
+        </header>
+
+        <section className="rounded-lg border border-gray-200 bg-white shadow-sm">
+          <div className="flex items-center justify-between border-b border-gray-200 px-5 py-3">
+            <div className="text-sm font-semibold text-gray-950">
+              {data?.total ?? 0} {labels.rows}
+            </div>
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              onClick={loadData}
+              disabled={isLoading}
+              className="gap-2"
+            >
+              {isLoading ? (
+                <Loader2 className="size-4 animate-spin" />
+              ) : (
+                <RefreshCw className="size-4" />
+              )}
+              {labels.retry}
+            </Button>
+          </div>
+
+          {error ? (
+            <div className="px-5 py-10 text-center text-sm font-medium text-red-600">
+              {error}
+            </div>
+          ) : isLoading && !data ? (
+            <div className="flex items-center justify-center gap-2 px-5 py-16 text-sm font-medium text-gray-500">
+              <Loader2 className="size-4 animate-spin" />
+              {labels.loading}
+            </div>
+          ) : !data?.list.length ? (
+            <div className="px-5 py-16 text-center text-sm font-medium text-gray-500">
+              {labels.empty}
+            </div>
+          ) : (
+            <div className="overflow-x-auto">
+              <table className="w-full min-w-[1180px] text-left">
+                <thead className="bg-gray-50 text-xs uppercase text-gray-500">
+                  <tr>
+                    <th className="px-5 py-3">{labels.product}</th>
+                    {rankType === 'video-products' ? (
+                      <th className="px-5 py-3">{labels.video}</th>
+                    ) : null}
+                    <th className="px-5 py-3">{labels.sales}</th>
+                    <th className="px-5 py-3">{labels.revenue}</th>
+                    <th className="px-5 py-3">{labels.totalSales}</th>
+                    <th className="px-5 py-3">{labels.totalRevenue}</th>
+                    <th className="px-5 py-3">{labels.views}</th>
+                    <th className="px-5 py-3">{labels.likes}</th>
+                    <th className="px-5 py-3">{labels.actions}</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-gray-100">
+                  {data.list.map((item) => (
+                    <tr key={item.id} className="align-top">
+                      <td className="px-5 py-4">
+                        <ProductCell item={item} labels={labels} />
+                      </td>
+                      {rankType === 'video-products' ? (
+                        <td className="px-5 py-4">
+                          <VideoCell
+                            item={item}
+                            labels={labels}
+                            locale={locale}
+                          />
+                        </td>
+                      ) : null}
+                      <td className="px-5 py-4">
+                        <Metric
+                          label={labels.sales}
+                          value={formatInteger(
+                            item.sales ?? item.videoSales,
+                            locale
+                          )}
+                          tone="accent"
+                        />
+                        {item.salesChangeText ? (
+                          <div className="mt-1 text-xs font-medium text-gray-400">
+                            {item.salesChangeText}
+                          </div>
+                        ) : null}
+                      </td>
+                      <td className="px-5 py-4">
+                        <Metric
+                          label={labels.revenue}
+                          value={formatCurrency(item.revenueAmount, locale)}
+                        />
+                      </td>
+                      <td className="px-5 py-4">
+                        <Metric
+                          label={labels.totalSales}
+                          value={formatInteger(
+                            item.totalSales ?? item.videoTotalSales,
+                            locale
+                          )}
+                        />
+                      </td>
+                      <td className="px-5 py-4">
+                        <Metric
+                          label={labels.totalRevenue}
+                          value={formatCurrency(
+                            item.totalRevenueAmount ??
+                              item.videoTotalRevenueAmount,
+                            locale
+                          )}
+                        />
+                      </td>
+                      <td className="px-5 py-4">
+                        <Metric
+                          label={labels.views}
+                          value={formatInteger(
+                            item.totalViews ?? item.videoViews,
+                            locale
+                          )}
+                        />
+                      </td>
+                      <td className="px-5 py-4">
+                        <Metric
+                          label={labels.likes}
+                          value={formatInteger(item.totalLikes, locale)}
+                        />
+                      </td>
+                      <td className="px-5 py-4">
+                        <div className="flex items-center gap-2">
+                          <ActionLink
+                            href={item.fastmossProductUrl}
+                            label={labels.fastmoss}
+                          />
+                          <ActionLink
+                            href={item.tiktokProductUrl}
+                            label={labels.tiktok}
+                          />
+                          <ActionLink
+                            href={item.videoUrl}
+                            label={labels.videoLink}
+                          />
+                        </div>
+                        {item.listedAtText ? (
+                          <div className="mt-2 text-[11px] font-medium text-gray-400">
+                            {labels.listed}: {item.listedAtText}
+                          </div>
+                        ) : null}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
+
+          <div className="flex items-center justify-between border-t border-gray-200 px-5 py-4 text-sm">
+            <span className="font-medium text-gray-500">
+              {labels.page} {page}
+            </span>
+            <div className="flex gap-2">
+              <Button
+                type="button"
+                variant="outline"
+                disabled={page <= 1 || isLoading}
+                onClick={() => setPage((value) => Math.max(1, value - 1))}
+              >
+                {labels.previous}
+              </Button>
+              <Button
+                type="button"
+                variant="outline"
+                disabled={!hasNext || isLoading}
+                onClick={() => setPage((value) => value + 1)}
+              >
+                {labels.next}
+              </Button>
+            </div>
+          </div>
+        </section>
+      </div>
+    </main>
+  );
+}

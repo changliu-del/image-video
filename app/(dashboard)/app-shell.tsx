@@ -7,12 +7,16 @@ import { useState } from 'react';
 import {
   ChevronDown,
   CreditCard,
+  BarChart3,
+  Flame,
   History,
   Home,
   ImageIcon,
   MessageCircle,
   ShieldCheck,
   Shirt,
+  Sparkles,
+  TrendingUp,
   UserRound,
   Video,
 } from 'lucide-react';
@@ -142,6 +146,32 @@ export function AppShell({
     { href: '/create/apparel', icon: ImageIcon, label: content.nav.apparel },
     { href: '/create/try-on', icon: Shirt, label: content.nav.tryOn },
   ];
+  const analyticsItems: ShellItem[] = [
+    {
+      href: '/analytics/sales',
+      icon: TrendingUp,
+      label: content.nav.salesRank,
+      match: 'exact',
+    },
+    {
+      href: '/analytics/new',
+      icon: Sparkles,
+      label: content.nav.newProductsRank,
+      match: 'exact',
+    },
+    {
+      href: '/analytics/promoted',
+      icon: Flame,
+      label: content.nav.promotedRank,
+      match: 'exact',
+    },
+    {
+      href: '/analytics/video-products',
+      icon: BarChart3,
+      label: content.nav.videoProductsRank,
+      match: 'exact',
+    },
+  ];
   const personalItems: ShellItem[] = [
     {
       href: '/dashboard/history',
@@ -170,6 +200,11 @@ export function AppShell({
         <nav className="sticky top-[58px] flex h-[calc(100dvh-58px)] flex-col overflow-y-auto px-3 py-4">
           <SidebarLink href="/dashboard" icon={Home} label={content.nav.home} match="exact" />
           <SidebarSection title={content.nav.tools} items={toolItems} collapsible />
+          <SidebarSection
+            title={content.nav.dataAnalysis}
+            items={analyticsItems}
+            collapsible
+          />
           <SidebarSection title={content.nav.personal} items={personalItems} />
           <div className="mt-auto border-t border-gray-200 pt-3">
             <SidebarLink

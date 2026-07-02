@@ -2,6 +2,7 @@ import {
   normalizeDashboardLocale,
   type DashboardLocale,
 } from '@/lib/dashboard/content';
+import type { ProductAnalyticsRankType } from '@/lib/product-analytics/catalog';
 
 export type AdminLocale = DashboardLocale;
 
@@ -200,6 +201,26 @@ type AdminTemplatesCopy = {
   errors: Record<string, string>;
 };
 
+type AdminProductAnalyticsCopy = {
+  title: string;
+  description: string;
+  latestImports: string;
+  replaceNote: string;
+  rankType: string;
+  file: string;
+  importAction: string;
+  importing: string;
+  importFailed: string;
+  importSuccess: (label: string, count: number) => string;
+  noImport: string;
+  rowCount: string;
+  sourceFileName: string;
+  importedAt: string;
+  importedBy: string;
+  batchId: string;
+  ranks: Record<ProductAnalyticsRankType, string>;
+};
+
 type AdminDashboardCopy = {
   title: string;
   description: string;
@@ -278,6 +299,7 @@ type AdminDashboardCopy = {
 export const ADMIN_TAB_KEYS = [
   'overview',
   'templates',
+  'product-analytics',
   'user-media',
   'users',
   'generation-jobs',
@@ -415,6 +437,37 @@ Templates are the public recipes users browse before creating. Each template bel
 - Do not leave important templates without understandable thumbnail and preview media.
 - Do not publish placeholder prompts.
 - After editing, verify the Admin row, public browsing page, and matching workbench.`,
+
+  'product-analytics': `# Product Analytics
+
+## What this page decides
+
+Product Analytics is the manual xlsx ingestion surface for the workspace data-analysis rankings. Operators upload one workbook at a time for **Sales ranking**, **New product ranking**, **Promoted ranking**, or **Video product ranking**. Each successful import fully replaces the active dataset for that ranking after the new rows are stored.
+
+## Daily operating flow
+
+1. Choose the ranking that matches the workbook source.
+2. Upload only .xlsx exports from the trusted FastMoss workflow.
+3. After import, confirm **Rows**, **Source file**, **Imported at**, and **Imported by**.
+4. Open the matching workspace analytics page and verify product images, product names, price, shop, sales, revenue, and action links.
+5. If the wrong workbook was imported, upload the correct workbook to the same ranking. Do not manually delete rows.
+
+## Fields operators should read
+
+| Field | How to use it |
+|---|---|
+| Rank type | Selects Sales ranking, New product ranking, Promoted ranking, or Video product ranking |
+| Rows | Count of parsed product rows now active for that ranking |
+| Source file | Audit trail for the uploaded workbook |
+| Imported at | Time the replacement became active |
+| Imported by | Admin account that performed the import |
+
+## Risk signals
+
+- Importing a workbook to the wrong ranking replaces that ranking immediately.
+- Empty or malformed workbooks are rejected before activation.
+- Users should never see a blank replacement state; active data switches only after the new batch is complete.
+- The xlsx is the source of truth. Edit and re-upload the workbook instead of patching database rows manually.`,
 
   'user-media': `# User History
 
@@ -596,6 +649,7 @@ export type AdminContent = {
     AdminManagementCopy
   >;
   templates: AdminTemplatesCopy;
+  productAnalytics: AdminProductAnalyticsCopy;
   help: AdminHelpCopy;
   statusLabels: Record<string, string>;
 };
@@ -642,6 +696,7 @@ export const adminContent: Record<AdminLocale, AdminContent> = {
     tabs: {
       overview: 'Visão geral',
       templates: 'Templates',
+      'product-analytics': 'Análise de dados',
       'user-media': 'Histórico do usuário',
       users: 'Usuários',
       'generation-jobs': 'Gerações',
@@ -978,6 +1033,33 @@ export const adminContent: Record<AdminLocale, AdminContent> = {
         completeUpload: 'Não foi possível concluir o envio',
       },
     },
+    productAnalytics: {
+      title: 'Análise de dados',
+      description:
+        'Importe rankings de produtos por xlsx. Cada importação substitui completamente o ranking escolhido.',
+      latestImports: 'Importações ativas',
+      replaceNote:
+        'A troca fica ativa apenas depois que todas as linhas do novo arquivo forem salvas.',
+      rankType: 'Ranking',
+      file: 'Arquivo xlsx',
+      importAction: 'Importar e substituir',
+      importing: 'Importando...',
+      importFailed: 'Falha ao importar',
+      importSuccess: (label, count) =>
+        `${label} atualizado com ${count} linhas.`,
+      noImport: 'Nenhuma importação ativa.',
+      rowCount: 'Linhas',
+      sourceFileName: 'Arquivo de origem',
+      importedAt: 'Importado em',
+      importedBy: 'Importado por',
+      batchId: 'Batch ID',
+      ranks: {
+        sales: 'Ranking de vendas',
+        new: 'Novos produtos',
+        promoted: 'Ranking em promoção',
+        'video-products': 'Produtos em vídeo',
+      },
+    },
     help: {
       title: 'Ajuda',
       description:
@@ -1131,6 +1213,27 @@ Templates agora sao registros pequenos por tipo de pagina. A tabela de templates
           ],
         },
         {
+          key: 'product-analytics',
+          title: 'Análise de dados',
+          purpose:
+            'Substituir os rankings de produtos do workspace a partir de arquivos xlsx aprovados.',
+          dailyActions: [
+            'Escolher o ranking correto antes de importar.',
+            'Conferir Linhas, Arquivo de origem, Importado em e Importado por após o envio.',
+            'Abrir a página de análise correspondente no workspace para validar cards e links.',
+          ],
+          keyFields: [
+            'Ranking, Linhas, Arquivo de origem, Importado em e Importado por.',
+            'Sales ranking, New product ranking, Promoted ranking e Video product ranking.',
+            'Produto, preço, loja, vendas, receita e links externos.',
+          ],
+          riskSignals: [
+            'Importar no ranking errado substitui os dados ativos desse ranking.',
+            'Arquivos vazios ou inválidos são rejeitados antes da ativação.',
+            'A troca ativa só acontece depois que o novo batch foi salvo.',
+          ],
+        },
+        {
           key: 'user-media',
           title: 'Histórico do usuário',
           purpose:
@@ -1281,6 +1384,7 @@ Templates agora sao registros pequenos por tipo de pagina. A tabela de templates
     tabs: {
       overview: 'Overview',
       templates: 'Templates',
+      'product-analytics': 'Product Analytics',
       'user-media': 'User History',
       users: 'Users',
       'generation-jobs': 'Generation Jobs',
@@ -1619,6 +1723,33 @@ Templates agora sao registros pequenos por tipo de pagina. A tabela de templates
         completeUpload: 'Upload could not be completed',
       },
     },
+    productAnalytics: {
+      title: 'Product Analytics',
+      description:
+        'Import product ranking xlsx files. Every import fully replaces the selected ranking.',
+      latestImports: 'Active imports',
+      replaceNote:
+        'The active dataset switches only after every row from the new file has been saved.',
+      rankType: 'Ranking',
+      file: 'XLSX file',
+      importAction: 'Import and replace',
+      importing: 'Importing...',
+      importFailed: 'Import failed',
+      importSuccess: (label, count) =>
+        `${label} updated with ${count} rows.`,
+      noImport: 'No active import yet.',
+      rowCount: 'Rows',
+      sourceFileName: 'Source file',
+      importedAt: 'Imported at',
+      importedBy: 'Imported by',
+      batchId: 'Batch ID',
+      ranks: {
+        sales: 'Sales ranking',
+        new: 'New product ranking',
+        promoted: 'Promoted ranking',
+        'video-products': 'Video product ranking',
+      },
+    },
     help: {
       title: 'Help',
       description:
@@ -1711,6 +1842,28 @@ Templates agora sao registros pequenos por tipo de pagina. A tabela de templates
             'Wrong type puts the template on the wrong operational page.',
             'A template without clear preview media lowers user confidence.',
             'A vague category makes browsing harder.',
+          ],
+        },
+        {
+          key: 'product-analytics',
+          title: 'Product Analytics',
+          markdown: enAdminHelpMarkdown['product-analytics'],
+          purpose:
+            'Replace workspace product-ranking datasets from approved xlsx files.',
+          dailyActions: [
+            'Choose the correct ranking before importing.',
+            'Confirm Rows, Source file, Imported at, and Imported by after upload.',
+            'Open the matching workspace analytics page to verify product cards and links.',
+          ],
+          keyFields: [
+            'Rank type, Rows, Source file, Imported at, and Imported by.',
+            'Sales ranking, New product ranking, Promoted ranking, and Video product ranking.',
+            'Product, price, shop, sales, revenue, and external links.',
+          ],
+          riskSignals: [
+            'Importing the wrong file replaces the active dataset for that ranking.',
+            'Empty or malformed workbooks are rejected before activation.',
+            'The active switch happens only after the new batch has been saved.',
           ],
         },
         {
@@ -1868,6 +2021,7 @@ Templates agora sao registros pequenos por tipo de pagina. A tabela de templates
     tabs: {
       overview: '总览',
       templates: '模板',
+      'product-analytics': 'Product Analytics',
       'user-media': '用户历史素材',
       users: '用户',
       'generation-jobs': '生成任务',
@@ -2202,6 +2356,33 @@ Templates agora sao registros pequenos por tipo de pagina. A tabela de templates
         completeUpload: '无法完成上传',
       },
     },
+    productAnalytics: {
+      title: 'Product Analytics',
+      description:
+        'Import product ranking xlsx files. Every import fully replaces the selected ranking.',
+      latestImports: 'Active imports',
+      replaceNote:
+        'The active dataset switches only after every row from the new file has been saved.',
+      rankType: 'Ranking',
+      file: 'XLSX file',
+      importAction: 'Import and replace',
+      importing: 'Importing...',
+      importFailed: 'Import failed',
+      importSuccess: (label, count) =>
+        `${label} updated with ${count} rows.`,
+      noImport: 'No active import yet.',
+      rowCount: 'Rows',
+      sourceFileName: 'Source file',
+      importedAt: 'Imported at',
+      importedBy: 'Imported by',
+      batchId: 'Batch ID',
+      ranks: {
+        sales: 'Sales ranking',
+        new: 'New product ranking',
+        promoted: 'Promoted ranking',
+        'video-products': 'Video product ranking',
+      },
+    },
     help: {
       title: '帮助',
       description:
@@ -2395,6 +2576,28 @@ Templates agora sao registros pequenos por tipo de pagina. A tabela de templates
             '没有清晰预览的模板不要作为主推入口，用户不知道会生成什么。',
             'category 太泛会让用户难以按业务类目浏览。',
             '删除模板前确认没有历史排查需求。',
+          ],
+        },
+        {
+          key: 'product-analytics',
+          title: 'Product Analytics',
+          markdown: enAdminHelpMarkdown['product-analytics'],
+          purpose:
+            'Replace workspace product-ranking datasets from approved xlsx files.',
+          dailyActions: [
+            'Choose the correct ranking before importing.',
+            'Confirm Rows, Source file, Imported at, and Imported by after upload.',
+            'Open the matching workspace analytics page to verify product cards and links.',
+          ],
+          keyFields: [
+            'Rank type, Rows, Source file, Imported at, and Imported by.',
+            'Sales ranking, New product ranking, Promoted ranking, and Video product ranking.',
+            'Product, price, shop, sales, revenue, and external links.',
+          ],
+          riskSignals: [
+            'Importing the wrong file replaces the active dataset for that ranking.',
+            'Empty or malformed workbooks are rejected before activation.',
+            'The active switch happens only after the new batch has been saved.',
           ],
         },
         {

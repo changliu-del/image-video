@@ -10,6 +10,11 @@ type DashboardContent = {
     imageVideo: string;
     apparel: string;
     tryOn: string;
+    dataAnalysis: string;
+    salesRank: string;
+    newProductsRank: string;
+    promotedRank: string;
+    videoProductsRank: string;
     personal: string;
     userHistory: string;
     credits: string;
@@ -49,6 +54,11 @@ export const dashboardContent: Record<DashboardLocale, DashboardContent> = {
       imageVideo: 'Imagem para vídeo',
       apparel: 'Imagem de produto',
       tryOn: 'Provador virtual',
+      dataAnalysis: 'Análise de dados',
+      salesRank: 'Ranking de vendas',
+      newProductsRank: 'Novos produtos',
+      promotedRank: 'Ranking em promoção',
+      videoProductsRank: 'Produtos em vídeo',
       personal: 'Pessoal',
       userHistory: 'Histórico',
       credits: 'Créditos',
@@ -84,6 +94,11 @@ export const dashboardContent: Record<DashboardLocale, DashboardContent> = {
       imageVideo: 'Image to video',
       apparel: 'Product image',
       tryOn: 'Virtual try-on',
+      dataAnalysis: 'Data analysis',
+      salesRank: 'Sales ranking',
+      newProductsRank: 'New products',
+      promotedRank: 'Promoted ranking',
+      videoProductsRank: 'Video products',
       personal: 'Personal',
       userHistory: 'User history',
       credits: 'Credits',
@@ -119,6 +134,11 @@ export const dashboardContent: Record<DashboardLocale, DashboardContent> = {
       imageVideo: '图生视频',
       apparel: '商品图',
       tryOn: '智能试衣',
+      dataAnalysis: 'Data analysis',
+      salesRank: 'Sales ranking',
+      newProductsRank: 'New products',
+      promotedRank: 'Promoted ranking',
+      videoProductsRank: 'Video products',
       personal: '个人空间',
       userHistory: 'User history',
       credits: '算力值',

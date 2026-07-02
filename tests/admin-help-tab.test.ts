@@ -17,6 +17,7 @@ vi.mock('@/lib/dashboard/content', () => ({
 const EXPECTED_ADMIN_TAB_KEYS = [
   'overview',
   'templates',
+  'product-analytics',
   'user-media',
   'users',
   'generation-jobs',
@@ -27,6 +28,7 @@ const EXPECTED_ADMIN_TAB_KEYS = [
 const EXISTING_ADMIN_TAB_KEYS = [
   'overview',
   'templates',
+  'product-analytics',
   'user-media',
   'users',
   'generation-jobs',
@@ -35,6 +37,7 @@ const EXISTING_ADMIN_TAB_KEYS = [
 const ENGLISH_ADMIN_HELP_KEYS = [
   'overview',
   'templates',
+  'product-analytics',
   'user-media',
   'users',
   'generation-jobs',
@@ -52,6 +55,7 @@ const ENGLISH_HELP_SCREENSHOTS: Record<
     '/admin-help/placements/templates-page.png',
     '/admin-help/placements/video-workbench.png',
   ],
+  'product-analytics': [],
   'user-media': ['/admin-help/placements/user-history.png'],
   users: ['/admin-help/placements/users.png'],
   'generation-jobs': ['/admin-help/placements/generation-jobs.png'],
@@ -366,6 +370,7 @@ describe('Admin Help tab coverage', () => {
     > = {
       overview: ['Generation Jobs', 'Credit Ledger'],
       templates: ['ID', 'Title', 'Category'],
+      'product-analytics': ['Rows', 'Source file', 'Imported at', 'Imported by'],
       'user-media': ['User email', 'Material ID'],
       users: ['Email', 'Name'],
       'generation-jobs': ['gen_id'],
