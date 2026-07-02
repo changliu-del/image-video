@@ -69,12 +69,18 @@ describe('product analytics import and workspace contract', () => {
     expect(page).toContain('productImageUrl');
     expect(page).toContain('fastmossProductUrl');
     expect(page).toContain('tiktokProductUrl');
-    expect(page).toContain('workbookHeadersByRank');
+    expect(page).toContain('workbookColumnsByRank');
+    expect(page).toContain('columnLabels');
+    expect(page).toContain('sourceHeader');
     expect(page).toContain('buildWorkbookColumns');
     expect(page).toContain("promoted: [");
     expect(page).toContain("'关联达人数'");
     expect(page).toContain("'商品封面链接'");
     expect(page).toContain("'视频播放量'");
+    expect(page).toContain("en: 'Linked creators'");
+    expect(page).toContain("pt: 'Criadores vinculados'");
+    expect(page).toContain("en: 'Video URL'");
+    expect(page).toContain('column.label[localeKey]');
     expect(page).not.toContain('data?.headers');
     expect(page).toContain('selectedCategory');
     expect(page).toContain('allCategories');
@@ -87,7 +93,6 @@ describe('product analytics import and workspace contract', () => {
     expect(page).not.toContain('labels.views');
     expect(page).not.toContain('labels.likes');
     expect(page).not.toContain('labels.actions');
-    expect(page).not.toContain('videoUrl');
     expect(page).not.toContain('#{item.rank}');
     expect(catalog).toContain("'video-products'");
   });

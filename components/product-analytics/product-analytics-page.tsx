@@ -110,89 +110,154 @@ const copy: Record<'en' | 'pt', ProductAnalyticsCopy> = {
 type WorkbookColumnKind = 'rank' | 'image' | 'link' | 'product' | 'text';
 
 type WorkbookColumn = {
-  header: string;
+  sourceHeader: string;
+  label: Record<'en' | 'pt', string>;
   kind: WorkbookColumnKind;
   minWidth: number;
 };
 
-const workbookHeadersByRank: Record<ProductAnalyticsRankType, string[]> = {
+type WorkbookColumnDefinition = {
+  sourceHeader: string;
+  label: Record<'en' | 'pt', string>;
+};
+
+const columnLabels: Record<string, Record<'en' | 'pt', string>> = {
+  rank: { en: 'Rank', pt: 'Posição' },
+  productName: { en: 'Product name', pt: 'Nome do produto' },
+  productTitle: { en: 'Product title', pt: 'Título do produto' },
+  productId: { en: 'Product ID', pt: 'ID do produto' },
+  productImage: { en: 'Product image', pt: 'Imagem do produto' },
+  productCover: { en: 'Product cover', pt: 'Capa do produto' },
+  productCoverUrl: { en: 'Product cover URL', pt: 'URL da capa do produto' },
+  price: { en: 'Price', pt: 'Preço' },
+  region: { en: 'Region', pt: 'Região' },
+  shop: { en: 'Shop', pt: 'Loja' },
+  shopImage: { en: 'Shop image', pt: 'Imagem da loja' },
+  shopSales: { en: 'Shop sales', pt: 'Vendas da loja' },
+  category: { en: 'Category', pt: 'Categoria' },
+  commission: { en: 'Commission', pt: 'Comissão' },
+  sales: { en: 'Sales', pt: 'Vendas' },
+  salesChange: { en: 'Sales change', pt: 'Variação de vendas' },
+  revenue: { en: 'Revenue', pt: 'Receita' },
+  totalSales: { en: 'Total sales', pt: 'Vendas totais' },
+  totalRevenue: { en: 'Total revenue', pt: 'Receita total' },
+  status: { en: 'Status', pt: 'Status' },
+  listedAt: { en: 'Listed at', pt: 'Publicado em' },
+  fastmossProduct: { en: 'FastMoss product', pt: 'Produto no FastMoss' },
+  tiktokProduct: { en: 'TikTok product', pt: 'Produto no TikTok' },
+  fastmossShop: { en: 'FastMoss shop', pt: 'Loja no FastMoss' },
+  linkedCreators: { en: 'Linked creators', pt: 'Criadores vinculados' },
+  totalLinkedCreators: {
+    en: 'Total linked creators',
+    pt: 'Total de criadores vinculados',
+  },
+  videoTitle: { en: 'Video title', pt: 'Título do vídeo' },
+  videoViews: { en: 'Video views', pt: 'Visualizações do vídeo' },
+  videoSales: { en: 'Video sales', pt: 'Vendas do vídeo' },
+  videoUrl: { en: 'Video URL', pt: 'URL do vídeo' },
+  videoTotalSales: {
+    en: 'Video total sales',
+    pt: 'Vendas totais do vídeo',
+  },
+  videoTotalRevenue: {
+    en: 'Video total revenue',
+    pt: 'Receita total do vídeo',
+  },
+  totalViews: { en: 'Total views', pt: 'Visualizações totais' },
+  totalLikes: { en: 'Total likes', pt: 'Curtidas totais' },
+};
+
+function column(
+  sourceHeader: string,
+  labelKey: keyof typeof columnLabels
+): WorkbookColumnDefinition {
+  return {
+    sourceHeader,
+    label: columnLabels[labelKey],
+  };
+}
+
+const workbookColumnsByRank: Record<
+  ProductAnalyticsRankType,
+  WorkbookColumnDefinition[]
+> = {
   sales: [
-    '排名',
-    '商品名称',
-    '商品ID',
-    '商品图片',
-    '店铺名',
-    '商品售价',
-    '国家/地区',
-    '商品分类',
-    '佣金比例',
-    '销量',
-    '销量环比',
-    '总销量',
-    '总销售额',
-    '销售额',
-    '预估商品上架时间',
-    '店铺总销量',
-    'FastMoss 商品详情页',
-    'TikTok 官网商品详情页',
-    'FastMoss 店铺详情页',
-    '商品状态',
+    column('排名', 'rank'),
+    column('商品名称', 'productName'),
+    column('商品ID', 'productId'),
+    column('商品图片', 'productImage'),
+    column('店铺名', 'shop'),
+    column('商品售价', 'price'),
+    column('国家/地区', 'region'),
+    column('商品分类', 'category'),
+    column('佣金比例', 'commission'),
+    column('销量', 'sales'),
+    column('销量环比', 'salesChange'),
+    column('总销量', 'totalSales'),
+    column('总销售额', 'totalRevenue'),
+    column('销售额', 'revenue'),
+    column('预估商品上架时间', 'listedAt'),
+    column('店铺总销量', 'shopSales'),
+    column('FastMoss 商品详情页', 'fastmossProduct'),
+    column('TikTok 官网商品详情页', 'tiktokProduct'),
+    column('FastMoss 店铺详情页', 'fastmossShop'),
+    column('商品状态', 'status'),
   ],
   new: [
-    '排名',
-    '商品名称',
-    '商品封面',
-    '商品售价',
-    '国家/地区',
-    '所属店铺',
-    '店铺封面',
-    '店铺销量',
-    '商品分类',
-    '佣金比例',
-    '销量',
-    '销量环比',
-    '销售额',
-    '总销量',
-    '商品状态',
-    '预估商品上架时间',
+    column('排名', 'rank'),
+    column('商品名称', 'productName'),
+    column('商品封面', 'productCover'),
+    column('商品售价', 'price'),
+    column('国家/地区', 'region'),
+    column('所属店铺', 'shop'),
+    column('店铺封面', 'shopImage'),
+    column('店铺销量', 'shopSales'),
+    column('商品分类', 'category'),
+    column('佣金比例', 'commission'),
+    column('销量', 'sales'),
+    column('销量环比', 'salesChange'),
+    column('销售额', 'revenue'),
+    column('总销量', 'totalSales'),
+    column('商品状态', 'status'),
+    column('预估商品上架时间', 'listedAt'),
   ],
   promoted: [
-    '排名',
-    '商品封面链接',
-    '商品名称',
-    '售价',
-    '国家/地区',
-    '所属店铺名称',
-    '店铺总销量',
-    '商品分类',
-    '佣金比例',
-    '总销量',
-    '总销售额',
-    '关联达人数',
-    '关联达人总数',
-    'FastMoss商品详情页',
-    'TikTok官网商品详情页',
-    'FastMoss店铺详情页',
-    '商品状态',
-    '预估商品上架时间',
+    column('排名', 'rank'),
+    column('商品封面链接', 'productCoverUrl'),
+    column('商品名称', 'productName'),
+    column('售价', 'price'),
+    column('国家/地区', 'region'),
+    column('所属店铺名称', 'shop'),
+    column('店铺总销量', 'shopSales'),
+    column('商品分类', 'category'),
+    column('佣金比例', 'commission'),
+    column('总销量', 'totalSales'),
+    column('总销售额', 'totalRevenue'),
+    column('关联达人数', 'linkedCreators'),
+    column('关联达人总数', 'totalLinkedCreators'),
+    column('FastMoss商品详情页', 'fastmossProduct'),
+    column('TikTok官网商品详情页', 'tiktokProduct'),
+    column('FastMoss店铺详情页', 'fastmossShop'),
+    column('商品状态', 'status'),
+    column('预估商品上架时间', 'listedAt'),
   ],
   'video-products': [
-    '排名',
-    '商品标题',
-    '商品售价',
-    '商品分类',
-    '商品封面',
-    '视频标题',
-    '视频播放量',
-    '视频销量',
-    '视频地址',
-    '视频总销量',
-    '视频总销售额',
-    '总播放量',
-    '总点赞量',
-    '预估商品上架时间',
-    'TikTok商品链接',
-    'FastMoss商品详情页链接',
+    column('排名', 'rank'),
+    column('商品标题', 'productTitle'),
+    column('商品售价', 'price'),
+    column('商品分类', 'category'),
+    column('商品封面', 'productCover'),
+    column('视频标题', 'videoTitle'),
+    column('视频播放量', 'videoViews'),
+    column('视频销量', 'videoSales'),
+    column('视频地址', 'videoUrl'),
+    column('视频总销量', 'videoTotalSales'),
+    column('视频总销售额', 'videoTotalRevenue'),
+    column('总播放量', 'totalViews'),
+    column('总点赞量', 'totalLikes'),
+    column('预估商品上架时间', 'listedAt'),
+    column('TikTok商品链接', 'tiktokProduct'),
+    column('FastMoss商品详情页链接', 'fastmossProduct'),
   ],
 };
 
@@ -324,10 +389,11 @@ function columnMinWidth(kind: WorkbookColumnKind) {
 function buildWorkbookColumns(
   rankType: ProductAnalyticsRankType
 ): WorkbookColumn[] {
-  return workbookHeadersByRank[rankType].map((header) => {
-    const kind = inferColumnKind(header);
+  return workbookColumnsByRank[rankType].map((definition) => {
+    const kind = inferColumnKind(definition.sourceHeader);
     return {
-      header,
+      sourceHeader: definition.sourceHeader,
+      label: definition.label,
       kind,
       minWidth: columnMinWidth(kind),
     };
@@ -533,12 +599,13 @@ function WorkbookCell({
   labels: ProductAnalyticsCopy;
   locale: string;
 }) {
-  const value = getWorkbookCellValue(item, column.header);
+  const value = getWorkbookCellValue(item, column.sourceHeader);
+  const label = column.label[locale === 'pt' ? 'pt' : 'en'];
 
   if (column.kind === 'rank') {
     return (
       <span className="inline-flex h-8 min-w-8 items-center justify-center rounded-md bg-gray-100 px-2 text-sm font-bold text-gray-700">
-        {formatWorkbookValue(value ?? item.rank, column.header, locale)}
+        {formatWorkbookValue(value ?? item.rank, column.sourceHeader, locale)}
       </span>
     );
   }
@@ -546,8 +613,11 @@ function WorkbookCell({
   if (column.kind === 'image') {
     return (
       <ProductImage
-        src={cleanCellString(value) ?? imageFallbackForHeader(item, column.header)}
-        label={column.header}
+        src={
+          cleanCellString(value) ??
+          imageFallbackForHeader(item, column.sourceHeader)
+        }
+        label={label}
       />
     );
   }
@@ -555,14 +625,16 @@ function WorkbookCell({
   if (column.kind === 'link') {
     const href = normalizedHref(value);
     if (!href) return <span className="text-sm text-gray-400">-</span>;
-    return <SourceLink href={href} label={linkLabel(column.header, labels)} />;
+    return (
+      <SourceLink href={href} label={linkLabel(column.sourceHeader, labels)} />
+    );
   }
 
   if (column.kind === 'product') {
     return (
       <div className="min-w-[320px] max-w-[420px]">
         <div className="line-clamp-3 text-sm font-semibold leading-5 text-gray-950">
-          {formatWorkbookValue(value, column.header, locale)}
+          {formatWorkbookValue(value, column.sourceHeader, locale)}
         </div>
       </div>
     );
@@ -570,7 +642,7 @@ function WorkbookCell({
 
   return (
     <span className="block max-w-[220px] whitespace-normal break-words text-sm font-medium leading-5 text-gray-700">
-      {formatWorkbookValue(value, column.header, locale)}
+      {formatWorkbookValue(value, column.sourceHeader, locale)}
     </span>
   );
 }
@@ -581,7 +653,8 @@ export function ProductAnalyticsPage({
   initialRank: ProductAnalyticsRankType;
 }) {
   const locale = useDashboardLocale();
-  const labels = copy[locale === 'pt' ? 'pt' : 'en'];
+  const localeKey = locale === 'pt' ? 'pt' : 'en';
+  const labels = copy[localeKey];
   const rankType = initialRank;
   const [page, setPage] = useState(1);
   const [selectedCategory, setSelectedCategory] = useState('');
@@ -666,7 +739,7 @@ export function ProductAnalyticsPage({
       <div className="mx-auto max-w-7xl space-y-4">
         <header className="rounded-lg border border-gray-200 bg-white p-5 shadow-sm">
           <h1 className="text-2xl font-bold tracking-tight">
-            {activeConfig.title[locale === 'pt' ? 'pt' : 'en']}
+            {activeConfig.title[localeKey]}
           </h1>
         </header>
 
@@ -764,12 +837,12 @@ export function ProductAnalyticsPage({
                   <tr>
                     {workbookColumns.map((column) => (
                       <th
-                        key={column.header}
+                        key={column.sourceHeader}
                         className="px-5 py-3 font-bold"
                         style={{ minWidth: column.minWidth }}
-                        title={column.header}
+                        title={column.label[localeKey]}
                       >
-                        {column.header}
+                        {column.label[localeKey]}
                       </th>
                     ))}
                   </tr>
@@ -779,7 +852,7 @@ export function ProductAnalyticsPage({
                     <tr key={item.id} className="align-top">
                       {workbookColumns.map((column) => (
                         <td
-                          key={`${item.id}-${column.header}`}
+                          key={`${item.id}-${column.sourceHeader}`}
                           className="px-5 py-4"
                         >
                           <WorkbookCell

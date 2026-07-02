@@ -105,12 +105,15 @@ per-`rankType` column sets identified from the trusted FastMoss exports, because
 the Sales, New product, Promoted, and Video product exports do not share one
 common field set. Read row values from `rawJson` first so source-specific fields
 such as creator counts and video metrics stay visible, while rank, source links,
-and images keep appropriate table-cell affordances. Avoid collapsing the pages
-back to generic Sales/Revenue/Total columns or dynamically adopting arbitrary
-uploaded headers. The dashboard sidebar is the only user-facing rank navigation;
-the ranking page header should show the current rank title only, without Source
-labels, rank tabs, workbook file names, import timestamps, or import row counts.
-Do not patch ranking rows manually; fix the workbook and re-import from Admin.
+and images keep appropriate table-cell affordances. The fixed source headers may
+match the FastMoss workbook language, but visible table labels must follow the
+current page locale (`en` or Brazilian Portuguese `pt`) and must not expose
+Chinese headers in the UI. Avoid collapsing the pages back to generic
+Sales/Revenue/Total columns or dynamically adopting arbitrary uploaded headers.
+The dashboard sidebar is the only user-facing rank navigation; the ranking page
+header should show the current rank title only, without Source labels, rank
+tabs, workbook file names, import timestamps, or import row counts. Do not patch
+ranking rows manually; fix the workbook and re-import from Admin.
 
 Template rows keep `thumbnail_asset_id` and `preview_asset_id` for upload
 integrity, but also store `thumbnail_url`, `preview_url`,
