@@ -9,12 +9,10 @@ import {
   Check,
   CreditCard,
   Gem,
-  RotateCcw,
   ShieldCheck,
   Wallet,
 } from 'lucide-react';
 import {
-  cancelMockSubscriptionAction,
   checkoutAction,
   customerPortalAction,
 } from '@/lib/payments/actions';
@@ -30,7 +28,6 @@ import { SubmitButton } from '@/app/(dashboard)/pricing/submit-button';
 import { useDashboardLocale, withDashboardLocale } from '@/lib/dashboard/use-dashboard-locale';
 import {
   billingCopy,
-  getPaymentsPausedCopy,
   subscriptionStatusLabels,
 } from '@/components/dashboard/account-copy';
 
@@ -50,8 +47,6 @@ type BillingAccount = {
 
 type BillingClientProps = {
   initialInterval: SubscriptionInterval;
-  checkoutState?: string | null;
-  subscriptionState?: string | null;
 };
 
 const fetcher = async (url: string) => {
@@ -89,14 +84,9 @@ function AccountValue({
   return <>{children}</>;
 }
 
-export function BillingClient({
-  initialInterval,
-  checkoutState,
-  subscriptionState,
-}: BillingClientProps) {
+export function BillingClient({ initialInterval }: BillingClientProps) {
   const locale = useDashboardLocale();
   const copy = billingCopy[locale];
-  const pausedCopy = getPaymentsPausedCopy(locale);
   const [selectedInterval, setSelectedInterval] = useState(initialInterval);
   const { data, error, isLoading, mutate } = useSWR('/api/account/billing', fetcher, {
     revalidateOnFocus: false,
@@ -109,8 +99,6 @@ export function BillingClient({
   const hasActivePlan = Boolean(data?.hasActivePlan);
   const checkoutEnabled = data?.payments.checkoutEnabled;
   const checkoutUnavailable = checkoutEnabled !== true;
-  const checkoutPaused =
-    checkoutState === 'payments_disabled' || checkoutEnabled === false;
   const subscriptionStatus = data?.user.subscriptionStatus;
   const subscriptionStatusLabel = subscriptionStatus
     ? subscriptionStatusLabels[locale][subscriptionStatus] ?? subscriptionStatus
@@ -145,7 +133,7 @@ export function BillingClient({
                   className="w-full md:w-auto"
                 >
                   <Wallet className="size-4" />
-                  {checkoutPaused ? pausedCopy.creditButton : copy.buyExtra}
+                  {copy.buyExtra}
                 </Button>
               ) : (
                 <Button asChild variant="outline" className="w-full md:w-auto">
@@ -210,28 +198,12 @@ export function BillingClient({
                 <ShieldCheck className="size-5 text-emerald-300" />
               </div>
               <div>
-                <h2 className="text-base font-semibold">{copy.mockTitle}</h2>
+                <h2 className="text-base font-semibold">{copy.paymentTitle}</h2>
                 <p className="mt-2 text-sm leading-6 text-white/62">
-                  {copy.mockBody}
+                  {copy.paymentBody}
                 </p>
               </div>
             </div>
-            {checkoutState === 'mock_subscription_success' ? (
-              <div className="mt-5 rounded-lg border border-emerald-300/30 bg-emerald-300/10 px-4 py-3 text-sm text-emerald-100">
-                {copy.mockSuccess}
-              </div>
-            ) : null}
-            {subscriptionState === 'mock_canceled' ? (
-              <div className="mt-5 rounded-lg border border-white/15 bg-white/10 px-4 py-3 text-sm text-white/75">
-                {copy.mockCanceled}
-              </div>
-            ) : null}
-            {checkoutPaused ? (
-              <div className="mt-5 rounded-lg border border-amber-300/30 bg-amber-300/10 px-4 py-3 text-sm text-amber-100">
-                <p className="font-semibold">{pausedCopy.billingTitle}</p>
-                <p className="mt-1 text-amber-50/80">{pausedCopy.billingBody}</p>
-              </div>
-            ) : null}
             {error ? (
               <div className="mt-5 rounded-lg border border-amber-300/30 bg-amber-300/10 px-4 py-3 text-sm text-amber-100">
                 {copy.loadError}
@@ -250,19 +222,6 @@ export function BillingClient({
                   <input type="hidden" name="locale" value={locale} />
                   <Button type="submit" variant="secondary" className="w-full sm:w-auto">
                     {copy.manageBilling}
-                  </Button>
-                </form>
-              ) : null}
-              {hasActivePlan ? (
-                <form action={cancelMockSubscriptionAction}>
-                  <input type="hidden" name="locale" value={locale} />
-                  <Button
-                    type="submit"
-                    variant="outline"
-                    className="w-full border-white/20 bg-transparent text-white hover:bg-white/10 sm:w-auto"
-                  >
-                    <RotateCcw className="size-4" />
-                    {copy.cancelPlan}
                   </Button>
                 </form>
               ) : null}
@@ -381,9 +340,7 @@ export function BillingClient({
                     label={
                       current
                         ? copy.currentButton
-                        : checkoutPaused
-                          ? pausedCopy.planButton
-                          : `${copy.choose} ${plan.displayName}`
+                        : `${copy.choose} ${plan.displayName}`
                     }
                     loadingLabel={copy.activating}
                   />

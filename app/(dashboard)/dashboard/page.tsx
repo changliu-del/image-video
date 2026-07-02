@@ -2,7 +2,6 @@ import {
   normalizeDashboardLocale,
   type DashboardLocale,
 } from '@/lib/dashboard/content';
-import { dashboardHomeMedia } from '@/lib/marketing/homepage-materials';
 import { DashboardInspirationGallery } from '@/components/dashboard/dashboard-inspiration-gallery';
 import { DashboardWorkbenchCard } from '@/components/dashboard/dashboard-workbench-card';
 
@@ -20,7 +19,6 @@ type WorkbenchCard = {
   description: string;
   action: string;
   href: string;
-  media: string;
 };
 
 type DashboardCopy = {
@@ -43,7 +41,6 @@ const dashboardCopy: Record<DashboardLocale, DashboardCopy> = {
         description: 'Transforme imagens de produto em vídeos curtos.',
         action: 'Começar',
         href: '/create/video',
-        media: dashboardHomeMedia.imageToVideo.asset,
       },
       {
         key: 'product',
@@ -51,7 +48,6 @@ const dashboardCopy: Record<DashboardLocale, DashboardCopy> = {
         description: 'Gere imagens para campanhas, PDPs e catálogos.',
         action: 'Criar imagem',
         href: '/create/apparel',
-        media: dashboardHomeMedia.productImage.asset,
       },
       {
         key: 'tryOn',
@@ -59,7 +55,6 @@ const dashboardCopy: Record<DashboardLocale, DashboardCopy> = {
         description: 'Mostre modelos e roupas com composição natural.',
         action: 'Experimentar',
         href: '/create/try-on',
-        media: dashboardHomeMedia.tryOn.asset,
       },
     ],
   },
@@ -75,7 +70,6 @@ const dashboardCopy: Record<DashboardLocale, DashboardCopy> = {
         description: 'Turn product images into short videos.',
         action: 'Start',
         href: '/create/video',
-        media: dashboardHomeMedia.imageToVideo.asset,
       },
       {
         key: 'product',
@@ -83,7 +77,6 @@ const dashboardCopy: Record<DashboardLocale, DashboardCopy> = {
         description: 'Generate campaign, PDP, and catalog images.',
         action: 'Create image',
         href: '/create/apparel',
-        media: dashboardHomeMedia.productImage.asset,
       },
       {
         key: 'tryOn',
@@ -91,7 +84,6 @@ const dashboardCopy: Record<DashboardLocale, DashboardCopy> = {
         description: 'Present models and apparel with natural composition.',
         action: 'Try now',
         href: '/create/try-on',
-        media: dashboardHomeMedia.tryOn.asset,
       },
     ],
   },
@@ -107,7 +99,6 @@ const dashboardCopy: Record<DashboardLocale, DashboardCopy> = {
         description: '商品图片秒变投放短视频。',
         action: '开始生成',
         href: '/create/video',
-        media: dashboardHomeMedia.imageToVideo.asset,
       },
       {
         key: 'product',
@@ -115,7 +106,6 @@ const dashboardCopy: Record<DashboardLocale, DashboardCopy> = {
         description: '生成活动、详情和目录图。',
         action: '创作商品图',
         href: '/create/apparel',
-        media: dashboardHomeMedia.productImage.asset,
       },
       {
         key: 'tryOn',
@@ -123,17 +113,10 @@ const dashboardCopy: Record<DashboardLocale, DashboardCopy> = {
         description: '模特与服饰自然合成展示。',
         action: '打开试衣',
         href: '/create/try-on',
-        media: dashboardHomeMedia.tryOn.asset,
       },
     ],
   },
 };
-
-const cardPosters = {
-  video: dashboardHomeMedia.imageToVideo.poster,
-  product: dashboardHomeMedia.productImage.poster,
-  tryOn: dashboardHomeMedia.tryOn.poster,
-} satisfies Record<WorkbenchCardKey, string>;
 
 function firstParam(value: string | string[] | null | undefined) {
   return Array.isArray(value) ? value[0] : value;
@@ -169,7 +152,6 @@ function DashboardHero({ copy, locale }: { copy: DashboardCopy; locale: Dashboar
                   ...card,
                   href: withDashboardLocale(card.href, locale),
                 }}
-                poster={cardPosters[card.key]}
               />
             ))}
           </div>

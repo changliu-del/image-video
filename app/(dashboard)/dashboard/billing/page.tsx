@@ -4,8 +4,6 @@ import { normalizeSubscriptionInterval } from '@/lib/payments/catalog';
 type BillingPageProps = {
   searchParams?: Promise<{
     interval?: string | string[];
-    checkout?: string | string[];
-    subscription?: string | string[];
   }>;
 };
 
@@ -19,8 +17,6 @@ export default async function BillingPage({ searchParams }: BillingPageProps) {
   return (
     <BillingClient
       initialInterval={getInitialBillingInterval(params?.interval)}
-      checkoutState={firstParam(params?.checkout)}
-      subscriptionState={firstParam(params?.subscription)}
     />
   );
 }

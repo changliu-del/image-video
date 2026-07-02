@@ -24,14 +24,11 @@ type BillingCopy = {
   cadence: string;
   selectPlan: string;
   cadenceHint: string;
-  mockTitle: string;
-  mockBody: string;
-  mockSuccess: string;
-  mockCanceled: string;
+  paymentTitle: string;
+  paymentBody: string;
   loadError: string;
   retry: string;
   manageBilling: string;
-  cancelPlan: string;
   intervalTabs: Record<SubscriptionInterval, string>;
   intervalLabels: Record<SubscriptionInterval, string>;
   intervalHint: string;
@@ -89,33 +86,22 @@ type ProfileCopy = {
 };
 
 type PaymentsPausedCopy = {
-  billingTitle: string;
-  billingBody: string;
   creditsTitle: string;
   creditsBody: string;
-  planButton: string;
   creditButton: string;
 };
 
 const paymentsPausedCopy = {
   pt: {
-    billingTitle: 'Planos pausados',
-    billingBody:
-      'Assinaturas e recargas estão temporariamente indisponíveis. O saldo atual continua disponível para criação.',
     creditsTitle: 'Recargas pausadas',
     creditsBody:
       'A compra de créditos está temporariamente indisponível. Você ainda pode usar o saldo atual nas ferramentas de criação.',
-    planButton: 'Planos pausados',
     creditButton: 'Recargas pausadas',
   },
   en: {
-    billingTitle: 'Plans paused',
-    billingBody:
-      'Subscriptions and top-ups are temporarily unavailable. Your current credit balance is still available for creation.',
     creditsTitle: 'Top-ups paused',
     creditsBody:
       'Credit purchases are temporarily unavailable. You can still use your current balance in the creation tools.',
-    planButton: 'Plans paused',
     creditButton: 'Top-ups paused',
   },
 } satisfies Record<'pt' | 'en', PaymentsPausedCopy>;
@@ -139,15 +125,12 @@ export const billingCopy: Record<DashboardLocale, BillingCopy> = {
     cadence: 'Cadência',
     selectPlan: 'Escolha um plano',
     cadenceHint: 'os créditos aparecem como cota mensal',
-    mockTitle: 'Pagamento e créditos',
-    mockBody:
-      'Ao confirmar um plano, a conta é atualizada, os créditos são adicionados e o histórico registra a movimentação para consulta.',
-    mockSuccess: 'Assinatura ativada e créditos adicionados.',
-    mockCanceled: 'Assinatura cancelada. O saldo restante continua disponível.',
+    paymentTitle: 'Pagamento e créditos',
+    paymentBody:
+      'Quando houver uma conta de pagamento ativa, gerencie a assinatura pelo portal de cobrança. Créditos de planos aparecem no saldo da conta.',
     loadError: 'O status da conta não carregou. Atualize antes de alterar planos.',
     retry: 'Tentar novamente',
     manageBilling: 'Gerenciar pagamento',
-    cancelPlan: 'Cancelar plano',
     intervalTabs: { month: 'Mensal', year: 'Anual' },
     intervalLabels: { month: 'Cobrança mensal', year: 'Cobrança anual' },
     intervalHint:
@@ -191,15 +174,12 @@ export const billingCopy: Record<DashboardLocale, BillingCopy> = {
     cadence: 'Cadence',
     selectPlan: 'Select a plan',
     cadenceHint: 'credits are shown as monthly allowance',
-    mockTitle: 'Payment and credits',
-    mockBody:
-      'When a plan is confirmed, the account is updated, credits are added, and the history records the balance change for review.',
-    mockSuccess: 'Subscription activated and credits were added.',
-    mockCanceled: 'Subscription was canceled. Your remaining credit balance stays available.',
+    paymentTitle: 'Payment and credits',
+    paymentBody:
+      'When a payment account is active, manage the subscription from the billing portal. Plan credits appear in the account balance.',
     loadError: 'Account status did not load. Refresh before changing plans.',
     retry: 'Retry',
     manageBilling: 'Manage billing',
-    cancelPlan: 'Cancel plan',
     intervalTabs: { month: 'Monthly', year: 'Annual' },
     intervalLabels: { month: 'Monthly billing', year: 'Yearly billing' },
     intervalHint:
@@ -233,7 +213,7 @@ export const billingCopy: Record<DashboardLocale, BillingCopy> = {
     badge: '订阅与余额',
     title: '按创作需求选择订阅计划',
     intro:
-      '当前为测试支付模式，不会真实扣款。订阅会立即发放当月算力值，后续接入真实支付时会复用同一套价格配置。',
+      '订阅会立即发放当月算力值，并可在账单页面管理计划。',
     buyExtra: '购买额外算力值',
     balance: '余额',
     balanceHint: '可用算力值',
@@ -243,15 +223,12 @@ export const billingCopy: Record<DashboardLocale, BillingCopy> = {
     cadence: '周期',
     selectPlan: '选择一个计划',
     cadenceHint: '这里展示的是每月发放额度',
-    mockTitle: '测试支付模式',
-    mockBody:
-      '当前支付流程不会真实扣款，只会更新账户计划、增加算力值并写入流水，方便完整验证工作台链路。',
-    mockSuccess: '测试订阅已开通，算力值已发放。',
-    mockCanceled: '测试订阅已取消，剩余算力值仍可继续使用。',
+    paymentTitle: '支付与算力值',
+    paymentBody:
+      '当账户已开通支付资料后，可通过账单入口管理订阅。计划发放的算力值会进入账户余额。',
     loadError: '账户状态加载失败，订阅计划仍可继续选择。',
     retry: '重试',
     manageBilling: '管理账单',
-    cancelPlan: '取消测试计划',
     intervalTabs: { month: '月付', year: '年付' },
     intervalLabels: { month: '月付计划', year: '年付计划' },
     intervalHint: '年付计划仍按月发放算力值，但折算月费更低。',
@@ -286,7 +263,7 @@ export const billingCopy: Record<DashboardLocale, BillingCopy> = {
         description: '适合批量 SKU 和高频视频测试的品牌团队。',
         features: [
           '每个账单月发放 480 算力值',
-          '测试模式下最高订阅额度',
+          '最高订阅额度',
           '约可生成 96 条基础 5 秒视频',
         ],
       },
@@ -424,15 +401,15 @@ export const creditsCopy: Record<DashboardLocale, CreditsCopy> = {
     packages: {
       starter: {
         description: '适合提示词测试和小规模商品实验的轻量补充。',
-        features: ['测试模式下不会过期', '约可生成 4 条基础 5 秒视频'],
+        features: ['不会过期', '约可生成 4 条基础 5 秒视频'],
       },
       creator: {
         description: '适合每周一批商品图和视频素材的额外额度。',
-        features: ['测试模式下不会过期', '约可生成 16 条基础 5 秒视频'],
+        features: ['不会过期', '约可生成 16 条基础 5 秒视频'],
       },
       scale: {
         description: '适合目录批量生产和活动测试的更大储备。',
-        features: ['测试模式下不会过期', '约可生成 48 条基础 5 秒视频'],
+        features: ['不会过期', '约可生成 48 条基础 5 秒视频'],
       },
     },
   },
@@ -441,7 +418,7 @@ export const creditsCopy: Record<DashboardLocale, CreditsCopy> = {
 export const profileCopy: Record<DashboardLocale, ProfileCopy> = {
   pt: {
     eyebrow: 'Centro pessoal',
-    title: 'Perfil e créditos',
+    title: 'Perfil e plano',
     name: 'Nome',
     namePlaceholder: 'Digite seu nome',
     email: 'E-mail',
@@ -452,7 +429,7 @@ export const profileCopy: Record<DashboardLocale, ProfileCopy> = {
   },
   en: {
     eyebrow: 'Personal center',
-    title: 'Profile and credits',
+    title: 'Profile and plan',
     name: 'Name',
     namePlaceholder: 'Enter your name',
     email: 'Email',
@@ -463,7 +440,7 @@ export const profileCopy: Record<DashboardLocale, ProfileCopy> = {
   },
   zh: {
     eyebrow: '个人中心',
-    title: '个人信息与算力值',
+    title: '个人信息与计划',
     name: '姓名',
     namePlaceholder: '请输入姓名',
     email: '邮箱',

@@ -1,6 +1,6 @@
 'use client';
 
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useCallback } from 'react';
 import Link from 'next/link';
 import {
   ArrowRight,
@@ -10,7 +10,6 @@ import {
   type LucideIcon,
 } from 'lucide-react';
 
-import { LazyDashboardVideo } from '@/components/dashboard/lazy-dashboard-video';
 import { markCreateVideoNavigationClick } from '@/lib/performance/create-video-navigation';
 
 type WorkbenchCardKey = 'video' | 'product' | 'tryOn';
@@ -21,12 +20,10 @@ type WorkbenchCard = {
   description: string;
   action: string;
   href: string;
-  media: string;
 };
 
 type DashboardWorkbenchCardProps = {
   card: WorkbenchCard;
-  poster: string;
 };
 
 const cardIcons = {
@@ -35,17 +32,8 @@ const cardIcons = {
   tryOn: Shirt,
 } satisfies Record<WorkbenchCardKey, LucideIcon>;
 
-export function DashboardWorkbenchCard({
-  card,
-  poster,
-}: DashboardWorkbenchCardProps) {
-  const cardRef = useRef<HTMLAnchorElement>(null);
-  const [isPreviewArmed, setIsPreviewArmed] = useState(false);
+export function DashboardWorkbenchCard({ card }: DashboardWorkbenchCardProps) {
   const Icon = cardIcons[card.key];
-
-  const armPreview = useCallback(() => {
-    setIsPreviewArmed(true);
-  }, []);
 
   const markNavigationClick = useCallback(() => {
     if (card.key !== 'video') return;
@@ -56,69 +44,24 @@ export function DashboardWorkbenchCard({
     });
   }, [card.href, card.key]);
 
-  useEffect(() => {
-    if (isPreviewArmed) return;
-
-    const cardElement = cardRef.current;
-    if (!cardElement) return;
-
-    if (!('IntersectionObserver' in window)) {
-      setIsPreviewArmed(true);
-      return;
-    }
-
-    const observer = new IntersectionObserver(
-      ([entry]) => {
-        if (!entry) return;
-
-        if (entry.isIntersecting) {
-          setIsPreviewArmed(true);
-          observer.disconnect();
-        }
-      },
-      {
-        rootMargin: '0px',
-        threshold: 0.25,
-      }
-    );
-
-    observer.observe(cardElement);
-    return () => observer.disconnect();
-  }, [isPreviewArmed]);
-
   return (
     <Link
-      ref={cardRef}
       href={card.href}
       prefetch={false}
-      className="group flex min-h-[360px] flex-col overflow-hidden rounded-lg border border-gray-200 bg-white shadow-sm transition hover:-translate-y-0.5 hover:shadow-[0_18px_42px_rgba(79,70,229,0.13)]"
-      onPointerEnter={armPreview}
-      onFocusCapture={armPreview}
-      onTouchStart={armPreview}
+      className="group flex min-h-[244px] flex-col rounded-lg border border-gray-200 bg-white p-5 shadow-sm transition hover:-translate-y-0.5 hover:shadow-[0_18px_42px_rgba(79,70,229,0.13)]"
       onClick={markNavigationClick}
     >
-      <div className="relative h-44 overflow-hidden bg-gray-100">
-        <LazyDashboardVideo
-          active={isPreviewArmed}
-          src={card.media}
-          poster={poster}
-          className="size-full object-cover transition duration-500 group-hover:scale-105"
-        />
-      </div>
-
-      <div className="flex flex-1 flex-col p-5">
-        <span className="flex size-10 items-center justify-center rounded-lg bg-indigo-50 text-indigo-600">
-          <Icon className="size-5" />
-        </span>
-        <h2 className="mt-5 text-xl font-black text-gray-950">{card.title}</h2>
-        <p className="mt-3 min-h-12 text-sm font-semibold leading-6 text-gray-500">
-          {card.description}
-        </p>
-        <span className="mt-auto inline-flex items-center gap-1 pt-6 text-sm font-bold text-indigo-600">
-          {card.action}
-          <ArrowRight className="size-4 transition group-hover:translate-x-0.5" />
-        </span>
-      </div>
+      <span className="flex size-10 items-center justify-center rounded-lg bg-indigo-50 text-indigo-600">
+        <Icon className="size-5" />
+      </span>
+      <h2 className="mt-5 text-xl font-black text-gray-950">{card.title}</h2>
+      <p className="mt-3 min-h-12 text-sm font-semibold leading-6 text-gray-500">
+        {card.description}
+      </p>
+      <span className="mt-auto inline-flex items-center gap-1 pt-6 text-sm font-bold text-indigo-600">
+        {card.action}
+        <ArrowRight className="size-4 transition group-hover:translate-x-0.5" />
+      </span>
     </Link>
   );
 }
